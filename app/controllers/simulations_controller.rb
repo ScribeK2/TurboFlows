@@ -43,8 +43,7 @@ class SimulationsController < ApplicationController
     handle_back_navigation if params[:back].present?
     handle_jump_navigation if params[:step].present?
 
-    # Auto-advance decision, simple_decision, and sub_flow steps immediately without user interaction
-    # Note: checkpoint steps don't auto-advance - they require user resolution
+    # Auto-advance sub_flow steps immediately without user interaction
     return if auto_advance_non_interactive_step
 
     # NOTE: escalate and resolve steps show UI first, then process on Continue click
@@ -58,26 +57,6 @@ class SimulationsController < ApplicationController
     # Stop the workflow
     @simulation.stop!(@simulation.current_step_index)
     redirect_to simulation_path(@simulation), notice: "Workflow stopped."
-  end
-
-  def resolve_checkpoint
-    @simulation = current_user.simulations.find(params[:id])
-    @workflow = @simulation.workflow
-
-    # Get resolution parameters
-    resolved = ['true', true].include?(params[:resolved])
-    notes = params[:notes]
-
-    # Resolve the checkpoint
-    if @simulation.resolve_checkpoint!(resolved: resolved, notes: notes)
-      if resolved
-        redirect_to simulation_path(@simulation), notice: "Issue resolved. Workflow completed."
-      else
-        redirect_to step_simulation_path(@simulation), notice: "Continuing workflow..."
-      end
-    else
-      redirect_to step_simulation_path(@simulation), alert: "Failed to resolve checkpoint. Make sure you're on a checkpoint step."
-    end
   end
 
   def next_step
@@ -177,7 +156,7 @@ class SimulationsController < ApplicationController
   def pop_to_interactive_step
     while @simulation.execution_path.length > 0
       candidate = @simulation.execution_path.pop
-      next if %w[decision simple_decision sub_flow].include?(candidate['step_type'])
+      next if candidate['step_type'] == 'sub_flow'
       return candidate
     end
     nil
@@ -257,7 +236,7 @@ class SimulationsController < ApplicationController
   # Returns true if a redirect was issued (caller should return), false otherwise.
   def auto_advance_non_interactive_step
     current_step = @simulation.current_step
-    return false unless current_step && %w[decision simple_decision sub_flow].include?(current_step['type'])
+    return false unless current_step && current_step['type'] == 'sub_flow'
 
     @simulation.process_step(nil)
 

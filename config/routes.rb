@@ -48,7 +48,6 @@ Rails.application.routes.draw do
       post :next_step
       get :step
       post :stop
-      post :resolve_checkpoint
     end
   end
 
