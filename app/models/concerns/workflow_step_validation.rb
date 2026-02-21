@@ -8,60 +8,7 @@ module WorkflowStepValidation
 
   # Validate step references (public so tests / controller code can call directly)
   def validate_step_references
-    return true unless steps.present?
-
-    step_titles = steps.map { |step| step['title'] }.compact
-
-    steps.each_with_index do |step, index|
-      # Skip validation for imported incomplete steps
-      next if step['_import_incomplete'] == true
-
-      next unless step['type'] == 'decision'
-
-      # Handle multi-branch format (new)
-      if step['branches'].present? && step['branches'].is_a?(Array)
-        step['branches'].each_with_index do |branch, branch_index|
-          branch_path = branch['path'] || branch[:path]
-          branch_condition = branch['condition'] || branch[:condition]
-
-          if branch_path.present? && !step_titles.include?(branch_path)
-            # For imports, mark as incomplete instead of error
-            if step['_import_incomplete']
-              step['_import_errors'] ||= []
-              step['_import_errors'] << "Branch #{branch_index + 1}: References non-existent step: #{branch_path}"
-            else
-              errors.add(:steps, "Step #{index + 1}, Branch #{branch_index + 1}: References non-existent step: #{branch_path}")
-            end
-          end
-
-          if branch_condition.present? && !valid_condition_format?(branch_condition)
-            errors.add(:steps, "Step #{index + 1}, Branch #{branch_index + 1}: Invalid condition format")
-          end
-        end
-      end
-
-      # Validate else_path (regardless of whether branches is present)
-      if step['else_path'].present? && !step_titles.include?(step['else_path'])
-        # For imports, mark as incomplete instead of error
-        if step['_import_incomplete']
-          step['_import_errors'] ||= []
-          step['_import_errors'] << "'Else' path references non-existent step: #{step['else_path']}"
-        else
-          errors.add(:steps, "Step #{index + 1}: 'Else' path references non-existent step: #{step['else_path']}")
-        end
-      end
-
-      # Handle legacy format (true_path/false_path)
-      if step['true_path'].present? && !step_titles.include?(step['true_path'])
-        errors.add(:steps, "Step #{index + 1}: 'If true' references non-existent step: #{step['true_path']}")
-      end
-
-      if step['false_path'].present? && !step_titles.include?(step['false_path'])
-        errors.add(:steps, "Step #{index + 1}: 'If false' references non-existent step: #{step['false_path']}")
-      end
-    end
-
-    errors.empty?
+    true
   end
 
   private
@@ -100,7 +47,6 @@ module WorkflowStepValidation
       case step['type']
       when 'question'  then validate_question_step(step, step_num)
       when 'action'    then validate_action_step(step, step_num)
-      when 'decision'  then validate_decision_step(step, step_num)
       when 'sub_flow'  then validate_sub_flow_step(step, step_num)
       when 'message'   then validate_message_step(step, step_num)
       when 'escalate'  then validate_escalate_step(step, step_num)
@@ -135,53 +81,6 @@ module WorkflowStepValidation
         end
       else
         errors.add(:steps, "Step #{step_num}: output_fields must be an array")
-      end
-    end
-  end
-
-  def validate_decision_step(step, step_num)
-    has_branches = step['branches'].present? && step['branches'].is_a?(Array) && step['branches'].length > 0
-
-    if has_branches
-      validate_decision_branches(step, step_num)
-    elsif step['condition'].present? && !valid_condition_format?(step['condition'])
-      errors.add(:steps, "Step #{step_num}: Invalid condition format. Use: variable == 'value' or variable != 'value'")
-    end
-
-    validate_jumps(step, step_num)
-  end
-
-  def validate_decision_branches(step, step_num)
-    # Filter out completely empty branches first
-    step['branches'].reject! { |b| (b['condition'] || b[:condition]).blank? && (b['path'] || b[:path]).blank? }
-
-    return if step['branches'].empty?
-
-    step['branches'].each_with_index do |branch, branch_index|
-      branch_condition = branch['condition'] || branch[:condition]
-      branch_path = branch['path'] || branch[:path]
-
-      # Normalize branch hash keys (convert symbols to strings)
-      branch['condition'] = branch_condition if branch_condition.present?
-      branch['path'] = branch_path if branch_path.present?
-
-      # Remove symbol keys to avoid confusion
-      branch.delete(:condition)
-      branch.delete(:path)
-
-      # Allow completely empty branches (user is still filling them out)
-      next unless branch_condition.present? || branch_path.present?
-
-      if branch_condition.blank?
-        errors.add(:steps, "Step #{step_num}, Branch #{branch_index + 1}: Condition is required when a path is selected")
-      end
-
-      if branch_path.blank?
-        errors.add(:steps, "Step #{step_num}, Branch #{branch_index + 1}: Path is required when a condition is set")
-      end
-
-      if branch_condition.present? && !valid_condition_format?(branch_condition)
-        errors.add(:steps, "Step #{step_num}, Branch #{branch_index + 1}: Invalid condition format")
       end
     end
   end
@@ -323,7 +222,7 @@ module WorkflowStepValidation
       end
 
       # Check large text fields
-      large_fields = %w[description question instructions checkpoint_message]
+      large_fields = %w[description question instructions]
       large_fields.each do |field|
         next unless step[field].present? && step[field].to_s.bytesize > self.class::MAX_STEP_CONTENT_LENGTH
 
@@ -335,11 +234,6 @@ module WorkflowStepValidation
       # Check options array size (for multiple choice questions)
       if step['options'].is_a?(Array) && step['options'].length > 100
         errors.add(:steps, "Step #{step_num}: Too many options (max 100)")
-      end
-
-      # Check branches array size (for decision steps)
-      if step['branches'].is_a?(Array) && step['branches'].length > 50
-        errors.add(:steps, "Step #{step_num}: Too many branches (max 50)")
       end
 
       # Check jumps array size
