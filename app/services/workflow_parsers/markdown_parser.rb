@@ -44,7 +44,7 @@ module WorkflowParsers
     private
 
     # Valid step types for Markdown import
-    VALID_MD_TYPES = %w[question decision action checkpoint sub_flow message escalate resolve].freeze
+    VALID_MD_TYPES = %w[question action sub_flow message escalate resolve].freeze
 
     def extract_title(lines)
       # Check for frontmatter title
@@ -205,6 +205,9 @@ module WorkflowParsers
       # Extract type
       if match = stripped.match(/^\*\*Type\*\*:\s*(.+)$/i) || stripped.match(/^Type:\s*(.+)$/i)
         step_type = (match ? match[1] : ::Regexp.last_match(1)).strip.downcase
+        # Auto-convert deprecated types
+        step_type = 'question' if %w[decision simple_decision].include?(step_type)
+        step_type = 'message' if step_type == 'checkpoint'
         current_step[:type] = VALID_MD_TYPES.include?(step_type) ? step_type : 'action'
         return
       end
@@ -400,14 +403,9 @@ module WorkflowParsers
         normalized[:answer_type] = step[:answer_type] || 'text'
         normalized[:variable_name] = step[:variable_name] || ''
         normalized[:options] = step[:options] || [] if step[:options].present?
-      when 'decision'
-        normalized[:branches] = step[:branches] || []
-        normalized[:else_path] = step[:else_path] || ''
       when 'action'
         normalized[:instructions] = step[:instructions] || ''
         normalized[:action_type] = step[:action_type] || '' if step[:action_type].present?
-      when 'checkpoint'
-        normalized[:checkpoint_message] = step[:checkpoint_message] || ''
       when 'sub_flow'
         normalized[:target_workflow_id] = step[:target_workflow_id] if step[:target_workflow_id].present?
         normalized[:target_workflow_title] = step[:target_workflow_title] if step[:target_workflow_title].present?

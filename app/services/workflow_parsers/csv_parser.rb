@@ -62,10 +62,19 @@ module WorkflowParsers
     private
 
     # Valid step types for CSV import
-    VALID_CSV_TYPES = %w[question decision action checkpoint sub_flow message escalate resolve].freeze
+    VALID_CSV_TYPES = %w[question action sub_flow message escalate resolve].freeze
 
     def parse_csv_row(row, row_number)
       step_type = (row[:type] || row[:step_type] || 'action').to_s.downcase.strip
+
+      # Auto-convert deprecated types
+      if step_type == 'decision' || step_type == 'simple_decision'
+        add_warning("Row #{row_number}: Converting deprecated '#{step_type}' to 'question'")
+        step_type = 'question'
+      elsif step_type == 'checkpoint'
+        add_warning("Row #{row_number}: Converting deprecated 'checkpoint' to 'message'")
+        step_type = 'message'
+      end
 
       unless VALID_CSV_TYPES.include?(step_type)
         add_warning("Row #{row_number}: Invalid step type '#{step_type}', defaulting to 'action'")
@@ -94,36 +103,11 @@ module WorkflowParsers
           step[:transitions] = parse_transitions(row[:transitions])
         end
 
-      when 'decision'
-        # Parse branches
-        if row[:condition] && row[:path]
-          step[:branches] = [{
-            condition: row[:condition],
-            path: row[:path]
-          }]
-        elsif row[:branches]
-          step[:branches] = parse_branches(row[:branches])
-        end
-
-        step[:else_path] = row[:else_path] || row[:else] || ''
-
-        # Parse transitions for Graph Mode (new)
-        if row[:transitions]
-          step[:transitions] = parse_transitions(row[:transitions])
-        end
-
       when 'action'
         step[:instructions] = row[:instructions] || row[:action] || ''
         step[:action_type] = row[:action_type] || ''
 
         # Parse transitions for Graph Mode
-        if row[:transitions]
-          step[:transitions] = parse_transitions(row[:transitions])
-        end
-
-      when 'checkpoint'
-        step[:checkpoint_message] = row[:checkpoint_message] || row[:message] || ''
-
         if row[:transitions]
           step[:transitions] = parse_transitions(row[:transitions])
         end
