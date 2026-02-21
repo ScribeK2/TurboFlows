@@ -107,22 +107,9 @@ module WorkflowParsers
         step['transitions'] ||= []
 
         case step['type']
-        when 'decision', 'simple_decision'
-          convert_decision_to_graph(step, steps, title_to_id)
         when 'resolve'
           # Resolve steps are terminal - no transitions
           step['transitions'] = []
-        when 'checkpoint'
-          # Checkpoints can be terminal or continue
-          # Only add transition to next if not last step
-          if index < steps.length - 1 && step['transitions'].empty?
-            next_step = steps[index + 1]
-            step['transitions'] << {
-              'target_uuid' => next_step['id'],
-              'condition' => nil,
-              'label' => nil
-            }
-          end
         else
           # Sequential steps: question, action, message, escalate, sub_flow
           convert_sequential_to_graph(step, index, steps, title_to_id)
@@ -130,71 +117,6 @@ module WorkflowParsers
       end
 
       steps
-    end
-
-    # Convert a decision step's branches to graph transitions
-    def convert_decision_to_graph(step, steps, title_to_id)
-      transitions = []
-
-      # Handle multi-branch format
-      if step['branches'].is_a?(Array) && step['branches'].any?
-        step['branches'].each do |branch|
-          condition = branch['condition'] || branch[:condition]
-          path = branch['path'] || branch[:path]
-
-          next unless path.present?
-
-          target_uuid = resolve_path_to_uuid(path, title_to_id)
-          if target_uuid
-            transitions << {
-              'target_uuid' => target_uuid,
-              'condition' => condition.presence,
-              'label' => condition.present? ? "If #{condition}" : nil
-            }
-          else
-            add_warning("Decision step '#{step['title']}': Branch path '#{path}' could not be resolved to a step")
-          end
-        end
-      end
-
-      # Handle legacy format (true_path/false_path)
-      if step['true_path'].present?
-        target_uuid = resolve_path_to_uuid(step['true_path'], title_to_id)
-        if target_uuid
-          condition = step['condition'] || 'true'
-          transitions << {
-            'target_uuid' => target_uuid,
-            'condition' => condition,
-            'label' => 'If true'
-          }
-        end
-      end
-
-      if step['false_path'].present?
-        target_uuid = resolve_path_to_uuid(step['false_path'], title_to_id)
-        if target_uuid
-          condition = step['condition'] ? negate_condition(step['condition']) : 'false'
-          transitions << {
-            'target_uuid' => target_uuid,
-            'condition' => condition,
-            'label' => 'If false'
-          }
-        end
-      end
-
-      # Handle else_path (default/fallback)
-      if step['else_path'].present?
-        target_uuid = resolve_path_to_uuid(step['else_path'], title_to_id)
-        if target_uuid
-          transitions << {
-            'target_uuid' => target_uuid,
-            'condition' => nil,
-            'label' => 'Else'
-          }
-        end
-      end
-
-      step['transitions'] = transitions
     end
 
     # Convert sequential step to graph format
@@ -363,17 +285,25 @@ module WorkflowParsers
         normalized['variable_name'] = step[:variable_name] || step['variable_name'] || ''
         normalized['options'] = normalize_options(step[:options] || step['options'] || [])
       when 'decision', 'simple_decision'
-        normalized['branches'] = normalize_branches(step[:branches] || step['branches'] || [])
-        normalized['else_path'] = step[:else_path] || step['else_path'] || ''
-        # Preserve legacy fields for conversion
-        normalized['condition'] = step[:condition] || step['condition'] if step[:condition] || step['condition']
-        normalized['true_path'] = step[:true_path] || step['true_path'] if step[:true_path] || step['true_path']
-        normalized['false_path'] = step[:false_path] || step['false_path'] if step[:false_path] || step['false_path']
+        # Auto-convert deprecated decision types to question
+        normalized['type'] = 'question'
+        normalized['question'] = step[:title] || step['title'] || ''
+        normalized['answer_type'] = 'text'
+        normalized['variable_name'] = ''
+        normalized['options'] = []
+        normalized['_import_converted'] = true
+        normalized['_import_converted_from'] = step[:type] || step['type']
+        add_warning("Converted deprecated '#{step[:type] || step['type']}' step '#{normalized['title']}' to question")
+      when 'checkpoint'
+        # Auto-convert deprecated checkpoint type to message
+        normalized['type'] = 'message'
+        normalized['content'] = step[:checkpoint_message] || step['checkpoint_message'] || ''
+        normalized['_import_converted'] = true
+        normalized['_import_converted_from'] = 'checkpoint'
+        add_warning("Converted deprecated 'checkpoint' step '#{normalized['title']}' to message")
       when 'action'
         normalized['instructions'] = step[:instructions] || step['instructions'] || ''
         normalized['action_type'] = step[:action_type] || step['action_type'] || ''
-      when 'checkpoint'
-        normalized['checkpoint_message'] = step[:checkpoint_message] || step['checkpoint_message'] || ''
       when 'sub_flow'
         normalized['target_workflow_id'] = step[:target_workflow_id] || step['target_workflow_id']
         normalized['target_workflow_title'] = step[:target_workflow_title] || step['target_workflow_title']
@@ -452,17 +382,6 @@ module WorkflowParsers
       case step['type']
       when 'question'
         step['question'].blank?
-      when 'decision'
-        branches = step['branches'] || []
-        transitions = step['transitions'] || []
-        # Complete if has transitions (graph mode) or branches with content
-        if transitions.any?
-          false
-        elsif branches.empty?
-          true
-        else
-          branches.all? { |b| b['condition'].blank? && b['path'].blank? }
-        end
       when 'action'
         step['instructions'].blank?
       when 'resolve'
@@ -477,20 +396,6 @@ module WorkflowParsers
       case step['type']
       when 'question'
         errors << "Question text is required" if step['question'].blank?
-      when 'decision'
-        branches = step['branches'] || []
-        transitions = step['transitions'] || []
-        if transitions.empty? && branches.empty?
-          errors << "At least one decision branch or transition is required"
-        else
-          branches.each_with_index do |branch, idx|
-            if branch['condition'].present? && branch['path'].blank?
-              errors << "Branch #{idx + 1}: Path is required when condition is set"
-            elsif branch['path'].present? && branch['condition'].blank?
-              errors << "Branch #{idx + 1}: Condition is required when path is set"
-            end
-          end
-        end
       when 'action'
         errors << "Instructions are required" if step['instructions'].blank?
       when 'resolve'
@@ -499,26 +404,8 @@ module WorkflowParsers
       errors
     end
 
-    # Validate branch references point to existing steps
+    # No-op: decision step branches are no longer supported
     def validate_branch_references(normalized_steps)
-      step_titles = normalized_steps.map { |s| s['title'] }.compact
-
-      normalized_steps.each do |step|
-        next unless step['type'] == 'decision' && step['branches'].present?
-
-        step['branches'].each do |branch|
-          next unless branch['path'].present? && !step_titles.include?(branch['path'])
-
-          step['_import_incomplete'] = true
-          step['_import_errors'] ||= []
-          step['_import_errors'] << "Branch references non-existent step: #{branch['path']}"
-        end
-        next unless step['else_path'].present? && !step_titles.include?(step['else_path'])
-
-        step['_import_incomplete'] = true
-        step['_import_errors'] ||= []
-        step['_import_errors'] << "'Else' path references non-existent step: #{step['else_path']}"
-      end
     end
 
     # Resolve step number references (e.g., "Step 3" -> actual step title or ID)
