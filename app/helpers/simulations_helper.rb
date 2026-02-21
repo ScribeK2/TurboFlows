@@ -13,9 +13,8 @@ module SimulationsHelper
   # tracks array position (unreliable in graph mode where navigation uses current_node_uuid).
   def simulation_step_counter(simulation, workflow)
     current = (simulation.execution_path&.length || 0) + 1
-    has_branching = workflow.graph_mode? || workflow.steps&.any? { |s| %w[decision simple_decision].include?(s['type']) }
 
-    if has_branching
+    if workflow.graph_mode?
       "Step #{current}"
     else
       total = workflow.steps&.length || 0
@@ -80,9 +79,7 @@ module SimulationsHelper
     type_counts = path.each_with_object(Hash.new(0)) { |item, counts| counts[item['step_type']] += 1 }
     type_parts = []
     type_parts << "#{type_counts['question']} #{'question'.pluralize(type_counts['question'])} answered" if type_counts['question'] > 0
-    type_parts << "#{type_counts['decision']} routing #{'decision'.pluralize(type_counts['decision'])}" if type_counts['decision'] > 0
     type_parts << "#{type_counts['action']} #{'action'.pluralize(type_counts['action'])} performed" if type_counts['action'] > 0
-    type_parts << "#{type_counts['checkpoint']} #{'checkpoint'.pluralize(type_counts['checkpoint'])}" if type_counts['checkpoint'] > 0
     parts << type_parts.join(", ") if type_parts.any?
 
     # Resolution/escalation info
