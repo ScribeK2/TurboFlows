@@ -102,44 +102,6 @@ class Simulation < ApplicationRecord
     )
   end
 
-  # Resolve a checkpoint step
-  def resolve_checkpoint!(resolved: true, notes: nil)
-    step = current_step
-    return false unless step&.dig('type') == 'checkpoint'
-    return false if stopped?
-    return false if complete?
-
-    # Initialize execution_path if needed
-    initialize_execution_data
-
-    # Add checkpoint to execution path
-    path_entry = {
-      step_index: current_step_index,
-      step_title: step['title'],
-      step_type: 'checkpoint',
-      resolved: resolved,
-      resolved_at: Time.current.iso8601
-    }
-    path_entry[:notes] = notes if notes.present?
-
-    self.execution_path << path_entry
-
-    if resolved
-      # Mark workflow as completed
-      self.status = 'completed'
-      self.current_step_index = workflow.steps.length # Mark as complete
-      self.results ||= {}
-      self.results[step['title']] = "Issue resolved - workflow completed"
-    else
-      # Continue to next step
-      self.current_step_index += 1
-      self.results ||= {}
-      self.results[step['title']] = "Issue not resolved - continuing workflow"
-    end
-
-    save
-  end
-
   # Process a single step and advance
   # Returns false if step can't be processed, true otherwise
   # Raises SimulationIterationLimit if max iterations exceeded
@@ -189,15 +151,8 @@ class Simulation < ApplicationRecord
     when 'question'
       process_question_step(step, answer, path_entry)
 
-    when 'decision', 'simple_decision'
-      process_decision_step(step, path_entry)
-
     when 'action'
       process_action_step(step, path_entry)
-
-    when 'checkpoint'
-      # Checkpoints don't auto-advance - user must resolve them
-      return false
 
     when 'sub_flow'
       return process_subflow_step(step, path_entry)
@@ -255,24 +210,6 @@ class Simulation < ApplicationRecord
     self.execution_path << path_entry
 
     advance_to_next_step(step)
-  end
-
-  # Process a decision step
-  def process_decision_step(step, path_entry)
-    self.results ||= {}
-
-    if graph_mode?
-      resolver = StepResolver.new(workflow)
-      next_uuid = resolver.resolve_next(step, self.results)
-      path_entry[:condition_result] = "routing to #{next_uuid || 'end'}"
-      self.execution_path << path_entry
-      advance_to_step_uuid(next_uuid)
-    else
-      next_step_index = determine_next_step_index(step, self.results)
-      path_entry[:condition_result] = "routing to step #{next_step_index + 1}"
-      self.execution_path << path_entry
-      self.current_step_index = next_step_index
-    end
   end
 
   # Process an action step
@@ -551,21 +488,15 @@ class Simulation < ApplicationRecord
 
       condition_result = case step['type']
                          when 'question'
-                           # For questions, check if the answer matches the condition
                            current_answer = results[step['title']] || results[step['variable_name']]
                            current_answer.to_s == jump_condition.to_s
                          when 'action'
-                           # For actions, check if action completed or custom condition
                            if jump_condition == 'completed'
-                             true # Actions are considered completed when they reach this point
+                             true
                            else
                              evaluate_condition_string(jump_condition, results)
                            end
-                         when 'decision'
-                           # For decisions, use full condition evaluation
-                           evaluate_condition_string(jump_condition, results)
                          else
-                           # Default to condition evaluation
                            evaluate_condition_string(jump_condition, results)
                          end
 
