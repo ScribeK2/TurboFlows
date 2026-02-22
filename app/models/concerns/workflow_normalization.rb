@@ -175,6 +175,15 @@ module WorkflowNormalization
       step.delete(:target_workflow_id)
 
       # Normalize variable_mapping for sub-flows
+      # The form submits variable_mapping as a JSON string; parse it if needed.
+      if step['variable_mapping'].is_a?(String)
+        step['variable_mapping'] = begin
+          parsed = JSON.parse(step['variable_mapping'])
+          parsed.is_a?(Hash) ? parsed : {}
+        rescue JSON::ParserError
+          {}
+        end
+      end
       if step['variable_mapping'].present? && step['variable_mapping'].is_a?(Hash)
         step['variable_mapping'] = step['variable_mapping'].transform_keys(&:to_s)
       end

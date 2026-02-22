@@ -319,6 +319,8 @@ class Scenario < ApplicationRecord
 
     # Apply variable mapping if defined
     variable_mapping = step['variable_mapping'] || {}
+    variable_mapping = JSON.parse(variable_mapping) rescue {} if variable_mapping.is_a?(String)
+    variable_mapping = {} unless variable_mapping.is_a?(Hash)
     variable_mapping.each do |parent_var, child_var|
       if self.results&.key?(parent_var)
         child_results[child_var] = self.results[parent_var]
