@@ -31,7 +31,7 @@ Rails.application.routes.draw do
       # Step rendering for dynamic step creation (Sprint 3)
       post :render_step
     end
-    resources :simulations, only: %i[new create]
+    resources :scenarios, only: %i[new create]
   end
 
   # Folder management (accessible to editors/admins)
@@ -43,7 +43,7 @@ Rails.application.routes.draw do
     end
   end
 
-  resources :simulations, only: [:show] do
+  resources :scenarios, only: [:show] do
     member do
       post :next_step
       get :step

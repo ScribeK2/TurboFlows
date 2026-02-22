@@ -421,8 +421,8 @@ class WorkflowsController < ApplicationController
   end
 
   def begin_execution
-    # Create simulation and start workflow execution
-    @simulation = Simulation.new(
+    # Create scenario and start workflow execution
+    @scenario = Scenario.new(
       workflow: @workflow,
       user: current_user,
       current_step_index: 0,
@@ -432,10 +432,10 @@ class WorkflowsController < ApplicationController
       status: 'active'
     )
 
-    if @simulation.save
-      redirect_to step_simulation_path(@simulation), notice: "Workflow started!"
+    if @scenario.save
+      redirect_to step_scenario_path(@scenario), notice: "Workflow started!"
     else
-      redirect_to start_workflow_path(@workflow), alert: "Failed to start workflow: #{@simulation.errors.full_messages.join(', ')}"
+      redirect_to start_workflow_path(@workflow), alert: "Failed to start workflow: #{@scenario.errors.full_messages.join(', ')}"
     end
   end
 

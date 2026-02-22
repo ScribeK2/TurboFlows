@@ -1,8 +1,8 @@
-module SimulationsHelper
-  def simulation_back_button(simulation)
-    return nil unless simulation.execution_path.present? && simulation.execution_path.length > 0
+module ScenariosHelper
+  def scenario_back_button(scenario)
+    return nil unless scenario.execution_path.present? && scenario.execution_path.length > 0
 
-    link_to step_simulation_path(simulation, back: true),
+    link_to step_scenario_path(scenario, back: true),
             class: "inline-flex items-center bg-white/50 dark:bg-gray-800/50 py-2 px-4 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-200 hover:scale-105" do
       raw('<svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>') + "Back"
     end
@@ -11,8 +11,8 @@ module SimulationsHelper
   # Returns "Step X of Y" for linear workflows, "Step X" for branching/graph workflows.
   # Uses execution_path length to determine the user's position, since current_step_index
   # tracks array position (unreliable in graph mode where navigation uses current_node_uuid).
-  def simulation_step_counter(simulation, workflow)
-    current = (simulation.execution_path&.length || 0) + 1
+  def scenario_step_counter(scenario, workflow)
+    current = (scenario.execution_path&.length || 0) + 1
 
     if workflow.graph_mode?
       "Step #{current}"
@@ -24,7 +24,7 @@ module SimulationsHelper
 
   # Returns the inner content for a stepper pill: green checkmark for completed,
   # number badge for current/future, with a small step type icon.
-  def simulation_stepper_step_content(path_item, index, is_completed, is_current)
+  def scenario_stepper_step_content(path_item, index, is_completed, is_current)
     step_type = path_item['step_type'] || path_item['type']
     type_icon = step_type.present? ? step_type_svg_icon(step_type, css_classes: "w-3.5 h-3.5 inline mr-0.5 flex-shrink-0") : ""
 
@@ -44,7 +44,7 @@ module SimulationsHelper
   end
 
   # CSS classes for a stepper pill based on its state.
-  def simulation_stepper_classes(is_completed, is_current)
+  def scenario_stepper_classes(is_completed, is_current)
     base = "inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 whitespace-nowrap cursor-pointer"
 
     if is_current
@@ -56,15 +56,15 @@ module SimulationsHelper
     end
   end
 
-  # Generates a dynamic summary sentence for completed simulations.
-  # E.g. "Completed 8 steps in 2m 14s — 4 questions answered, 2 routing decisions — resolved as Success"
-  def simulation_summary_sentence(simulation)
+  # Generates a dynamic summary sentence for completed scenarios.
+  # E.g. "Completed 8 steps in 2m 14s -- 4 questions answered, 2 routing decisions -- resolved as Success"
+  def scenario_summary_sentence(scenario)
     parts = []
-    path = simulation.execution_path || []
+    path = scenario.execution_path || []
     step_count = path.length
 
     # Duration
-    duration_seconds = (simulation.updated_at - simulation.created_at).to_i
+    duration_seconds = (scenario.updated_at - scenario.created_at).to_i
     duration_text = if duration_seconds < 60
                       "#{duration_seconds}s"
                     elsif duration_seconds < 3600
@@ -83,7 +83,7 @@ module SimulationsHelper
     parts << type_parts.join(", ") if type_parts.any?
 
     # Resolution/escalation info
-    results = simulation.results || {}
+    results = scenario.results || {}
     if results['_resolution'].present?
       resolution_type = results['_resolution']['type']&.titleize
       parts << "resolved as #{resolution_type}" if resolution_type.present?
@@ -96,7 +96,7 @@ module SimulationsHelper
   end
 
   # Humanizes raw result keys: strips step_ prefix, replaces underscores, titleizes.
-  # E.g. "step_6_outlook_success_check" → "Outlook Success Check"
+  # E.g. "step_6_outlook_success_check" -> "Outlook Success Check"
   def format_result_key(key)
     formatted = key.to_s
     formatted = formatted.sub(/\Astep_\d+_/, '')
@@ -106,11 +106,11 @@ module SimulationsHelper
 
   # Groups regular results into categorized subsections for display.
   # Returns an array of { label: String, results: Hash } hashes, skipping empty groups.
-  def categorize_simulation_results(simulation)
-    results = (simulation.results || {}).reject { |k, _| k.to_s.start_with?('_') }
+  def categorize_scenario_results(scenario)
+    results = (scenario.results || {}).reject { |k, _| k.to_s.start_with?('_') }
     return [] if results.empty?
 
-    input_keys = (simulation.inputs || {}).keys.map(&:to_s)
+    input_keys = (scenario.inputs || {}).keys.map(&:to_s)
 
     user_inputs = results.select { |k, _| input_keys.include?(k.to_s) }
     outcomes = results.reject { |k, _| input_keys.include?(k.to_s) }

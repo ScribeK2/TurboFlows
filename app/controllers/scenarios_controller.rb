@@ -1,0 +1,274 @@
+class ScenariosController < ApplicationController
+  before_action :set_workflow, only: %i[new create]
+
+  def show
+    @scenario = current_user.scenarios.find(params[:id])
+    @workflow = @scenario.workflow
+  end
+
+  def new
+    @scenario = Scenario.new
+    @workflow = Workflow.find(params[:workflow_id])
+    ensure_can_view_workflow!(@workflow)
+  end
+
+  def create
+    @workflow = Workflow.find(params[:workflow_id])
+    ensure_can_view_workflow!(@workflow)
+
+    @scenario = Scenario.new(scenario_params)
+    @scenario.workflow = @workflow
+    @scenario.user = current_user
+    @scenario.current_step_index = 0
+    @scenario.execution_path = []
+    @scenario.results = {}
+    @scenario.inputs = {}
+
+    if @scenario.save
+      # Redirect to step view instead of executing immediately
+      redirect_to step_scenario_path(@scenario), notice: "Scenario started."
+    else
+      render :new, status: :unprocessable_content
+    end
+  end
+
+  def step
+    @scenario = current_user.scenarios.find(params[:id])
+    @workflow = @scenario.workflow
+
+    # Guard clauses for terminal/waiting states
+    return if handle_step_guard_redirects
+
+    # Handle navigation (back or jump-to-step)
+    handle_back_navigation if params[:back].present?
+    handle_jump_navigation if params[:step].present?
+
+    # Auto-advance sub_flow steps immediately without user interaction
+    return if auto_advance_non_interactive_step
+
+    # NOTE: escalate and resolve steps show UI first, then process on Continue click
+    # They are NOT auto-advanced here - they need user acknowledgment
+  end
+
+  def stop
+    @scenario = current_user.scenarios.find(params[:id])
+    @workflow = @scenario.workflow
+
+    # Stop the workflow
+    @scenario.stop!(@scenario.current_step_index)
+    redirect_to scenario_path(@scenario), notice: "Workflow stopped."
+  end
+
+  def next_step
+    @scenario = current_user.scenarios.find(params[:id])
+    @workflow = @scenario.workflow
+
+    # Prevent processing if stopped
+    if @scenario.stopped?
+      redirect_to scenario_path(@scenario), alert: "This workflow has been stopped and cannot be continued."
+      return
+    end
+
+    # Get answer from params
+    answer = params[:answer]
+
+    # Process the current step
+    # Note: checkpoint steps won't process here - they use resolve_checkpoint instead
+    if @scenario.process_step(answer)
+      # After processing a sub_flow step, parent may now be awaiting_subflow
+      if @scenario.awaiting_subflow?
+        active_child = @scenario.active_child_scenario
+        if active_child
+          redirect_to step_scenario_path(active_child)
+        else
+          redirect_to step_scenario_path(@scenario)
+        end
+        return
+      end
+
+      if @scenario.complete?
+        # If this is a child scenario, redirect to parent's step view to resume it
+        if @scenario.parent_scenario.present?
+          redirect_to step_scenario_path(@scenario.parent_scenario)
+        else
+          redirect_to scenario_path(@scenario), notice: "Scenario completed successfully!"
+        end
+      else
+        redirect_to step_scenario_path(@scenario)
+      end
+    else
+      redirect_to step_scenario_path(@scenario), alert: "Failed to process step."
+    end
+  end
+
+  private
+
+  # Returns true if a redirect was issued (caller should return), false otherwise.
+  def handle_step_guard_redirects
+    if @scenario.stopped?
+      redirect_to scenario_path(@scenario), notice: "This workflow has been stopped."
+      return true
+    end
+
+    if @scenario.complete?
+      if @scenario.parent_scenario.present?
+        redirect_to step_scenario_path(@scenario.parent_scenario)
+      else
+        redirect_to scenario_path(@scenario), notice: "Scenario completed!"
+      end
+      return true
+    end
+
+    if @scenario.awaiting_subflow?
+      handle_awaiting_subflow_redirect
+      return true
+    end
+
+    false
+  end
+
+  def handle_awaiting_subflow_redirect
+    active_child = @scenario.active_child_scenario
+    if active_child && !active_child.complete?
+      redirect_to step_scenario_path(active_child)
+    else
+      @scenario.process_subflow_completion
+      if @scenario.complete?
+        redirect_to scenario_path(@scenario), notice: "Scenario completed!"
+      else
+        redirect_to step_scenario_path(@scenario)
+      end
+    end
+  end
+
+  def handle_back_navigation
+    return unless @scenario.execution_path.present? && @scenario.execution_path.length > 0
+
+    popped_step = pop_to_interactive_step
+    return unless popped_step
+
+    rebuild_scenario_state_from_path
+    restore_position_from_step(popped_step)
+    @scenario.status = 'active' if @scenario.status == 'completed'
+    @scenario.save
+  end
+
+  def pop_to_interactive_step
+    while @scenario.execution_path.length > 0
+      candidate = @scenario.execution_path.pop
+      next if candidate['step_type'] == 'sub_flow'
+      return candidate
+    end
+    nil
+  end
+
+  def rebuild_scenario_state_from_path
+    @scenario.results = {}
+    @scenario.inputs = {}
+    @scenario.execution_path.each do |path_entry|
+      next unless path_entry['answer'].present?
+
+      if @scenario.graph_mode? && path_entry['step_uuid'].present?
+        step = @workflow.find_step_by_id(path_entry['step_uuid'])
+      elsif path_entry['step_index'].present?
+        idx = path_entry['step_index'].to_i
+        step = @workflow.steps[idx] if idx >= 0 && idx < @workflow.steps.length
+      end
+
+      next unless step && step['type'] == 'question'
+
+      input_key = step['variable_name'].presence || (path_entry['step_index'] || 0).to_s
+      @scenario.inputs[input_key] = path_entry['answer']
+      @scenario.inputs[step['title']] = path_entry['answer']
+      @scenario.results[step['title']] = path_entry['answer']
+      @scenario.results[step['variable_name']] = path_entry['answer'] if step['variable_name'].present?
+    end
+  end
+
+  def restore_position_from_step(popped_step)
+    if @scenario.graph_mode? && popped_step['step_uuid'].present?
+      @scenario.current_node_uuid = popped_step['step_uuid']
+    elsif popped_step['step_index'].present?
+      @scenario.current_step_index = popped_step['step_index'].to_i
+    end
+  end
+
+  def handle_jump_navigation
+    step_index = params[:step].to_i
+    return unless step_index >= 0 && step_index < @scenario.execution_path.length
+
+    path_item = @scenario.execution_path[step_index]
+    return unless path_item && path_item['step_index'].present?
+
+    target_step_index = path_item['step_index']
+    @scenario.execution_path = @scenario.execution_path[0..step_index]
+
+    # Rebuild results and inputs from execution path up to this point
+    @scenario.results = {}
+    @scenario.inputs = {}
+    @scenario.execution_path.each do |path_entry|
+      next unless path_entry['answer'].present?
+
+      entry_step_index = path_entry['step_index'].to_i
+      next unless entry_step_index >= 0 && entry_step_index < @workflow.steps.length
+
+      step = @workflow.steps[entry_step_index]
+      next unless step && step['type'] == 'question'
+
+      input_key = step['variable_name'].presence || entry_step_index.to_s
+      @scenario.inputs[input_key] = path_entry['answer']
+      @scenario.inputs[step['title']] = path_entry['answer']
+      @scenario.results[step['title']] = path_entry['answer']
+      @scenario.results[step['variable_name']] = path_entry['answer'] if step['variable_name'].present?
+    end
+
+    next_step_index = target_step_index.to_i + 1
+    if next_step_index >= @workflow.steps.length
+      @scenario.status = 'completed'
+      @scenario.current_step_index = @workflow.steps.length
+    else
+      @scenario.current_step_index = next_step_index
+    end
+
+    @scenario.save
+  end
+
+  # Returns true if a redirect was issued (caller should return), false otherwise.
+  def auto_advance_non_interactive_step
+    current_step = @scenario.current_step
+    return false unless current_step && current_step['type'] == 'sub_flow'
+
+    @scenario.process_step(nil)
+
+    if @scenario.awaiting_subflow?
+      active_child = @scenario.active_child_scenario
+      redirect_to step_scenario_path(active_child || @scenario)
+      return true
+    end
+
+    if @scenario.complete?
+      redirect_to_completion(@scenario)
+    else
+      redirect_to step_scenario_path(@scenario)
+    end
+    true
+  end
+
+  # Redirect to the appropriate completion destination for a scenario.
+  def redirect_to_completion(scenario, message: "Scenario completed!")
+    if scenario.parent_scenario.present?
+      redirect_to step_scenario_path(scenario.parent_scenario)
+    else
+      redirect_to scenario_path(scenario), notice: message
+    end
+  end
+
+  def set_workflow
+    # Handled in actions
+  end
+
+  def scenario_params
+    # Permit workflow_id, inputs are optional (will be built up step by step)
+    params.require(:scenario).permit(:workflow_id, inputs: {})
+  end
+end

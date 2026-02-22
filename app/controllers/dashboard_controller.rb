@@ -17,15 +17,15 @@ class DashboardController < ApplicationController
       @workflows = Workflow.visible_to(current_user).recent.limit(10)
     end
 
-    # Simulation stats (scoped to current user)
-    user_simulations = Simulation.where(user: current_user)
-    @simulation_total = user_simulations.count
-    @simulation_completed = user_simulations.where(status: "completed").count
-    @simulation_active = user_simulations.where(status: "active").count
-    @simulation_completion_rate = @simulation_total > 0 ? ((@simulation_completed * 100.0) / @simulation_total).round : 0
+    # Scenario stats (scoped to current user)
+    user_scenarios = Scenario.where(user: current_user)
+    @scenario_total = user_scenarios.count
+    @scenario_completed = user_scenarios.where(status: "completed").count
+    @scenario_active = user_scenarios.where(status: "active").count
+    @scenario_completion_rate = @scenario_total > 0 ? ((@scenario_completed * 100.0) / @scenario_total).round : 0
 
-    # Recent simulations (last 5, eager-load workflow to avoid N+1)
-    @recent_simulations = user_simulations.includes(:workflow)
+    # Recent scenarios (last 5, eager-load workflow to avoid N+1)
+    @recent_scenarios = user_scenarios.includes(:workflow)
                                           .order(created_at: :desc)
                                           .limit(5)
   end
