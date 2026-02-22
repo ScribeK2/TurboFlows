@@ -97,8 +97,8 @@ class WorkflowWizardFlowTest < ActionDispatch::IntegrationTest
 
     assert_equal "published", draft_workflow.status
 
-    # Step 5: Run simulation to verify variable interpolation works
-    simulation = Simulation.create!(
+    # Step 5: Run scenario to verify variable interpolation works
+    scenario = Scenario.create!(
       workflow: draft_workflow,
       user: @user,
       status: 'active',
@@ -108,16 +108,16 @@ class WorkflowWizardFlowTest < ActionDispatch::IntegrationTest
     )
 
     # Answer question with name
-    simulation.process_step("John")
+    scenario.process_step("John")
 
     # Check that variable is stored
-    assert_equal "John", simulation.results["customer_name"]
+    assert_equal "John", scenario.results["customer_name"]
 
     # Process action step
-    simulation.process_step
+    scenario.process_step
 
     # Workflow should complete
-    assert_equal "completed", simulation.status
+    assert_equal "completed", scenario.status
   end
 
   # ==========================================================================
@@ -417,8 +417,8 @@ class WorkflowWizardFlowTest < ActionDispatch::IntegrationTest
 
     assert_equal "published", draft.status
 
-    # Run simulation
-    simulation = Simulation.create!(
+    # Run scenario
+    scenario = Scenario.create!(
       workflow: draft,
       user: @user,
       status: 'active',
@@ -428,22 +428,22 @@ class WorkflowWizardFlowTest < ActionDispatch::IntegrationTest
     )
 
     # Answer first question
-    simulation.process_step("Alice")
+    scenario.process_step("Alice")
 
-    assert_equal "Alice", simulation.results["customer_name"]
+    assert_equal "Alice", scenario.results["customer_name"]
 
     # Answer second question (which should show interpolated text when viewed)
-    simulation.process_step("Login problem")
+    scenario.process_step("Login problem")
 
-    assert_equal "Login problem", simulation.results["issue"]
+    assert_equal "Login problem", scenario.results["issue"]
 
     # Process action and complete
-    simulation.process_step
+    scenario.process_step
 
-    assert_equal "completed", simulation.status
+    assert_equal "completed", scenario.status
 
     # Verify all results are stored
-    assert_equal "Alice", simulation.results["customer_name"]
-    assert_equal "Login problem", simulation.results["issue"]
+    assert_equal "Alice", scenario.results["customer_name"]
+    assert_equal "Login problem", scenario.results["issue"]
   end
 end

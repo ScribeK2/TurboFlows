@@ -1,7 +1,7 @@
 require "test_helper"
 
 # Test 1.3.2: Output fields for action steps
-class SimulationOutputFieldsTest < ActiveSupport::TestCase
+class ScenarioOutputFieldsTest < ActiveSupport::TestCase
   def setup
     @user = User.create!(
       email: "test@example.com",
@@ -28,7 +28,7 @@ class SimulationOutputFieldsTest < ActiveSupport::TestCase
       ]
     )
 
-    simulation = Simulation.create!(
+    scenario = Scenario.create!(
       workflow: workflow,
       user: @user,
       status: 'active',
@@ -37,11 +37,11 @@ class SimulationOutputFieldsTest < ActiveSupport::TestCase
       inputs: {}
     )
 
-    simulation.process_step
-    simulation.save!
+    scenario.process_step
+    scenario.save!
 
-    assert_equal "completed", simulation.results["status"]
-    assert_equal "high", simulation.results["priority"]
+    assert_equal "completed", scenario.results["status"]
+    assert_equal "high", scenario.results["priority"]
   end
 
   test "action step output_fields with interpolated values" do
@@ -68,7 +68,7 @@ class SimulationOutputFieldsTest < ActiveSupport::TestCase
       ]
     )
 
-    simulation = Simulation.create!(
+    scenario = Scenario.create!(
       workflow: workflow,
       user: @user,
       status: 'active',
@@ -78,15 +78,15 @@ class SimulationOutputFieldsTest < ActiveSupport::TestCase
     )
 
     # Answer question first
-    simulation.process_step("alice")
-    simulation.save!
+    scenario.process_step("alice")
+    scenario.save!
 
     # Process action step
-    simulation.process_step
-    simulation.save!
+    scenario.process_step
+    scenario.save!
 
     # Check interpolated output field
-    assert_equal "alice@example.com", simulation.results["email"]
+    assert_equal "alice@example.com", scenario.results["email"]
   end
 
   test "action step with multiple output_fields and mixed interpolation" do
@@ -115,7 +115,7 @@ class SimulationOutputFieldsTest < ActiveSupport::TestCase
       ]
     )
 
-    simulation = Simulation.create!(
+    scenario = Scenario.create!(
       workflow: workflow,
       user: @user,
       status: 'active',
@@ -124,15 +124,15 @@ class SimulationOutputFieldsTest < ActiveSupport::TestCase
       inputs: {}
     )
 
-    simulation.process_step("Bob")
-    simulation.save!
+    scenario.process_step("Bob")
+    scenario.save!
 
-    simulation.process_step
-    simulation.save!
+    scenario.process_step
+    scenario.save!
 
-    assert_equal "static_value", simulation.results["static_var"]
-    assert_equal "Hello Bob", simulation.results["interpolated_var"]
-    assert_equal "Bob_123", simulation.results["mixed_var"]
+    assert_equal "static_value", scenario.results["static_var"]
+    assert_equal "Hello Bob", scenario.results["interpolated_var"]
+    assert_equal "Bob_123", scenario.results["mixed_var"]
   end
 
   test "missing variables in output_fields leave pattern as-is" do
@@ -152,7 +152,7 @@ class SimulationOutputFieldsTest < ActiveSupport::TestCase
       ]
     )
 
-    simulation = Simulation.create!(
+    scenario = Scenario.create!(
       workflow: workflow,
       user: @user,
       status: 'active',
@@ -161,11 +161,11 @@ class SimulationOutputFieldsTest < ActiveSupport::TestCase
       inputs: {}
     )
 
-    simulation.process_step
-    simulation.save!
+    scenario.process_step
+    scenario.save!
 
     # Missing variable should be left as-is
-    assert_equal "{{missing_var}}", simulation.results["result"]
+    assert_equal "{{missing_var}}", scenario.results["result"]
   end
 
   test "action step without output_fields still works" do
@@ -182,7 +182,7 @@ class SimulationOutputFieldsTest < ActiveSupport::TestCase
       ]
     )
 
-    simulation = Simulation.create!(
+    scenario = Scenario.create!(
       workflow: workflow,
       user: @user,
       status: 'active',
@@ -192,12 +192,12 @@ class SimulationOutputFieldsTest < ActiveSupport::TestCase
     )
 
     assert_nothing_raised do
-      simulation.process_step
-      simulation.save!
+      scenario.process_step
+      scenario.save!
     end
 
     # Should still mark action as executed
-    assert_equal "Action executed", simulation.results["Simple Action"]
+    assert_equal "Action executed", scenario.results["Simple Action"]
   end
 
   test "output_fields validation prevents empty names" do
@@ -249,7 +249,7 @@ class SimulationOutputFieldsTest < ActiveSupport::TestCase
       ]
     )
 
-    simulation = Simulation.create!(
+    scenario = Scenario.create!(
       workflow: workflow,
       user: @user,
       status: 'active',
@@ -259,14 +259,14 @@ class SimulationOutputFieldsTest < ActiveSupport::TestCase
     )
 
     # Process first action
-    simulation.process_step
-    simulation.save!
+    scenario.process_step
+    scenario.save!
 
     # Process second action (should interpolate from first)
-    simulation.process_step
-    simulation.save!
+    scenario.process_step
+    scenario.save!
 
-    assert_equal "first_value", simulation.results["first_var"]
-    assert_equal "first_value_second", simulation.results["second_var"]
+    assert_equal "first_value", scenario.results["first_var"]
+    assert_equal "first_value_second", scenario.results["second_var"]
   end
 end

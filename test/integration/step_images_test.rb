@@ -32,7 +32,7 @@ class StepImagesTest < ActionDispatch::IntegrationTest
     assert_select "img.step-markdown-image", minimum: 1
   end
 
-  test "simulation step view renders markdown images" do
+  test "scenario step view renders markdown images" do
     @workflow.update!(steps: [
       {
         "id" => SecureRandom.uuid,
@@ -42,8 +42,8 @@ class StepImagesTest < ActionDispatch::IntegrationTest
       }
     ])
 
-    simulation = Simulation.create!(workflow: @workflow, user: @user)
-    get step_simulation_path(simulation)
+    scenario = Scenario.create!(workflow: @workflow, user: @user)
+    get step_scenario_path(scenario)
     assert_response :success
     assert_select "img.step-markdown-image"
   end

@@ -13,7 +13,7 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
   # Scenario 4: Edge Cases - Duplicate Variable Names
   # ==========================================================================
 
-  test "duplicate variable_name overwrites previous value in simulation" do
+  test "duplicate variable_name overwrites previous value in scenario" do
     workflow = Workflow.create!(
       title: "Duplicate Variable Workflow",
       user: @user,
@@ -41,7 +41,7 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
       ]
     )
 
-    simulation = Simulation.create!(
+    scenario = Scenario.create!(
       workflow: workflow,
       user: @user,
       status: 'active',
@@ -51,15 +51,15 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
     )
 
     # Answer first question
-    simulation.process_step("first_value")
+    scenario.process_step("first_value")
 
-    assert_equal "first_value", simulation.results["shared_var"]
+    assert_equal "first_value", scenario.results["shared_var"]
 
     # Answer second question with same variable_name
-    simulation.process_step("second_value")
+    scenario.process_step("second_value")
 
     # Second value should overwrite first
-    assert_equal "second_value", simulation.results["shared_var"]
+    assert_equal "second_value", scenario.results["shared_var"]
   end
 
   # ==========================================================================
@@ -175,10 +175,10 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
   end
 
   # ==========================================================================
-  # Scenario 5: Error Conditions - Stopped Simulation
+  # Scenario 5: Error Conditions - Stopped Scenario
   # ==========================================================================
 
-  test "process_step returns false on stopped simulation" do
+  test "process_step returns false on stopped scenario" do
     workflow = Workflow.create!(
       title: "Stopped Workflow",
       user: @user,
@@ -192,7 +192,7 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
       ]
     )
 
-    simulation = Simulation.create!(
+    scenario = Scenario.create!(
       workflow: workflow,
       user: @user,
       status: 'stopped',
@@ -201,14 +201,14 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
       inputs: {}
     )
 
-    result = simulation.process_step("answer")
+    result = scenario.process_step("answer")
 
     assert_equal false, result
     # Should not have processed the step
-    assert_nil simulation.results["Question"]
+    assert_nil scenario.results["Question"]
   end
 
-  test "process_step returns false on error status simulation" do
+  test "process_step returns false on error status scenario" do
     workflow = Workflow.create!(
       title: "Error Workflow",
       user: @user,
@@ -222,7 +222,7 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
       ]
     )
 
-    simulation = Simulation.create!(
+    scenario = Scenario.create!(
       workflow: workflow,
       user: @user,
       status: 'error',
@@ -231,12 +231,12 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
       inputs: {}
     )
 
-    result = simulation.process_step("answer")
+    result = scenario.process_step("answer")
 
     assert_equal false, result
   end
 
-  test "process_step returns false on timeout status simulation" do
+  test "process_step returns false on timeout status scenario" do
     workflow = Workflow.create!(
       title: "Timeout Workflow",
       user: @user,
@@ -250,7 +250,7 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
       ]
     )
 
-    simulation = Simulation.create!(
+    scenario = Scenario.create!(
       workflow: workflow,
       user: @user,
       status: 'timeout',
@@ -259,7 +259,7 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
       inputs: {}
     )
 
-    result = simulation.process_step("answer")
+    result = scenario.process_step("answer")
 
     assert_equal false, result
   end

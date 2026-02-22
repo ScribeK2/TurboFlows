@@ -1,6 +1,6 @@
 require "test_helper"
 
-class SimulationsControllerTest < ActionDispatch::IntegrationTest
+class ScenariosControllerTest < ActionDispatch::IntegrationTest
   include Devise::Test::IntegrationHelpers
 
   # Don't use fixtures - create data directly
@@ -25,37 +25,37 @@ class SimulationsControllerTest < ActionDispatch::IntegrationTest
     sign_in @user
   end
 
-  test "should get new simulation" do
-    get new_workflow_simulation_path(@workflow)
+  test "should get new scenario" do
+    get new_workflow_scenario_path(@workflow)
 
     assert_response :success
   end
 
-  test "should create simulation" do
-    assert_difference("Simulation.count") do
-      post workflow_simulations_path(@workflow), params: {
-        simulation: {
+  test "should create scenario" do
+    assert_difference("Scenario.count") do
+      post workflow_scenarios_path(@workflow), params: {
+        scenario: {
           inputs: { "0" => "John Doe" }
         }
       }
     end
 
-    simulation = Simulation.last
-    # Redirects to step path for interactive simulation
+    scenario = Scenario.last
+    # Redirects to step path for interactive scenario
     assert_response :redirect
-    assert_equal @workflow, simulation.workflow
-    assert_equal @user, simulation.user
+    assert_equal @workflow, scenario.workflow
+    assert_equal @user, scenario.user
   end
 
   test "should require authentication" do
     sign_out @user
-    get new_workflow_simulation_path(@workflow)
+    get new_workflow_scenario_path(@workflow)
 
     assert_redirected_to new_user_session_path
   end
 
   # Authorization Tests
-  test "admin should be able to simulate any workflow" do
+  test "admin should be able to run scenario on any workflow" do
     admin = User.create!(
       email: "admin-sim-#{SecureRandom.hex(4)}@example.com",
       password: "password123!",
@@ -70,12 +70,12 @@ class SimulationsControllerTest < ActionDispatch::IntegrationTest
     )
     sign_in admin
 
-    get new_workflow_simulation_path(workflow)
+    get new_workflow_scenario_path(workflow)
 
     assert_response :success
   end
 
-  test "editor should be able to simulate workflows they can view" do
+  test "editor should be able to run scenario on workflows they can view" do
     editor = User.create!(
       email: "editor-sim-#{SecureRandom.hex(4)}@example.com",
       password: "password123!",
@@ -96,16 +96,16 @@ class SimulationsControllerTest < ActionDispatch::IntegrationTest
     )
     sign_in editor
 
-    get new_workflow_simulation_path(own_workflow)
+    get new_workflow_scenario_path(own_workflow)
 
     assert_response :success
 
-    get new_workflow_simulation_path(public_workflow)
+    get new_workflow_scenario_path(public_workflow)
 
     assert_response :success
   end
 
-  test "editor should not be able to simulate other user's private workflow" do
+  test "editor should not be able to run scenario on other user's private workflow" do
     editor = User.create!(
       email: "editor-sim2-#{SecureRandom.hex(4)}@example.com",
       password: "password123!",
@@ -120,13 +120,13 @@ class SimulationsControllerTest < ActionDispatch::IntegrationTest
     )
     sign_in editor
 
-    get new_workflow_simulation_path(private_workflow)
+    get new_workflow_scenario_path(private_workflow)
 
     assert_redirected_to workflows_path
     assert_equal "You don't have permission to view this workflow.", flash[:alert]
   end
 
-  test "user should be able to simulate public workflow" do
+  test "user should be able to run scenario on public workflow" do
     regular_user = User.create!(
       email: "user-sim-#{SecureRandom.hex(4)}@example.com",
       password: "password123!",
@@ -141,12 +141,12 @@ class SimulationsControllerTest < ActionDispatch::IntegrationTest
     )
     sign_in regular_user
 
-    get new_workflow_simulation_path(public_workflow)
+    get new_workflow_scenario_path(public_workflow)
 
     assert_response :success
   end
 
-  test "user should not be able to simulate private workflow" do
+  test "user should not be able to run scenario on private workflow" do
     regular_user = User.create!(
       email: "user-sim2-#{SecureRandom.hex(4)}@example.com",
       password: "password123!",
@@ -161,14 +161,14 @@ class SimulationsControllerTest < ActionDispatch::IntegrationTest
     )
     sign_in regular_user
 
-    get new_workflow_simulation_path(private_workflow)
+    get new_workflow_scenario_path(private_workflow)
 
     assert_redirected_to workflows_path
     assert_equal "You don't have permission to view this workflow.", flash[:alert]
   end
 
-  # IDOR Tests — users cannot access other users' simulations
-  test "user cannot view another user's simulation" do
+  # IDOR Tests — users cannot access other users' scenarios
+  test "user cannot view another user's scenario" do
     other_user = User.create!(
       email: "other-sim-#{SecureRandom.hex(4)}@example.com",
       password: "password123!",
@@ -181,7 +181,7 @@ class SimulationsControllerTest < ActionDispatch::IntegrationTest
       is_public: true,
       steps: [{ type: "question", title: "Q1", question: "What?" }]
     )
-    other_simulation = Simulation.create!(
+    other_scenario = Scenario.create!(
       workflow: other_workflow,
       user: other_user,
       current_step_index: 0,
@@ -190,11 +190,11 @@ class SimulationsControllerTest < ActionDispatch::IntegrationTest
       inputs: {}
     )
 
-    get simulation_path(other_simulation)
+    get scenario_path(other_scenario)
     assert_response :not_found
   end
 
-  test "user cannot access step of another user's simulation" do
+  test "user cannot access step of another user's scenario" do
     other_user = User.create!(
       email: "other-step-#{SecureRandom.hex(4)}@example.com",
       password: "password123!",
@@ -207,7 +207,7 @@ class SimulationsControllerTest < ActionDispatch::IntegrationTest
       is_public: true,
       steps: [{ type: "question", title: "Q1", question: "What?" }]
     )
-    other_simulation = Simulation.create!(
+    other_scenario = Scenario.create!(
       workflow: other_workflow,
       user: other_user,
       current_step_index: 0,
@@ -216,11 +216,11 @@ class SimulationsControllerTest < ActionDispatch::IntegrationTest
       inputs: {}
     )
 
-    get step_simulation_path(other_simulation)
+    get step_scenario_path(other_scenario)
     assert_response :not_found
   end
 
-  test "user cannot advance another user's simulation" do
+  test "user cannot advance another user's scenario" do
     other_user = User.create!(
       email: "other-next-#{SecureRandom.hex(4)}@example.com",
       password: "password123!",
@@ -233,7 +233,7 @@ class SimulationsControllerTest < ActionDispatch::IntegrationTest
       is_public: true,
       steps: [{ type: "question", title: "Q1", question: "What?" }]
     )
-    other_simulation = Simulation.create!(
+    other_scenario = Scenario.create!(
       workflow: other_workflow,
       user: other_user,
       current_step_index: 0,
@@ -242,11 +242,11 @@ class SimulationsControllerTest < ActionDispatch::IntegrationTest
       inputs: {}
     )
 
-    post next_step_simulation_path(other_simulation), params: { answer: "test" }
+    post next_step_scenario_path(other_scenario), params: { answer: "test" }
     assert_response :not_found
   end
 
-  test "user cannot stop another user's simulation" do
+  test "user cannot stop another user's scenario" do
     other_user = User.create!(
       email: "other-stop-#{SecureRandom.hex(4)}@example.com",
       password: "password123!",
@@ -259,7 +259,7 @@ class SimulationsControllerTest < ActionDispatch::IntegrationTest
       is_public: true,
       steps: [{ type: "question", title: "Q1", question: "What?" }]
     )
-    other_simulation = Simulation.create!(
+    other_scenario = Scenario.create!(
       workflow: other_workflow,
       user: other_user,
       current_step_index: 0,
@@ -268,7 +268,7 @@ class SimulationsControllerTest < ActionDispatch::IntegrationTest
       inputs: {}
     )
 
-    post stop_simulation_path(other_simulation)
+    post stop_scenario_path(other_scenario)
     assert_response :not_found
   end
 end

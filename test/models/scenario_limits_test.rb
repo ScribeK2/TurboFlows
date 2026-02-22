@@ -1,6 +1,6 @@
 require "test_helper"
 
-class SimulationLimitsTest < ActiveSupport::TestCase
+class ScenarioLimitsTest < ActiveSupport::TestCase
   def setup
     @user = User.create!(
       email: "test@example.com",
@@ -10,19 +10,19 @@ class SimulationLimitsTest < ActiveSupport::TestCase
     )
   end
 
-  test "simulation constants are defined and reasonable" do
-    assert_operator Simulation::MAX_ITERATIONS, :>=, 100, "MAX_ITERATIONS should allow reasonable workflow size"
-    assert_operator Simulation::MAX_ITERATIONS, :<=, 10_000, "MAX_ITERATIONS should prevent DoS"
+  test "scenario constants are defined and reasonable" do
+    assert_operator Scenario::MAX_ITERATIONS, :>=, 100, "MAX_ITERATIONS should allow reasonable workflow size"
+    assert_operator Scenario::MAX_ITERATIONS, :<=, 10_000, "MAX_ITERATIONS should prevent DoS"
 
-    assert_operator Simulation::MAX_EXECUTION_TIME, :>=, 10, "MAX_EXECUTION_TIME should allow reasonable workflows"
-    assert_operator Simulation::MAX_EXECUTION_TIME, :<=, 120, "MAX_EXECUTION_TIME should prevent resource hogging"
+    assert_operator Scenario::MAX_EXECUTION_TIME, :>=, 10, "MAX_EXECUTION_TIME should allow reasonable workflows"
+    assert_operator Scenario::MAX_EXECUTION_TIME, :<=, 120, "MAX_EXECUTION_TIME should prevent resource hogging"
 
-    assert_operator Simulation::MAX_CONDITION_DEPTH, :>=, 10, "MAX_CONDITION_DEPTH should allow nested conditions"
+    assert_operator Scenario::MAX_CONDITION_DEPTH, :>=, 10, "MAX_CONDITION_DEPTH should allow nested conditions"
   end
 
-  test "simulation statuses include timeout and error" do
-    assert_includes Simulation::STATUSES, 'timeout'
-    assert_includes Simulation::STATUSES, 'error'
+  test "scenario statuses include timeout and error" do
+    assert_includes Scenario::STATUSES, 'timeout'
+    assert_includes Scenario::STATUSES, 'error'
   end
 
   test "process_step stops at iteration limit" do
@@ -52,7 +52,7 @@ class SimulationLimitsTest < ActiveSupport::TestCase
     )
     workflow.save!(validate: false)
 
-    simulation = Simulation.create!(
+    scenario = Scenario.create!(
       workflow: workflow,
       user: @user,
       status: 'active',
@@ -61,17 +61,17 @@ class SimulationLimitsTest < ActiveSupport::TestCase
     )
 
     # Process steps in a loop until iteration limit is hit
-    assert_raises(Simulation::SimulationIterationLimit) do
-      (Simulation::MAX_ITERATIONS + 10).times do
-        break unless simulation.process_step("loop")
+    assert_raises(Scenario::ScenarioIterationLimit) do
+      (Scenario::MAX_ITERATIONS + 10).times do
+        break unless scenario.process_step("loop")
       end
     end
 
-    simulation.reload
+    scenario.reload
 
-    assert_equal 'error', simulation.status
-    assert_predicate simulation.results['_error'], :present?
-    assert_includes simulation.results['_error'], 'iterations'
+    assert_equal 'error', scenario.status
+    assert_predicate scenario.results['_error'], :present?
+    assert_includes scenario.results['_error'], 'iterations'
   end
 
   test "normal workflows complete within limits" do
@@ -93,7 +93,7 @@ class SimulationLimitsTest < ActiveSupport::TestCase
       ]
     )
 
-    simulation = Simulation.create!(
+    scenario = Scenario.create!(
       workflow: workflow,
       user: @user,
       status: 'active',
@@ -101,14 +101,14 @@ class SimulationLimitsTest < ActiveSupport::TestCase
     )
 
     # Should complete normally
-    result = simulation.execute
+    result = scenario.execute
 
     assert result, "Normal workflow should complete successfully"
 
-    simulation.reload
+    scenario.reload
 
-    assert_equal 2, simulation.execution_path.length
-    assert_predicate simulation.results['name'], :present?
+    assert_equal 2, scenario.execution_path.length
+    assert_predicate scenario.results['name'], :present?
   end
 
   test "step-by-step processing tracks iterations" do
@@ -121,7 +121,7 @@ class SimulationLimitsTest < ActiveSupport::TestCase
       ]
     )
 
-    simulation = Simulation.create!(
+    scenario = Scenario.create!(
       workflow: workflow,
       user: @user,
       status: 'active',
@@ -129,16 +129,16 @@ class SimulationLimitsTest < ActiveSupport::TestCase
     )
 
     # Process first step
-    simulation.process_step("answer1")
+    scenario.process_step("answer1")
 
-    assert_equal 1, simulation.current_step_index
+    assert_equal 1, scenario.current_step_index
 
     # Process second step
-    simulation.process_step("answer2")
+    scenario.process_step("answer2")
 
-    assert_equal 2, simulation.current_step_index
+    assert_equal 2, scenario.current_step_index
 
     # Should be complete
-    assert_predicate simulation, :complete?
+    assert_predicate scenario, :complete?
   end
 end

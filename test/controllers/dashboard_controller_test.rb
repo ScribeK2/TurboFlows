@@ -61,17 +61,17 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "p", text: /Welcome back, test@example.com!/
   end
 
-  test "should show simulation stats" do
+  test "should show scenario stats" do
     workflow = Workflow.create!(title: "Test Workflow", user: @user)
-    Simulation.create!(workflow: workflow, user: @user, status: "completed")
-    Simulation.create!(workflow: workflow, user: @user, status: "active")
+    Scenario.create!(workflow: workflow, user: @user, status: "completed")
+    Scenario.create!(workflow: workflow, user: @user, status: "active")
 
     get root_path
 
     assert_response :success
-    # Check that simulation stat cards are present with correct ARIA labels
-    assert_select "[aria-label=?]", "Simulations run: 2"
-    assert_select "[aria-label=?]", "Simulation completion rate: 50%"
+    # Check that scenario stat cards are present with correct ARIA labels
+    assert_select "[aria-label=?]", "Scenarios run: 2"
+    assert_select "[aria-label=?]", "Scenario completion rate: 50%"
   end
 
   test "should show draft count for editors" do

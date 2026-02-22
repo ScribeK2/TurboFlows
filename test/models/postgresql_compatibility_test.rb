@@ -146,17 +146,17 @@ class PostgresqlCompatibilityTest < ActiveSupport::TestCase
     assert_includes user.errors[:role], "is not included in the list"
   end
 
-  test "simulation status validates against allowed values" do
+  test "scenario status validates against allowed values" do
     workflow = workflows(:one)
     user = users(:regular_user)
 
-    simulation = Simulation.new(
+    scenario = Scenario.new(
       workflow: workflow,
       user: user,
       status: "invalid_status"
     )
 
-    assert_not simulation.valid?
+    assert_not scenario.valid?
   end
 
   test "valid enum values are accepted" do
@@ -171,15 +171,15 @@ class PostgresqlCompatibilityTest < ActiveSupport::TestCase
       assert_predicate user, :valid?, "Role '#{role}' should be valid"
     end
 
-    # Test all valid simulation statuses
+    # Test all valid scenario statuses
     %w[active completed stopped timeout error].each do |status|
-      simulation = Simulation.new(
+      scenario = Scenario.new(
         workflow: workflows(:one),
         user: users(:regular_user),
         status: status
       )
 
-      assert_predicate simulation, :valid?, "Status '#{status}' should be valid"
+      assert_predicate scenario, :valid?, "Status '#{status}' should be valid"
     end
   end
 
