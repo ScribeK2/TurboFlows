@@ -57,11 +57,11 @@ class WorkflowImporterTest < ActiveSupport::TestCase
   end
 
   test "reports incomplete steps when present" do
-    # A decision step with no branches/transitions is flagged as incomplete by the parser
+    # A question step without a question field is flagged as incomplete by the parser
     json_data = {
       title: "Incomplete Workflow",
       steps: [
-        { type: "decision", title: "A Decision", branches: [] }
+        { type: "question", title: "A Question" }
       ]
     }.to_json
 

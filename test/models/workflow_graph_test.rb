@@ -93,7 +93,7 @@ class WorkflowGraphTest < ActiveSupport::TestCase
       graph_mode: true,
       start_node_uuid: 'a',
       steps: [
-        { 'id' => 'a', 'type' => 'decision', 'title' => 'Start', 'transitions' => [{ 'target_uuid' => 'b' }, { 'target_uuid' => 'c' }] },
+        { 'id' => 'a', 'type' => 'question', 'title' => 'Start', 'transitions' => [{ 'target_uuid' => 'b' }, { 'target_uuid' => 'c' }] },
         { 'id' => 'b', 'type' => 'action', 'title' => 'End 1', 'transitions' => [] },
         { 'id' => 'c', 'type' => 'action', 'title' => 'End 2', 'transitions' => [] }
       ]
@@ -151,7 +151,7 @@ class WorkflowGraphTest < ActiveSupport::TestCase
       graph_mode: true,
       start_node_uuid: 'start',
       steps: [
-        { 'id' => 'start', 'type' => 'decision', 'title' => 'Start', 'transitions' => [{ 'target_uuid' => 'a' }, { 'target_uuid' => 'b' }] },
+        { 'id' => 'start', 'type' => 'question', 'title' => 'Start', 'transitions' => [{ 'target_uuid' => 'a' }, { 'target_uuid' => 'b' }] },
         { 'id' => 'a', 'type' => 'action', 'title' => 'A', 'transitions' => [{ 'target_uuid' => 'c' }] },
         { 'id' => 'b', 'type' => 'action', 'title' => 'B', 'transitions' => [{ 'target_uuid' => 'c' }] },
         { 'id' => 'c', 'type' => 'action', 'title' => 'Target', 'transitions' => [] }

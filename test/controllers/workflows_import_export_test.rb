@@ -31,8 +31,9 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
         },
         {
           'id' => 'step-2-uuid',
-          'type' => 'decision',
+          'type' => 'question',
           'title' => 'Check Name',
+          'question' => 'Does customer have a name?',
           'transitions' => [
             { 'target_uuid' => 'step-3-uuid', 'condition' => "customer_name != ''", 'label' => 'Has name' },
             { 'target_uuid' => 'step-4-uuid', 'condition' => "customer_name == ''", 'label' => 'No name' }
@@ -225,11 +226,11 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
     end
 
     imported = Workflow.last
-    decision_step = imported.steps.find { |s| s['title'] == 'Check Name' }
+    converted_step = imported.steps.find { |s| s['title'] == 'Check Name' }
 
-    assert_predicate decision_step['transitions'], :present?, "Decision step should have transitions"
-    assert decision_step['transitions'].any? { |t| t['condition']&.include?("name != ''") },
-           "Should have conditional transition"
+    # Decision type should be auto-converted to question during import
+    assert_equal 'question', converted_step['type'], "Decision should be auto-converted to question"
+    assert converted_step['_import_converted'], "Should be flagged as converted"
   end
 
   # ============================================================================

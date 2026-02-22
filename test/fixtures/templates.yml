@@ -10,7 +10,7 @@ two:
   description: "A private template"
   category: "troubleshooting"
   is_public: false
-  workflow_data: <%= [{ type: "decision", title: "Decision 1" }].to_json %>
+  workflow_data: <%= [{ type: "question", title: "Question 1", question: "What next?" }].to_json %>
 
 three:
   name: "Public Template"

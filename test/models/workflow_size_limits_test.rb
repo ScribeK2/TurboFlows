@@ -89,7 +89,7 @@ class WorkflowSizeLimitsTest < ActiveSupport::TestCase
       title: "Too Many Branches",
       user: @user,
       steps: [{
-        "type" => "decision",
+        "type" => "question",
         "title" => "Step 1",
         "branches" => many_branches
       }]
@@ -125,7 +125,7 @@ class WorkflowSizeLimitsTest < ActiveSupport::TestCase
           "variable_name" => "name"
         },
         {
-          "type" => "decision",
+          "type" => "question",
           "title" => "Decision Step",
           "branches" => [
             { "condition" => "name == 'test'", "path" => "Action Step" }

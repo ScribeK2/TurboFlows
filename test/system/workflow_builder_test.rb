@@ -15,7 +15,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
       steps: [
         { "id" => SecureRandom.uuid, "type" => "question", "title" => "Step One", "question" => "First?", "answer_type" => "yes_no", "variable_name" => "first" },
         { "id" => SecureRandom.uuid, "type" => "action",   "title" => "Step Two", "action_type" => "Instruction", "instructions" => "Do this" },
-        { "id" => SecureRandom.uuid, "type" => "checkpoint", "title" => "Step Three", "checkpoint_message" => "Check!" }
+        { "id" => SecureRandom.uuid, "type" => "message", "title" => "Step Three", "content" => "Check!" }
       ]
     )
     sign_in_as @editor

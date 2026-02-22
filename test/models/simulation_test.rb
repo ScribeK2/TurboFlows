@@ -13,7 +13,7 @@ class SimulationTest < ActiveSupport::TestCase
       user: @user,
       steps: [
         { type: "question", title: "Question 1", question: "What is your name?" },
-        { type: "decision", title: "Decision 1", condition: "answer == 'yes'" },
+        { type: "action", title: "Action Check", instructions: "Check the answer" },
         { type: "action", title: "Action 1", instructions: "Do something" }
       ]
     )

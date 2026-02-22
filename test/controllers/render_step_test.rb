@@ -48,15 +48,15 @@ class RenderStepTest < ActionDispatch::IntegrationTest
     assert_includes response.body, 'data-controller="step-form collapsible-step"'
   end
 
-  test "render_step returns valid step HTML for decision type" do
+  test "render_step returns valid step HTML for message type" do
     post render_step_workflow_path(@workflow), params: {
-      step_type: 'decision',
+      step_type: 'message',
       step_index: 2,
-      step_data: { title: 'Test Decision', branches: [] }
+      step_data: { title: 'Test Message', content: 'Hello' }
     }, as: :json
 
     assert_response :success
     assert_includes response.body, 'step-item'
-    assert_includes response.body, 'decision'
+    assert_includes response.body, 'message'
   end
 end

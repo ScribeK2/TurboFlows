@@ -53,7 +53,7 @@ class WorkflowTest < ActiveSupport::TestCase
   test "should store steps as JSON" do
     steps = [
       { type: "question", title: "Question 1", description: "First question", question: "What is your name?" },
-      { type: "decision", title: "Decision 1", condition: "answer == 'yes'" }
+      { type: "action", title: "Action 1", instructions: "Check the answer" }
     ]
     workflow = Workflow.create!(
       title: "Test Workflow",

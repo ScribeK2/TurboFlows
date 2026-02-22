@@ -16,7 +16,7 @@ class GraphValidatorTest < ActiveSupport::TestCase
 
   test "validates a branching graph" do
     steps = {
-      'a' => { 'id' => 'a', 'title' => 'Start', 'type' => 'decision', 'transitions' => [
+      'a' => { 'id' => 'a', 'title' => 'Start', 'type' => 'question', 'transitions' => [
         { 'target_uuid' => 'b', 'condition' => "answer == 'yes'" },
         { 'target_uuid' => 'c', 'condition' => "answer == 'no'" }
       ] },
@@ -112,7 +112,7 @@ class GraphValidatorTest < ActiveSupport::TestCase
 
   test "allows multiple terminal nodes" do
     steps = {
-      'a' => { 'id' => 'a', 'title' => 'Start', 'type' => 'decision', 'transitions' => [
+      'a' => { 'id' => 'a', 'title' => 'Start', 'type' => 'question', 'transitions' => [
         { 'target_uuid' => 'b' },
         { 'target_uuid' => 'c' }
       ] },

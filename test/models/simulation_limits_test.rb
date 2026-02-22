@@ -38,12 +38,9 @@ class SimulationLimitsTest < ActiveSupport::TestCase
           "variable_name" => "answer"
         },
         {
-          "type" => "decision",
+          "type" => "question",
           "title" => "Loop Back",
-          "branches" => [
-            { "condition" => "answer == 'loop'", "path" => "Step 1" }
-          ],
-          "else_path" => "Step 1" # Always loops back
+          "question" => "Continue looping?"
         }
       ]
     )

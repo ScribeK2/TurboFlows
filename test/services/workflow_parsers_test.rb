@@ -52,29 +52,44 @@ class WorkflowParsersTest < ActiveSupport::TestCase
     assert_equal converted[1]['id'], converted[0]['transitions'][0]['target_uuid']
   end
 
-  test "base parser converts decision branches to transitions" do
-    parser = WorkflowParsers::JsonParser.new('{}')
-    steps = [
-      { 'id' => 'step-1', 'type' => 'question', 'title' => 'Q1' },
-      {
-        'id' => 'step-2',
-        'type' => 'decision',
-        'title' => 'Check',
-        'branches' => [
-          { 'condition' => "answer == 'yes'", 'path' => 'Success' }
-        ],
-        'else_path' => 'Failure'
-      },
-      { 'id' => 'step-3', 'type' => 'action', 'title' => 'Success', 'instructions' => 'Done!' },
-      { 'id' => 'step-4', 'type' => 'action', 'title' => 'Failure', 'instructions' => 'Failed' }
-    ]
+  test "base parser auto-converts deprecated decision type to question on import" do
+    content = {
+      title: "Decision Conversion Test",
+      steps: [
+        { id: "step-1", type: "decision", title: "Check", condition: "answer == 'yes'" },
+        { id: "step-2", type: "action", title: "Action", instructions: "Do it" }
+      ]
+    }.to_json
 
-    converted = parser.send(:convert_to_graph_format, steps)
-    decision_step = converted[1]
+    parser = WorkflowParsers::JsonParser.new(content)
+    result = parser.parse
 
-    assert_predicate decision_step['transitions'], :present?
-    assert decision_step['transitions'].any? { |t| t['target_uuid'] == 'step-3' },
-           "Should have transition to Success step"
+    assert_predicate result, :present?
+    converted_step = result[:steps].find { |s| s['title'] == 'Check' }
+
+    assert_equal 'question', converted_step['type'], "Decision should be auto-converted to question"
+    assert converted_step['_import_converted'], "Should be flagged as converted"
+    assert_equal 'decision', converted_step['_import_converted_from'], "Should record original type"
+  end
+
+  test "base parser auto-converts deprecated checkpoint type to message on import" do
+    content = {
+      title: "Checkpoint Conversion Test",
+      steps: [
+        { id: "step-1", type: "checkpoint", title: "Review", checkpoint_message: "Please review" },
+        { id: "step-2", type: "action", title: "Action", instructions: "Do it" }
+      ]
+    }.to_json
+
+    parser = WorkflowParsers::JsonParser.new(content)
+    result = parser.parse
+
+    assert_predicate result, :present?
+    converted_step = result[:steps].find { |s| s['title'] == 'Review' }
+
+    assert_equal 'message', converted_step['type'], "Checkpoint should be auto-converted to message"
+    assert converted_step['_import_converted'], "Should be flagged as converted"
+    assert_equal 'checkpoint', converted_step['_import_converted_from'], "Should record original type"
   end
 
   test "base parser handles resolve steps as terminal" do
@@ -241,7 +256,7 @@ class WorkflowParsersTest < ActiveSupport::TestCase
     assert_predicate first_step['transitions'], :present?, "Question step should have transitions"
   end
 
-  test "csv parser parses conditional transitions" do
+  test "csv parser parses conditional transitions and auto-converts decision to question" do
     content = <<~CSV
       id,type,title,question,transitions
       step-1,decision,Check,,"step-2:answer == 'yes';step-3:answer != 'yes'"
@@ -254,10 +269,13 @@ class WorkflowParsersTest < ActiveSupport::TestCase
     result = parser.parse
 
     assert_predicate result, :present?
-    decision_step = result[:steps].find { |s| s['type'] == 'decision' }
+    # Decision type should be auto-converted to question
+    converted_step = result[:steps].find { |s| s['title'] == 'Check' }
 
-    assert_equal 2, decision_step['transitions'].length
-    assert(decision_step['transitions'].any? { |t| t['condition']&.include?("answer == 'yes'") })
+    assert_equal 'question', converted_step['type'], "Decision should be auto-converted to question"
+    assert converted_step['_import_converted'], "Should be flagged as converted"
+    assert_equal 2, converted_step['transitions'].length
+    assert(converted_step['transitions'].any? { |t| t['condition']&.include?("answer == 'yes'") })
   end
 
   test "csv parser requires type and title columns" do
@@ -365,7 +383,7 @@ class WorkflowParsersTest < ActiveSupport::TestCase
     assert_predicate first_step['transitions'], :present?, "Should have transitions from markdown"
   end
 
-  test "markdown parser handles decision with if true/false" do
+  test "markdown parser auto-converts decision to question with if true/false" do
     content = <<~MD
       # Decision Workflow
 
@@ -388,10 +406,11 @@ class WorkflowParsersTest < ActiveSupport::TestCase
     result = parser.parse
 
     assert_predicate result, :present?
-    decision_step = result[:steps].find { |s| s['type'] == 'decision' }
+    # Decision type should be auto-converted to question
+    converted_step = result[:steps].find { |s| s['title'] == 'Check' }
 
-    assert decision_step['branches'].present? || decision_step['transitions'].present?,
-           "Decision should have branches or transitions"
+    assert_equal 'question', converted_step['type'], "Decision should be auto-converted to question"
+    assert converted_step['_import_converted'], "Should be flagged as converted"
   end
 
   test "markdown parser handles new step types" do

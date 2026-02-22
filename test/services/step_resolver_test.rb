@@ -153,39 +153,4 @@ class StepResolverTest < ActiveSupport::TestCase
     assert_equal 'Start', start['title']
   end
 
-  test "resolves branches in linear mode" do
-    workflow = Workflow.create!(
-      title: "Branch Linear Test",
-      user: @user,
-      graph_mode: false,
-      steps: [
-        { 'id' => 'a', 'type' => 'question', 'title' => 'Q1', 'question' => 'Yes?', 'variable_name' => 'answer' },
-        { 'id' => 'b', 'type' => 'decision', 'title' => 'Decision', 'branches' => [
-          { 'condition' => "answer == 'yes'", 'path' => 'Yes Action' },
-          { 'condition' => "answer == 'no'", 'path' => 'No Action' }
-        ], 'else_path' => 'Else Action' },
-        { 'id' => 'c', 'type' => 'action', 'title' => 'Yes Action', 'instructions' => 'Yes' },
-        { 'id' => 'd', 'type' => 'action', 'title' => 'No Action', 'instructions' => 'No' },
-        { 'id' => 'e', 'type' => 'action', 'title' => 'Else Action', 'instructions' => 'Else' }
-      ]
-    )
-
-    resolver = StepResolver.new(workflow)
-    decision_step = workflow.steps[1]
-
-    # Test yes branch
-    next_uuid = resolver.resolve_next(decision_step, { 'answer' => 'yes' })
-
-    assert_equal 'c', next_uuid
-
-    # Test no branch
-    next_uuid = resolver.resolve_next(decision_step, { 'answer' => 'no' })
-
-    assert_equal 'd', next_uuid
-
-    # Test else branch
-    next_uuid = resolver.resolve_next(decision_step, { 'answer' => 'maybe' })
-
-    assert_equal 'e', next_uuid
-  end
 end
