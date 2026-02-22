@@ -14,13 +14,13 @@
     <% end %>
   </div>
 
-  <% if @scenario.parent_simulation.present? %>
+  <% if @scenario.parent_scenario.present? %>
     <div class="mb-6 px-4 py-3 rounded-lg bg-indigo-50/50 dark:bg-indigo-900/20 border border-indigo-200/30 dark:border-indigo-800/30 flex items-center animate-fade-in">
       <svg class="w-5 h-5 text-indigo-500 dark:text-indigo-400 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
       </svg>
       <p class="text-sm text-indigo-700 dark:text-indigo-300">
-        Sub-workflow of <strong class="font-semibold text-indigo-900 dark:text-indigo-200"><%= @scenario.parent_simulation.workflow.title %></strong> — completing will return you to the main workflow.
+        Sub-workflow of <strong class="font-semibold text-indigo-900 dark:text-indigo-200"><%= @scenario.parent_scenario.workflow.title %></strong> — completing will return you to the main workflow.
       </p>
     </div>
   <% end %>
@@ -30,7 +30,7 @@
       <div class="px-6 py-5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
         <h2 class="text-sm font-bold text-gray-900 dark:text-gray-100">Progress</h2>
         <% unless @scenario.complete? %>
-          <span class="text-xs font-medium text-gray-500 dark:text-gray-400"><%= simulation_step_counter(@scenario, @workflow) %></span>
+          <span class="text-xs font-medium text-gray-500 dark:text-gray-400"><%= scenario_step_counter(@scenario, @workflow) %></span>
         <% end %>
       </div>
       <div class="p-6 w-full overflow-hidden">
@@ -46,10 +46,10 @@
                 %>
                 <button type="button"
                         onclick="location.href='<%= step_scenario_path(@scenario) %>?step=<%= index %>'"
-                        class="<%= simulation_stepper_classes(is_completed, is_current) %>"
+                        class="<%= scenario_stepper_classes(is_completed, is_current) %>"
                         title="<%= path_item['step_title'] %>"
                         style="flex-shrink: 0;">
-                  <%= simulation_stepper_step_content(path_item, index, is_completed, is_current) %>
+                  <%= scenario_stepper_step_content(path_item, index, is_completed, is_current) %>
                   <span class="ml-2 hidden sm:inline"><%= truncate(path_item['step_title'], length: 20) %></span>
                   <% if path_item['answer'].present? && is_completed %>
                     <span class="ml-1 text-xs opacity-75 hidden md:inline">(<%= truncate(path_item['answer'].to_s, length: 10) %>)</span>
@@ -78,10 +78,10 @@
   <% if @scenario.complete? %>
     <div class="solid-card overflow-hidden text-center animate-fade-in-up">
       <div class="p-8">
-        <% if @scenario.parent_simulation.present? %>
+        <% if @scenario.parent_scenario.present? %>
           <h2 class="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mb-2">Sub-Flow Complete!</h2>
-          <p class="text-indigo-700 dark:text-indigo-300 mb-4">Returning to <strong><%= @scenario.parent_simulation.workflow.title %></strong>.</p>
-          <%= link_to "Return to Main Workflow", step_scenario_path(@scenario.parent_simulation), class: "bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105" %>
+          <p class="text-indigo-700 dark:text-indigo-300 mb-4">Returning to <strong><%= @scenario.parent_scenario.workflow.title %></strong>.</p>
+          <%= link_to "Return to Main Workflow", step_scenario_path(@scenario.parent_scenario), class: "bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105" %>
         <% else %>
           <h2 class="text-2xl font-bold text-green-600 dark:text-green-400 mb-2">Scenario Complete!</h2>
           <p class="text-green-700 dark:text-green-300 mb-4">All steps have been completed.</p>
@@ -93,7 +93,7 @@
     <% step = @scenario.current_step %>
     <% if step %>
       <%
-        step_info_text = "#{simulation_step_counter(@scenario, @workflow)}: #{step['title']}"
+        step_info_text = "#{scenario_step_counter(@scenario, @workflow)}: #{step['title']}"
         auto_advance = %w[yes_no multiple_choice].include?(step['answer_type'])
         cancel_url = workflow_path(@workflow)
         cancel_confirm = "Are you sure you want to cancel? Your scenario progress will be lost."
@@ -176,7 +176,7 @@
 
               <div class="flex items-center justify-between pt-4">
                 <div>
-                  <%= simulation_back_button(@scenario) %>
+                  <%= scenario_back_button(@scenario) %>
                 </div>
                 <div class="flex items-center space-x-3">
                   <%= link_to "Cancel", cancel_url, class: "bg-white/50 dark:bg-gray-800/50 py-2 px-4 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-200 hover:scale-105", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
@@ -208,7 +208,7 @@
               <%= form.hidden_field :answer, value: "" %>
               <div class="flex items-center justify-between pt-4">
                 <div>
-                  <%= simulation_back_button(@scenario) %>
+                  <%= scenario_back_button(@scenario) %>
                 </div>
                 <div class="flex items-center space-x-3">
                   <%= link_to "Cancel", cancel_url, class: "bg-white/50 dark:bg-gray-800/50 py-2 px-4 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-200 hover:scale-105", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
@@ -241,7 +241,7 @@
               <%= form.hidden_field :answer, value: "" %>
               <div class="flex items-center justify-between pt-4">
                 <div>
-                  <%= simulation_back_button(@scenario) %>
+                  <%= scenario_back_button(@scenario) %>
                 </div>
                 <div class="flex items-center space-x-3">
                   <%= link_to "Cancel", cancel_url, class: "bg-white/50 dark:bg-gray-800/50 py-2 px-4 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-200 hover:scale-105", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
@@ -283,7 +283,7 @@
               <%= form.hidden_field :answer, value: "" %>
               <div class="flex items-center justify-between pt-4">
                 <div>
-                  <%= simulation_back_button(@scenario) %>
+                  <%= scenario_back_button(@scenario) %>
                 </div>
                 <div class="flex items-center space-x-3">
                   <%= link_to "Cancel", cancel_url, class: "bg-white/50 dark:bg-gray-800/50 py-2 px-4 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-200 hover:scale-105", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
@@ -316,11 +316,11 @@
               <%= form.hidden_field :answer, value: "" %>
               <div class="flex items-center justify-between pt-4">
                 <div>
-                  <%= simulation_back_button(@scenario) %>
+                  <%= scenario_back_button(@scenario) %>
                 </div>
                 <div class="flex items-center space-x-3">
                   <%= link_to "Cancel", cancel_url, class: "bg-white/50 dark:bg-gray-800/50 py-2 px-4 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-200 hover:scale-105", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
-                  <% if @scenario.parent_simulation.present? %>
+                  <% if @scenario.parent_scenario.present? %>
                     <%= form.submit "Finish & Return", class: "bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105", data: { scenario_step_target: "submit" } %>
                   <% else %>
                     <%= form.submit "Complete Workflow", class: "bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105", data: { scenario_step_target: "submit" } %>
@@ -347,7 +347,7 @@
               <%= form.hidden_field :answer, value: "" %>
               <div class="flex items-center justify-between pt-4">
                 <div>
-                  <%= simulation_back_button(@scenario) %>
+                  <%= scenario_back_button(@scenario) %>
                 </div>
                 <div class="flex items-center">
                   <%= form.submit "Continue", class: "bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105", data: { scenario_step_target: "submit" } %>

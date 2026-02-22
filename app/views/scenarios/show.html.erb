@@ -6,7 +6,7 @@
         <p class="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">Scenario</p>
         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Scenario Results</h1>
         <% if @scenario.complete? && !@scenario.stopped? %>
-          <p class="mt-2 text-gray-600 dark:text-gray-400"><%= simulation_summary_sentence(@scenario) %></p>
+          <p class="mt-2 text-gray-600 dark:text-gray-400"><%= scenario_summary_sentence(@scenario) %></p>
         <% else %>
           <p class="mt-2 text-gray-600 dark:text-gray-400">Execution path and results for <%= @workflow.title %></p>
         <% end %>
@@ -357,7 +357,7 @@
             <% end %>
 
             <%# Display categorized regular results %>
-            <% result_groups = categorize_simulation_results(@scenario) %>
+            <% result_groups = categorize_scenario_results(@scenario) %>
             <% if result_groups.any? %>
               <% result_groups.each do |group| %>
                 <div class="mb-6 last:mb-0">
