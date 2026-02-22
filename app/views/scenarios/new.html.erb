@@ -1,22 +1,22 @@
 <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
   <div class="mb-8 animate-fade-in">
-    <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Start Simulation</h1>
+    <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Start Scenario</h1>
     <p class="mt-2 text-gray-600 dark:text-gray-400">Run the workflow step-by-step to test its logic and flow.</p>
   </div>
 
-  <%= form_with model: Simulation.new, url: workflow_simulations_path(@workflow), local: true, class: "solid-card overflow-hidden animate-fade-in-up" do |form| %>
+  <%= form_with model: Scenario.new, url: workflow_scenarios_path(@workflow), local: true, class: "solid-card overflow-hidden animate-fade-in-up" do |form| %>
     <%= form.hidden_field :workflow_id, value: @workflow.id %>
 
-    <% if @simulation && @simulation.errors.any? %>
+    <% if @scenario && @scenario.errors.any? %>
       <div class="mx-6 mt-6 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 p-4">
         <div class="flex">
           <div class="ml-3">
             <h3 class="text-sm font-medium text-red-800 dark:text-red-200">
-              <%= pluralize(@simulation.errors.count, "error") %> prohibited this simulation from starting:
+              <%= pluralize(@scenario.errors.count, "error") %> prohibited this scenario from starting:
             </h3>
             <div class="mt-2 text-sm text-red-700 dark:text-red-300">
               <ul class="list-disc pl-5 space-y-1">
-                <% @simulation.errors.full_messages.each do |message| %>
+                <% @scenario.errors.full_messages.each do |message| %>
                   <li><%= message %></li>
                 <% end %>
               </ul>
@@ -33,7 +33,7 @@
           <p class="text-gray-600 dark:text-gray-300 mb-4"><%= @workflow.description_text %></p>
         <% end %>
         <p class="text-sm text-gray-500 dark:text-gray-400">
-          You'll progress through each step one at a time, providing answers as you go. 
+          You'll progress through each step one at a time, providing answers as you go.
           The workflow will automatically route based on your responses and transition conditions.
         </p>
       </div>
@@ -50,9 +50,8 @@
 
       <div class="flex justify-end space-x-3">
         <%= link_to "Back", workflow_path(@workflow), class: "bg-white/50 dark:bg-gray-800/50 py-2 px-4 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-200 hover:scale-105" %>
-        <%= form.submit "Start Simulation", class: "bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105" %>
+        <%= form.submit "Start Scenario", class: "bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105" %>
       </div>
     </div>
   <% end %>
 </div>
-
