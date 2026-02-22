@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_20_131916) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_22_112120) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.string "name", null: false
     t.text "body"
@@ -88,7 +88,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_20_131916) do
     t.index ["parent_id"], name: "index_groups_on_parent_id"
   end
 
-  create_table "simulations", force: :cascade do |t|
+  create_table "scenarios", force: :cascade do |t|
     t.integer "workflow_id", null: false
     t.integer "user_id", null: false
     t.json "inputs"
@@ -100,13 +100,13 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_20_131916) do
     t.string "status", default: "active", null: false
     t.integer "stopped_at_step_index"
     t.string "current_node_uuid"
-    t.integer "parent_simulation_id"
+    t.integer "parent_scenario_id"
     t.string "resume_node_uuid"
-    t.index ["current_node_uuid"], name: "index_simulations_on_current_node_uuid"
-    t.index ["parent_simulation_id"], name: "index_simulations_on_parent_simulation_id"
-    t.index ["status"], name: "index_simulations_on_status"
-    t.index ["user_id"], name: "index_simulations_on_user_id"
-    t.index ["workflow_id"], name: "index_simulations_on_workflow_id"
+    t.index ["current_node_uuid"], name: "index_scenarios_on_current_node_uuid"
+    t.index ["parent_scenario_id"], name: "index_scenarios_on_parent_scenario_id"
+    t.index ["status"], name: "index_scenarios_on_status"
+    t.index ["user_id"], name: "index_scenarios_on_user_id"
+    t.index ["workflow_id"], name: "index_scenarios_on_workflow_id"
   end
 
   create_table "templates", force: :cascade do |t|
@@ -178,9 +178,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_20_131916) do
   add_foreign_key "group_workflows", "folders"
   add_foreign_key "group_workflows", "groups"
   add_foreign_key "group_workflows", "workflows"
-  add_foreign_key "simulations", "simulations", column: "parent_simulation_id", on_delete: :nullify
-  add_foreign_key "simulations", "users"
-  add_foreign_key "simulations", "workflows"
+  add_foreign_key "scenarios", "scenarios", column: "parent_scenario_id", on_delete: :nullify
+  add_foreign_key "scenarios", "users"
+  add_foreign_key "scenarios", "workflows"
   add_foreign_key "user_groups", "groups"
   add_foreign_key "user_groups", "users"
   add_foreign_key "workflows", "users"
