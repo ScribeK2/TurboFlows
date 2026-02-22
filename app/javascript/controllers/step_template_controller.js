@@ -132,8 +132,6 @@ export default class extends Controller {
     // Fill type-specific fields
     if (template.type === 'question') {
       this.fillQuestionFields(stepItem, template)
-    } else if (template.type === 'decision') {
-      this.fillDecisionFields(stepItem, template)
     } else if (template.type === 'action') {
       this.fillActionFields(stepItem, template)
     }
@@ -227,27 +225,6 @@ export default class extends Controller {
           const optionsContainer = questionForm.querySelector('[data-question-form-target="optionsContainer"]')
           if (optionsContainer) {
             optionsContainer.classList.remove('hidden')
-          }
-        }
-      }
-    }
-  }
-
-  fillDecisionFields(stepItem, template) {
-    // Fill condition using rule builder
-    const conditionInput = stepItem.querySelector("input[name*='[condition]'][type='hidden']")
-    if (conditionInput && template.condition) {
-      conditionInput.value = template.condition
-      conditionInput.dispatchEvent(new Event('input', { bubbles: true }))
-      
-      // Trigger rule builder to parse and populate dropdowns
-      const ruleBuilder = stepItem.querySelector('[data-controller*="rule-builder"]')
-      if (ruleBuilder) {
-        const application = window.Stimulus
-        if (application) {
-          const controller = application.getControllerForElementAndIdentifier(ruleBuilder, "rule-builder")
-          if (controller && typeof controller.parseExistingCondition === 'function') {
-            controller.parseExistingCondition()
           }
         }
       }

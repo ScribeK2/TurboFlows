@@ -156,9 +156,9 @@ export default class extends Controller {
     // Hide all type-specific field containers
     const fieldContainers = {
       question: document.getElementById("question-fields"),
-      decision: document.getElementById("decision-fields"),
       action: document.getElementById("action-fields"),
-      checkpoint: document.getElementById("checkpoint-fields")
+      message: document.getElementById("message-fields"),
+      sub_flow: document.getElementById("sub_flow-fields")
     }
     
     Object.values(fieldContainers).forEach(container => {
@@ -283,13 +283,6 @@ export default class extends Controller {
         varInput.value = template.variable_name
         varInput.dispatchEvent(new Event('input', { bubbles: true }))
         console.log("Set variable_name:", template.variable_name)
-      }
-    } else if (stepType === "decision") {
-      const conditionInput = form.querySelector("#modal-step-condition")
-      if (conditionInput && template.condition) {
-        conditionInput.value = template.condition
-        conditionInput.dispatchEvent(new Event('input', { bubbles: true }))
-        console.log("Set condition:", template.condition)
       }
     } else if (stepType === "action") {
       const actionTypeInput = form.querySelector("#modal-step-action-type")
@@ -475,8 +468,6 @@ export default class extends Controller {
       stepData.question = formData.get("question") || ""
       stepData.answer_type = formData.get("answer_type") || ""
       stepData.variable_name = formData.get("variable_name") || ""
-    } else if (stepType === "decision") {
-      stepData.condition = formData.get("condition") || ""
     } else if (stepType === "action") {
       stepData.action_type = formData.get("action_type") || ""
       stepData.instructions = formData.get("instructions") || ""
@@ -540,12 +531,6 @@ export default class extends Controller {
       if (varInput && stepData.variable_name) {
         varInput.value = stepData.variable_name
         varInput.dispatchEvent(new Event('input', { bubbles: true }))
-      }
-    } else if (stepData.type === "decision") {
-      const conditionInput = lastStep.querySelector("input[name*='[condition]'], textarea[name*='[condition]']")
-      if (conditionInput && stepData.condition) {
-        conditionInput.value = stepData.condition
-        conditionInput.dispatchEvent(new Event('input', { bubbles: true }))
       }
     } else if (stepData.type === "action") {
       const actionTypeInput = lastStep.querySelector("input[name*='[action_type]']")

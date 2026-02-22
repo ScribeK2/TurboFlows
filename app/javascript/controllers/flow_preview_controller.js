@@ -110,36 +110,7 @@ export default class extends Controller {
       }
 
       // Get type-specific fields
-      if (type === "decision") {
-        // Check for multi-branch format (branches array)
-        const branchItems = stepItem.querySelectorAll('.branch-item')
-        if (branchItems.length > 0) {
-          step.branches = []
-          branchItems.forEach(branchItem => {
-            const conditionInput = branchItem.querySelector("input[name*='[branches][][condition]']")
-            const pathSelect = branchItem.querySelector("select[name*='[branches][][path]']")
-            if (conditionInput || pathSelect) {
-              step.branches.push({
-                condition: conditionInput ? conditionInput.value : "",
-                path: pathSelect ? pathSelect.value : ""
-              })
-            }
-          })
-
-          // Get else_path
-          const elsePathSelect = stepItem.querySelector("select[name*='[else_path]']")
-          step.else_path = elsePathSelect ? elsePathSelect.value : ""
-        } else {
-          // Legacy format (true_path/false_path)
-          const conditionInput = stepItem.querySelector("input[name*='[condition]']")
-          const truePathSelect = stepItem.querySelector("select[name*='[true_path]']")
-          const falsePathSelect = stepItem.querySelector("select[name*='[false_path]']")
-
-          step.condition = conditionInput ? conditionInput.value : ""
-          step.true_path = truePathSelect ? truePathSelect.value : ""
-          step.false_path = falsePathSelect ? falsePathSelect.value : ""
-        }
-      } else if (type === "question") {
+      if (type === "question") {
         const questionInput = stepItem.querySelector("input[name*='[question]']")
         step.question = questionInput ? questionInput.value : ""
       } else if (type === "action") {

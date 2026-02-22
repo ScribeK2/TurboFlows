@@ -147,13 +147,13 @@ export default class extends Controller {
         step.preview = instructionsInput ? instructionsInput.value.substring(0, 50) : ""
         const actionTypeInput = stepItem.querySelector("input[name*='[action_type]']")
         step.description = actionTypeInput ? actionTypeInput.value : "Action"
-      } else if (type === "decision") {
-        step.description = "Decision Point"
-        const branchItems = stepItem.querySelectorAll('.branch-item')
-        step.preview = `${branchItems.length} branch${branchItems.length !== 1 ? 'es' : ''}`
-      } else if (type === "checkpoint") {
-        step.description = "Checkpoint"
-        step.preview = "Review point"
+      } else if (type === "message") {
+        step.description = "Message"
+        const contentInput = stepItem.querySelector("textarea[name*='[content]']")
+        step.preview = contentInput ? contentInput.value.substring(0, 50) : ""
+      } else if (type === "sub_flow") {
+        step.description = "Sub-Flow"
+        step.preview = "Launches sub-workflow"
       }
       
       this.steps.push(step)
@@ -365,9 +365,11 @@ export default class extends Controller {
   getTypeColor(type) {
     const colors = {
       question: "text-blue-600",
-      decision: "text-green-600",
       action: "text-purple-600",
-      checkpoint: "text-yellow-600"
+      message: "text-cyan-600",
+      sub_flow: "text-indigo-600",
+      escalate: "text-orange-600",
+      resolve: "text-emerald-600"
     }
     return colors[type] || "text-gray-600"
   }
@@ -375,9 +377,11 @@ export default class extends Controller {
   getTypeBadgeColor(type) {
     const colors = {
       question: "bg-blue-100 text-blue-700",
-      decision: "bg-green-100 text-green-700",
       action: "bg-purple-100 text-purple-700",
-      checkpoint: "bg-yellow-100 text-yellow-700"
+      message: "bg-cyan-100 text-cyan-700",
+      sub_flow: "bg-indigo-100 text-indigo-700",
+      escalate: "bg-orange-100 text-orange-700",
+      resolve: "bg-emerald-100 text-emerald-700"
     }
     return colors[type] || "bg-gray-100 text-gray-700"
   }

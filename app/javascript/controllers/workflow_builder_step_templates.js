@@ -100,14 +100,10 @@ export function getStepTypeSpecificFields(context, stepType, stepData = {}, true
   switch (stepType) {
     case "question":
       return getQuestionFieldsHtml(stepData)
-    case "decision":
-      return templateSelector + getDecisionFieldsHtml(context, stepData, truePathOptions, falsePathOptions)
     case "action":
       return getActionFieldsHtml(stepData)
     case "sub_flow":
       return getSubflowFieldsHtml(context, stepData)
-    case "checkpoint":
-      return getCheckpointFieldsHtml(stepData)
     case "message":
       return getMessageFieldsHtml(stepData)
     case "escalate":
@@ -502,7 +498,7 @@ export function getQuestionFieldsHtml(stepData = {}) {
              placeholder="e.g., user_name, age, etc."
              class="w-full border rounded px-3 py-2"
              data-step-form-target="field">
-      <p class="mt-1 text-xs text-gray-500">Optional: Name this answer for use in decision steps</p>
+      <p class="mt-1 text-xs text-gray-500">Optional: Name this answer for use in transition conditions</p>
     </div>
   `
 }

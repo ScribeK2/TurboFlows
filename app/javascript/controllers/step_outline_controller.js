@@ -238,9 +238,11 @@ export default class extends Controller {
   getStepNumberClasses(type) {
     const classes = {
       question: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
-      decision: "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
       action: "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300",
-      checkpoint: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
+      sub_flow: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300",
+      message: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300",
+      escalate: "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300",
+      resolve: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
     }
     return classes[type] || "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
   }

@@ -70,41 +70,9 @@ export default class extends Controller {
     
     // Type-specific validation - only validate if field has a value or is required
     if (this.hasStepTypeValue && value) {
-      if (this.stepTypeValue === "decision" && fieldName.includes("condition")) {
-        // Only validate condition format if a value is provided
-        return this.validateCondition(field, value)
-      }
-      
       if (this.stepTypeValue === "question" && fieldName.includes("answer_type")) {
         return this.validateAnswerType(field, value)
       }
-    }
-    
-    return true
-  }
-
-  validateCondition(field, condition) {
-    // Only validate if condition is provided (empty conditions are allowed for incomplete forms)
-    if (!condition || !condition.trim()) {
-      return true // Allow empty conditions - they'll be validated server-side if needed
-    }
-    
-    // Basic condition syntax validation
-    // Valid formats: "variable == 'value'", "variable != 'value'", etc.
-    const validPatterns = [
-      /^\w+\s*==\s*['"][^'"]*['"]/,  // variable == 'value'
-      /^\w+\s*!=\s*['"][^'"]*['"]/,  // variable != 'value'
-      /^\w+\s*>\s*\d+/,              // variable > 10
-      /^\w+\s*<\s*\d+/,              // variable < 10
-      /^\w+\s*>=\s*\d+/,             // variable >= 10
-      /^\w+\s*<=\s*\d+/,             // variable <= 10
-    ]
-    
-    const isValid = validPatterns.some(pattern => pattern.test(condition.trim()))
-    
-    if (!isValid) {
-      this.showFieldError(field, "Invalid condition format. Use: variable == 'value' or variable != 'value'")
-      return false
     }
     
     return true
@@ -200,32 +168,6 @@ export default class extends Controller {
       if (!questionField?.value?.trim()) {
         this.showFieldError(questionField, "Question text is required")
         return false
-      }
-    }
-    
-    if (stepType === "decision") {
-      // Check for multi-branch format (branches array)
-      const branchItems = stepContainer.querySelectorAll('.branch-item')
-      const hasBranches = branchItems.length > 0
-      
-      if (hasBranches) {
-        // Multi-branch format: validate that branches with conditions have valid format
-        // But don't require branches to be complete - allow saving incomplete forms
-        for (const branchItem of branchItems) {
-          const conditionInput = branchItem.querySelector('input[name*="[branches][][condition]"]')
-          if (conditionInput && conditionInput.value.trim()) {
-            // If condition is provided, validate its format
-            if (!this.validateCondition(conditionInput, conditionInput.value)) {
-              return false
-            }
-          }
-        }
-      } else {
-        // Legacy format: check for single condition field
-        const conditionField = stepContainer.querySelector('input[name*="[condition]"]')
-        if (conditionField && conditionField.value.trim() && !this.validateCondition(conditionField, conditionField.value)) {
-          return false
-        }
       }
     }
     

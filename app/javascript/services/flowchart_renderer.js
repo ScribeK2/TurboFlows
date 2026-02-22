@@ -66,127 +66,20 @@ export class FlowchartRenderer {
     return connections
   }
 
-  // Build connections for linear mode workflows (sequential + branches)
+  // Build connections for linear mode workflows (sequential only, no decision branches)
   buildLinearConnections(steps) {
     const connections = []
-    const decisionSteps = new Set()
-    const branchTargets = new Set()
 
-    // First, collect all decision branches
-    steps.forEach((step) => {
-      if (step.type === "decision") {
-        decisionSteps.add(step.index)
-
-        // Handle multi-branch format
-        if (step.branches && Array.isArray(step.branches) && step.branches.length > 0) {
-          step.branches.forEach((branch, branchIndex) => {
-            const branchPath = branch.path || branch['path']
-            if (branchPath) {
-              const targetStep = this.findStepByTitle(steps, branchPath)
-              if (targetStep) {
-                const branchColors = ["#10b981", "#3b82f6", "#f59e0b", "#8b5cf6", "#ec4899"]
-                const color = branchColors[branchIndex % branchColors.length]
-                const branchType = `branch_${branchIndex}`
-
-                let label = branch.condition || branch['condition'] || `Branch ${branchIndex + 1}`
-                if (label.length > 20) {
-                  const match = label.match(/^(\w+)\s*(==|!=|>|<|>=|<=)/)
-                  if (match) {
-                    label = `${match[1]} ${match[2]}`
-                  } else {
-                    label = label.substring(0, 17) + "..."
-                  }
-                }
-
-                connections.push({
-                  from: step.index,
-                  to: targetStep.index,
-                  type: branchType,
-                  label: label,
-                  color: color
-                })
-                branchTargets.add(targetStep.index)
-              }
-            }
-          })
-
-          // Add else_path if present
-          if (step.else_path) {
-            const targetStep = this.findStepByTitle(steps, step.else_path)
-            if (targetStep) {
-              connections.push({
-                from: step.index,
-                to: targetStep.index,
-                type: "else",
-                label: "Else",
-                color: "#6b7280"
-              })
-              branchTargets.add(targetStep.index)
-            }
-          }
-        } else {
-          // Legacy format (true_path/false_path)
-          if (step.true_path) {
-            const targetStep = this.findStepByTitle(steps, step.true_path)
-            if (targetStep) {
-              connections.push({
-                from: step.index,
-                to: targetStep.index,
-                type: "true",
-                label: "Yes",
-                color: "#10b981"
-              })
-              branchTargets.add(targetStep.index)
-            }
-          }
-
-          if (step.false_path) {
-            const targetStep = this.findStepByTitle(steps, step.false_path)
-            if (targetStep) {
-              connections.push({
-                from: step.index,
-                to: targetStep.index,
-                type: "false",
-                label: "No",
-                color: "#ef4444"
-              })
-              branchTargets.add(targetStep.index)
-            }
-          }
-        }
-      }
-    })
-
-    // Then add default linear connections
+    // Linear mode: just sequential connections (decision branches removed)
     steps.forEach((step, index) => {
       if (index < steps.length - 1) {
         const nextStep = steps[index + 1]
-        const isDecisionWithBranches = decisionSteps.has(step.index) && (
-          (step.branches && step.branches.length > 0) ||
-          step.true_path ||
-          step.false_path ||
-          step.else_path
-        )
-        const isBranchTarget = branchTargets.has(nextStep.index)
-
-        if (!isDecisionWithBranches) {
-          const isTargetFromOtherStep = isBranchTarget && nextStep.index !== index + 1
-          if (!isTargetFromOtherStep) {
-            connections.push({
-              from: step.index,
-              to: nextStep.index,
-              type: "default",
-              label: ""
-            })
-          }
-        } else if (!(step.branches && step.branches.length > 0) && !step.true_path && !step.false_path && !step.else_path) {
-          connections.push({
-            from: step.index,
-            to: nextStep.index,
-            type: "default",
-            label: ""
-          })
-        }
+        connections.push({
+          from: step.index,
+          to: nextStep.index,
+          type: "default",
+          label: ""
+        })
       }
     })
 
@@ -385,10 +278,7 @@ export class FlowchartRenderer {
   getStepColorClass(type) {
     switch(type) {
       case "question": return "bg-slate-100 text-slate-700"
-      case "decision": return "bg-slate-100 text-slate-700"
-      case "simple_decision": return "bg-slate-100 text-slate-700"
       case "action": return "bg-emerald-100 text-emerald-700"
-      case "checkpoint": return "bg-amber-100 text-amber-700"
       case "sub_flow": return "bg-indigo-100 text-indigo-700"
       case "message": return "bg-cyan-100 text-cyan-700"
       case "escalate": return "bg-orange-100 text-orange-700"
@@ -401,10 +291,7 @@ export class FlowchartRenderer {
   getStepBorderClass(type) {
     switch(type) {
       case "question": return "border-slate-400"
-      case "decision": return "border-slate-400"
-      case "simple_decision": return "border-slate-400"
       case "action": return "border-emerald-400"
-      case "checkpoint": return "border-amber-400"
       case "sub_flow": return "border-indigo-400"
       case "message": return "border-cyan-400"
       case "escalate": return "border-orange-400"
@@ -417,10 +304,7 @@ export class FlowchartRenderer {
   getStepColor(type) {
     const colors = {
       question: "#475569",      // slate-600
-      decision: "#475569",      // slate-600
-      simple_decision: "#475569", // slate-600
       action: "#10b981",        // emerald-500
-      checkpoint: "#f59e0b",    // amber-500
       sub_flow: "#6366f1",      // indigo-500
       message: "#06b6d4",       // cyan-500
       escalate: "#f97316",      // orange-500
@@ -433,10 +317,7 @@ export class FlowchartRenderer {
   getStepIcon(type) {
     const icons = {
       question: '?',
-      decision: '/',
-      simple_decision: '/',
       action: '!',
-      checkpoint: 'v',
       sub_flow: '↪',
       message: 'i',
       escalate: '↑',
@@ -484,7 +365,6 @@ export class FlowchartRenderer {
             <h4 class="font-semibold ${fontSize} text-gray-900 break-words" style="${lineClamp}">
               ${this.escapeHtml(step.title || `Step ${step.index + 1}`)}
             </h4>
-            ${step.type === "decision" && step.condition ? `<p class="text-xs text-gray-500 mt-1 truncate">${this.escapeHtml(step.condition)}</p>` : ""}
             ${step.type === "resolve" ? `<p class="text-xs text-green-600 mt-1 font-medium">Terminal</p>` : ""}
             ${this.clickable ? `<p class="text-xs text-gray-400 mt-2">Click to edit</p>` : ''}
           </div>

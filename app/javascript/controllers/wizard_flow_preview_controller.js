@@ -115,7 +115,6 @@ export default class extends Controller {
               <span class="text-xs font-medium uppercase text-gray-600 dark:text-gray-400">${this.renderer.escapeHtml(step.type || 'unknown')}</span>
             </div>
             <h4 class="font-semibold text-sm text-gray-900 dark:text-gray-100 mb-1 break-words">${this.renderer.escapeHtml(step.title || `Step ${step.index + 1}`)}</h4>
-            ${step.type === "decision" && step.condition ? `<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">${this.renderer.escapeHtml(step.condition)}</p>` : ""}
             <p class="text-xs text-gray-500 dark:text-gray-500 mt-2">Click to edit</p>
           </div>
         </div>

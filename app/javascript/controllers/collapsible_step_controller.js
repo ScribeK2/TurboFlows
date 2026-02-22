@@ -121,19 +121,14 @@ export default class extends Controller {
         }
         break
         
-      case "decision":
-        const branches = stepItem.querySelectorAll(".branch-item")
-        summary = `${branches.length} branch${branches.length !== 1 ? "es" : ""}`
-        break
-        
       case "action":
         const instructions = stepItem.querySelector("textarea[name*='[instructions]']")
         summary = this.truncate(instructions?.value || "No instructions set", 60)
         break
-        
-      case "checkpoint":
-        const checkpoint = stepItem.querySelector("textarea[name*='[checkpoint_message]'], input[name*='[checkpoint_message]']")
-        summary = this.truncate(checkpoint?.value || "Checkpoint", 60)
+
+      case "message":
+        const messageContent = stepItem.querySelector("textarea[name*='[content]']")
+        summary = this.truncate(messageContent?.value || "No content set", 60)
         break
         
       default:

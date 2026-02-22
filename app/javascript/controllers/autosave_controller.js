@@ -244,35 +244,6 @@ export default class extends Controller {
         step.options = step.options.filter(opt => opt && (opt.label || opt.value))
       }
       
-      // Handle branches for decision steps
-      if (step.type === "decision") {
-        const branches = []
-        const branchItems = container.querySelectorAll(".branch-item")
-        
-        branchItems.forEach(branchItem => {
-          const branch = {}
-          const conditionInput = branchItem.querySelector("input[name*='[branches][][condition]']")
-          const pathSelect = branchItem.querySelector("select[name*='[branches][][path]']")
-          
-          if (conditionInput) branch.condition = conditionInput.value
-          if (pathSelect) branch.path = pathSelect.value
-          
-          if (branch.condition || branch.path) {
-            branches.push(branch)
-          }
-        })
-        
-        if (branches.length > 0) {
-          step.branches = branches
-        }
-        
-        // Get else_path
-        const elsePathSelect = container.querySelector("select[name*='[else_path]']")
-        if (elsePathSelect && elsePathSelect.value) {
-          step.else_path = elsePathSelect.value
-        }
-      }
-      
       // Clean up internal processing flags
       delete step._optionsProcessed
 

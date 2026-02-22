@@ -15,9 +15,7 @@ export default class extends Controller {
 
   static STEP_DEFAULTS = {
     question:   { question: "", answer_type: "yes_no", variable_name: "" },
-    decision:   { branches: [] },
     action:     { action_type: "Instruction", instructions: "" },
-    checkpoint: { checkpoint_message: "" },
     sub_flow:   { target_workflow_id: "", variable_mapping: {} },
     message:    { content: "" },
     escalate:   { target_type: "", target_value: "", priority: "normal", reason_required: false, notes: "" },
@@ -552,13 +550,13 @@ export default class extends Controller {
 
   getTemplatesFromPage() {
     const scriptTag = document.getElementById('step-templates-data')
-    if (!scriptTag) return { question: [], decision: [], action: [] }
+    if (!scriptTag) return { question: [], action: [] }
     
     try {
       return JSON.parse(scriptTag.textContent)
     } catch (e) {
       console.error("Failed to parse step templates:", e)
-      return { question: [], decision: [], action: [] }
+      return { question: [], action: [] }
     }
   }
 

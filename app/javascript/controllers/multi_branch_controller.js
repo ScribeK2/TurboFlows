@@ -23,10 +23,6 @@ export default class extends Controller {
     this.handleTemplateApplied = this.handleTemplateApplied.bind(this)
     this.element.addEventListener('template-applied', this.handleTemplateApplied)
 
-    // Listen for Yes/No branch quick setup events (Sprint 1)
-    this.handleYesNoBranchApply = this.handleYesNoBranchApply.bind(this)
-    this.element.addEventListener('yes-no-branch:apply', this.handleYesNoBranchApply)
-
     // Set up listeners for workflow changes
     this.setupWorkflowChangeListener()
   }
@@ -105,44 +101,6 @@ export default class extends Controller {
       // Controller not ready yet
     }
     return false
-  }
-  
-  /**
-   * Handle Yes/No branch quick setup application (Sprint 1)
-   * This is triggered by the yes_no_branch_controller when the user clicks "Apply This Setup"
-   */
-  handleYesNoBranchApply(event) {
-    console.log('[Multi-Branch] Yes/No branch apply event received:', event.detail)
-    
-    const { branches } = event.detail
-    
-    if (!branches || branches.length === 0) {
-      console.warn('[Multi-Branch] No branches in yes-no-branch:apply event')
-      return
-    }
-    
-    console.log('[Multi-Branch] Applying Yes/No branches:', branches.length, 'branches')
-    
-    // Clear existing branches
-    if (this.hasBranchesContainerTarget) {
-      this.branchesContainerTarget.innerHTML = ''
-    }
-    
-    // Add Yes and No branches
-    branches.forEach((branch, index) => {
-      setTimeout(() => {
-        console.log(`[Multi-Branch] Adding Yes/No branch ${index}:`, branch)
-        this.addBranchDirect(branch.condition, branch.path)
-      }, index * 100)
-    })
-    
-    // Refresh and notify after all branches are created
-    setTimeout(() => {
-      console.log('[Multi-Branch] Refreshing dropdowns and notifying')
-      this.refreshAllBranchDropdowns()
-      this.notifyBranchAssistant()
-      this.notifyPreviewUpdate()
-    }, branches.length * 100 + 100)
   }
   
   handleTemplateApplied(event) {
@@ -312,11 +270,6 @@ export default class extends Controller {
       this.element.removeEventListener('template-applied', this.handleTemplateApplied)
     }
 
-    // Clean up Yes/No branch event listener
-    if (this.handleYesNoBranchApply) {
-      this.element.removeEventListener('yes-no-branch:apply', this.handleYesNoBranchApply)
-    }
-
     // Clean up form change listeners
     if (this.form && this.workflowChangeHandler) {
       this.form.removeEventListener("input", this.workflowChangeHandler)
@@ -352,28 +305,8 @@ export default class extends Controller {
     // Refresh dropdowns
     this.refreshAllBranchDropdowns()
     
-    // Notify branch assistant to refresh
-    this.notifyBranchAssistant()
-    
     // Notify preview update
     this.notifyPreviewUpdate()
-  }
-  
-  notifyBranchAssistant() {
-    const branchAssistant = this.element.closest('[data-controller*="branch-assistant"]')
-    if (branchAssistant) {
-      const application = window.Stimulus
-      if (application) {
-        try {
-          const controller = application.getControllerForElementAndIdentifier(branchAssistant, "branch-assistant")
-          if (controller && typeof controller.loadSuggestions === 'function') {
-            controller.loadSuggestions()
-          }
-        } catch (e) {
-          // Branch assistant might not be connected yet
-        }
-      }
-    }
   }
   
   initializeBranchStepSelector(index) {

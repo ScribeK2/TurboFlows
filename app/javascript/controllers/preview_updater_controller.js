@@ -172,16 +172,6 @@ export default class extends Controller {
         stepData.attachments = []
       }
       
-    } else if (stepData.type === "decision") {
-      const conditionInput = stepContainer.querySelector("input[name*='[condition]']")
-      stepData.condition = conditionInput ? conditionInput.value : ""
-
-      const truePathSelect = stepContainer.querySelector("select[name*='[true_path]']")
-      stepData.true_path = truePathSelect ? truePathSelect.value : ""
-
-      const falsePathSelect = stepContainer.querySelector("select[name*='[false_path]']")
-      stepData.false_path = falsePathSelect ? falsePathSelect.value : ""
-
     } else if (stepData.type === "message") {
       const contentInput = stepContainer.querySelector("textarea[name*='[content]']")
       stepData.content = contentInput ? contentInput.value : ""
