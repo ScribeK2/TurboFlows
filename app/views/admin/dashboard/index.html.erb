@@ -9,10 +9,38 @@
     </p>
   </div>
 
+  <!-- Quick Action Buttons -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8 animate-fade-in-up">
+    <%= link_to admin_users_path, class: "flex items-center gap-2 justify-center px-4 py-3 bg-slate-700 dark:bg-slate-600 text-white rounded-xl text-sm font-medium hover:bg-slate-800 dark:hover:bg-slate-500 transition-colors btn-press" do %>
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+      </svg>
+      Manage Users
+    <% end %>
+    <%= link_to admin_workflows_path, class: "flex items-center gap-2 justify-center px-4 py-3 bg-slate-700 dark:bg-slate-600 text-white rounded-xl text-sm font-medium hover:bg-slate-800 dark:hover:bg-slate-500 transition-colors btn-press" do %>
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+      All Workflows
+    <% end %>
+    <%= link_to admin_groups_path, class: "flex items-center gap-2 justify-center px-4 py-3 bg-slate-700 dark:bg-slate-600 text-white rounded-xl text-sm font-medium hover:bg-slate-800 dark:hover:bg-slate-500 transition-colors btn-press" do %>
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+      </svg>
+      Manage Groups
+    <% end %>
+    <%= link_to admin_templates_path, class: "flex items-center gap-2 justify-center px-4 py-3 bg-slate-700 dark:bg-slate-600 text-white rounded-xl text-sm font-medium hover:bg-slate-800 dark:hover:bg-slate-500 transition-colors btn-press" do %>
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+      </svg>
+      Templates
+    <% end %>
+  </div>
+
   <!-- Stats Cards Grid -->
   <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
     <!-- Users Card -->
-    <div class="solid-card overflow-hidden animate-fade-in-up">
+    <div class="solid-card overflow-hidden animate-fade-in-up hover-lift">
       <div class="px-6 py-5">
         <div class="flex items-center justify-between">
           <div>
@@ -92,10 +120,22 @@
           <% @recent_users.each do |user| %>
             <div class="px-6 py-4">
               <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm font-medium text-gray-900 dark:text-gray-100"><%= user.email %></p>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate"><%= user.email %></p>
+                    <%
+                      badge_class = case user.role
+                        when 'admin' then 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                        when 'editor' then 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                        else 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'
+                      end
+                    %>
+                    <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full flex-shrink-0 <%= badge_class %>">
+                      <%= user.role.capitalize %>
+                    </span>
+                  </div>
                   <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Role: <span class="font-medium"><%= user.role.capitalize %></span> - Joined <%= time_ago_in_words(user.created_at) %> ago
+                    Joined <%= time_ago_in_words(user.created_at) %> ago
                   </p>
                 </div>
               </div>
@@ -139,31 +179,4 @@
     </div>
   </div>
 
-  <!-- Quick Links -->
-  <div class="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-    <%= link_to admin_users_path, class: "bg-slate-600 hover:bg-slate-700 text-white px-6 py-3 rounded-full text-sm font-medium shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 inline-flex items-center justify-center" do %>
-      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-      </svg>
-      Manage Users
-    <% end %>
-    <%= link_to admin_workflows_path, class: "bg-slate-600 hover:bg-slate-700 text-white px-6 py-3 rounded-full text-sm font-medium shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 inline-flex items-center justify-center" do %>
-      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-      </svg>
-      View All Workflows
-    <% end %>
-    <%= link_to admin_groups_path, class: "bg-slate-600 hover:bg-slate-700 text-white px-6 py-3 rounded-full text-sm font-medium shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 inline-flex items-center justify-center" do %>
-      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-      </svg>
-      Manage Groups
-    <% end %>
-    <%= link_to admin_templates_path, class: "bg-slate-600 hover:bg-slate-700 text-white px-6 py-3 rounded-full text-sm font-medium shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 inline-flex items-center justify-center" do %>
-      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-      </svg>
-      Manage Templates
-    <% end %>
-  </div>
 </div>
