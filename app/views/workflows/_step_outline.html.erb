@@ -86,8 +86,9 @@
             }
           %>
           <button type="button"
-                  class="step-outline-item w-full text-left px-3 py-2 rounded-lg transition-all duration-200 group hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                  class="step-outline-item w-full text-left px-3 py-2 rounded-lg transition-all duration-200 group hover:bg-slate-100 dark:hover:bg-slate-700/50 data-[active]:bg-emerald-50 data-[active]:dark:bg-emerald-900/20 data-[active]:border-l-2 data-[active]:border-emerald-500"
                   data-action="click->step-outline#scrollToStep"
+                  data-step-outline-target="outlineItem"
                   data-step-index="<%= index %>"
                   data-step-id="<%= step_id %>">
             <div class="flex items-center gap-2">

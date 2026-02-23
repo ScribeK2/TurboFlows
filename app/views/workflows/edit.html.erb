@@ -282,18 +282,20 @@
         <%= render partial: "flow_preview" %>
       </div>
 
-      <div class="flex justify-between items-center space-x-3">
-        <div data-autosave-target="status" class="text-sm font-medium text-gray-600 dark:text-gray-400">
-          Ready to save
-        </div>
-        <div class="flex space-x-3">
-          <%= link_to "Cancel", workflow_path(@workflow), class: "bg-slate-100 dark:bg-slate-700 py-2 px-4 border border-slate-200 dark:border-slate-600 rounded-full shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:scale-105" %>
-          <button type="button"
-                  onclick="document.getElementById('save-template-modal').classList.remove('hidden')"
-                  class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105">
-            Save as Template
-          </button>
-          <%= form.submit "Update Workflow", class: "bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105" %>
+      <div class="sticky bottom-0 z-30 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-t border-slate-200 dark:border-slate-700 -mx-6 px-6 py-4">
+        <div class="flex justify-between items-center space-x-3">
+          <div data-autosave-target="status" class="text-sm font-medium text-gray-600 dark:text-gray-400">
+            Ready to save
+          </div>
+          <div class="flex space-x-3">
+            <%= link_to "Cancel", workflow_path(@workflow), class: "bg-slate-100 dark:bg-slate-700 py-2 px-4 border border-slate-200 dark:border-slate-600 rounded-full shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:scale-105" %>
+            <button type="button"
+                    onclick="document.getElementById('save-template-modal').classList.remove('hidden')"
+                    class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 btn-press">
+              Save as Template
+            </button>
+            <%= form.submit "Update Workflow", class: "bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 btn-press" %>
+          </div>
         </div>
       </div>
     </div>
