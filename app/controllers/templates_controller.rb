@@ -8,6 +8,7 @@ class TemplatesController < ApplicationController
                  else
                    base_scope
                  end
+    @templates = @templates.where(category: params[:category]) if params[:category].present?
     @templates = @templates.order(:name)
   end
 
