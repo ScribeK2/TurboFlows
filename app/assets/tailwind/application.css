@@ -66,14 +66,28 @@
     100% { opacity: 1; transform: scale(1); }
   }
 
+  @keyframes shrinkWidth {
+    0% { width: 100%; }
+    100% { width: 0%; }
+  }
+
+  @keyframes subtlePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
+  --animate-shrink: shrinkWidth 5s linear forwards;
+  --animate-subtle-pulse: subtlePulse 2s ease-in-out infinite;
+
 }
 
 /* Custom utilities */
 @utility solid-card {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 0.75rem;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 @utility solid-modal {
@@ -95,7 +109,11 @@
 }
 
 @utility hover-lift {
-  transition: transform 0.3s;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+@utility btn-press {
+  transition: transform 0.1s ease;
 }
 
 @utility rotateY-12 {
@@ -108,7 +126,16 @@
 
 /* Hover effects */
 .hover-lift:hover {
-  transform: scale(1.05);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px -2px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+}
+
+.solid-card:hover {
+  box-shadow: 0 4px 12px -2px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+}
+
+.btn-press:active {
+  transform: scale(0.97);
 }
 
 /* Force class-based dark mode */
