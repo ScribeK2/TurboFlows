@@ -22,7 +22,7 @@
   </div>
 
   <!-- Category Filter Chips -->
-  <% categories = Template.distinct.pluck(:category).compact.sort %>
+  <% categories = @categories %>
   <% if categories.any? %>
     <div class="flex flex-wrap gap-2 mb-6 animate-fade-in-up">
       <%= link_to "All", templates_path(search: params[:search]),
