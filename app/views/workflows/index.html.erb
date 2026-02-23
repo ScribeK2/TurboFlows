@@ -159,15 +159,36 @@
             </details>
           <% end %>
         </div>
-      <% elsif @workflows.any? %>
+      <% elsif @workflows_paginated.any? %>
         <%# Flat list view (no group selected or group has no folders) %>
         <div class="solid-card overflow-hidden animate-fade-in-up">
           <ul class="divide-y divide-slate-200 dark:divide-slate-700">
-            <% @workflows.each_with_index do |workflow, index| %>
+            <% @workflows_paginated.each_with_index do |workflow, index| %>
               <%= render partial: 'workflows/workflow_list_item', locals: { workflow: workflow, index: index } %>
             <% end %>
           </ul>
         </div>
+
+        <%# Pagination controls %>
+        <% if @total_pages > 1 %>
+          <nav class="flex items-center justify-center gap-2 mt-8" aria-label="Pagination">
+            <% if @page > 1 %>
+              <%= link_to url_for(page: @page - 1, status: params[:status], search: params[:search], group_id: params[:group_id], sort: params[:sort]), class: "px-3 py-2 text-sm rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-400" do %>
+                &larr; Previous
+              <% end %>
+            <% end %>
+
+            <% (1..@total_pages).each do |p| %>
+              <%= link_to p, url_for(page: p, status: params[:status], search: params[:search], group_id: params[:group_id], sort: params[:sort]), class: "px-3 py-2 text-sm rounded-lg transition-colors #{p == @page ? 'bg-emerald-500 text-white font-semibold' : 'hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400'}" %>
+            <% end %>
+
+            <% if @page < @total_pages %>
+              <%= link_to url_for(page: @page + 1, status: params[:status], search: params[:search], group_id: params[:group_id], sort: params[:sort]), class: "px-3 py-2 text-sm rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-400" do %>
+                Next &rarr;
+              <% end %>
+            <% end %>
+          </nav>
+        <% end %>
       <% else %>
         <div class="solid-card p-12 text-center animate-fade-in-up">
           <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">

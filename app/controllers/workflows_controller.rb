@@ -104,6 +104,14 @@ class WorkflowsController < ApplicationController
 
     @search_query = params[:search]
 
+    # Pagination (HTML only — JSON returns all results for API consumers)
+    @page = [ (params[:page] || 1).to_i, 1 ].max
+    @per_page = 10
+    @total_count = @workflows.count
+    @total_pages = [ (@total_count.to_f / @per_page).ceil, 1 ].max
+    @page = [ @page, @total_pages ].min
+    @workflows_paginated = @workflows.limit(@per_page).offset((@page - 1) * @per_page)
+
     respond_to do |format|
       format.html
       format.json do
