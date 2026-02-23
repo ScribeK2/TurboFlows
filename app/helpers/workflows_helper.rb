@@ -240,7 +240,7 @@ module WorkflowsHelper
     dots = type_counts.flat_map do |type, count|
       color = dot_colors[type] || 'bg-slate-400'
       label = dot_labels[type] || type&.titleize || 'Step'
-      visible_count = [count, 4].min
+      visible_count = [count, 2].min
       visible_count.times.map do
         content_tag(:span, '', class: "inline-block w-2 h-2 rounded-full #{color}", title: "#{label} (#{count})")
       end
