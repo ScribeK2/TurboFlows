@@ -64,7 +64,7 @@
               <%= form.text_field :search,
                   value: @search_query,
                   placeholder: @selected_group ? "Search workflows in #{@selected_group.name}..." : "Search workflows by title or description...",
-                  class: "block w-full pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-slate-400 focus:border-slate-500 dark:focus:border-slate-400 transition-colors",
+                  class: "block w-full pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 dark:focus:ring-emerald-500/30 dark:focus:border-emerald-500 transition-all duration-200",
                   style: "padding-left: 3rem;" %>
             </div>
             <% if @search_query.present? %>
@@ -93,7 +93,7 @@
           <% filter_tabs.each do |tab| %>
             <% active = @status_filter == tab[:key] %>
             <%= link_to workflows_path(status: tab[:key], search: params[:search], group_id: params[:group_id], sort: params[:sort]),
-                        class: "px-4 py-1.5 rounded-md text-sm font-medium transition-colors duration-200 #{active ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}",
+                        class: "px-4 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 #{active ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}",
                         data: { turbo_action: "replace" } do %>
               <%= tab[:label] %>
             <% end %>
