@@ -169,8 +169,15 @@ export default class extends Controller {
 
   // Check if graph mode is enabled
   isGraphMode() {
+    // Check form checkbox (new/edit/step1 pages)
     const graphModeCheckbox = document.querySelector("input[name*='graph_mode']")
-    return graphModeCheckbox?.checked || false
+    if (graphModeCheckbox) return graphModeCheckbox.checked
+
+    // Check workflow builder data attribute (step2 page)
+    const workflowBuilder = document.querySelector("[data-workflow-builder-graph-mode-value]")
+    if (workflowBuilder) return workflowBuilder.dataset.workflowBuilderGraphModeValue === "true"
+
+    return false
   }
 
   // Parse steps from the form
