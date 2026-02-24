@@ -96,8 +96,7 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
     @workflow.reload
 
     assert_equal "Updated Title", @workflow.title
-    # Description is ActionText::RichText, check body content
-    assert_equal "Updated description", @workflow.description.to_plain_text
+    assert_equal "Updated description", @workflow.description
   end
 
   test "should update workflow with steps" do

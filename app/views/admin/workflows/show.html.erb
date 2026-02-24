@@ -18,11 +18,7 @@
         </p>
         <% if @workflow.has_description? %>
           <div class="text-gray-600 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none mt-3">
-            <% begin %>
-              <%= @workflow.description if @workflow.description.present? %>
-            <% rescue => e %>
-              <%= simple_format(@workflow.description_text) %>
-            <% end %>
+            <%= render_step_markdown(@workflow.description) %>
           </div>
         <% end %>
       </div>

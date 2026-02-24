@@ -84,10 +84,7 @@ export default class extends Controller {
     // Listen for form changes
     this.formElement.addEventListener("input", this.inputHandler)
     this.formElement.addEventListener("change", this.changeHandler)
-    
-    // Also listen for Trix changes
-    this.formElement.addEventListener("trix-change", this.debouncedAutosave)
-    
+
     // Initial status
     this.updateStatus("ready", "Ready to save")
   }
@@ -122,9 +119,8 @@ export default class extends Controller {
       if (this.changeHandler) {
         this.formElement.removeEventListener("change", this.changeHandler)
       }
-      this.formElement.removeEventListener("trix-change", this.debouncedAutosave)
     }
-    
+
     // Remove event listener
     if (this.autosavedHandler) {
       document.removeEventListener("workflow:autosaved", this.autosavedHandler)

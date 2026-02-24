@@ -37,9 +37,9 @@
 
       <div>
         <%= form.label :description, class: "block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1" %>
-        <%= form.rich_text_area :description, id: "workflow_description", class: "mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400", placeholder: "Describe what this workflow does..." %>
+        <%= render partial: "shared/markdown_editor", locals: { form: form, field: :description, id: "workflow_description", placeholder: "Describe what this workflow does..." } %>
         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          <%= ui_svg_icon('lightbulb', css_classes: "w-4 h-4 inline-block align-text-bottom") %> Tip: Include CSR notes, expected time, or common pitfalls.
+          <%= ui_svg_icon('lightbulb', css_classes: "w-4 h-4 inline-block align-text-bottom") %> Tip: Supports **Markdown** formatting. Include CSR notes, expected time, or common pitfalls.
         </p>
       </div>
 

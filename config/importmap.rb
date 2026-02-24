@@ -11,10 +11,6 @@ pin "@hotwired/stimulus-loading", to: "stimulus-loading.js"
 # ActionCable for real-time features
 pin "@rails/actioncable", to: "actioncable.esm.js"
 
-# ActionText for rich text editing
-pin "trix"
-pin "@rails/actiontext", to: "actiontext.esm.js"
-
 # Third-party libraries (vendored locally for reliability)
 pin "sortablejs", to: "sortablejs.js"
 pin "fuse.js", to: "fuse.js"

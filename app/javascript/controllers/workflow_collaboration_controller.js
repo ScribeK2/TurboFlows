@@ -159,13 +159,7 @@ export default class extends Controller {
     }
     
     // Remove description listeners
-    const trixEditor = this.element.querySelector("trix-editor")
-    if (trixEditor && this.descriptionUpdateHandler) {
-      trixEditor.removeEventListener("trix-change", this.descriptionUpdateHandler)
-      trixEditor.removeEventListener("trix-input", this.descriptionUpdateHandler)
-    }
-    
-    const descriptionInput = this.element.querySelector("input[name='workflow[description]']")
+    const descriptionInput = this.element.querySelector("textarea[name='workflow[description]']")
     if (descriptionInput && this.descriptionUpdateHandler) {
       descriptionInput.removeEventListener("input", this.descriptionUpdateHandler)
     }
@@ -235,38 +229,26 @@ export default class extends Controller {
       titleInput.addEventListener("input", this.titleUpdateHandler)
     }
     
-    // Listen for Trix description changes
-    const descriptionInput = this.element.querySelector("input[name='workflow[description]'], trix-editor")
+    // Listen for description textarea changes
+    const descriptionInput = this.element.querySelector("textarea[name='workflow[description]']")
     if (descriptionInput) {
       this.descriptionUpdateHandler = (event) => {
         if (this.applyingRemoteChange) return
-        
+
         if (this.descriptionDebounceTimer) {
           clearTimeout(this.descriptionDebounceTimer)
         }
-        
+
         this.descriptionDebounceTimer = setTimeout(() => {
           if (!this.applyingRemoteChange && this.subscription) {
-            // Get the value from the hidden input that Trix uses
-            const hiddenInput = this.element.querySelector("input[name='workflow[description]']")
-            const value = hiddenInput ? hiddenInput.value : ""
+            const value = descriptionInput.value || ""
             console.log("Collaboration: Broadcasting description update", value.length, "characters")
             this.subscription.broadcastMetadataUpdate("description", value)
           }
         }, 500)
       }
-      
-      // Listen for Trix-specific events
-      const trixEditor = this.element.querySelector("trix-editor")
-      if (trixEditor) {
-        trixEditor.addEventListener("trix-change", this.descriptionUpdateHandler)
-        trixEditor.addEventListener("trix-input", this.descriptionUpdateHandler)
-      }
-      
-      // Also listen on the hidden input
-      if (descriptionInput.tagName === "INPUT") {
-        descriptionInput.addEventListener("input", this.descriptionUpdateHandler)
-      }
+
+      descriptionInput.addEventListener("input", this.descriptionUpdateHandler)
     }
   }
 
@@ -410,23 +392,10 @@ export default class extends Controller {
         this.showUpdateIndicator(titleInput.closest("div"), data.user)
       }
     } else if (field === "description") {
-      // Handle Trix rich text editor
-      const hiddenInput = this.element.querySelector("input[name='workflow[description]']")
-      const trixEditor = this.element.querySelector("trix-editor")
-      
-      if (hiddenInput && hiddenInput.value !== value) {
-        // Update the hidden input
-        hiddenInput.value = value
-        
-        // Update Trix editor if it exists
-        if (trixEditor && trixEditor.editor) {
-          try {
-            trixEditor.editor.loadHTML(value)
-            this.showUpdateIndicator(trixEditor.closest(".trix-wrapper") || trixEditor.closest("div"), data.user)
-          } catch (e) {
-            console.error("Error updating Trix editor:", e)
-          }
-        }
+      const textarea = this.element.querySelector("textarea[name='workflow[description]']")
+      if (textarea && textarea.value !== value) {
+        textarea.value = value
+        this.showUpdateIndicator(textarea.closest("div"), data.user)
       }
     }
     setTimeout(() => { this.applyingRemoteChange = false }, 100)

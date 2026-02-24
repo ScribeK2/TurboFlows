@@ -28,7 +28,7 @@ class WorkflowsController < ApplicationController
     end
 
     # Eager load associations to prevent N+1 queries (especially important for caching)
-    @workflows = @workflows.includes(:user, :rich_text_description)
+    @workflows = @workflows.includes(:user)
                            .search_by(params[:search])
 
     # Apply sort order
@@ -67,7 +67,7 @@ class WorkflowsController < ApplicationController
     if @selected_group.present?
       @folders = @selected_group.folders.ordered
       @uncategorized_workflows = @selected_group.uncategorized_workflows
-                                                .includes(:user, :rich_text_description)
+                                                .includes(:user)
                                                 .search_by(params[:search])
       @uncategorized_workflows = case @sort_by
                                  when 'alphabetical'

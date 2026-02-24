@@ -1,23 +1,7 @@
 module ApplicationHelper
-  # Safely display workflow description (handles both text and rich text)
+  # Safely display workflow description as plain text
   def display_workflow_description(workflow)
-    if workflow.description.present?
-      if workflow.description.respond_to?(:to_plain_text)
-        # Action Text rich text
-        workflow.description.to_plain_text
-      else
-        # Plain text fallback
-        workflow.description.to_s
-      end
-    else
-      "No description"
-    end
-  end
-
-  # Render rich text content safely
-  def render_rich_text(content)
-    return nil unless content.present?
-    content_tag(:div, content, class: "prose prose-sm max-w-none")
+    workflow.description.present? ? workflow.description.to_s : "No description"
   end
 
   # Render Markdown content from workflow step fields (instructions, descriptions, etc.)

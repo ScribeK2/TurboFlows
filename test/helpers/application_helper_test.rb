@@ -1,14 +1,13 @@
 require "test_helper"
 
 class ApplicationHelperTest < ActionView::TestCase
-  test "render_rich_text wraps content in prose div without html_safe on plain strings" do
-    result = render_rich_text("Hello <script>alert('xss')</script>")
-    assert_no_match(/<script>/, result)
-    assert_match(/Hello/, result)
+  test "display_workflow_description returns description text" do
+    workflow = Workflow.new(description: "Test description")
+    assert_equal "Test description", display_workflow_description(workflow)
   end
 
-  test "render_rich_text returns nil for blank content" do
-    assert_nil render_rich_text(nil)
-    assert_nil render_rich_text("")
+  test "display_workflow_description returns fallback for blank" do
+    workflow = Workflow.new(description: nil)
+    assert_equal "No description", display_workflow_description(workflow)
   end
 end

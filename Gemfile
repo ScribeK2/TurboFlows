@@ -29,10 +29,6 @@ gem "prawn"
 # Markdown rendering for step content
 gem "redcarpet"
 
-# Rich text editing with Trix
-gem "actiontext"
-gem "trix-rails"
-
 # Error tracking and performance monitoring (production)
 gem "sentry-rails"
 gem "sentry-ruby"

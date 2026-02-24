@@ -5,7 +5,6 @@ class Workflow < ApplicationRecord
   include WorkflowStepValidation
 
   belongs_to :user
-  has_rich_text :description
 
   # Group associations
   has_many :group_workflows, dependent: :destroy
@@ -142,43 +141,21 @@ class Workflow < ApplicationRecord
 
     search_term = "%#{query.strip}%"
 
-    # Search in title
     title_matches = case_insensitive_like('title', search_term)
-
-    # Search in description (plain text column)
     desc_matches = case_insensitive_like('description', search_term)
 
-    # Also search in ActionText rich text content
-    # Join with action_text_rich_texts to search rich text body
-    like_op = connection.adapter_name.downcase.include?('postgresql') ? 'ILIKE' : 'LIKE'
-    rich_text_matches = joins("LEFT JOIN action_text_rich_texts ON action_text_rich_texts.record_type = 'Workflow' AND action_text_rich_texts.record_id = workflows.id AND action_text_rich_texts.name = 'description'")
-                        .where("action_text_rich_texts.body #{like_op} ?", search_term)
-
-    # Combine all matches using OR - no need for distinct since we're selecting IDs
     where(id: title_matches.select(:id))
       .or(where(id: desc_matches.select(:id)))
-      .or(where(id: rich_text_matches.select(:id)))
   }
 
-  # Helper method to safely get description text (handles migration from text column to rich text)
-  # This avoids triggering Active Storage initialization errors
+  # Helper method to get description as plain text
   def description_text
-    if description.present?
-      description.to_plain_text
-    elsif self[:description].present?
-      self[:description]
-    end
-  rescue StandardError => e
-    # Fallback if Active Storage isn't configured or there's an error
-    Rails.logger.warn("Error accessing description: #{e.message}")
-    self[:description] || nil
+    description
   end
 
-  # Helper method to check if description exists (works with both text and rich text)
+  # Helper method to check if description exists
   def has_description?
-    description.present? || self[:description].present?
-  rescue StandardError
-    self[:description].present?
+    description.present?
   end
 
   # Clean up import flags when steps are completed
