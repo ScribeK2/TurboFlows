@@ -1,9 +1,22 @@
 <div class="solid-card overflow-hidden animate-fade-in-up">
   <div class="px-6 py-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
     <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Flow Preview</h2>
-    <button type="button" data-action="click->flow-preview#render" class="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 font-medium transition-colors duration-200">
-      Refresh
-    </button>
+    <div class="flex items-center gap-2">
+      <button type="button" data-action="click->flow-preview#zoomOut" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title="Zoom out">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"/></svg>
+      </button>
+      <span data-flow-preview-target="zoomLevel" class="text-xs font-medium text-slate-500 dark:text-slate-400 min-w-[3rem] text-center">100%</span>
+      <button type="button" data-action="click->flow-preview#zoomIn" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title="Zoom in">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+      </button>
+      <button type="button" data-action="click->flow-preview#fitToScreen" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title="Fit to screen">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+      </button>
+      <div class="w-px h-5 bg-slate-200 dark:bg-slate-600 mx-1"></div>
+      <button type="button" data-action="click->flow-preview#render" class="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 font-medium transition-colors duration-200">
+        Refresh
+      </button>
+    </div>
   </div>
 
   <div
@@ -15,6 +28,6 @@
   </div>
 
   <div class="px-6 pb-6 text-xs text-gray-500 dark:text-gray-400">
-    <p>Tip: The preview updates automatically as you edit steps. Each step type has a distinct color matching the editor.</p>
+    <p>Tip: Ctrl+scroll to zoom, Alt+drag to pan. The preview updates automatically as you edit steps.</p>
   </div>
 </div>
