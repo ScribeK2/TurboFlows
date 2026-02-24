@@ -36,6 +36,8 @@ export default class extends Controller {
     this.boundKeyDown = this.handleKeyDown.bind(this)
     document.addEventListener('keydown', this.boundKeyDown)
 
+    this.setupPanGesture()
+
     // Delay initial render to ensure DOM is ready
     // For modals, we'll render when modal opens (via event)
     // For inline previews, render immediately
@@ -50,6 +52,75 @@ export default class extends Controller {
     document.removeEventListener('keydown', this.boundKeyDown)
     if (this.boundRenderPreview) {
       this.element.removeEventListener('render-preview', this.boundRenderPreview)
+    }
+    this.teardownPanGesture()
+  }
+
+  setupPanGesture() {
+    this.isPanning = false
+    this.panStartX = 0
+    this.panStartY = 0
+    this.scrollStartX = 0
+    this.scrollStartY = 0
+
+    this.boundPanWheel = this.handlePanWheel.bind(this)
+    this.boundPanMouseDown = this.handlePanMouseDown.bind(this)
+    this.boundPanMouseMove = this.handlePanMouseMove.bind(this)
+    this.boundPanMouseUp = this.handlePanMouseUp.bind(this)
+
+    if (this.hasCanvasTarget) {
+      this.canvasTarget.addEventListener("wheel", this.boundPanWheel, { passive: false })
+      this.canvasTarget.addEventListener("mousedown", this.boundPanMouseDown)
+      document.addEventListener("mousemove", this.boundPanMouseMove)
+      document.addEventListener("mouseup", this.boundPanMouseUp)
+    }
+  }
+
+  teardownPanGesture() {
+    if (this.hasCanvasTarget) {
+      this.canvasTarget.removeEventListener("wheel", this.boundPanWheel)
+      this.canvasTarget.removeEventListener("mousedown", this.boundPanMouseDown)
+    }
+    document.removeEventListener("mousemove", this.boundPanMouseMove)
+    document.removeEventListener("mouseup", this.boundPanMouseUp)
+  }
+
+  handlePanWheel(e) {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault()
+      const delta = e.deltaY > 0 ? -0.1 : 0.1
+      this.zoomLevel = Math.min(2.0, Math.max(0.25, this.zoomLevel + delta))
+      this.applyZoom()
+    }
+  }
+
+  handlePanMouseDown(e) {
+    if (e.altKey) {
+      e.preventDefault()
+      this.isPanning = true
+      this.panStartX = e.clientX
+      this.panStartY = e.clientY
+      this.scrollStartX = this.canvasTarget.scrollLeft
+      this.scrollStartY = this.canvasTarget.scrollTop
+      this.canvasTarget.style.cursor = "grabbing"
+    }
+  }
+
+  handlePanMouseMove(e) {
+    if (!this.isPanning) return
+    e.preventDefault()
+    const dx = e.clientX - this.panStartX
+    const dy = e.clientY - this.panStartY
+    this.canvasTarget.scrollLeft = this.scrollStartX - dx
+    this.canvasTarget.scrollTop = this.scrollStartY - dy
+  }
+
+  handlePanMouseUp() {
+    if (this.isPanning) {
+      this.isPanning = false
+      if (this.hasCanvasTarget) {
+        this.canvasTarget.style.cursor = ""
+      }
     }
   }
 
