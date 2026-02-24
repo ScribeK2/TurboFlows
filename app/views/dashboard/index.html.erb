@@ -32,7 +32,7 @@
     <%# Card 1: Total Workflows %>
     <div class="solid-card hover-lift overflow-hidden animate-fade-in-up" style="animation-delay: 0.1s;" aria-label="Total workflows: <%= @workflow_count %>">
       <div class="px-6 py-5">
-        <div class="flex items-center justify-between">
+        <div class="flex items-start justify-between">
           <div>
             <p class="text-3xl font-bold text-gray-900 dark:text-gray-100"><%= @workflow_count %></p>
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Total Workflows</p>
@@ -49,7 +49,7 @@
     <%# Card 2: Published %>
     <div class="solid-card hover-lift overflow-hidden animate-fade-in-up" style="animation-delay: 0.15s;" aria-label="Published workflows: <%= @published_count %>">
       <div class="px-6 py-5">
-        <div class="flex items-center justify-between">
+        <div class="flex items-start justify-between">
           <div>
             <p class="text-3xl font-bold text-gray-900 dark:text-gray-100"><%= @published_count %></p>
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Published</p>
@@ -69,7 +69,7 @@
     <%# Card 3: Scenarios Run %>
     <div class="solid-card hover-lift overflow-hidden animate-fade-in-up" style="animation-delay: 0.2s;" aria-label="Scenarios run: <%= @scenario_total %>">
       <div class="px-6 py-5">
-        <div class="flex items-center justify-between">
+        <div class="flex items-start justify-between">
           <div>
             <p class="text-3xl font-bold text-gray-900 dark:text-gray-100"><%= @scenario_total %></p>
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Scenarios Run</p>
@@ -93,7 +93,7 @@
     <%# Card 4: Completion Rate %>
     <div class="solid-card hover-lift overflow-hidden animate-fade-in-up" style="animation-delay: 0.25s;" aria-label="Scenario completion rate: <%= @scenario_completion_rate %>%">
       <div class="px-6 py-5">
-        <div class="flex items-center justify-between">
+        <div class="flex items-start justify-between">
           <div>
             <p class="text-3xl font-bold text-gray-900 dark:text-gray-100"><%= @scenario_completion_rate %>%</p>
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Completion Rate</p>

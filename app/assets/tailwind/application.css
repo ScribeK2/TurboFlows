@@ -79,6 +79,17 @@
   --animate-shrink: shrinkWidth 5s linear forwards;
   --animate-subtle-pulse: subtlePulse 2s ease-in-out infinite;
 
+  @keyframes flowPulse {
+    0% { stroke-dashoffset: 200; }
+    100% { stroke-dashoffset: 0; }
+  }
+
+  @keyframes nodeAppear {
+    0% { opacity: 0; transform: scale(0); }
+    60% { transform: scale(1.15); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
 }
 
 /* Custom utilities */
@@ -102,6 +113,14 @@
   background-color: var(--color-surface-dark);
   border-color: var(--color-border-dark);
 }
+
+/* Preserve colored top borders in dark mode (e.g., template cards) */
+.dark .solid-card.border-t-blue-500 { border-top-color: var(--color-blue-500); }
+.dark .solid-card.border-t-emerald-500 { border-top-color: var(--color-emerald-500); }
+.dark .solid-card.border-t-amber-500 { border-top-color: var(--color-amber-500); }
+.dark .solid-card.border-t-purple-500 { border-top-color: var(--color-purple-500); }
+.dark .solid-card.border-t-cyan-500 { border-top-color: var(--color-cyan-500); }
+.dark .solid-card.border-t-slate-400 { border-top-color: var(--color-slate-400); }
 
 .dark .solid-modal {
   background-color: var(--color-surface-dark);
@@ -497,6 +516,12 @@ trix-toolbar .trix-input {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Workflow illustration dark mode */
+.dark .flow-path,
+.dark .flow-path-reverse {
+  stroke: #475569;
 }
 
 /* Smooth scroll behavior */

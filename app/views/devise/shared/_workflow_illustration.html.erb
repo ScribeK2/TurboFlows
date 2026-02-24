@@ -1,0 +1,110 @@
+<div class="mb-8 flex justify-center animate-fade-in" aria-hidden="true">
+  <svg viewBox="0 0 320 200" class="w-72 sm:w-80 h-auto" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <style>
+      .flow-path {
+        stroke-dasharray: 12 8;
+        animation: flowPulse 3s linear infinite;
+      }
+      .flow-path-reverse {
+        stroke-dasharray: 12 8;
+        animation: flowPulse 3s linear infinite reverse;
+      }
+      .flow-node {
+        animation: nodeAppear 0.6s ease-out both;
+      }
+    </style>
+
+    <%# Connection paths (drawn first, behind nodes) %>
+
+    <%# Top-left emerald → bottom-left blue %>
+    <path d="M60 48 C60 85, 80 105, 90 120"
+          class="flow-path" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" fill="none"
+          style="animation-delay: 0s;" />
+
+    <%# Top-left emerald → bottom-center amber (cross-connection) %>
+    <path d="M60 48 C80 90, 140 100, 160 120"
+          class="flow-path" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" fill="none"
+          style="animation-delay: 0.4s;" />
+
+    <%# Top-center blue → bottom-center amber %>
+    <path d="M160 48 C160 80, 160 95, 160 120"
+          class="flow-path-reverse" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" fill="none"
+          style="animation-delay: 0.2s;" />
+
+    <%# Top-center blue → bottom-left blue %>
+    <path d="M160 48 C140 85, 110 100, 90 120"
+          class="flow-path" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" fill="none"
+          style="animation-delay: 0.6s;" />
+
+    <%# Top-right amber → bottom-right emerald %>
+    <path d="M260 48 C260 85, 245 105, 230 120"
+          class="flow-path-reverse" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" fill="none"
+          style="animation-delay: 0.3s;" />
+
+    <%# Top-right amber → bottom-center amber (cross-connection) %>
+    <path d="M260 48 C240 90, 190 100, 160 120"
+          class="flow-path" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" fill="none"
+          style="animation-delay: 0.8s;" />
+
+    <%# Bottom-left → convergence point %>
+    <path d="M90 152 C110 170, 140 175, 160 180"
+          class="flow-path" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" fill="none"
+          style="animation-delay: 1s;" />
+
+    <%# Bottom-right → convergence point %>
+    <path d="M230 152 C210 170, 185 175, 160 180"
+          class="flow-path-reverse" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" fill="none"
+          style="animation-delay: 1.2s;" />
+
+    <%# Top row: 3 nodes %>
+    <%# Emerald node (top-left) %>
+    <circle cx="60" cy="40" r="9" fill="#10b981" opacity="0.5">
+      <animate attributeName="r" values="9;22;9" dur="3s" repeatCount="indefinite" />
+      <animate attributeName="opacity" values="0.5;0;0.5" dur="3s" repeatCount="indefinite" />
+    </circle>
+    <circle cx="60" cy="40" r="9" fill="#10b981" class="flow-node" style="animation-delay: 0.1s;" />
+
+    <%# Blue node (top-center) %>
+    <circle cx="160" cy="40" r="9" fill="#3b82f6" opacity="0.5">
+      <animate attributeName="r" values="9;22;9" dur="3s" begin="1s" repeatCount="indefinite" />
+      <animate attributeName="opacity" values="0.5;0;0.5" dur="3s" begin="1s" repeatCount="indefinite" />
+    </circle>
+    <circle cx="160" cy="40" r="9" fill="#3b82f6" class="flow-node" style="animation-delay: 0.2s;" />
+
+    <%# Amber node (top-right) %>
+    <circle cx="260" cy="40" r="9" fill="#f59e0b" opacity="0.5">
+      <animate attributeName="r" values="9;22;9" dur="3s" begin="2s" repeatCount="indefinite" />
+      <animate attributeName="opacity" values="0.5;0;0.5" dur="3s" begin="2s" repeatCount="indefinite" />
+    </circle>
+    <circle cx="260" cy="40" r="9" fill="#f59e0b" class="flow-node" style="animation-delay: 0.3s;" />
+
+    <%# Bottom row: 3 nodes (staggered colors) %>
+    <%# Blue node (bottom-left) %>
+    <circle cx="90" cy="140" r="8" fill="#3b82f6" opacity="0.5">
+      <animate attributeName="r" values="8;20;8" dur="3s" begin="0.5s" repeatCount="indefinite" />
+      <animate attributeName="opacity" values="0.5;0;0.5" dur="3s" begin="0.5s" repeatCount="indefinite" />
+    </circle>
+    <circle cx="90" cy="140" r="8" fill="#3b82f6" class="flow-node" style="animation-delay: 0.5s;" />
+
+    <%# Amber node (bottom-center) %>
+    <circle cx="160" cy="140" r="8" fill="#f59e0b" opacity="0.5">
+      <animate attributeName="r" values="8;20;8" dur="3s" begin="1.5s" repeatCount="indefinite" />
+      <animate attributeName="opacity" values="0.5;0;0.5" dur="3s" begin="1.5s" repeatCount="indefinite" />
+    </circle>
+    <circle cx="160" cy="140" r="8" fill="#f59e0b" class="flow-node" style="animation-delay: 0.6s;" />
+
+    <%# Emerald node (bottom-right) %>
+    <circle cx="230" cy="140" r="8" fill="#10b981" opacity="0.5">
+      <animate attributeName="r" values="8;20;8" dur="3s" begin="2.5s" repeatCount="indefinite" />
+      <animate attributeName="opacity" values="0.5;0;0.5" dur="3s" begin="2.5s" repeatCount="indefinite" />
+    </circle>
+    <circle cx="230" cy="140" r="8" fill="#10b981" class="flow-node" style="animation-delay: 0.7s;" />
+
+    <%# Convergence dot at bottom %>
+    <circle cx="160" cy="184" r="5" fill="#94a3b8" opacity="0.4">
+      <animate attributeName="r" values="5;14;5" dur="3s" begin="1.5s" repeatCount="indefinite" />
+      <animate attributeName="opacity" values="0.4;0;0.4" dur="3s" begin="1.5s" repeatCount="indefinite" />
+    </circle>
+    <circle cx="160" cy="184" r="5" fill="#94a3b8" class="flow-node" style="animation-delay: 1s;" />
+  </svg>
+</div>
