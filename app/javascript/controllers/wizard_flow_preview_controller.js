@@ -4,7 +4,7 @@ import { FlowchartRenderer } from "services/flowchart_renderer"
 // Wizard-specific flow preview controller for step3
 // Reads steps from workflow data instead of form inputs
 export default class extends Controller {
-  static targets = ["canvas"]
+  static targets = ["canvas", "zoomLevel"]
   static values = {
     workflowId: Number,
     stepsData: Array
@@ -16,13 +16,130 @@ export default class extends Controller {
       clickable: true,
       arrowIdPrefix: 'wizard-'
     })
+    this.zoomLevel = 1.0
 
     // Load steps from script tag (safer than HTML attributes for complex JSON)
     this.loadStepsFromScript()
     // Delay initial render to ensure DOM is ready
     setTimeout(() => {
       this.render()
+      // Auto fit after initial render
+      setTimeout(() => this.fitToScreen(), 50)
     }, 100)
+    this.setupPanZoom()
+  }
+
+  disconnect() {
+    this.teardownPanZoom()
+  }
+
+  setupPanZoom() {
+    this.isPanning = false
+    this.panStartX = 0
+    this.panStartY = 0
+    this.scrollStartX = 0
+    this.scrollStartY = 0
+
+    this.boundHandleWheel = this.handleWheel.bind(this)
+    this.boundHandleMouseDown = this.handleMouseDown.bind(this)
+    this.boundHandleMouseMove = this.handleMouseMove.bind(this)
+    this.boundHandleMouseUp = this.handleMouseUp.bind(this)
+
+    if (this.hasCanvasTarget) {
+      this.canvasTarget.addEventListener("wheel", this.boundHandleWheel, { passive: false })
+      this.canvasTarget.addEventListener("mousedown", this.boundHandleMouseDown)
+      document.addEventListener("mousemove", this.boundHandleMouseMove)
+      document.addEventListener("mouseup", this.boundHandleMouseUp)
+    }
+  }
+
+  teardownPanZoom() {
+    if (this.hasCanvasTarget) {
+      this.canvasTarget.removeEventListener("wheel", this.boundHandleWheel)
+      this.canvasTarget.removeEventListener("mousedown", this.boundHandleMouseDown)
+    }
+    document.removeEventListener("mousemove", this.boundHandleMouseMove)
+    document.removeEventListener("mouseup", this.boundHandleMouseUp)
+  }
+
+  handleWheel(e) {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault()
+      const delta = e.deltaY > 0 ? -0.1 : 0.1
+      this.zoomLevel = Math.min(2.0, Math.max(0.25, this.zoomLevel + delta))
+      this.applyZoom()
+    }
+  }
+
+  handleMouseDown(e) {
+    if (e.altKey) {
+      e.preventDefault()
+      this.isPanning = true
+      this.panStartX = e.clientX
+      this.panStartY = e.clientY
+      this.scrollStartX = this.canvasTarget.scrollLeft
+      this.scrollStartY = this.canvasTarget.scrollTop
+      this.canvasTarget.style.cursor = "grabbing"
+    }
+  }
+
+  handleMouseMove(e) {
+    if (!this.isPanning) return
+    e.preventDefault()
+    const dx = e.clientX - this.panStartX
+    const dy = e.clientY - this.panStartY
+    this.canvasTarget.scrollLeft = this.scrollStartX - dx
+    this.canvasTarget.scrollTop = this.scrollStartY - dy
+  }
+
+  handleMouseUp() {
+    if (this.isPanning) {
+      this.isPanning = false
+      if (this.hasCanvasTarget) {
+        this.canvasTarget.style.cursor = ""
+      }
+    }
+  }
+
+  zoomIn() {
+    this.zoomLevel = Math.min(2.0, this.zoomLevel + 0.1)
+    this.applyZoom()
+  }
+
+  zoomOut() {
+    this.zoomLevel = Math.max(0.25, this.zoomLevel - 0.1)
+    this.applyZoom()
+  }
+
+  fitToScreen() {
+    if (!this.hasCanvasTarget) return
+    const inner = this.canvasTarget.querySelector(".relative")
+    if (!inner) return
+
+    const containerWidth = this.canvasTarget.clientWidth
+    const containerHeight = this.canvasTarget.clientHeight
+    const contentWidth = inner.scrollWidth
+    const contentHeight = inner.scrollHeight
+
+    if (contentWidth === 0 || contentHeight === 0) return
+
+    const scaleX = containerWidth / contentWidth
+    const scaleY = containerHeight / contentHeight
+    this.zoomLevel = Math.min(scaleX, scaleY, 1.0) * 0.9
+    this.zoomLevel = Math.max(0.25, Math.min(2.0, this.zoomLevel))
+    this.applyZoom()
+  }
+
+  applyZoom() {
+    if (!this.hasCanvasTarget) return
+    const inner = this.canvasTarget.querySelector(".relative")
+    if (inner) {
+      inner.style.transform = `scale(${this.zoomLevel})`
+      inner.style.transformOrigin = "top left"
+    }
+    if (this.hasZoomLevelTarget) {
+      this.zoomLevelTarget.textContent = `${Math.round(this.zoomLevel * 100)}%`
+    }
   }
 
   refresh() {
@@ -59,70 +176,28 @@ export default class extends Controller {
     }))
   }
 
+  // Render uses FlowchartRenderer which sanitizes all user text via escapeHtml()
+  // (document.createElement + textContent pattern) before DOM insertion
   render() {
     const steps = this.getSteps()
     if (!steps || steps.length === 0) {
-      this.canvasTarget.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center py-8">No steps to preview. Add steps to see the flowchart.</p>'
+      if (this.hasCanvasTarget) {
+        this.canvasTarget.textContent = ''
+        const msg = document.createElement('p')
+        msg.className = 'text-gray-500 dark:text-gray-400 text-center py-8'
+        msg.textContent = 'No steps to preview. Add steps to see the flowchart.'
+        this.canvasTarget.appendChild(msg)
+      }
       return
     }
 
-    const html = this.buildFlowchartHtml(steps)
-    this.canvasTarget.innerHTML = html
-  }
-
-  // Build HTML for flowchart with click-to-edit functionality
-  // Uses shared renderer for connections and positions, but custom node rendering
-  buildFlowchartHtml(steps) {
-    const connections = this.renderer.buildConnections(steps)
-    const positions = this.renderer.calculatePositions(steps, connections)
-
-    if (Object.keys(positions).length === 0) {
-      return '<p class="text-gray-500 dark:text-gray-400 text-center py-8">Unable to render flow preview</p>'
+    // FlowchartRenderer.render() returns pre-sanitized HTML (all user content
+    // passes through escapeHtml which uses textContent assignment to sanitize)
+    const html = this.renderer.render(steps)
+    if (this.hasCanvasTarget) {
+      this.canvasTarget.innerHTML = html  // safe: renderer escapes all user input
+      this.applyZoom()
     }
-
-    // Calculate canvas dimensions
-    const positionValues = Object.values(positions)
-    const nodeWidth = this.renderer.nodeWidth
-    const nodeHeight = this.renderer.nodeHeight
-    const nodeMargin = this.renderer.nodeMargin
-    const maxX = Math.max(...positionValues.map(p => p.x + nodeWidth)) + nodeMargin
-    const maxY = Math.max(...positionValues.map(p => p.y + nodeHeight)) + nodeMargin
-
-    // Build SVG connections
-    let svgHtml = this.renderer.buildConnectionsSvg(connections, positions, maxX, maxY)
-
-    // Build nodes with click-to-edit functionality
-    let nodesHtml = `<div class="relative" style="min-height: ${maxY}px; width: ${maxX}px;">`
-    nodesHtml += svgHtml
-
-    steps.forEach((step, arrayIndex) => {
-      const pos = positions[arrayIndex] || positions[step.index]
-      if (!pos) return
-
-      const bgColor = this.renderer.getStepColor(step.type)
-
-      nodesHtml += `
-        <div class="absolute workflow-node z-10 cursor-pointer hover:opacity-80 transition-opacity"
-             style="left: ${pos.x}px; top: ${pos.y}px; width: ${nodeWidth}px;"
-             data-step-index="${step.index}"
-             data-action="click->wizard-flow-preview#editStep">
-          <div class="border-2 rounded-lg p-3 bg-white dark:bg-gray-800 shadow-sm"
-               style="border-color: ${bgColor}; min-height: ${nodeHeight}px;">
-            <div class="flex items-center mb-2">
-              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold text-white mr-2" style="background-color: ${bgColor};">
-                ${step.index + 1}
-              </span>
-              <span class="text-xs font-medium uppercase text-gray-600 dark:text-gray-400">${this.renderer.escapeHtml(step.type || 'unknown')}</span>
-            </div>
-            <h4 class="font-semibold text-sm text-gray-900 dark:text-gray-100 mb-1 break-words">${this.renderer.escapeHtml(step.title || `Step ${step.index + 1}`)}</h4>
-            <p class="text-xs text-gray-500 dark:text-gray-500 mt-2">Click to edit</p>
-          </div>
-        </div>
-      `
-    })
-
-    nodesHtml += "</div>"
-    return nodesHtml
   }
 
   editStep(event) {
