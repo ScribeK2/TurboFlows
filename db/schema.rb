@@ -169,7 +169,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_24_131447) do
     t.index ["is_public"], name: "index_workflows_on_is_public"
     t.index ["status", "user_id"], name: "index_workflows_on_status_and_user_id"
     t.index ["status"], name: "index_workflows_on_status"
-    t.index ["steps"], name: "index_workflows_on_steps"
     t.index ["user_id"], name: "index_workflows_on_user_id"
   end
 
