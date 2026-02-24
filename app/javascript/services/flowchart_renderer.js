@@ -364,23 +364,27 @@ export class FlowchartRenderer {
   // Render the complete flowchart
   render(steps) {
     if (!steps || steps.length === 0) {
-      return `<p class="text-gray-500 ${this.darkMode ? 'dark:text-gray-400' : ''} text-center py-8">No steps to preview</p>`
+      return '<p class="text-gray-500 ' + (this.darkMode ? 'dark:text-gray-400' : '') + ' text-center py-8">No steps to preview</p>'
     }
 
     const connections = this.buildConnections(steps)
     const positions = this.calculatePositions(steps, connections)
 
     if (Object.keys(positions).length === 0) {
-      return `<p class="text-gray-500 text-center py-8">Unable to render flow preview</p>`
+      return '<p class="text-gray-500 text-center py-8">Unable to render flow preview</p>'
     }
 
     // Calculate canvas dimensions
     const positionValues = Object.values(positions)
-    const maxX = Math.max(...positionValues.map(p => p.x + this.nodeWidth)) + this.nodeMargin
-    const maxY = Math.max(...positionValues.map(p => p.y + this.nodeHeight)) + this.nodeMargin
+    const maxX = Math.max(...positionValues.map(p => p.x + this.nodeWidth)) + this.nodeMargin * 2
+    const maxY = Math.max(...positionValues.map(p => p.y + this.nodeHeight)) + this.nodeMargin * 2
+
+    // Dot grid background pattern
+    const dotColor = this.darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'
+    const dotGridStyle = 'background-image: radial-gradient(circle, ' + dotColor + ' 1px, transparent 1px); background-size: 20px 20px;'
 
     // Build SVG and nodes
-    let html = `<div class="relative" style="min-height: ${maxY}px; width: ${maxX}px;">`
+    let html = '<div class="relative" style="min-height: ' + maxY + 'px; width: ' + maxX + 'px; ' + dotGridStyle + '">'
     html += this.buildConnectionsSvg(connections, positions, maxX, maxY)
 
     steps.forEach((step, arrayIndex) => {
