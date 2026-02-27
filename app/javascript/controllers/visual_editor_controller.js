@@ -74,8 +74,12 @@ export default class extends Controller {
     }
     window.addEventListener("beforeunload", this.boundBeforeUnload)
 
-    // Sync hidden inputs before form submission
-    this.boundFormSubmit = () => this.syncHiddenInputs()
+    // Sync hidden inputs before form submission and clear dirty flag
+    // so the beforeunload warning doesn't fire during a legitimate save
+    this.boundFormSubmit = () => {
+      this.syncHiddenInputs()
+      this.service.dirty = false
+    }
     const form = this.element.closest("form")
     if (form) {
       form.addEventListener("submit", this.boundFormSubmit)
