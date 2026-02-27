@@ -544,8 +544,21 @@ class WorkflowsController < ApplicationController
   def update_step2
     permitted_params = workflow_step2_params
 
-    # Merge submitted steps with existing steps to preserve fields not in form
-    if permitted_params[:steps].present? && @workflow.steps.present?
+    # Visual editor mode: parse steps from JSON hidden input
+    if params[:workflow][:editor_mode] == 'visual' && params[:workflow][:visual_editor_steps_json].present?
+      begin
+        visual_steps = JSON.parse(params[:workflow][:visual_editor_steps_json])
+        permitted_params[:steps] = visual_steps
+        if params[:workflow][:start_node_uuid].present?
+          permitted_params[:start_node_uuid] = params[:workflow][:start_node_uuid]
+        end
+      rescue JSON::ParserError => e
+        Rails.logger.error "[update_step2] Failed to parse visual editor steps: #{e.message}"
+        flash[:alert] = "Failed to save visual editor changes."
+        redirect_to step2_workflow_path(@workflow) and return
+      end
+    elsif permitted_params[:steps].present? && @workflow.steps.present?
+      # List editor mode: merge submitted steps with existing steps to preserve fields not in form
       permitted_params[:steps] = StepMergeService.new(
         existing_steps: @workflow.steps,
         submitted_steps: permitted_params[:steps]
@@ -760,7 +773,9 @@ class WorkflowsController < ApplicationController
     # NOTE: Must match workflow_params to ensure all nested structures are permitted
     # Missing fields identified in Phase 1 diagnosis: :id, :checkpoint_message, :jumps, output_fields
     # Added: target_workflow_id for sub-flow steps, transitions for graph mode
-    params.require(:workflow).permit(steps: [
+    # Added: visual_editor_steps_json, editor_mode, start_node_uuid for visual editor
+    params.require(:workflow).permit(:visual_editor_steps_json, :editor_mode, :start_node_uuid,
+                                     steps: [
                                        :index, :id, :type, :title, :description, :question, :answer_type, :variable_name,
                                        :else_path, :action_type, :instructions,
                                        :target_workflow_id,
