@@ -1,0 +1,116 @@
+<div id="visual-editor-container"
+     class="hidden"
+     data-controller="visual-editor"
+     data-visual-editor-workflow-id-value="<%= workflow.id %>">
+
+  <%# Steps data for JS parsing %>
+  <script type="application/json" data-visual-editor-target="stepsData">
+    <%= json_escape(workflow.steps.to_json).html_safe %>
+  </script>
+
+  <%# Hidden inputs for form submission %>
+  <input type="hidden" name="workflow[visual_editor_steps_json]" data-visual-editor-target="stepsInput" value="">
+  <input type="hidden" name="workflow[start_node_uuid]" data-visual-editor-target="startNodeInput" value="<%= workflow.start_node_uuid %>">
+
+  <%# Toolbar %>
+  <div class="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 rounded-t-lg">
+    <div class="flex items-center gap-3">
+      <span class="text-sm text-gray-600 dark:text-gray-400" data-visual-editor-target="stepCount">0 steps</span>
+    </div>
+    <div class="flex items-center gap-1">
+      <button type="button" data-action="click->visual-editor#zoomOut"
+              class="p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+              title="Zoom out">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
+      </button>
+      <span class="text-xs text-gray-500 dark:text-gray-400 min-w-[3rem] text-center" data-visual-editor-target="zoomLevel">100%</span>
+      <button type="button" data-action="click->visual-editor#zoomIn"
+              class="p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+              title="Zoom in">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+      </button>
+      <button type="button" data-action="click->visual-editor#fitToScreen"
+              class="p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+              title="Fit to screen">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+      </button>
+      <div class="w-px h-5 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+      <button type="button" data-action="click->visual-editor#autoArrange"
+              class="px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+              title="Auto-arrange">
+        Auto-arrange
+      </button>
+    </div>
+  </div>
+
+  <%# Editor body: palette + canvas %>
+  <div class="flex border border-gray-200 dark:border-gray-700 rounded-b-lg overflow-hidden" style="min-height: 500px; max-height: 70vh;">
+
+    <%# Step palette sidebar %>
+    <%= render partial: "step_palette" %>
+
+    <%# Canvas %>
+    <div class="flex-1 relative overflow-auto bg-white dark:bg-gray-900"
+         data-visual-editor-target="canvas"
+         data-action="dragover->visual-editor#handleCanvasDragOver drop->visual-editor#handleCanvasDrop mousedown->visual-editor#handleCanvasMouseDown mousemove->visual-editor#handleCanvasMouseMove mouseup->visual-editor#handleCanvasMouseUp click->visual-editor#handleCanvasClick keydown@document->visual-editor#handleKeyDown wheel->visual-editor#handleCanvasWheel"
+         style="background-image: radial-gradient(circle, rgba(0,0,0,0.07) 1px, transparent 1px); background-size: 20px 20px;">
+
+      <%# Rendered flowchart content %>
+      <div data-visual-editor-target="canvasContent" class="relative"></div>
+
+      <%# Empty state %>
+      <div data-visual-editor-target="emptyState" class="absolute inset-0 flex items-center justify-center">
+        <div class="text-center">
+          <svg class="mx-auto h-12 w-12 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"/>
+          </svg>
+          <p class="mt-2 text-sm text-gray-400 dark:text-gray-500">Drag a step from the palette to start building</p>
+        </div>
+      </div>
+
+      <%# Temporary SVG for connection drawing %>
+      <svg data-visual-editor-target="tempSvg" class="absolute inset-0 pointer-events-none z-30" style="width: 100%; height: 100%;"></svg>
+    </div>
+  </div>
+
+  <%# Condition popover (for connection presets) %>
+  <div data-visual-editor-target="conditionPopover"
+       class="hidden fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-3 min-w-[200px]">
+    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Connection Condition</p>
+    <div data-visual-editor-target="conditionOptions" class="space-y-1"></div>
+  </div>
+
+  <%# Step config modal %>
+  <div data-visual-editor-target="stepModal"
+       class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-lg mx-4 max-h-[80vh] flex flex-col">
+      <%# Modal header %>
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100" data-visual-editor-target="modalTitle">Edit Step</h3>
+        <button type="button" data-action="click->visual-editor#closeModal"
+                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <%# Modal body %>
+      <div class="px-6 py-4 overflow-y-auto flex-1" data-visual-editor-target="modalBody"></div>
+      <%# Modal footer %>
+      <div class="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+        <button type="button" data-action="click->visual-editor#deleteStepFromModal"
+                class="text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 font-medium transition-colors">
+          Delete Step
+        </button>
+        <div class="flex items-center gap-2">
+          <button type="button" data-action="click->visual-editor#closeModal"
+                  class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors">
+            Cancel
+          </button>
+          <button type="button" data-action="click->visual-editor#saveModal"
+                  class="px-4 py-2 text-sm text-white bg-slate-600 hover:bg-slate-700 rounded-lg transition-colors font-medium">
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

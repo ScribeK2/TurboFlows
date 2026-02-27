@@ -9,6 +9,30 @@
   <%= form_with model: @workflow, url: update_step2_workflow_path(@workflow), method: :patch, local: true, data: { turbo: false, controller: "error-highlight" }, class: "animate-fade-in-up" do |form| %>
     <%= render partial: "shared/error_messages", locals: { object: @workflow, container_class: "mb-6", data_controller_target: "error-highlight-target" } %>
 
+    <%# Mode Toggle (graph mode only) %>
+    <% if @workflow.graph_mode? %>
+      <div class="mb-4" data-controller="view-mode-toggle">
+        <input type="hidden" name="workflow[editor_mode]" value="list" data-view-mode-toggle-target="modeInput">
+        <div class="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 p-0.5">
+          <button type="button"
+                  data-action="click->view-mode-toggle#switchToList"
+                  data-view-mode-toggle-target="listBtn"
+                  class="px-4 py-1.5 text-sm font-medium rounded-md transition-colors bg-slate-600 text-white">
+            List
+          </button>
+          <button type="button"
+                  data-action="click->view-mode-toggle#switchToVisual"
+                  data-view-mode-toggle-target="visualBtn"
+                  class="px-4 py-1.5 text-sm font-medium rounded-md transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700">
+            Visual
+          </button>
+        </div>
+      </div>
+    <% end %>
+
+    <%# List Editor Container %>
+    <div id="list-editor-container">
+
     <%# Two-Column Layout: Sidebar + Main Content (Sprint 3) %>
     <div class="flex gap-6">
       <%# Step Outline Sidebar (shown for workflows with >3 steps) %>
@@ -200,6 +224,12 @@
         </div>
       </div>
     </div>
+
+    </div><%# end list-editor-container %>
+
+    <% if @workflow.graph_mode? %>
+      <%= render partial: "visual_editor", locals: { workflow: @workflow } %>
+    <% end %>
   <% end %>
 
   <%# Floating Action Button for Quick Step Adding %>
