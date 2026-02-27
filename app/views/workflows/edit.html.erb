@@ -118,6 +118,30 @@
         </div>
       <% end %>
 
+      <%# Mode Toggle (graph mode only) %>
+      <% if @workflow.graph_mode? %>
+        <div class="mb-4" data-controller="view-mode-toggle">
+          <input type="hidden" name="workflow[editor_mode]" value="list" data-view-mode-toggle-target="modeInput">
+          <div class="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 p-0.5">
+            <button type="button"
+                    data-action="click->view-mode-toggle#switchToList"
+                    data-view-mode-toggle-target="listBtn"
+                    class="px-4 py-1.5 text-sm font-medium rounded-md transition-colors bg-slate-600 text-white">
+              List
+            </button>
+            <button type="button"
+                    data-action="click->view-mode-toggle#switchToVisual"
+                    data-view-mode-toggle-target="visualBtn"
+                    class="px-4 py-1.5 text-sm font-medium rounded-md transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700">
+              Visual
+            </button>
+          </div>
+        </div>
+      <% end %>
+
+      <%# List Editor Container %>
+      <div id="list-editor-container">
+
       <%# Two-Column Layout: Sidebar + Main Content (Sprint 3) %>
       <% has_sidebar = @workflow.steps.present? && @workflow.steps.length > 3 %>
       <div style="display: grid; grid-template-columns: <%= has_sidebar ? '280px 1fr' : '1fr' %>; gap: 1.5rem; width: 100%;">
@@ -277,6 +301,13 @@
           </div>
         </div>
       </div>
+
+      </div><%# End list-editor-container %>
+
+      <%# Visual Editor (graph mode only) %>
+      <% if @workflow.graph_mode? %>
+        <%= render partial: "visual_editor", locals: { workflow: @workflow } %>
+      <% end %>
 
       <div data-controller="flow-preview" class="mt-6">
         <%= render partial: "flow_preview" %>

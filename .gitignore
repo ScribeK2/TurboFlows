@@ -128,3 +128,17 @@ semgrep-results*/
 
 # Git worktrees
 .worktrees/
+
+# Playwright MCP
+.playwright-mcp/
+
+# Screenshots (UI review artifacts)
+admin.png
+dashboard.png
+login-dark.png
+login-page.png
+scenario-results.png
+scenario-start.png
+templates.png
+workflow-editor.png
+workflows-list.png

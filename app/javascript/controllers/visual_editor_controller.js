@@ -380,6 +380,17 @@ export default class extends Controller {
     if (!stepType) return
     e.dataTransfer.setData("text/plain", stepType)
     e.dataTransfer.effectAllowed = "copy"
+
+    // Create a custom drag image for immediate visual feedback
+    const ghost = document.createElement("div")
+    ghost.textContent = this.capitalize(stepType.replace("_", " "))
+    ghost.style.cssText = "position:absolute;top:-9999px;left:-9999px;padding:6px 14px;border-radius:8px;font-size:13px;font-weight:600;color:#fff;white-space:nowrap;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,0.15);"
+    ghost.style.backgroundColor = this.renderer.getStepColor(stepType)
+    document.body.appendChild(ghost)
+    e.dataTransfer.setDragImage(ghost, ghost.offsetWidth / 2, ghost.offsetHeight / 2)
+
+    // Clean up the ghost element after the drag starts
+    requestAnimationFrame(() => document.body.removeChild(ghost))
   }
 
   handleCanvasDragOver(e) {
@@ -534,25 +545,27 @@ export default class extends Controller {
   buildConditionPresets(step) {
     const presets = []
     const answerType = step.answer_type || "text"
+    // Use the step's variable_name for condition expressions, fall back to "answer"
+    const varName = step.variable_name || "answer"
 
     switch (answerType) {
       case "yes_no":
-        presets.push({ displayLabel: "Yes", condition: "yes", label: "Yes" })
-        presets.push({ displayLabel: "No", condition: "no", label: "No" })
+        presets.push({ displayLabel: "Yes", condition: `${varName} == 'yes'`, label: "Yes" })
+        presets.push({ displayLabel: "No", condition: `${varName} == 'no'`, label: "No" })
         break
       case "multiple_choice":
       case "dropdown":
         if (Array.isArray(step.options)) {
           step.options.forEach(opt => {
             const val = opt.value || opt.label || opt
-            presets.push({ displayLabel: val, condition: val, label: val })
+            presets.push({ displayLabel: val, condition: `${varName} == '${val}'`, label: val })
           })
         }
         break
       case "number":
-        presets.push({ displayLabel: "> threshold", condition: ">", label: ">" })
-        presets.push({ displayLabel: "= threshold", condition: "=", label: "=" })
-        presets.push({ displayLabel: "< threshold", condition: "<", label: "<" })
+        presets.push({ displayLabel: "> threshold", condition: `${varName} > 0`, label: "> threshold" })
+        presets.push({ displayLabel: "= threshold", condition: `${varName} == '0'`, label: "= threshold" })
+        presets.push({ displayLabel: "< threshold", condition: `${varName} < 0`, label: "< threshold" })
         break
     }
 
@@ -770,6 +783,15 @@ export default class extends Controller {
     const stepItems = container.querySelectorAll(".step-item")
     const steps = []
 
+    // Build a lookup of existing transitions and options by step ID
+    // so we can preserve them when syncing from the list form
+    const existingStepMap = {}
+    if (this.service && this.service.steps) {
+      this.service.steps.forEach(s => {
+        existingStepMap[s.id] = s
+      })
+    }
+
     stepItems.forEach((item) => {
       const step = {}
       step.id = this.readInputValue(item, "[name*='[id]']") || crypto.randomUUID()
@@ -783,7 +805,40 @@ export default class extends Controller {
       step.instructions = this.readInputValue(item, "[name*='[instructions]']") || ""
       step.content = this.readInputValue(item, "[name*='[content]']") || ""
       step.target_workflow_id = this.readInputValue(item, "[name*='[target_workflow_id]']") || ""
-      step.transitions = []
+
+      // Read transitions from list form's transitions_json hidden field
+      const transitionsJson = this.readInputValue(item, "[name*='[transitions_json]']")
+      if (transitionsJson) {
+        try {
+          step.transitions = JSON.parse(transitionsJson)
+        } catch (e) {
+          step.transitions = []
+        }
+      } else {
+        // Preserve existing transitions from the visual editor service
+        const existing = existingStepMap[step.id]
+        step.transitions = existing ? (existing.transitions || []) : []
+      }
+
+      // Read options from list form (multiple_choice / dropdown steps)
+      const optionLabels = item.querySelectorAll("[name*='[options][][label]']")
+      const optionValues = item.querySelectorAll("[name*='[options][][value]']")
+      if (optionLabels.length > 0) {
+        step.options = []
+        optionLabels.forEach((labelEl, idx) => {
+          const label = labelEl.value || ""
+          const value = optionValues[idx] ? optionValues[idx].value : label
+          if (label || value) {
+            step.options.push({ label, value })
+          }
+        })
+      } else {
+        // Preserve existing options from the visual editor service
+        const existing = existingStepMap[step.id]
+        if (existing && existing.options) {
+          step.options = existing.options
+        }
+      }
 
       steps.push(step)
     })

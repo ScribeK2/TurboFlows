@@ -196,6 +196,27 @@ class WorkflowsController < ApplicationController
     # Get client's lock_version for optimistic locking
     client_lock_version = params[:workflow][:lock_version].to_i if params[:workflow][:lock_version].present?
 
+    permitted_params = workflow_params
+
+    # Visual editor mode: parse steps from JSON hidden input
+    if params[:workflow][:editor_mode] == 'visual' && params[:workflow][:visual_editor_steps_json].present?
+      begin
+        visual_steps = JSON.parse(params[:workflow][:visual_editor_steps_json])
+        permitted_params[:steps] = visual_steps
+        if params[:workflow][:start_node_uuid].present?
+          permitted_params[:start_node_uuid] = params[:workflow][:start_node_uuid]
+        end
+      rescue JSON::ParserError => e
+        Rails.logger.error "[update] Failed to parse visual editor steps: #{e.message}"
+        flash[:alert] = "Failed to save visual editor changes."
+        redirect_to edit_workflow_path(@workflow) and return
+      end
+    end
+
+    # Remove non-model params before update
+    permitted_params.delete(:visual_editor_steps_json)
+    permitted_params.delete(:editor_mode)
+
     begin
       Workflow.transaction do
         # Check for version conflict if client sent a lock_version
@@ -204,7 +225,7 @@ class WorkflowsController < ApplicationController
           raise ActiveRecord::StaleObjectError.new(@workflow, "update")
         end
 
-        if @workflow.update(workflow_params)
+        if @workflow.update(permitted_params)
           # Update group assignments
           if params[:workflow][:group_ids].present?
             @workflow.group_workflows.destroy_all
@@ -751,6 +772,7 @@ class WorkflowsController < ApplicationController
     # graph_mode and start_node_uuid are for DAG-based workflows
     params.require(:workflow).permit(:title, :description, :is_public, :lock_version,
                                      :graph_mode, :start_node_uuid,
+                                     :visual_editor_steps_json, :editor_mode,
                                      steps: [
                                        :index, :id, :type, :title, :description, :question, :answer_type, :variable_name,
                                        :else_path, :action_type, :instructions,
