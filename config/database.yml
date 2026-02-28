@@ -44,7 +44,7 @@ test:
 production:
   adapter: postgresql
   url: <%= ENV["DATABASE_URL"] %>
-  pool: <%= ENV.fetch("RAILS_MAX_THREADS", 5).to_i + 2 %>
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS", 5).to_i * ENV.fetch("WEB_CONCURRENCY", 2).to_i + 2 %>
   # Connection timeout in milliseconds
   connect_timeout: 5
   # Use prepared statements for better performance
