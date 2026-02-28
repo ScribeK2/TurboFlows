@@ -71,4 +71,7 @@ Rails.application.routes.draw do
       resources :folders, except: [:show]
     end
   end
+
+  # Markdown preview (AJAX endpoint for editor)
+  post 'markdown/preview', to: 'markdown#preview', as: :markdown_preview
 end
