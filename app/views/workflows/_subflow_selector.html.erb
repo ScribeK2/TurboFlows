@@ -31,7 +31,7 @@
 </div>
 
 <% if step['target_workflow_id'].present? %>
-  <% target_workflow = Workflow.find_by(id: step['target_workflow_id']) %>
+  <% target_workflow = @subflow_targets&.dig(step['target_workflow_id'].to_i) %>
   <% if target_workflow %>
     <div class="mt-3 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-800/30">
       <div class="flex items-center justify-between">

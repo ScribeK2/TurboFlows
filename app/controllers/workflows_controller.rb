@@ -136,7 +136,9 @@ class WorkflowsController < ApplicationController
     end
   end
 
-  def show; end
+  def show
+    preload_subflow_targets
+  end
 
   def new
     @workflow = current_user.workflows.build(
@@ -172,6 +174,7 @@ class WorkflowsController < ApplicationController
     # Eager load groups to prevent N+1 queries
     @accessible_groups = Group.visible_to(current_user).includes(:children).order(:name)
     @selected_group_ids = @workflow.group_ids
+    preload_subflow_targets
   end
 
   def create
@@ -734,6 +737,16 @@ class WorkflowsController < ApplicationController
 
   def set_workflow
     @workflow = Workflow.find(params[:id])
+  end
+
+  # Preload all workflows referenced by sub-flow steps to avoid N+1 queries in partials
+  def preload_subflow_targets
+    return unless @workflow&.steps.present?
+
+    subflow_ids = @workflow.steps
+      .select { |s| %w[sub_flow sub-flow].include?(s["type"]) && s["target_workflow_id"].present? }
+      .map { |s| s["target_workflow_id"].to_i }
+    @subflow_targets = Workflow.where(id: subflow_ids).index_by(&:id) if subflow_ids.any?
   end
 
   # Determine graph_mode for new workflows
