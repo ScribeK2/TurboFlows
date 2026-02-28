@@ -5,47 +5,35 @@
      data-controller="instruction-template">
 
   <%# Instructions Field with Templates %>
-  <div class="mb-4" data-controller="step-image-upload">
+  <div class="mb-4">
     <div class="flex items-center justify-between mb-2">
       <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">
         Instructions <span class="text-red-500">*</span>
       </label>
-      <div class="flex items-center gap-2">
-        <%# Toggle button inline with label %>
-        <button type="button"
-                data-action="click->instruction-template#togglePanel"
-                class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
-          </svg>
-          Insert Template
-        </button>
-        <button type="button"
-                data-action="click->step-image-upload#pickImage"
-                class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-          </svg>
-          Insert Image
-        </button>
-      </div>
+      <button type="button"
+              data-action="click->instruction-template#togglePanel"
+              class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
+        </svg>
+        Insert Template
+      </button>
     </div>
 
     <%# Template panel at full column width with z-index above Live Preview %>
     <%= render 'workflows/instruction_templates' %>
 
-    <textarea name="workflow[steps][][instructions]"
-              placeholder="Enter step-by-step instructions for the CSR to follow... (type {{ to insert variables)"
-              class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm font-mono leading-relaxed resize-y"
-              rows="5"
-              data-step-form-target="field"
-              data-instruction-template-target="instructionsField"
-              data-variable-autocomplete-target="input"
-              data-step-image-upload-target="textarea"><%= step['instructions'] %></textarea>
-    <span data-step-image-upload-target="status" class="hidden text-xs text-blue-600 dark:text-blue-400 mt-1"></span>
-    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-      Supports Markdown: **bold**, *italic*, [links](url), ![images](url). Use Insert Image button to upload.
-    </p>
+    <%= render partial: "shared/markdown_editor", locals: {
+      name: "workflow[steps][][instructions]",
+      value: step['instructions'],
+      placeholder: "Enter step-by-step instructions for the CSR to follow... (type {{ to insert variables)",
+      rows: 5,
+      extra_data: {
+        step_form_target: "field",
+        instruction_template_target: "instructionsField",
+        variable_autocomplete_target: "input"
+      }
+    } %>
   </div>
 
   <%# Attachments Section %>
