@@ -235,7 +235,7 @@ class WorkflowChannel < ApplicationCable::Channel
                                    type: "workflow_saved",
                                    lock_version: workflow.lock_version,
                                    title: workflow.title,
-                                   steps: workflow.steps,
+                                   updated_at: workflow.updated_at.iso8601,
                                    saved_by: user_info,
                                    timestamp: Time.current.iso8601
                                  })
