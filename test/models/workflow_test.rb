@@ -370,6 +370,7 @@ class WorkflowTest < ActiveSupport::TestCase
     GroupWorkflow.create!(group: group1, workflow: workflow, is_primary: true)
     GroupWorkflow.create!(group: group2, workflow: workflow, is_primary: false)
 
+    workflow.reload
     assert_equal group1, workflow.primary_group
   end
 
@@ -384,6 +385,7 @@ class WorkflowTest < ActiveSupport::TestCase
     GroupWorkflow.create!(group: group1, workflow: workflow, is_primary: false)
     GroupWorkflow.create!(group: group2, workflow: workflow, is_primary: false)
 
+    workflow.reload
     assert_equal group1, workflow.primary_group
   end
 

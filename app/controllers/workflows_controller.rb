@@ -28,7 +28,7 @@ class WorkflowsController < ApplicationController
     end
 
     # Eager load associations to prevent N+1 queries (especially important for caching)
-    @workflows = @workflows.includes(:user)
+    @workflows = @workflows.includes(:user, group_workflows: :group)
                            .search_by(params[:search])
 
     # Apply sort order

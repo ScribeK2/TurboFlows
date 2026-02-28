@@ -4,6 +4,8 @@ class Workflow < ApplicationRecord
   include StepTypeIcons
   include WorkflowStepValidation
 
+  MARKDOWN_RENDERER = Redcarpet::Markdown.new(Redcarpet::Render::HTML.new)
+
   belongs_to :user
 
   # Group associations
@@ -155,7 +157,7 @@ class Workflow < ApplicationRecord
     return nil if description.blank?
 
     ActionController::Base.helpers.strip_tags(
-      Redcarpet::Markdown.new(Redcarpet::Render::HTML.new).render(description)
+      MARKDOWN_RENDERER.render(description)
     ).squish
   end
 
@@ -239,7 +241,12 @@ class Workflow < ApplicationRecord
 
   # Group helper methods
   def primary_group
-    group_workflows.find_by(is_primary: true)&.group || groups.first
+    if group_workflows.loaded?
+      return nil if group_workflows.empty?
+      group_workflows.detect { |gw| gw.is_primary? }&.group || group_workflows.first&.group
+    else
+      group_workflows.find_by(is_primary: true)&.group || groups.first
+    end
   end
 
   def all_groups
