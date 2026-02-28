@@ -1,7 +1,7 @@
 class WorkflowChannel < ApplicationCable::Channel
   def subscribed
     # Subscribe to updates for a specific workflow
-    workflow = Workflow.find(params[:workflow_id])
+    workflow = find_workflow
 
     # Allow authorized users (editors/admins) to subscribe, not just owners
     if workflow.can_be_edited_by?(current_user)
@@ -30,7 +30,7 @@ class WorkflowChannel < ApplicationCable::Channel
 
   # Handle title/description updates from other users
   def workflow_metadata_update(data)
-    workflow = Workflow.find(params[:workflow_id])
+    workflow = find_workflow
     return unless workflow.can_be_edited_by?(current_user)
 
     Rails.logger.info "WorkflowChannel: Broadcasting workflow_metadata_update - field: #{data['field']}, value length: #{data['value'].to_s.length}"
@@ -46,7 +46,7 @@ class WorkflowChannel < ApplicationCable::Channel
 
   # Handle step updates from other users
   def step_update(data)
-    workflow = Workflow.find(params[:workflow_id])
+    workflow = find_workflow
     return unless workflow.can_be_edited_by?(current_user)
 
     Rails.logger.info "WorkflowChannel: Broadcasting step_update - step_index: #{data['step_index']}"
@@ -64,7 +64,7 @@ class WorkflowChannel < ApplicationCable::Channel
   # Handle auto-save requests from the client
   # Uses optimistic locking to prevent race conditions when multiple users edit
   def autosave(data)
-    workflow = Workflow.find(params[:workflow_id])
+    workflow = find_workflow
     return unless workflow.can_be_edited_by?(current_user)
 
     client_lock_version = (data["lock_version"] || data[:lock_version]).to_i
@@ -175,6 +175,10 @@ class WorkflowChannel < ApplicationCable::Channel
   end
 
   private
+
+  def find_workflow
+    @workflow ||= Workflow.find(params[:workflow_id])
+  end
 
   def detect_version_conflict?(workflow, client_lock_version)
     return false unless client_lock_version > 0 && workflow.lock_version != client_lock_version
