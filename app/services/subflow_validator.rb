@@ -31,11 +31,14 @@ class SubflowValidator
   def valid?
     @errors = []
 
-    workflow = Workflow.find_by(id: @workflow_id)
-    return true unless workflow
+    root = Workflow.find_by(id: @workflow_id)
+    return true unless root
 
-    validate_no_circular_subflows(workflow, [])
-    validate_max_depth(workflow)
+    # Batch-load all reachable workflows upfront
+    @workflows_cache = preload_reachable_workflows(root)
+
+    validate_no_circular_subflows(root, [])
+    validate_max_depth(root)
 
     @errors.empty?
   end
@@ -54,6 +57,47 @@ class SubflowValidator
 
   private
 
+  # Batch-load all workflows reachable via sub-flow references
+  # Uses a single bulk query to load all potentially reachable workflows,
+  # then verifies connectivity in-memory
+  # @param root [Workflow] The starting workflow
+  # @return [Hash<Integer, Workflow>] Cache of workflow_id => workflow
+  def preload_reachable_workflows(root)
+    cache = { root.id => root }
+    initial_ids = extract_subflow_target_ids(root)
+    return cache if initial_ids.empty?
+
+    # Load all initial targets in one query
+    batch = Workflow.where(id: initial_ids).to_a
+    batch.each { |w| cache[w.id] = w }
+
+    # Collect any further references from loaded workflows
+    loaded_ids = cache.keys.to_set
+    new_ids = batch.flat_map { |w| extract_subflow_target_ids(w) }.uniq - loaded_ids.to_a
+
+    # Continue loading in batches until no new IDs are found
+    while new_ids.any?
+      next_batch = Workflow.where(id: new_ids).to_a
+      next_batch.each { |w| cache[w.id] = w }
+      loaded_ids.merge(new_ids)
+
+      new_ids = next_batch.flat_map { |w| extract_subflow_target_ids(w) }.uniq - loaded_ids.to_a
+    end
+
+    cache
+  end
+
+  # Extract target workflow IDs from sub-flow steps
+  # @param workflow [Workflow] The workflow to extract from
+  # @return [Array<Integer>] Array of target workflow IDs
+  def extract_subflow_target_ids(workflow)
+    return [] unless workflow.steps.is_a?(Array)
+
+    workflow.steps
+      .select { |s| (s["type"] == "sub_flow" || s["type"] == "sub-flow") && s["target_workflow_id"].present? }
+      .map { |s| s["target_workflow_id"].to_i }
+  end
+
   # Recursively check for circular sub-flow references
   # Uses DFS with path tracking to detect cycles
   # @param workflow [Workflow] The current workflow being validated
@@ -61,28 +105,21 @@ class SubflowValidator
   def validate_no_circular_subflows(workflow, visited_path)
     return if workflow.nil?
 
-    # Check if we've already visited this workflow in the current path
     if visited_path.include?(workflow.id)
       cycle_start = visited_path.index(workflow.id)
       cycle_path = visited_path[cycle_start..] + [workflow.id]
-      cycle_names = cycle_path.map { |id| workflow_name(id) }
+      cycle_names = cycle_path.map { |wid| @workflows_cache[wid]&.title || "Workflow ##{wid}" }
       @errors << "Circular sub-flow reference: #{cycle_names.join(' -> ')}"
       return
     end
 
-    # Get all sub-flow step references
-    subflow_workflow_ids = workflow.referenced_workflow_ids
-    return if subflow_workflow_ids.empty?
-
-    # Add current workflow to the path
-    current_path = visited_path + [workflow.id]
-
-    # Recursively check each referenced workflow
-    subflow_workflow_ids.each do |target_id|
-      target_workflow = Workflow.find_by(id: target_id)
-      next unless target_workflow
-
-      validate_no_circular_subflows(target_workflow, current_path)
+    extract_subflow_target_ids(workflow).each do |target_id|
+      target = @workflows_cache[target_id]
+      unless target
+        @errors << "Sub-flow references non-existent workflow (ID: #{target_id})"
+        next
+      end
+      validate_no_circular_subflows(target, visited_path + [workflow.id])
     end
   end
 
@@ -106,20 +143,13 @@ class SubflowValidator
 
     visited.add(workflow.id)
 
-    subflow_workflow_ids = workflow.referenced_workflow_ids
-    return 1 if subflow_workflow_ids.empty?
+    target_ids = extract_subflow_target_ids(workflow)
+    return 1 if target_ids.empty?
 
-    max_child_depth = subflow_workflow_ids.map do |target_id|
-      target_workflow = Workflow.find_by(id: target_id)
-      calculate_max_depth(target_workflow, visited.dup)
+    max_child_depth = target_ids.map do |tid|
+      calculate_max_depth(@workflows_cache[tid], visited.dup)
     end.max || 0
 
     1 + max_child_depth
-  end
-
-  # Get workflow name for error messages
-  def workflow_name(workflow_id)
-    workflow = Workflow.find_by(id: workflow_id)
-    workflow&.title || "Workflow ##{workflow_id}"
   end
 end

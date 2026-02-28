@@ -20,14 +20,14 @@ Rails.application.configure do
   # Static files served by Rails (importmap JS + tailwindcss-rails CSS)
   config.public_file_server.enabled = ENV.fetch("RAILS_SERVE_STATIC_FILES", "true") == "true"
   config.public_file_server.headers = {
-    'Cache-Control' => "public, max-age=#{1.hour.to_i}"
+    'Cache-Control' => "public, max-age=31536000"
   }
 
   # Compress CSS using a preprocessor.
   # config.assets.css_compressor = :sass
 
   # Allow fallback to assets pipeline if a precompiled asset is missed (helps during deployment)
-  config.assets.compile = true
+  config.assets.compile = false
 
   # Enable serving of images, stylesheets, and JavaScripts from an asset server.
   # config.asset_host = "http://assets.example.com"
@@ -55,8 +55,14 @@ Rails.application.configure do
   # Prepend all log lines with the following tags.
   config.log_tags = [ :request_id ]
 
-  # Use a different cache store in production.
-  # config.cache_store = :mem_cache_store
+  # Use Redis as cache store for cross-worker fragment caching
+  config.cache_store = :redis_cache_store, {
+    url: ENV.fetch("REDIS_URL", "redis://localhost:6379/1"),
+    expires_in: 1.hour,
+    error_handler: ->(method:, returning:, exception:) {
+      Rails.logger.warn("Redis cache error: #{exception.message}")
+    }
+  }
 
   # Use a real queuing backend for Active Job (and separate queues per environment).
   # config.active_job.queue_adapter = :sidekiq

@@ -28,7 +28,7 @@ class WorkflowsController < ApplicationController
     end
 
     # Eager load associations to prevent N+1 queries (especially important for caching)
-    @workflows = @workflows.includes(:user)
+    @workflows = @workflows.includes(:user, group_workflows: :group)
                            .search_by(params[:search])
 
     # Apply sort order
@@ -36,7 +36,7 @@ class WorkflowsController < ApplicationController
                  when 'alphabetical'
                    @workflows.order(Arel.sql('LOWER(title) ASC'))
                  when 'most_steps'
-                   @workflows.order(Arel.sql("COALESCE(json_array_length(steps), 0) DESC"))
+                   @workflows.order(steps_count: :desc)
                  else
                    # 'recent' — order by updated_at
                    @workflows.order(updated_at: :desc)
@@ -51,6 +51,7 @@ class WorkflowsController < ApplicationController
           # Eager load ancestors to prevent N+1 queries in breadcrumb rendering
           # Load up to 5 levels deep (max depth) to cover all ancestors
           @selected_group = Group.includes(parent: { parent: { parent: { parent: :parent } } }).find_by(id: params[:group_id])
+          @selected_ancestor_ids = @selected_group&.ancestors&.map(&:id) || []
           @workflows = @workflows.in_group(@selected_group)
         else
           @selected_group = nil
@@ -73,7 +74,7 @@ class WorkflowsController < ApplicationController
                                  when 'alphabetical'
                                    @uncategorized_workflows.order(Arel.sql('LOWER(title) ASC'))
                                  when 'most_steps'
-                                   @uncategorized_workflows.order(Arel.sql("COALESCE(json_array_length(steps), 0) DESC"))
+                                   @uncategorized_workflows.order(steps_count: :desc)
                                  else
                                    @uncategorized_workflows.order(updated_at: :desc)
                                  end
@@ -95,6 +96,10 @@ class WorkflowsController < ApplicationController
                               .roots
                               .includes(:children)
                               .order(:position, :name)
+
+    # Precompute workflows counts for sidebar to avoid N+1 queries
+    all_sidebar_groups = @accessible_groups.to_a + @accessible_groups.flat_map(&:children)
+    Group.precompute_workflows_counts(all_sidebar_groups) if all_sidebar_groups.any?
 
     # Fallback: if no groups exist at all, don't filter by groups
     if @accessible_groups.empty? && !current_user&.admin?
@@ -131,7 +136,9 @@ class WorkflowsController < ApplicationController
     end
   end
 
-  def show; end
+  def show
+    preload_subflow_targets
+  end
 
   def new
     @workflow = current_user.workflows.build(
@@ -167,6 +174,7 @@ class WorkflowsController < ApplicationController
     # Eager load groups to prevent N+1 queries
     @accessible_groups = Group.visible_to(current_user).includes(:children).order(:name)
     @selected_group_ids = @workflow.group_ids
+    preload_subflow_targets
   end
 
   def create
@@ -729,6 +737,16 @@ class WorkflowsController < ApplicationController
 
   def set_workflow
     @workflow = Workflow.find(params[:id])
+  end
+
+  # Preload all workflows referenced by sub-flow steps to avoid N+1 queries in partials
+  def preload_subflow_targets
+    return unless @workflow&.steps.present?
+
+    subflow_ids = @workflow.steps
+      .select { |s| %w[sub_flow sub-flow].include?(s["type"]) && s["target_workflow_id"].present? }
+      .map { |s| s["target_workflow_id"].to_i }
+    @subflow_targets = Workflow.where(id: subflow_ids).index_by(&:id) if subflow_ids.any?
   end
 
   # Determine graph_mode for new workflows

@@ -4,6 +4,8 @@ class Workflow < ApplicationRecord
   include StepTypeIcons
   include WorkflowStepValidation
 
+  MARKDOWN_RENDERER = Redcarpet::Markdown.new(Redcarpet::Render::HTML.new)
+
   belongs_to :user
 
   # Group associations
@@ -41,6 +43,8 @@ class Workflow < ApplicationRecord
   MAX_STEP_CONTENT_LENGTH = 50_000  # 50KB per step field
   MAX_TOTAL_STEPS_SIZE = 5_000_000  # 5MB total for steps JSON
 
+  # Keep steps_count in sync with steps array
+  before_save :update_steps_count
   # Clean up import flags when steps are completed
   before_save :cleanup_import_flags
   # Set draft expiration before save (7 days from creation or update)
@@ -153,7 +157,7 @@ class Workflow < ApplicationRecord
     return nil if description.blank?
 
     ActionController::Base.helpers.strip_tags(
-      Redcarpet::Markdown.new(Redcarpet::Render::HTML.new).render(description)
+      MARKDOWN_RENDERER.render(description)
     ).squish
   end
 
@@ -237,7 +241,12 @@ class Workflow < ApplicationRecord
 
   # Group helper methods
   def primary_group
-    group_workflows.find_by(is_primary: true)&.group || groups.first
+    if group_workflows.loaded?
+      return nil if group_workflows.empty?
+      group_workflows.detect { |gw| gw.is_primary? }&.group || group_workflows.first&.group
+    else
+      group_workflows.find_by(is_primary: true)&.group || groups.first
+    end
   end
 
   def all_groups
@@ -527,6 +536,10 @@ class Workflow < ApplicationRecord
   end
 
   private
+
+  def update_steps_count
+    self.steps_count = steps.is_a?(Array) ? steps.size : 0
+  end
 
   # Validate graph structure (only in graph mode)
   # Uses GraphValidator service for comprehensive checks

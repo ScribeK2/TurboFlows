@@ -25,12 +25,12 @@ module WorkflowAuthorization
       return true if user == self.user
       return true if is_public?
 
-      # Check if workflow is in user's assigned groups (optimized single query)
-      if user.groups.any?
-        accessible_group_ids = Group.accessible_group_ids_for(user)
-        return true if groups.where(id: accessible_group_ids).any?
+      # Check if workflow is in user's assigned groups
+      group_ids = cached_accessible_group_ids(user)
+      if group_ids.any?
+        return true if workflow_in_groups?(group_ids)
       end
-      return true if groups.empty? # Workflows without groups (backward compatibility)
+      return true if workflow_has_no_groups? # Workflows without groups (backward compatibility)
 
       return false
     end
@@ -38,14 +38,14 @@ module WorkflowAuthorization
     # Users: can view public workflows + workflows in assigned groups + workflows without groups
     return true if is_public?
 
-    # Check if workflow is in user's assigned groups (optimized single query)
-    if user.groups.any?
-      accessible_group_ids = Group.accessible_group_ids_for(user)
-      return true if groups.where(id: accessible_group_ids).any?
+    # Check if workflow is in user's assigned groups
+    group_ids = cached_accessible_group_ids(user)
+    if group_ids.any?
+      return true if workflow_in_groups?(group_ids)
     end
 
     # Workflows without groups are accessible to all users (backward compatibility)
-    return true if groups.empty?
+    return true if workflow_has_no_groups?
 
     false
   end
@@ -91,5 +91,34 @@ module WorkflowAuthorization
 
     # Editors can only delete their own workflows
     user.editor? && user == self.user
+  end
+
+  private
+
+  # Cache accessible group IDs on the user to avoid repeated queries
+  # when checking multiple workflows for the same user
+  def cached_accessible_group_ids(user)
+    user.instance_variable_get(:@_accessible_group_ids) ||
+      user.instance_variable_set(:@_accessible_group_ids, Group.accessible_group_ids_for(user))
+  end
+
+  # Check if workflow belongs to any of the given group IDs,
+  # using in-memory check when associations are eager-loaded
+  def workflow_in_groups?(accessible_group_ids)
+    if group_workflows.loaded?
+      accessible_set = accessible_group_ids.is_a?(Set) ? accessible_group_ids : accessible_group_ids.to_set
+      group_workflows.any? { |gw| accessible_set.include?(gw.group_id) }
+    else
+      groups.where(id: accessible_group_ids).any?
+    end
+  end
+
+  # Check if workflow has no groups, using in-memory check when loaded
+  def workflow_has_no_groups?
+    if group_workflows.loaded?
+      group_workflows.empty?
+    else
+      groups.empty?
+    end
   end
 end

@@ -1,6 +1,6 @@
 <li class="group-sidebar-item" data-group-id="<%= group.id %>" tabindex="0" data-action="keydown->workflow-sidebar#handleKeydown">
   <%# Check if this group or any ancestor of selected group matches (optimized to avoid N+1 descendants query) %>
-  <% is_selected = @selected_group&.id == group.id || @selected_group&.ancestors&.include?(group) %>
+  <% is_selected = @selected_group&.id == group.id || @selected_ancestor_ids&.include?(group.id) %>
   <% has_children = group.children.any? %>
   <% workflows_count = group.workflows_count(include_descendants: true) %>
   

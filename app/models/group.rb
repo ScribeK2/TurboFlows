@@ -57,9 +57,13 @@ class Group < ApplicationRecord
   # Returns an array ordered from immediate parent to root
   # Example: If hierarchy is Root > Parent > Child, Child.ancestors returns [Parent, Root]
   def ancestors
-    return [] if root?
+    return [] if parent_id.nil?
 
-    [parent] + parent.ancestors
+    ids = self.class.ancestor_ids_for(id)
+    return [] if ids.empty?
+
+    ancestors_by_id = Group.where(id: ids).index_by(&:id)
+    ids.map { |aid| ancestors_by_id[aid] }.compact
   end
 
   # Get all descendant groups (children, grandchildren, etc.) recursively
@@ -139,6 +143,36 @@ class Group < ApplicationRecord
     (user_group_ids + descendant_ids).uniq
   end
 
+  # Get ancestor IDs for a group using a single efficient approach
+  # @param group_id [Integer] The group ID to find ancestors for
+  # @return [Array<Integer>] Array of ancestor group IDs, ordered from immediate parent to root
+  def self.ancestor_ids_for(group_id)
+    if connection.adapter_name.downcase.include?("postgresql")
+      sql = <<~SQL
+        WITH RECURSIVE ancestor_tree AS (
+          SELECT parent_id FROM groups WHERE id = #{connection.quote(group_id)}
+          UNION ALL
+          SELECT g.parent_id FROM groups g
+          INNER JOIN ancestor_tree a ON g.id = a.parent_id
+          WHERE g.parent_id IS NOT NULL
+        )
+        SELECT parent_id FROM ancestor_tree WHERE parent_id IS NOT NULL
+      SQL
+      connection.select_values(sql).map(&:to_i)
+    else
+      # SQLite breadth-first with depth cap
+      ids = []
+      current_id = connection.select_value("SELECT parent_id FROM groups WHERE id = #{connection.quote(group_id)}")
+      seen = Set.new
+      while current_id && !seen.include?(current_id) && ids.size < 10
+        seen.add(current_id)
+        ids << current_id.to_i
+        current_id = connection.select_value("SELECT parent_id FROM groups WHERE id = #{connection.quote(current_id)}")
+      end
+      ids
+    end
+  end
+
   # Generate a full path string showing the hierarchy
   # Example: "Customer Experience > Phone Support > Tier 1"
   # @param separator [String] The separator to use between group names (default: " > ")
@@ -153,12 +187,57 @@ class Group < ApplicationRecord
   # Note: This method can cause N+1 queries if called on multiple groups without eager loading
   def workflows_count(include_descendants: true)
     if include_descendants
-      # Get all descendant IDs plus this group's ID
-      descendant_ids = descendants.map(&:id) + [id]
-      # Use a single query to count workflows in all groups
-      GroupWorkflow.where(group_id: descendant_ids).distinct.count(:workflow_id)
+      # Use precomputed cache if available (set by Group.precompute_workflows_counts)
+      return @_workflows_count_cache if defined?(@_workflows_count_cache)
+
+      all_ids = self.class.descendant_ids_for([id]) + [id]
+      GroupWorkflow.where(group_id: all_ids).distinct.count(:workflow_id)
     else
       workflows.count
+    end
+  end
+
+  # Precompute workflows_count for a collection of groups in bulk
+  # This avoids N+1 queries when rendering sidebar or lists
+  # @param groups [Array<Group>] Groups to precompute counts for
+  def self.precompute_workflows_counts(groups)
+    return if groups.empty?
+
+    all_group_ids = groups.map(&:id)
+
+    # Build a map: group_id => set of all descendant IDs (including self)
+    all_descendant_ids = descendant_ids_for(all_group_ids)
+    all_relevant_ids = (all_group_ids + all_descendant_ids).uniq
+
+    # Single query: get all group_id => workflow_id pairs
+    gw_pairs = GroupWorkflow.where(group_id: all_relevant_ids).pluck(:group_id, :workflow_id)
+
+    # Build group_id => [workflow_ids] lookup
+    workflows_by_group = gw_pairs.each_with_object(Hash.new { |h, k| h[k] = Set.new }) do |(gid, wid), hash|
+      hash[gid].add(wid)
+    end
+
+    # For each group, compute count including descendants
+    # Need to know which groups are descendants of which
+    parent_child = Group.where(id: all_relevant_ids).pluck(:id, :parent_id)
+    children_map = parent_child.each_with_object(Hash.new { |h, k| h[k] = [] }) do |(cid, pid), hash|
+      hash[pid] << cid if pid
+    end
+
+    groups.each do |group|
+      # Get all IDs in this group's subtree
+      subtree_ids = [group.id]
+      queue = [group.id]
+      while (current = queue.shift)
+        kids = children_map[current] || []
+        subtree_ids.concat(kids)
+        queue.concat(kids)
+      end
+
+      # Count distinct workflows across the subtree
+      workflow_ids = Set.new
+      subtree_ids.each { |gid| workflow_ids.merge(workflows_by_group[gid]) }
+      group.instance_variable_set(:@_workflows_count_cache, workflow_ids.size)
     end
   end
 
