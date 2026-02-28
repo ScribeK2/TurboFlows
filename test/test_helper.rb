@@ -1,6 +1,7 @@
 ENV["RAILS_ENV"] ||= "test"
 require_relative "../config/environment"
 require "rails/test_help"
+require_relative "support/performance_helper"
 
 class ActiveSupport::TestCase
   # Disable parallelization temporarily to avoid fixture issues
