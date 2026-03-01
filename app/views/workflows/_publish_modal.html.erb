@@ -1,0 +1,23 @@
+<dialog id="publish-modal" class="rounded-lg shadow-xl bg-white dark:bg-gray-800 p-0 backdrop:bg-black/50 max-w-md w-full">
+  <div class="p-6">
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Publish Workflow</h3>
+    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+      This creates a new published version. Agents running this workflow will use the new version.
+    </p>
+    <%= form_with url: publish_workflow_path(workflow), method: :post, class: "space-y-4" do |f| %>
+      <div>
+        <%= f.label :changelog, "Changelog (optional)", class: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" %>
+        <%= f.text_area :changelog, rows: 3, placeholder: "What changed in this version?",
+            class: "w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:ring-emerald-500 focus:border-emerald-500 text-sm" %>
+      </div>
+      <div class="flex justify-end space-x-3">
+        <button type="button" onclick="document.getElementById('publish-modal').close()"
+                class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600">
+          Cancel
+        </button>
+        <%= f.submit "Publish",
+            class: "px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 border border-transparent rounded-md cursor-pointer" %>
+      </div>
+    <% end %>
+  </div>
+</dialog>
