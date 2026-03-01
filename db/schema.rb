@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_28_201256) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_01_182038) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.string "name", null: false
     t.text "body"
@@ -150,6 +150,22 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_28_201256) do
     t.index ["unlock_token"], name: "index_users_on_unlock_token", unique: true
   end
 
+  create_table "workflow_versions", force: :cascade do |t|
+    t.integer "workflow_id", null: false
+    t.integer "version_number", null: false
+    t.json "steps_snapshot", null: false
+    t.json "metadata_snapshot", default: {}, null: false
+    t.integer "published_by_id", null: false
+    t.datetime "published_at", null: false
+    t.text "changelog"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["published_at"], name: "index_workflow_versions_on_published_at"
+    t.index ["published_by_id"], name: "index_workflow_versions_on_published_by_id"
+    t.index ["workflow_id", "version_number"], name: "index_workflow_versions_on_workflow_id_and_version_number", unique: true
+    t.index ["workflow_id"], name: "index_workflow_versions_on_workflow_id"
+  end
+
   create_table "workflows", force: :cascade do |t|
     t.string "title", null: false
     t.text "description"
@@ -185,5 +201,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_28_201256) do
   add_foreign_key "scenarios", "workflows"
   add_foreign_key "user_groups", "groups"
   add_foreign_key "user_groups", "users"
+  add_foreign_key "workflow_versions", "users", column: "published_by_id"
+  add_foreign_key "workflow_versions", "workflows"
   add_foreign_key "workflows", "users"
 end
