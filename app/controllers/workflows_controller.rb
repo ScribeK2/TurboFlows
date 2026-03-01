@@ -996,6 +996,16 @@ class WorkflowsController < ApplicationController
         Rails.logger.info "[parse_transitions_json] Step #{index}: NO transitions_json field"
       end
 
+      # Parse attachments if it's a JSON string
+      if step[:attachments].is_a?(String)
+        begin
+          parsed = JSON.parse(step[:attachments])
+          step[:attachments] = parsed if parsed.is_a?(Array)
+        rescue JSON::ParserError
+          step[:attachments] = []
+        end
+      end
+
       # Parse output_fields if it's a JSON string
       next unless step[:output_fields].is_a?(String)
 

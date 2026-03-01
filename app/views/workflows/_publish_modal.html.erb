@@ -1,4 +1,4 @@
-<dialog id="publish-modal" class="rounded-lg shadow-xl bg-white dark:bg-gray-800 p-0 backdrop:bg-black/50 max-w-md w-full">
+<dialog data-dialog-target="dialog" class="fixed inset-0 m-auto rounded-lg shadow-xl bg-white dark:bg-gray-800 p-0 backdrop:bg-black/50 max-w-md w-full h-fit">
   <div class="p-6">
     <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Publish Workflow</h3>
     <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
@@ -11,7 +11,7 @@
             class: "w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:ring-emerald-500 focus:border-emerald-500 text-sm" %>
       </div>
       <div class="flex justify-end space-x-3">
-        <button type="button" onclick="document.getElementById('publish-modal').close()"
+        <button type="button" data-action="dialog#close"
                 class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600">
           Cancel
         </button>
