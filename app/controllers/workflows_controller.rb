@@ -1,10 +1,10 @@
 class WorkflowsController < ApplicationController
   before_action :set_workflow,
-                only: %i[show edit update destroy export export_pdf preview variables save_as_template start begin_execution step1 update_step1 step2 update_step2 step3 create_from_draft render_step]
+                only: %i[show edit update destroy export export_pdf preview variables save_as_template start begin_execution step1 update_step1 step2 update_step2 step3 create_from_draft render_step publish versions]
   before_action :ensure_draft_workflow!, only: %i[step1 update_step1 step2 update_step2 step3 create_from_draft]
   before_action :ensure_editor_or_admin!, only: %i[new create import import_file start_wizard]
   before_action :ensure_can_view_workflow!, only: %i[show export export_pdf start begin_execution]
-  before_action :ensure_can_edit_workflow!, only: %i[edit update save_as_template]
+  before_action :ensure_can_edit_workflow!, only: %i[edit update save_as_template publish]
   before_action :ensure_can_delete_workflow!, only: [:destroy]
   before_action :parse_transitions_json, only: %i[create update update_step2]
 
@@ -474,6 +474,20 @@ class WorkflowsController < ApplicationController
     else
       redirect_to start_workflow_path(@workflow), alert: "Failed to start workflow: #{@scenario.errors.full_messages.join(', ')}"
     end
+  end
+
+  def publish
+    result = WorkflowPublisher.publish(@workflow, current_user, changelog: params[:changelog])
+
+    if result.success?
+      redirect_to @workflow, notice: "Workflow published as version #{result.version.version_number}."
+    else
+      redirect_to @workflow, alert: "Failed to publish: #{result.error}"
+    end
+  end
+
+  def versions
+    @versions = @workflow.versions.includes(:published_by)
   end
 
   def import

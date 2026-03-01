@@ -30,6 +30,14 @@ Rails.application.routes.draw do
       patch :create_from_draft
       # Step rendering for dynamic step creation (Sprint 3)
       post :render_step
+      # Publishing & versioning
+      post :publish
+      get :versions
+    end
+    resources :versions, only: [:show], controller: "workflow_versions" do
+      member do
+        post :restore
+      end
     end
     resources :scenarios, only: %i[new create]
   end
