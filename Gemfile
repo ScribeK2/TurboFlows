@@ -3,8 +3,8 @@ source "https://rubygems.org"
 
 ruby "3.4.8"
 
-gem "csv"
 gem "bootsnap", ">= 1.4.4", require: false
+gem "csv"
 gem "image_processing", "~> 1.2"
 gem "importmap-rails"
 gem "pg", "~> 1.1", group: [:production]
