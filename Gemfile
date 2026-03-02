@@ -1,7 +1,7 @@
 # Gemfile
 source "https://rubygems.org"
 
-ruby "3.4.8"
+ruby "4.0.1"
 
 gem "bootsnap", ">= 1.4.4", require: false
 gem "csv"
