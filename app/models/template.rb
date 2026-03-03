@@ -7,11 +7,10 @@ class Template < ApplicationRecord
   scope :by_category, ->(category) { where(category: category) }
 
   def self.search(query)
-    # Cross-database case-insensitive search
-    # Uses ILIKE for PostgreSQL, LIKE for SQLite
-    search_term = "%#{query}%"
-    like_op = connection.adapter_name.downcase.include?('postgresql') ? 'ILIKE' : 'LIKE'
-    where("name #{like_op} ? OR description #{like_op} ? OR category #{like_op} ?",
-          search_term, search_term, search_term)
+    return all if query.blank?
+    search_term = "%#{query.strip}%"
+    case_insensitive_like("name", search_term)
+      .or(case_insensitive_like("description", search_term))
+      .or(case_insensitive_like("category", search_term))
   end
 end
