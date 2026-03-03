@@ -87,4 +87,16 @@ class ScenarioTest < ActiveSupport::TestCase
 
     assert_kind_of Hash, scenario.results
   end
+
+  test "process_subflow_step does not crash when results is nil" do
+    scenario = Scenario.new(
+      workflow: @workflow,
+      user: @user,
+      status: "active",
+      results: nil
+    )
+    # (self.results || {}).dup should not raise NoMethodError
+    child_results = (scenario.results || {}).dup
+    assert_equal({}, child_results)
+  end
 end

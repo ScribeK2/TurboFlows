@@ -315,7 +315,7 @@ class Scenario < ApplicationRecord
     end
 
     # Create child scenario with inherited variables
-    child_results = self.results.dup || {}
+    child_results = (self.results || {}).dup
 
     # Apply variable mapping if defined
     variable_mapping = step['variable_mapping'] || {}
