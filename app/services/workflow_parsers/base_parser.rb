@@ -384,30 +384,21 @@ module WorkflowParsers
       end
     end
 
+    REQUIRED_STEP_FIELDS = {
+      'question' => { field: 'question', message: 'Question text is required' },
+      'action' => { field: 'instructions', message: 'Instructions are required' },
+      'resolve' => { field: 'resolution_type', message: 'Resolution type is required' }
+    }.freeze
+
     def is_step_incomplete?(step)
-      case step['type']
-      when 'question'
-        step['question'].blank?
-      when 'action'
-        step['instructions'].blank?
-      when 'resolve'
-        step['resolution_type'].blank?
-      else
-        false
-      end
+      config = REQUIRED_STEP_FIELDS[step['type']]
+      config ? step[config[:field]].blank? : false
     end
 
     def step_errors(step)
-      errors = []
-      case step['type']
-      when 'question'
-        errors << "Question text is required" if step['question'].blank?
-      when 'action'
-        errors << "Instructions are required" if step['instructions'].blank?
-      when 'resolve'
-        errors << "Resolution type is required" if step['resolution_type'].blank?
-      end
-      errors
+      config = REQUIRED_STEP_FIELDS[step['type']]
+      return [] unless config
+      step[config[:field]].blank? ? [config[:message]] : []
     end
 
     # No-op: decision step branches are no longer supported

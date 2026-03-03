@@ -29,17 +29,35 @@ module WorkflowsHelper
     'check_circle' => "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
   }.freeze
 
+  STEP_TYPE_LABELS = {
+    'question' => 'Question',
+    'action' => 'Action',
+    'message' => 'Message',
+    'sub_flow' => 'Sub-flow',
+    'escalate' => 'Escalate',
+    'resolve' => 'Resolve'
+  }.freeze
+
+  STEP_TYPE_BADGE_CLASSES = {
+    'question' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+    'action' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+    'message' => 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+    'sub_flow' => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300',
+    'escalate' => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+    'resolve' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+  }.freeze
+
+  ANSWER_TYPE_LABELS = {
+    'yes_no' => 'Yes / No',
+    'multiple_choice' => 'Multiple Choice',
+    'text' => 'Text Input',
+    'number' => 'Number',
+    'dropdown' => 'Dropdown'
+  }.freeze
+
   # Get a user-friendly label for a step type
   def step_type_label(type)
-    case type
-    when 'question' then 'Question'
-    when 'action' then 'Action'
-    when 'message' then 'Message'
-    when 'sub_flow' then 'Sub-flow'
-    when 'escalate' then 'Escalate'
-    when 'resolve' then 'Resolve'
-    else type&.titleize || 'Step'
-    end
+    STEP_TYPE_LABELS[type] || type&.titleize || 'Step'
   end
 
   # Get an inline SVG icon for a step type
@@ -78,23 +96,8 @@ module WorkflowsHelper
   # Get CSS classes for a step type badge
   def step_type_badge_classes(type)
     base = "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-
-    case type
-    when 'question'
-      "#{base} bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-    when 'action'
-      "#{base} bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-    when 'message'
-      "#{base} bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-    when 'sub_flow'
-      "#{base} bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
-    when 'escalate'
-      "#{base} bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
-    when 'resolve'
-      "#{base} bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-    else
-      "#{base} bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300"
-    end
+    color = STEP_TYPE_BADGE_CLASSES[type] || 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
+    "#{base} #{color}"
   end
 
   # ============================================================================
@@ -103,14 +106,7 @@ module WorkflowsHelper
 
   # Get a user-friendly label for an answer type
   def answer_type_label(type)
-    case type
-    when 'yes_no' then 'Yes / No'
-    when 'multiple_choice' then 'Multiple Choice'
-    when 'text' then 'Text Input'
-    when 'number' then 'Number'
-    when 'dropdown' then 'Dropdown'
-    else type&.titleize || 'Unknown'
-    end
+    ANSWER_TYPE_LABELS[type] || type&.titleize || 'Unknown'
   end
 
   # ============================================================================
