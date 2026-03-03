@@ -3,8 +3,6 @@ require_relative "../application"
 
 Rails.application.configure do
 
-  # ADD THIS LINE — inside the block
-  config.database_url = ENV['DATABASE_URL']
   config.eager_load = true
 
   # Full error reports are disabled.
