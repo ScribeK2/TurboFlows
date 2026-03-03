@@ -445,12 +445,7 @@ class Scenario < ApplicationRecord
 
   # Advance to a specific step UUID (graph mode)
   def advance_to_step_uuid(uuid)
-    self.current_node_uuid = if uuid.nil?
-                               # Reached end of workflow
-                               nil
-                             else
-                               uuid
-                             end
+    self.current_node_uuid = uuid
   end
 
   # Check if scenario is complete
