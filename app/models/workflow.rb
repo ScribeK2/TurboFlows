@@ -19,13 +19,9 @@ class Workflow < ApplicationRecord
   has_many :versions, class_name: "WorkflowVersion", dependent: :destroy
   belongs_to :published_version, class_name: "WorkflowVersion", optional: true
 
-  # Sub-flow associations: track which workflows reference this one as a sub-flow
-  has_many :referencing_workflows, class_name: 'Workflow', foreign_key: 'id', primary_key: 'id' do
-    def with_subflow_references(target_workflow_id)
-      # Find workflows with steps that reference target_workflow_id as a sub_flow
-      # This is a custom query since the reference is in JSON
-      where("steps::text LIKE ?", "%\"target_workflow_id\":#{target_workflow_id}%")
-    end
+  # Find workflows that reference a given workflow as a sub-flow step
+  def self.referencing_as_subflow(target_workflow_id)
+    where("steps::text LIKE ?", "%\"target_workflow_id\":#{target_workflow_id}%")
   end
 
   # Steps stored as JSON - automatically serialized/deserialized
