@@ -1,7 +1,6 @@
 require "test_helper"
 
 class GroupAssignmentIntegrationTest < ActionDispatch::IntegrationTest
-
   def setup
     @admin = User.create!(
       email: "admin-integration-#{SecureRandom.hex(4)}@example.com",

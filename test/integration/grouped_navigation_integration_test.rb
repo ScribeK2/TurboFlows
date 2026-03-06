@@ -1,7 +1,6 @@
 require "test_helper"
 
 class GroupedNavigationIntegrationTest < ActionDispatch::IntegrationTest
-
   def setup
     @admin = User.create!(
       email: "admin-nav-#{SecureRandom.hex(4)}@example.com",

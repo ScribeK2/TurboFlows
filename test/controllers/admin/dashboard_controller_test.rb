@@ -1,7 +1,6 @@
 require "test_helper"
 
 class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
-
   def setup
     @admin = User.create!(
       email: "admin-dash-#{SecureRandom.hex(4)}@example.com",

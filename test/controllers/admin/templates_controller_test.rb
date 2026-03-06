@@ -1,7 +1,6 @@
 require "test_helper"
 
 class Admin::TemplatesControllerTest < ActionDispatch::IntegrationTest
-
   def setup
     @admin = User.create!(
       email: "admin-tmpl-#{SecureRandom.hex(4)}@example.com",

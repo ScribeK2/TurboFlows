@@ -1,7 +1,6 @@
 require 'test_helper'
 
 class AdminPasswordResetIntegrationTest < ActionDispatch::IntegrationTest
-
   def setup
     @admin = User.create!(
       email: "admin-reset-#{SecureRandom.hex(4)}@example.com",

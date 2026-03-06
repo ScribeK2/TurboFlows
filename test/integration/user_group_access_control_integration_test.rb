@@ -1,7 +1,6 @@
 require "test_helper"
 
 class UserGroupAccessControlIntegrationTest < ActionDispatch::IntegrationTest
-
   def setup
     @admin = User.create!(
       email: "admin-access-#{SecureRandom.hex(4)}@example.com",

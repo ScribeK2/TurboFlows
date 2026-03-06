@@ -2,6 +2,7 @@ class WorkflowVersionsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_workflow
   before_action :set_version, only: [:show, :restore]
+  before_action :ensure_can_view_workflow!
 
   def show
   end
@@ -29,5 +30,11 @@ class WorkflowVersionsController < ApplicationController
 
   def set_version
     @version = @workflow.versions.find(params[:id])
+  end
+
+  def ensure_can_view_workflow!
+    unless @workflow.can_be_viewed_by?(current_user)
+      redirect_to workflows_path, alert: "You don't have permission to view this workflow."
+    end
   end
 end

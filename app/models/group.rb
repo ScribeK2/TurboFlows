@@ -99,13 +99,10 @@ class Group < ApplicationRecord
 
     if connection.adapter_name.downcase.include?('postgresql')
       # PostgreSQL: Use recursive CTE for optimal performance
-      # After validation that all IDs are integers, safely use them in SQL
-      # Note: Since we've validated all values are integers, string interpolation is safe
-      # but we quote each ID individually for extra safety
-      quoted_ids = sanitized_parent_ids.map { |id| connection.quote(id) }.join(',')
-      sql = <<-SQL
+      placeholders = sanitized_parent_ids.map { "?" }.join(",")
+      sql = sanitize_sql_array([<<~SQL.squish, *sanitized_parent_ids])
         WITH RECURSIVE descendants AS (
-          SELECT id, parent_id FROM groups WHERE parent_id IN (#{quoted_ids})
+          SELECT id, parent_id FROM groups WHERE parent_id IN (#{placeholders})
           UNION ALL
           SELECT g.id, g.parent_id FROM groups g
           INNER JOIN descendants d ON g.parent_id = d.id

@@ -1,7 +1,6 @@
 require "test_helper"
 
 class ScenariosControllerTest < ActionDispatch::IntegrationTest
-
   def setup
     # Create user directly instead of using fixtures (must be editor or admin to create workflows)
     @user = User.create!(

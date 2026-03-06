@@ -398,6 +398,7 @@ module WorkflowParsers
     def step_errors(step)
       config = REQUIRED_STEP_FIELDS[step['type']]
       return [] unless config
+
       step[config[:field]].blank? ? [config[:message]] : []
     end
 

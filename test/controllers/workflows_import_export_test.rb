@@ -1,7 +1,6 @@
 require "test_helper"
 
 class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
-
   def setup
     @editor = User.create!(
       email: "editor-import-test-#{SecureRandom.hex(4)}@example.com",

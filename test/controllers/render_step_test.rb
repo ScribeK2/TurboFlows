@@ -1,7 +1,6 @@
 require "test_helper"
 
 class RenderStepTest < ActionDispatch::IntegrationTest
-
   setup do
     @user = User.create!(
       email: "render_step_test@example.com",

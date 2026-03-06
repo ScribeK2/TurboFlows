@@ -1,7 +1,6 @@
 require "test_helper"
 
 class FoldersIntegrationTest < ActionDispatch::IntegrationTest
-
   def setup
     @admin = User.create!(
       email: "folders_int_admin@example.com",

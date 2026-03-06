@@ -8,6 +8,7 @@ class Template < ApplicationRecord
 
   def self.search(query)
     return all if query.blank?
+
     search_term = "%#{query.strip}%"
     case_insensitive_like("name", search_term)
       .or(case_insensitive_like("description", search_term))

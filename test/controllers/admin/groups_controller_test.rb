@@ -1,7 +1,6 @@
 require "test_helper"
 
 class Admin::GroupsControllerTest < ActionDispatch::IntegrationTest
-
   def setup
     @admin = User.create!(
       email: "admin-groups-#{SecureRandom.hex(4)}@example.com",
@@ -156,8 +155,8 @@ class Admin::GroupsControllerTest < ActionDispatch::IntegrationTest
       }
     }
 
-    # The update should fail, rendering the edit form (unprocessable_entity)
-    assert_response :unprocessable_entity
+    # The update should fail, rendering the edit form (unprocessable_content)
+    assert_response :unprocessable_content
     # Parent should still have no parent_id (update failed)
     assert_nil parent.reload.parent_id
   end

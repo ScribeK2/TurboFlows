@@ -3,8 +3,8 @@ class WorkflowsController < ApplicationController
                 only: %i[show edit update destroy export export_pdf preview variables save_as_template start begin_execution step1 update_step1 step2 update_step2 step3 create_from_draft render_step publish versions]
   before_action :ensure_draft_workflow!, only: %i[step1 update_step1 step2 update_step2 step3 create_from_draft]
   before_action :ensure_editor_or_admin!, only: %i[new create import import_file start_wizard]
-  before_action :ensure_can_view_workflow!, only: %i[show export export_pdf start begin_execution]
-  before_action :ensure_can_edit_workflow!, only: %i[edit update save_as_template publish]
+  before_action :ensure_can_view_workflow!, only: %i[show export export_pdf start begin_execution preview variables versions]
+  before_action :ensure_can_edit_workflow!, only: %i[edit update save_as_template publish render_step]
   before_action :ensure_can_delete_workflow!, only: [:destroy]
   before_action :parse_transitions_json, only: %i[create update update_step2]
 

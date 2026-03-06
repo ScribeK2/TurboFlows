@@ -1,7 +1,6 @@
 require "test_helper"
 
 class DashboardControllerTest < ActionDispatch::IntegrationTest
-
   def setup
     # Create user directly instead of using fixtures
     @user = User.create!(

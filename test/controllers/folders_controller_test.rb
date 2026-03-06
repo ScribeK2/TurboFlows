@@ -1,7 +1,6 @@
 require "test_helper"
 
 class FoldersControllerTest < ActionDispatch::IntegrationTest
-
   def setup
     @admin = User.create!(
       email: "admin-folder-#{SecureRandom.hex(4)}@example.com",

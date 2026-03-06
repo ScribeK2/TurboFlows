@@ -217,7 +217,7 @@ class WorkflowWizardFlowTest < ActionDispatch::IntegrationTest
 
     patch create_from_draft_workflow_path(draft)
 
-    assert_response :unprocessable_entity
+    assert_response :unprocessable_content
 
     draft.reload
 
@@ -252,7 +252,7 @@ class WorkflowWizardFlowTest < ActionDispatch::IntegrationTest
 
     patch create_from_draft_workflow_path(draft)
 
-    assert_response :unprocessable_entity
+    assert_response :unprocessable_content
 
     draft.reload
 
@@ -290,7 +290,7 @@ class WorkflowWizardFlowTest < ActionDispatch::IntegrationTest
     }
 
     # Should re-render step1 with validation errors
-    assert_response :unprocessable_entity
+    assert_response :unprocessable_content
   end
 
   # ==========================================================================

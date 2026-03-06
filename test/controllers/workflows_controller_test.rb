@@ -1,7 +1,6 @@
 require "test_helper"
 
 class WorkflowsControllerTest < ActionDispatch::IntegrationTest
-
   def setup
     # Create users with different roles (using unique emails)
     @admin = User.create!(

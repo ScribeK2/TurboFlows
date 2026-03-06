@@ -1,7 +1,6 @@
 require "test_helper"
 
 class WorkflowPublishingTest < ActionDispatch::IntegrationTest
-
   def setup
     @editor = User.create!(
       email: "editor-pub@example.com",

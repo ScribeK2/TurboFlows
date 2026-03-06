@@ -1,7 +1,6 @@
 require "test_helper"
 
 class MarkdownControllerTest < ActionDispatch::IntegrationTest
-
   def setup
     @user = User.create!(
       email: "mdtest@example.com",

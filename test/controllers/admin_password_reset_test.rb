@@ -1,7 +1,6 @@
 require 'test_helper'
 
 class AdminPasswordResetTest < ActionDispatch::IntegrationTest
-
   def setup
     @admin = User.create!(
       email: 'admin-test@example.com',
