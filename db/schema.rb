@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_06_184438) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_06_203657) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -89,24 +89,35 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_06_184438) do
   end
 
   create_table "scenarios", force: :cascade do |t|
+    t.datetime "completed_at"
     t.datetime "created_at", null: false
     t.string "current_node_uuid"
     t.integer "current_step_index", default: 0, null: false
+    t.integer "duration_seconds"
     t.json "execution_path"
     t.json "inputs"
+    t.string "outcome"
     t.integer "parent_scenario_id"
+    t.string "purpose", default: "simulation", null: false
     t.json "results"
     t.string "resume_node_uuid"
+    t.datetime "started_at"
     t.string "status", default: "active", null: false
     t.integer "stopped_at_step_index"
     t.datetime "updated_at", null: false
     t.integer "user_id", null: false
     t.integer "workflow_id", null: false
+    t.integer "workflow_version_id"
     t.index ["current_node_uuid"], name: "index_scenarios_on_current_node_uuid"
+    t.index ["outcome"], name: "index_scenarios_on_outcome"
     t.index ["parent_scenario_id"], name: "index_scenarios_on_parent_scenario_id"
+    t.index ["purpose", "started_at"], name: "index_scenarios_on_purpose_and_started_at"
     t.index ["status"], name: "index_scenarios_on_status"
+    t.index ["user_id", "purpose"], name: "index_scenarios_on_user_id_and_purpose"
     t.index ["user_id"], name: "index_scenarios_on_user_id"
+    t.index ["workflow_id", "purpose", "outcome"], name: "index_scenarios_on_workflow_id_and_purpose_and_outcome"
     t.index ["workflow_id"], name: "index_scenarios_on_workflow_id"
+    t.index ["workflow_version_id"], name: "index_scenarios_on_workflow_version_id"
   end
 
   create_table "templates", force: :cascade do |t|
@@ -202,6 +213,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_06_184438) do
   add_foreign_key "group_workflows", "workflows"
   add_foreign_key "scenarios", "scenarios", column: "parent_scenario_id", on_delete: :nullify
   add_foreign_key "scenarios", "users"
+  add_foreign_key "scenarios", "workflow_versions", on_delete: :nullify
   add_foreign_key "scenarios", "workflows"
   add_foreign_key "user_groups", "groups"
   add_foreign_key "user_groups", "users"
