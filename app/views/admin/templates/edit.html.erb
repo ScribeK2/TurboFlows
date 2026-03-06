@@ -37,7 +37,7 @@
 
       <div>
         <%= form.label :category, class: "block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1" %>
-        <%= form.text_field :category, class: "mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 transition-colors", placeholder: "e.g., onboarding, troubleshooting, training" %>
+        <%= form.text_field :category, class: "mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 transition-colors", placeholder: "e.g., troubleshooting, account-management, complaints-retention" %>
       </div>
 
       <div class="flex items-center">
@@ -45,13 +45,53 @@
         <%= form.label :is_public, "Make this template public", class: "ml-2 block text-sm text-gray-700 dark:text-gray-300" %>
       </div>
 
-      <div>
-        <%= form.label :workflow_data, "Workflow Steps (JSON)", class: "block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1" %>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
-          Workflow steps as JSON array.
-        </p>
-        <%= form.text_area :workflow_data, value: (@template.workflow_data.to_json if @template.workflow_data.present?), rows: 10, class: "mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 transition-colors" %>
+      <%# Mode Toggle (graph mode templates) %>
+      <% if @template.graph_mode? && @template.workflow_data.present? %>
+        <div class="mb-4" data-controller="view-mode-toggle">
+          <input type="hidden" name="template[editor_mode]" value="list" data-view-mode-toggle-target="modeInput">
+          <div class="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 p-0.5">
+            <button type="button"
+                    data-action="click->view-mode-toggle#switchToList"
+                    data-view-mode-toggle-target="listBtn"
+                    class="px-4 py-1.5 text-sm font-medium rounded-md transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700">
+              JSON
+            </button>
+            <button type="button"
+                    data-action="click->view-mode-toggle#switchToVisual"
+                    data-view-mode-toggle-target="visualBtn"
+                    class="px-4 py-1.5 text-sm font-medium rounded-md transition-colors bg-slate-600 text-white">
+              Visual
+            </button>
+          </div>
+        </div>
+      <% end %>
+
+      <%# JSON Editor (list mode) %>
+      <div id="list-editor-container">
+        <div>
+          <%= form.label :workflow_data, "Workflow Steps (JSON)", class: "block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1" %>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+            Workflow steps as JSON array. Use the Visual tab for a drag-and-drop editor.
+          </p>
+          <%= form.text_area :workflow_data, value: (@template.workflow_data.to_json if @template.workflow_data.present?), rows: 10, class: "mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 transition-colors" %>
+        </div>
       </div>
+
+      <%# Visual Editor (graph mode templates with existing data) %>
+      <% if @template.graph_mode? && @template.workflow_data.present? %>
+        <%
+          # Create a workflow-like object for the visual editor partial
+          template_workflow_struct = Struct.new(:id, :steps, :start_node_uuid, keyword_init: true) do
+            def graph_mode? = true
+          end
+          template_as_workflow = template_workflow_struct.new(
+            id: @template.id,
+            steps: @template.workflow_data,
+            start_node_uuid: @template.start_node_uuid || @template.workflow_data&.first&.dig("id")
+          )
+        %>
+        <%= render partial: "workflows/visual_editor", locals: { workflow: template_as_workflow } %>
+      <% end %>
 
       <div class="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
         <%= link_to admin_templates_path, class: "bg-white hover:bg-gray-50 text-gray-700 px-6 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 transition-all duration-200 hover:scale-105" do %>
@@ -62,4 +102,3 @@
     </div>
   <% end %>
 </div>
-
