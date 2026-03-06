@@ -170,9 +170,11 @@ export default class extends Controller {
 
     return stepsData.map((step, index) => {
       return {
+        id: step.id || step['id'] || '',
         type: step.type || step['type'] || '',
         title: step.title || step['title'] || `Step ${index + 1}`,
         index: index,
+        transitions: step.transitions || step['transitions'] || undefined,
         condition: step.condition || step['condition'] || '',
         true_path: step.true_path || step['true_path'] || '',
         false_path: step.false_path || step['false_path'] || '',

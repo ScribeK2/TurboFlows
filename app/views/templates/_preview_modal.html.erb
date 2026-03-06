@@ -1,163 +1,90 @@
 <%# Template Preview Modal %>
 <% templates.each do |template| %>
-  <div id="template-preview-modal-<%= template.id %>" 
+  <div id="template-preview-modal-<%= template.id %>"
        class="hidden fixed inset-0 z-50 overflow-y-auto"
        data-controller="modal"
        data-modal-target="backdrop"
        data-action="click->modal#backdropClick">
-    <div class="flex items-center justify-center min-h-screen px-4">
+    <div class="flex items-center justify-center min-h-screen px-4 py-8">
       <%# Backdrop %>
       <div class="fixed inset-0 bg-slate-900/60 transition-opacity" data-modal-target="backdrop"></div>
 
       <%# Modal Container %>
-      <div class="glass-modal inline-block align-bottom text-left overflow-hidden transform transition-all sm:my-8 sm:align-middle sm:max-w-5xl sm:w-full relative z-10 animate-scale-in"
+      <div class="solid-card inline-block align-bottom text-left overflow-hidden transform transition-all sm:align-middle sm:max-w-4xl sm:w-full relative z-10 animate-scale-in"
            data-modal-target="content">
-        <%# Modal Header %>
-        <div class="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
-          <div>
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100"><%= template.name %></h2>
-            <div class="flex items-center gap-3 mt-2">
-              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
-                <%= template.category %>
-              </span>
-              <span class="text-sm text-gray-500 dark:text-gray-400"><%= pluralize(template.workflow_data&.length || 0, "step") %></span>
-            </div>
+
+        <%# Header — matches flow_preview style %>
+        <div class="px-6 py-5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+          <div class="flex items-center gap-3 min-w-0">
+            <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight truncate"><%= template.name %></h2>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 whitespace-nowrap flex-shrink-0">
+              <%= template.category&.titleize %>
+            </span>
+            <span class="text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap flex-shrink-0"><%= pluralize(template.workflow_data&.length || 0, "step") %></span>
           </div>
-          <button type="button" 
-                  onclick="closeTemplatePreview(<%= template.id %>)"
-                  class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200 hover:scale-110">
+          <button type="button"
+                  data-action="click->modal#close"
+                  class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex-shrink-0">
             <span class="sr-only">Close</span>
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
 
-        <%# Modal Body %>
-        <div class="p-6">
-          <%# Description %>
-          <% if template.description.present? %>
-            <p class="text-gray-600 dark:text-gray-300 mb-6"><%= template.description %></p>
-          <% end %>
+        <% if template.description.present? %>
+          <div class="px-6 pt-4">
+            <p class="text-sm text-gray-600 dark:text-gray-300"><%= template.description %></p>
+          </div>
+        <% end %>
 
-          <%# Flow Preview - Full Size %>
-          <% if template.workflow_data.present? && template.workflow_data.any? %>
-            <div class="bg-gray-50/50 dark:bg-gray-800/30 border border-slate-200 dark:border-slate-700 rounded-lg p-4 mb-6"
-                 data-controller="template-flow-preview"
-                 data-template-flow-preview-compact-value="false"
-                 id="modal-preview-<%= template.id %>">
-              <script type="application/json" data-template-flow-preview-steps-data="<%= template.id %>">
-                <%= raw json_escape(template.workflow_data.to_json) %>
-              </script>
-              <%# Zoom Controls %>
-              <div class="flex items-center justify-between mb-3">
-                <div class="flex items-center gap-2">
-                  <button type="button"
-                          data-action="click->template-flow-preview#zoomOut"
-                          class="bg-white/50 dark:bg-gray-800/50 hover:bg-white/80 dark:hover:bg-gray-800/80 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1 transition-all duration-200 hover:scale-105"
-                          title="Zoom Out">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
-                    </svg>
-                  </button>
-                  <span data-template-flow-preview-target="zoomLevel" class="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-[50px] text-center">100%</span>
-                  <button type="button"
-                          data-action="click->template-flow-preview#zoomIn"
-                          class="bg-white/50 dark:bg-gray-800/50 hover:bg-white/80 dark:hover:bg-gray-800/80 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1 transition-all duration-200 hover:scale-105"
-                          title="Zoom In">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
-                    </svg>
-                  </button>
-                </div>
-                <button type="button"
-                        data-action="click->template-flow-preview#fitToScreen"
-                        class="bg-white/50 dark:bg-gray-800/50 hover:bg-white/80 dark:hover:bg-gray-800/80 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1 transition-all duration-200 hover:scale-105"
-                        title="Fit to Screen">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                  </svg>
-                  <span class="hidden sm:inline">Fit to Screen</span>
+        <% if template.workflow_data.present? && template.workflow_data.any? %>
+          <%# Flow Preview — matches _flow_preview.html.erb style %>
+          <div data-controller="template-flow-preview"
+               data-template-flow-preview-compact-value="false"
+               id="modal-preview-<%= template.id %>">
+            <script type="application/json" data-template-flow-preview-steps-data="<%= template.id %>">
+              <%= raw json_escape(template.workflow_data.to_json) %>
+            </script>
+
+            <%# Zoom toolbar — inline, compact, same as flow_preview %>
+            <div class="px-6 pt-4 flex justify-between items-center">
+              <div class="flex items-center gap-2">
+                <button type="button" data-action="click->template-flow-preview#zoomOut" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title="Zoom out">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"/></svg>
+                </button>
+                <span data-template-flow-preview-target="zoomLevel" class="text-xs font-medium text-slate-500 dark:text-slate-400 min-w-[3rem] text-center">100%</span>
+                <button type="button" data-action="click->template-flow-preview#zoomIn" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title="Zoom in">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+                </button>
+                <button type="button" data-action="click->template-flow-preview#fitToScreen" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title="Fit to screen">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
                 </button>
               </div>
-              <div data-template-flow-preview-target="canvas" 
-                   class="relative w-full overflow-auto"
-                   style="min-height: 400px; max-height: 600px;">
-                <p class="text-gray-500 dark:text-gray-400 text-center py-8">Loading preview...</p>
-              </div>
+              <span class="text-xs text-slate-400 dark:text-slate-500">Ctrl+scroll to zoom, Alt+drag to pan</span>
             </div>
-          <% else %>
-            <div class="bg-gray-50/50 dark:bg-gray-800/30 border border-slate-200 dark:border-slate-700 rounded-lg p-4 mb-6 text-center" style="min-height: 200px;">
-              <p class="text-gray-500 dark:text-gray-400 py-8">No steps defined in this template.</p>
-            </div>
-          <% end %>
 
-          <%# Action Buttons %>
-          <div class="flex justify-end gap-3">
-            <button type="button"
-                    onclick="closeTemplatePreview(<%= template.id %>)"
-                    class="bg-white/50 dark:bg-gray-800/50 hover:bg-white/80 dark:hover:bg-gray-800/80 text-gray-700 dark:text-gray-300 px-6 py-2 rounded-lg text-sm font-medium border border-slate-200 dark:border-slate-700 transition-all duration-200 hover:scale-105">
-              Close
-            </button>
-            <%= button_to "Use This Template", use_template_path(template), method: :post, class: "bg-slate-600 hover:bg-slate-700 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105" %>
+            <%# Canvas — same style as flow_preview %>
+            <div data-template-flow-preview-target="canvas"
+                 class="relative bg-slate-50 dark:bg-slate-800/50 rounded-lg overflow-auto mx-6 mt-3 mb-4"
+                 style="min-height: 350px; max-height: 500px;">
+              <p class="text-gray-500 dark:text-gray-400 text-center py-8">Loading preview...</p>
+            </div>
           </div>
+        <% else %>
+          <div class="mx-6 my-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center" style="min-height: 200px;">
+            <p class="text-gray-500 dark:text-gray-400 py-8">No steps defined in this template.</p>
+          </div>
+        <% end %>
+
+        <%# Footer actions %>
+        <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
+          <button type="button"
+                  data-action="click->modal#close"
+                  class="bg-white hover:bg-gray-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 px-6 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 transition-colors">
+            Close
+          </button>
+          <%= button_to "Use This Template", use_template_path(template), method: :post, class: "bg-slate-600 hover:bg-slate-700 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200" %>
         </div>
       </div>
     </div>
   </div>
 <% end %>
-
-<script nonce="<%= content_security_policy_nonce %>">
-  // Template preview modal functions
-  function openTemplatePreview(templateId) {
-    const modal = document.getElementById('template-preview-modal-' + templateId)
-    if (modal) {
-      modal.classList.remove('hidden')
-      document.body.style.overflow = 'hidden'
-      
-      // Trigger flow preview render after modal is visible
-      setTimeout(() => {
-        const previewContainer = document.getElementById('modal-preview-' + templateId)
-        if (previewContainer) {
-          const controller = previewContainer.closest('[data-controller*="template-flow-preview"]')
-          if (controller) {
-            // Find the Stimulus controller and trigger render
-            const application = window.Stimulus
-            if (application) {
-              try {
-                const previewController = application.getControllerForElementAndIdentifier(controller, "template-flow-preview")
-                if (previewController && typeof previewController.render === 'function') {
-                  previewController.render()
-                }
-              } catch (e) {
-                console.warn('Could not trigger preview render:', e)
-                // Fallback: dispatch a custom event
-                controller.dispatchEvent(new CustomEvent('render-preview'))
-              }
-            }
-          }
-        }
-      }, 100)
-    }
-  }
-
-  function closeTemplatePreview(templateId) {
-    const modal = document.getElementById('template-preview-modal-' + templateId)
-    if (modal) {
-      modal.classList.add('hidden')
-      document.body.style.overflow = ''
-    }
-  }
-
-  // Close modal on ESC key
-  document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape') {
-      const openModal = document.querySelector('[id^="template-preview-modal-"]:not(.hidden)')
-      if (openModal) {
-        const templateId = openModal.id.replace('template-preview-modal-', '')
-        closeTemplatePreview(templateId)
-      }
-    }
-  })
-</script>
-
