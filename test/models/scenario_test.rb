@@ -88,6 +88,115 @@ class ScenarioTest < ActiveSupport::TestCase
     assert_kind_of Hash, scenario.results
   end
 
+  # --- Analytics tracking tests ---
+
+  test "should set started_at on creation" do
+    scenario = Scenario.create!(
+      workflow: @workflow,
+      user: @user,
+      inputs: {}
+    )
+
+    assert_not_nil scenario.started_at
+    assert_in_delta Time.current, scenario.started_at, 2.seconds
+  end
+
+  test "should default purpose to simulation" do
+    scenario = Scenario.create!(
+      workflow: @workflow,
+      user: @user,
+      inputs: {}
+    )
+
+    assert_equal "simulation", scenario.purpose
+  end
+
+  test "should set outcome to completed when scenario completes normally" do
+    scenario = Scenario.create!(
+      workflow: @workflow,
+      user: @user,
+      inputs: { "Question 1" => "John Doe" }
+    )
+
+    scenario.execute
+
+    assert_equal "completed", scenario.outcome
+    assert_not_nil scenario.completed_at
+    assert_not_nil scenario.duration_seconds
+  end
+
+  test "should set outcome to abandoned when scenario is stopped" do
+    scenario = Scenario.create!(
+      workflow: @workflow,
+      user: @user,
+      inputs: {}
+    )
+
+    scenario.stop!
+
+    assert_equal "abandoned", scenario.outcome
+    assert_not_nil scenario.completed_at
+  end
+
+  test "should set outcome to resolved when hitting resolve step" do
+    resolve_workflow = Workflow.create!(
+      title: "Resolve Workflow",
+      user: @user,
+      graph_mode: true,
+      steps: [
+        { "id" => "step-1", "type" => "resolve", "title" => "Issue Resolved", "resolution_type" => "success" }
+      ],
+      start_node_uuid: "step-1"
+    )
+    scenario = Scenario.create!(
+      workflow: resolve_workflow,
+      user: @user,
+      inputs: {},
+      current_node_uuid: "step-1"
+    )
+
+    scenario.process_step
+
+    assert_equal "resolved", scenario.outcome
+  end
+
+  test "should set outcome to escalated when hitting escalate step" do
+    escalate_workflow = Workflow.create!(
+      title: "Escalate Workflow",
+      user: @user,
+      graph_mode: true,
+      steps: [
+        { "id" => "step-1", "type" => "escalate", "title" => "Escalate Issue", "target_type" => "supervisor" }
+      ],
+      start_node_uuid: "step-1"
+    )
+    scenario = Scenario.create!(
+      workflow: escalate_workflow,
+      user: @user,
+      inputs: {},
+      current_node_uuid: "step-1"
+    )
+
+    scenario.process_step
+
+    assert_equal "escalated", scenario.outcome
+  end
+
+  test "should calculate duration_seconds on completion" do
+    scenario = Scenario.create!(
+      workflow: @workflow,
+      user: @user,
+      inputs: { "Question 1" => "John Doe" }
+    )
+    # Manually set started_at to 60 seconds ago to test duration
+    scenario.update_column(:started_at, 60.seconds.ago)
+
+    scenario.execute
+
+    assert_not_nil scenario.duration_seconds
+    assert scenario.duration_seconds >= 59, "Duration should be at least 59 seconds"
+  end
+
   test "process_subflow_step does not crash when results is nil" do
     scenario = Scenario.new(
       workflow: @workflow,

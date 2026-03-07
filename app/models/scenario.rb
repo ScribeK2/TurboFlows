@@ -38,6 +38,17 @@ class Scenario < ApplicationRecord
   # Initialize execution_path and results as empty arrays/hashes if needed
   before_save :initialize_execution_data
 
+  # Analytics tracking
+  before_create :set_started_at
+
+  # Valid purposes
+  PURPOSES = %w[simulation live].freeze
+  validates :purpose, inclusion: { in: PURPOSES }, allow_nil: false
+
+  # Valid outcomes
+  OUTCOMES = %w[completed resolved escalated abandoned error].freeze
+  validates :outcome, inclusion: { in: OUTCOMES }, allow_nil: true
+
   # Enum handles status validation automatically
 
   # Track iteration count for step-by-step processing
@@ -96,6 +107,7 @@ class Scenario < ApplicationRecord
 
   # Stop the workflow execution
   def stop!(step_index = nil)
+    record_completion("abandoned")
     update!(
       status: 'stopped',
       stopped_at_step_index: step_index || current_step_index
@@ -178,6 +190,18 @@ class Scenario < ApplicationRecord
   end
 
   private
+
+  def set_started_at
+    self.started_at ||= Time.current
+  end
+
+  def record_completion(outcome_value)
+    self.outcome = outcome_value
+    self.completed_at = Time.current
+    if started_at.present?
+      self.duration_seconds = (completed_at - started_at).to_i
+    end
+  end
 
   # Build execution path entry for a step
   def build_path_entry(step)
@@ -267,6 +291,7 @@ class Scenario < ApplicationRecord
     }.compact
 
     self.execution_path << path_entry
+    record_completion("escalated")
     advance_to_next_step(step)
   end
 
@@ -287,6 +312,7 @@ class Scenario < ApplicationRecord
 
     self.execution_path << path_entry
 
+    record_completion("resolved")
     # Resolve steps are always terminal - complete the scenario
     self.status = 'completed'
     self.current_node_uuid = nil if graph_mode?
@@ -465,18 +491,20 @@ class Scenario < ApplicationRecord
     return if %w[stopped awaiting_subflow].include?(status)
 
     if graph_mode?
-      # Complete if no current node or current node is terminal
       if current_node_uuid.nil?
+        record_completion("completed") unless outcome.present?
         self.status = 'completed'
       else
         step = current_step
         if step.nil?
+          record_completion("completed") unless outcome.present?
           self.status = 'completed'
         elsif StepResolver.new(workflow).terminal?(step) && step['type'] != 'sub_flow'
           # Terminal node that's not a sub-flow - will complete after processing
         end
       end
     elsif current_step_index >= workflow.steps.length
+      record_completion("completed") unless outcome.present?
       self.status = 'completed'
     end
   end
@@ -533,10 +561,13 @@ class Scenario < ApplicationRecord
     self.status = 'timeout'
     self.results ||= {}
     self.results['_error'] = "Scenario timed out after #{MAX_EXECUTION_TIME} seconds"
+    record_completion("error")
     save
     Rails.logger.warn "Scenario #{id} timed out for workflow #{workflow_id}"
     false
   rescue ScenarioIterationLimit
+    record_completion("error")
+    save
     Rails.logger.warn "Scenario #{id} hit iteration limit for workflow #{workflow_id}"
     false
   end

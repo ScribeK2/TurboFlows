@@ -41,6 +41,7 @@ module ScenarioExecution
       current_step_index = execute_step(step, current_step_index, path, results)
     end
 
+    record_completion("completed") unless outcome.present?
     self.status = 'completed'
     self.current_step_index = current_step_index
     self.execution_path = path
