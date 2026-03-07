@@ -69,8 +69,8 @@ class Admin::AnalyticsController < ApplicationController
 
   def build_runs_over_time
     scope = @base_scope.where.not(started_at: nil)
-    # Group by week if range > 30 days, otherwise by day
-    if @date_range.nil? || (@date_range.last - @date_range.first) > 30.days
+    @runs_grouped_by_week = @date_range.nil? || (@date_range.last - @date_range.first) > 30.days
+    if @runs_grouped_by_week
       scope.group("strftime('%Y-%W', started_at)").count
     else
       scope.group("date(started_at)").count

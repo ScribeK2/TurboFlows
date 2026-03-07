@@ -64,7 +64,14 @@
           <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
             <% @runs_over_time.sort.each do |period, count| %>
               <tr class="even:bg-slate-50 dark:even:bg-slate-800/50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100"><%= period %></td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  <% if @runs_grouped_by_week %>
+                    <% year, week = period.split("-").map(&:to_i) %>
+                    Week of <%= Date.commercial(year, [week, 1].max, 1).strftime("%b %-d, %Y") %>
+                  <% else %>
+                    <%= Date.parse(period).strftime("%b %-d, %Y") %>
+                  <% end %>
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100"><%= number_with_delimiter(count) %></td>
               </tr>
             <% end %>
