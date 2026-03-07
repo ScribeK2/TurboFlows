@@ -1,0 +1,73 @@
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 animate-fade-in-up">
+  <%# Total Runs %>
+  <div class="solid-card overflow-hidden">
+    <div class="px-6 py-5">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-3xl font-bold text-gray-900 dark:text-gray-100"><%= number_with_delimiter(@total_runs) %></p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Total Runs</p>
+        </div>
+        <div class="text-slate-600 dark:text-slate-400 opacity-80">
+          <svg class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# Completion Rate %>
+  <div class="solid-card overflow-hidden" style="animation-delay: 0.1s;">
+    <div class="px-6 py-5">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-3xl font-bold text-gray-900 dark:text-gray-100"><%= @completion_rate %>%</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Completion Rate</p>
+        </div>
+        <div class="text-emerald-600 dark:text-emerald-400 opacity-80">
+          <svg class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# Avg Duration %>
+  <div class="solid-card overflow-hidden" style="animation-delay: 0.2s;">
+    <div class="px-6 py-5">
+      <div class="flex items-center justify-between">
+        <div>
+          <% minutes = @avg_duration / 60 %>
+          <% seconds = @avg_duration % 60 %>
+          <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            <%= minutes > 0 ? "#{minutes}m #{seconds}s" : "#{seconds}s" %>
+          </p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Avg Duration</p>
+        </div>
+        <div class="text-slate-600 dark:text-slate-400 opacity-80">
+          <svg class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# Escalation Rate %>
+  <div class="solid-card overflow-hidden" style="animation-delay: 0.3s;">
+    <div class="px-6 py-5">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-3xl font-bold text-gray-900 dark:text-gray-100"><%= @escalation_rate %>%</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Escalation Rate</p>
+        </div>
+        <div class="text-amber-600 dark:text-amber-400 opacity-80">
+          <svg class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

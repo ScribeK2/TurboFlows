@@ -1,0 +1,44 @@
+<div class="solid-card overflow-hidden">
+  <div class="px-6 py-5 border-b border-slate-200 dark:border-slate-700">
+    <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Agent Activity</h3>
+  </div>
+  <% if @agent_stats.any? %>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+        <thead class="bg-slate-50 dark:bg-slate-800/50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Agent</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Runs</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Completed</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Escalated</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Avg Duration</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last Active</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+          <% @agent_stats.each do |row| %>
+            <tr class="even:bg-slate-50 dark:even:bg-slate-800/50">
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+                <%= row.user_display_name.presence || row.user_email %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100"><%= number_with_delimiter(row.total_runs) %></td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100"><%= number_with_delimiter(row.completed_count) %></td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100"><%= number_with_delimiter(row.escalated_count) %></td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                <% avg = row.avg_duration.to_i %>
+                <%= avg > 60 ? "#{avg / 60}m #{avg % 60}s" : "#{avg}s" %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                <%= row.last_active ? time_ago_in_words(row.last_active) + " ago" : "Never" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="px-6 py-12 text-center">
+      <p class="text-gray-500 dark:text-gray-400">No agent data for this period.</p>
+    </div>
+  <% end %>
+</div>
