@@ -1,0 +1,9 @@
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <h1 class="text-4xl font-bold text-slate-800 dark:text-slate-100">Analytics</h1>
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
+    <div class="solid-card"><p><%= @total_runs %> Total Runs</p></div>
+    <div class="solid-card"><p><%= @completion_rate %>% Completion</p></div>
+    <div class="solid-card"><p><%= @avg_duration %>s Avg Duration</p></div>
+    <div class="solid-card"><p><%= @escalation_rate %>% Escalation</p></div>
+  </div>
+</div>

@@ -78,6 +78,7 @@ Rails.application.routes.draw do
       patch 'folders/reorder', to: 'folders#reorder', as: :reorder_folders
       resources :folders, except: [:show]
     end
+    get "analytics", to: "analytics#index", as: :analytics
   end
 
   # Markdown preview (AJAX endpoint for editor)
