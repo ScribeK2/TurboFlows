@@ -138,15 +138,16 @@
   </div>
 
   <%# Can Resolve Checkbox %>
-  <div class="mb-4">
+  <div class="mb-4" data-controller="checkbox-hidden">
     <label class="flex items-center cursor-pointer">
-      <input type="hidden" name="workflow[steps][][can_resolve]" value="false">
-      <input type="checkbox"
-             name="workflow[steps][][can_resolve]"
-             value="true"
-             <%= 'checked' if step['can_resolve'] == true || step['can_resolve'] == 'true' %>
-             class="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+      <input type="hidden" name="workflow[steps][][can_resolve]"
+             value="<%= step['can_resolve'] == true || step['can_resolve'] == 'true' ? 'true' : 'false' %>"
+             data-checkbox-hidden-target="hidden"
              data-step-form-target="field">
+      <input type="checkbox"
+             data-checkbox-hidden-target="checkbox"
+             data-action="change->checkbox-hidden#toggle"
+             class="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded">
       <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">This step may resolve the issue</span>
     </label>
     <p class="mt-1 ml-6 text-xs text-gray-500 dark:text-gray-400">
