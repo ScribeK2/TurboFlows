@@ -56,9 +56,7 @@
                   <% end %>
                 </button>
                 <% unless index == @scenario.execution_path.length - 1 %>
-                  <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 mx-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="flex-shrink: 0;">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                  </svg>
+                  <div class="w-5 h-0.5 bg-gray-200 dark:bg-gray-700 mx-0.5 flex-shrink-0 rounded-full" style="flex-shrink: 0;"></div>
                 <% end %>
               </div>
             <% end %>
@@ -69,6 +67,14 @@
                 </div>
               </div>
             <% end %>
+          </div>
+        </div>
+        <% total_steps = @workflow.steps&.length || 0 %>
+        <% completed_steps = @scenario.execution_path&.length || 0 %>
+        <% progress_pct = total_steps > 0 ? ((completed_steps.to_f / total_steps) * 100).round : 0 %>
+        <div class="px-6 pb-4">
+          <div class="w-full h-1 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+            <div class="h-full bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full transition-all duration-500 ease-out" style="width: <%= progress_pct %>%"></div>
           </div>
         </div>
       </div>
@@ -109,11 +115,11 @@
         <div class="p-6">
           <div class="flex items-center justify-between mb-5">
             <div class="flex items-center">
-              <span class="inline-flex items-center justify-center w-11 h-11 rounded-xl <%= scenario_step_number_classes(step['type']) %> text-lg font-bold mr-4 shadow-sm">
+              <span class="inline-flex items-center justify-center w-11 h-11 rounded-full <%= scenario_step_number_classes(step['type']) %> text-lg font-bold mr-4 shadow-md ring-2 ring-white dark:ring-gray-800">
                 <%= (@scenario.execution_path&.length || 0) + 1 %>
               </span>
               <div>
-                <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100"><%= VariableInterpolator.interpolate(step['title'], @scenario.results || {}) %></h2>
+                <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight"><%= VariableInterpolator.interpolate(step['title'], @scenario.results || {}) %></h2>
                 <span class="<%= step_type_badge_classes(step['type']) %> mt-1">
                   <%= step_type_svg_icon(step['type'], css_classes: "w-3.5 h-3.5 inline mr-1") %>
                   <%= step_type_label(step['type']) %>
@@ -121,7 +127,7 @@
               </div>
             </div>
             <%= form_with url: stop_scenario_path(@scenario), method: :post, data: { turbo_confirm: "Are you sure you want to stop this workflow? You can't continue after stopping." } do |form| %>
-              <%= form.submit "Stop Workflow", class: "px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800" %>
+              <%= form.submit "Stop Workflow", class: "px-3 py-1.5 text-xs font-medium text-red-500/70 dark:text-red-400/60 hover:text-red-600 dark:hover:text-red-400 bg-transparent hover:bg-red-50 dark:hover:bg-red-900/20 border border-transparent hover:border-red-200 dark:hover:border-red-800/40 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800" %>
             <% end %>
           </div>
 
@@ -141,20 +147,30 @@
 
                 <% if step['answer_type'] == 'yes_no' %>
                   <div class="grid grid-cols-2 gap-3">
-                    <label class="radio-card">
+                    <label class="radio-card radio-card-yes">
                       <%= form.radio_button :answer, "yes", { required: true, data: { action: "change->scenario-step#inputChanged", scenario_step_target: "input" } } %>
+                      <span class="radio-icon radio-icon-yes">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </span>
                       <span class="radio-dot"></span>
                       <span class="radio-label">Yes</span>
                     </label>
-                    <label class="radio-card">
+                    <label class="radio-card radio-card-no">
                       <%= form.radio_button :answer, "no", { required: true, data: { action: "change->scenario-step#inputChanged" } } %>
+                      <span class="radio-icon radio-icon-no">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </span>
                       <span class="radio-dot"></span>
                       <span class="radio-label">No</span>
                     </label>
                   </div>
                 <% elsif step['answer_type'] == 'multiple_choice' %>
                   <% if step['options'].present? %>
-                    <div class="space-y-2">
+                    <div class="space-y-2.5">
                       <% step['options'].each_with_index do |option, opt_idx| %>
                         <label class="radio-card">
                           <%= form.radio_button :answer, option['value'] || option['label'], { required: true, data: { action: "change->scenario-step#inputChanged" }.merge(opt_idx == 0 ? { scenario_step_target: "input" } : {}) } %>
@@ -164,79 +180,131 @@
                       <% end %>
                     </div>
                   <% else %>
-                    <%= form.text_field :answer, { class: "w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2 px-3 bg-white/50 dark:bg-gray-800/50 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400", required: true, data: { action: "input->scenario-step#inputChanged", scenario_step_target: "input" } } %>
+                    <div class="scenario-input-wrap">
+                      <span class="scenario-input-icon">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                        </svg>
+                      </span>
+                      <%= form.text_field :answer, { class: "scenario-input", required: true, data: { action: "input->scenario-step#inputChanged", scenario_step_target: "input" } } %>
+                    </div>
                   <% end %>
                 <% elsif step['answer_type'] == 'dropdown' %>
                   <% if step['options'].present? %>
-                    <%= form.select :answer, step['options'].map { |opt| [opt['label'] || opt['value'], opt['value'] || opt['label']] }, { prompt: "-- Select --" }, { class: "w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2 px-3 bg-white/50 dark:bg-gray-800/50 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400", required: true, data: { action: "change->scenario-step#inputChanged", scenario_step_target: "input" } } %>
+                    <div class="scenario-input-wrap">
+                      <%= form.select :answer, step['options'].map { |opt| [opt['label'] || opt['value'], opt['value'] || opt['label']] }, { prompt: "-- Select an option --" }, { class: "scenario-input scenario-select", required: true, data: { action: "change->scenario-step#inputChanged", scenario_step_target: "input" } } %>
+                    </div>
                   <% else %>
-                    <%= form.text_field :answer, { class: "w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2 px-3 bg-white/50 dark:bg-gray-800/50 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400", required: true, data: { action: "input->scenario-step#inputChanged", scenario_step_target: "input" } } %>
+                    <div class="scenario-input-wrap">
+                      <span class="scenario-input-icon">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                        </svg>
+                      </span>
+                      <%= form.text_field :answer, { class: "scenario-input", required: true, data: { action: "input->scenario-step#inputChanged", scenario_step_target: "input" } } %>
+                    </div>
                   <% end %>
                 <% else %>
-                  <%= form.text_field :answer, { class: "w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2 px-3 bg-white/50 dark:bg-gray-800/50 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400", required: true, placeholder: step['answer_type'] == 'number' ? 'Enter a number' : step['answer_type'] == 'date' ? 'YYYY-MM-DD' : '', data: { action: "input->scenario-step#inputChanged", scenario_step_target: "input" } } %>
+                  <%# Text, Number, Date inputs with type-specific icons %>
+                  <div class="scenario-input-wrap">
+                    <span class="scenario-input-icon">
+                      <% if step['answer_type'] == 'number' %>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5l-3.9 19.5m-2.1-19.5l-3.9 19.5" />
+                        </svg>
+                      <% elsif step['answer_type'] == 'date' %>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                        </svg>
+                      <% else %>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                        </svg>
+                      <% end %>
+                    </span>
+                    <%= form.text_field :answer, { class: "scenario-input", required: true, placeholder: step['answer_type'] == 'number' ? 'Enter a number' : step['answer_type'] == 'date' ? 'YYYY-MM-DD' : 'Type your answer...', data: { action: "input->scenario-step#inputChanged", scenario_step_target: "input" } } %>
+                  </div>
                 <% end %>
               </div>
 
-              <div class="flex items-center justify-between pt-4">
+              <div class="scenario-button-bar">
                 <div>
                   <%= scenario_back_button(@scenario) %>
                 </div>
                 <div class="flex items-center space-x-3">
-                  <%= link_to "Cancel", cancel_url, class: "bg-white/50 dark:bg-gray-800/50 py-2 px-4 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-200", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
-                  <%= form.submit "Continue", class: "bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-sm", disabled: true, data: { scenario_step_target: "submit" } %>
+                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
+                  <%= form.submit "Continue", class: "bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-sm", disabled: true, data: { scenario_step_target: "submit" } %>
                 </div>
               </div>
             <% end %>
 
           <% when 'action' %>
-            <div class="bg-amber-50/80 dark:bg-amber-900/20 border border-amber-200/50 dark:border-amber-800/30 rounded-xl p-5 mb-4 relative" data-controller="clipboard">
-              <div class="flex items-start justify-between">
-                <div class="flex-1">
-                  <h3 class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-3">Instructions</h3>
-                  <div class="text-sm text-amber-900 dark:text-amber-200 leading-relaxed" data-clipboard-target="source"><%= render_step_markdown(VariableInterpolator.interpolate(step['instructions'], @scenario.results || {})) %></div>
+            <div class="rounded-xl mb-4 relative overflow-hidden border border-amber-200/60 dark:border-amber-800/40 shadow-sm" data-controller="clipboard">
+              <div class="absolute left-0 top-0 bottom-0 w-1 bg-amber-500 dark:bg-amber-400"></div>
+              <div class="bg-amber-50/80 dark:bg-amber-900/20 p-5 pl-6">
+                <div class="flex items-start justify-between">
+                  <div class="flex items-start flex-1">
+                    <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-800/50 flex items-center justify-center mr-3 mt-0.5">
+                      <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.65-5.65a8 8 0 1111.56-1.22l.13.13-6.04 6.74z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-4.5-4.5" />
+                      </svg>
+                    </div>
+                    <div class="flex-1">
+                      <h3 class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-3">Instructions</h3>
+                      <div class="text-sm text-amber-900 dark:text-amber-200 leading-relaxed" data-clipboard-target="source"><%= render_step_markdown(VariableInterpolator.interpolate(step['instructions'], @scenario.results || {})) %></div>
+                    </div>
+                  </div>
+                  <button type="button"
+                          class="ml-3 mt-1 p-2 rounded-lg text-amber-400 hover:text-amber-600 dark:text-amber-500 dark:hover:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-800/40 transition-colors duration-200 flex-shrink-0"
+                          title="Copy instructions to clipboard"
+                          data-action="click->clipboard#copy"
+                          data-clipboard-target="button">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                    </svg>
+                  </button>
                 </div>
-                <button type="button"
-                        class="ml-3 mt-1 p-2 rounded-lg text-amber-400 hover:text-amber-600 dark:text-amber-500 dark:hover:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-800/40 transition-colors duration-200 flex-shrink-0"
-                        title="Copy instructions to clipboard"
-                        data-action="click->clipboard#copy"
-                        data-clipboard-target="button">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
-                  </svg>
-                </button>
               </div>
             </div>
 
             <%= form_with url: next_step_scenario_path(@scenario), method: :post, data: { turbo: false, scenario_step_target: "form" } do |form| %>
               <%= form.hidden_field :answer, value: "" %>
-              <div class="flex items-center justify-between pt-4">
+              <div class="scenario-button-bar">
                 <div>
                   <%= scenario_back_button(@scenario) %>
                 </div>
                 <div class="flex items-center space-x-3">
-                  <%= link_to "Cancel", cancel_url, class: "bg-white/50 dark:bg-gray-800/50 py-2 px-4 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-200", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
+                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
                   <% if step['can_resolve'] %>
-                    <%= button_tag "This resolved the issue", type: "submit", name: "resolved_here", value: "true", class: "bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 px-5 py-2 rounded-lg text-sm font-medium border border-emerald-300 dark:border-emerald-700 shadow-sm hover:shadow-md transition-all duration-200", data: { turbo_confirm: "Mark this step as having resolved the issue? The scenario will end." } %>
+                    <%= button_tag type: "submit", name: "resolved_here", value: "true", class: "scenario-btn-resolve", data: { turbo_confirm: "Mark this step as having resolved the issue? The scenario will end." } do %>
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      Resolved
+                    <% end %>
                   <% end %>
-                  <%= form.submit "Continue", class: "bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all duration-200", data: { scenario_step_target: "submit" } %>
+                  <%= form.submit "Continue", class: "bg-amber-500 hover:bg-amber-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all duration-200", data: { scenario_step_target: "submit" } %>
                 </div>
               </div>
             <% end %>
 
           <% when 'message' %>
-            <div class="bg-purple-50/80 dark:bg-purple-900/20 border border-purple-200/50 dark:border-purple-800/30 rounded-xl p-5 mb-4">
-              <div class="flex items-start">
-                <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-800/40 flex items-center justify-center mr-3 mt-0.5">
-                  <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div class="flex-1">
-                  <% if step['content'].present? %>
-                    <div class="text-sm text-purple-900 dark:text-purple-200 leading-relaxed"><%= render_step_markdown(VariableInterpolator.interpolate(step['content'], @scenario.results || {})) %></div>
-                  <% else %>
-                    <p class="text-sm text-purple-800 dark:text-purple-300 italic">No message content provided.</p>
-                  <% end %>
+            <div class="rounded-xl mb-4 relative overflow-hidden border border-purple-200/60 dark:border-purple-800/40 shadow-sm">
+              <div class="absolute left-0 top-0 bottom-0 w-1 bg-purple-500 dark:bg-purple-400"></div>
+              <div class="bg-purple-50/80 dark:bg-purple-900/20 p-5 pl-6">
+                <div class="flex items-start">
+                  <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-800/50 flex items-center justify-center mr-3 mt-0.5">
+                    <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </div>
+                  <div class="flex-1">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 mb-3">Message</h3>
+                    <% if step['content'].present? %>
+                      <div class="text-sm text-purple-900 dark:text-purple-200 leading-relaxed"><%= render_step_markdown(VariableInterpolator.interpolate(step['content'], @scenario.results || {})) %></div>
+                    <% else %>
+                      <p class="text-sm text-purple-800 dark:text-purple-300 italic">No message content provided.</p>
+                    <% end %>
+                  </div>
                 </div>
               </div>
             </div>
@@ -247,98 +315,107 @@
 
             <%= form_with url: next_step_scenario_path(@scenario), method: :post, data: { turbo: false, scenario_step_target: "form" } do |form| %>
               <%= form.hidden_field :answer, value: "" %>
-              <div class="flex items-center justify-between pt-4">
+              <div class="scenario-button-bar">
                 <div>
                   <%= scenario_back_button(@scenario) %>
                 </div>
                 <div class="flex items-center space-x-3">
-                  <%= link_to "Cancel", cancel_url, class: "bg-white/50 dark:bg-gray-800/50 py-2 px-4 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-200", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
+                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
                   <% if step['can_resolve'] %>
-                    <%= button_tag "This resolved the issue", type: "submit", name: "resolved_here", value: "true", class: "bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 px-5 py-2 rounded-lg text-sm font-medium border border-emerald-300 dark:border-emerald-700 shadow-sm hover:shadow-md transition-all duration-200", data: { turbo_confirm: "Mark this step as having resolved the issue? The scenario will end." } %>
+                    <%= button_tag type: "submit", name: "resolved_here", value: "true", class: "scenario-btn-resolve", data: { turbo_confirm: "Mark this step as having resolved the issue? The scenario will end." } do %>
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      Resolved
+                    <% end %>
                   <% end %>
-                  <%= form.submit "Continue", class: "bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all duration-200", data: { scenario_step_target: "submit" } %>
+                  <%= form.submit "Continue", class: "bg-purple-600 hover:bg-purple-700 text-white px-6 py-2.5 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all duration-200", data: { scenario_step_target: "submit" } %>
                 </div>
               </div>
             <% end %>
 
           <% when 'escalate' %>
-            <div class="bg-orange-50/80 dark:bg-orange-900/20 border border-orange-200/50 dark:border-orange-800/30 rounded-xl p-5 mb-4">
-              <div class="flex items-start">
-                <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-800/40 flex items-center justify-center mr-3 mt-0.5">
-                  <svg class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12" />
-                  </svg>
-                </div>
-                <div class="flex-1">
-                  <h3 class="text-xs font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400 mb-2">Escalation Required</h3>
-                  <% if step['target_type'].present? || step['target_value'].present? %>
-                    <p class="text-sm text-orange-800 dark:text-orange-300 mb-2">
-                      <strong>Target:</strong>
-                      <%= step['target_type']&.titleize %><%= " - #{step['target_value']}" if step['target_value'].present? %>
-                    </p>
-                  <% end %>
-                  <% if step['priority'].present? && !%w[normal medium].include?(step['priority']) %>
-                    <p class="text-sm text-orange-800 dark:text-orange-300 mb-2">
-                      <strong>Priority:</strong>
-                      <span class="<%= %w[urgent critical].include?(step['priority']) ? 'text-red-600 dark:text-red-400 font-semibold' : step['priority'] == 'high' ? 'text-orange-600 dark:text-orange-400 font-medium' : '' %>">
-                        <%= step['priority']&.titleize %>
-                      </span>
-                    </p>
-                  <% end %>
-                  <% if step['notes'].present? %>
-                    <div class="text-sm text-orange-700 dark:text-orange-300 mt-2"><%= render_step_markdown(VariableInterpolator.interpolate(step['notes'], @scenario.results || {})) %></div>
-                  <% end %>
+            <div class="rounded-xl mb-4 relative overflow-hidden border border-orange-200/60 dark:border-orange-800/40 shadow-sm">
+              <div class="absolute left-0 top-0 bottom-0 w-1 bg-orange-500 dark:bg-orange-400"></div>
+              <div class="bg-orange-50/80 dark:bg-orange-900/20 p-5 pl-6">
+                <div class="flex items-start">
+                  <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-800/50 flex items-center justify-center mr-3 mt-0.5">
+                    <svg class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div class="flex-1">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400 mb-3">Escalation Required</h3>
+                    <% if step['target_type'].present? || step['target_value'].present? %>
+                      <p class="text-sm text-orange-800 dark:text-orange-300 mb-2">
+                        <strong>Target:</strong>
+                        <%= step['target_type']&.titleize %><%= " - #{step['target_value']}" if step['target_value'].present? %>
+                      </p>
+                    <% end %>
+                    <% if step['priority'].present? && !%w[normal medium].include?(step['priority']) %>
+                      <p class="text-sm text-orange-800 dark:text-orange-300 mb-2">
+                        <strong>Priority:</strong>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold <%= %w[urgent critical].include?(step['priority']) ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' : step['priority'] == 'high' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' %>">
+                          <%= step['priority']&.titleize %>
+                        </span>
+                      </p>
+                    <% end %>
+                    <% if step['notes'].present? %>
+                      <div class="text-sm text-orange-700 dark:text-orange-300 mt-2"><%= render_step_markdown(VariableInterpolator.interpolate(step['notes'], @scenario.results || {})) %></div>
+                    <% end %>
+                  </div>
                 </div>
               </div>
             </div>
 
             <%= form_with url: next_step_scenario_path(@scenario), method: :post, data: { turbo: false, scenario_step_target: "form" } do |form| %>
               <%= form.hidden_field :answer, value: "" %>
-              <div class="flex items-center justify-between pt-4">
+              <div class="scenario-button-bar">
                 <div>
                   <%= scenario_back_button(@scenario) %>
                 </div>
                 <div class="flex items-center space-x-3">
-                  <%= link_to "Cancel", cancel_url, class: "bg-white/50 dark:bg-gray-800/50 py-2 px-4 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-200", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
-                  <%= form.submit "Continue", class: "bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all duration-200", data: { scenario_step_target: "submit" } %>
+                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
+                  <%= form.submit "Continue", class: "bg-orange-500 hover:bg-orange-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all duration-200", data: { scenario_step_target: "submit" } %>
                 </div>
               </div>
             <% end %>
 
           <% when 'resolve' %>
-            <div class="bg-emerald-50/80 dark:bg-emerald-900/20 border border-emerald-200/50 dark:border-emerald-800/30 rounded-xl p-5 mb-4">
-              <div class="flex items-start">
-                <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-800/40 flex items-center justify-center mr-3 mt-0.5">
-                  <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div class="flex-1">
-                  <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-2">Resolution</h3>
-                  <% if step['resolution_type'].present? %>
-                    <p class="text-sm text-emerald-800 dark:text-emerald-300 mb-2">
-                      <strong>Type:</strong>
-                      <span class="<%= step['resolution_type'] == 'success' ? 'text-green-600 dark:text-green-400' : step['resolution_type'] == 'failure' ? 'text-red-600 dark:text-red-400' : %w[transfer ticket].include?(step['resolution_type']) ? 'text-blue-600 dark:text-blue-400' : step['resolution_type'] == 'manager_escalation' ? 'text-orange-600 dark:text-orange-400' : '' %>">
-                        <%= step['resolution_type']&.titleize %>
-                      </span>
-                    </p>
-                  <% end %>
+            <div class="rounded-xl mb-4 relative overflow-hidden border border-emerald-200/60 dark:border-emerald-800/40 shadow-sm">
+              <div class="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 dark:bg-emerald-400"></div>
+              <div class="bg-emerald-50/80 dark:bg-emerald-900/20 p-5 pl-6">
+                <div class="flex items-start">
+                  <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-800/50 flex items-center justify-center mr-3 mt-0.5">
+                    <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div class="flex-1">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-3">Resolution</h3>
+                    <% if step['resolution_type'].present? %>
+                      <p class="text-sm text-emerald-800 dark:text-emerald-300 mb-2">
+                        <strong>Type:</strong>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold <%= step['resolution_type'] == 'success' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' : step['resolution_type'] == 'failure' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' : %w[transfer ticket].include?(step['resolution_type']) ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : step['resolution_type'] == 'manager_escalation' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' %>">
+                          <%= step['resolution_type']&.titleize %>
+                        </span>
+                      </p>
+                    <% end %>
+                  </div>
                 </div>
               </div>
             </div>
 
             <%= form_with url: next_step_scenario_path(@scenario), method: :post, data: { turbo: false, scenario_step_target: "form" } do |form| %>
               <%= form.hidden_field :answer, value: "" %>
-              <div class="flex items-center justify-between pt-4">
+              <div class="scenario-button-bar">
                 <div>
                   <%= scenario_back_button(@scenario) %>
                 </div>
                 <div class="flex items-center space-x-3">
-                  <%= link_to "Cancel", cancel_url, class: "bg-white/50 dark:bg-gray-800/50 py-2 px-4 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-200", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
+                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
                   <% if @scenario.parent_scenario.present? %>
-                    <%= form.submit "Finish & Return", class: "bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all duration-200", data: { scenario_step_target: "submit" } %>
+                    <%= form.submit "Finish & Return", class: "bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all duration-200", data: { scenario_step_target: "submit" } %>
                   <% else %>
-                    <%= form.submit "Complete Workflow", class: "bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all duration-200", data: { scenario_step_target: "submit" } %>
+                    <%= form.submit "Complete Workflow", class: "bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all duration-200", data: { scenario_step_target: "submit" } %>
                   <% end %>
                 </div>
               </div>
@@ -360,12 +437,12 @@
             </div>
             <%= form_with url: next_step_scenario_path(@scenario), method: :post, data: { turbo: false, scenario_step_target: "form" } do |form| %>
               <%= form.hidden_field :answer, value: "" %>
-              <div class="flex items-center justify-between pt-4">
+              <div class="scenario-button-bar">
                 <div>
                   <%= scenario_back_button(@scenario) %>
                 </div>
                 <div class="flex items-center">
-                  <%= form.submit "Continue", class: "bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105", data: { scenario_step_target: "submit" } %>
+                  <%= form.submit "Continue", class: "bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all duration-200", data: { scenario_step_target: "submit" } %>
                 </div>
               </div>
             <% end %>
