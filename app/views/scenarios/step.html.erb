@@ -216,7 +216,7 @@
                 <div class="flex items-center space-x-3">
                   <%= link_to "Cancel", cancel_url, class: "bg-white/50 dark:bg-gray-800/50 py-2 px-4 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-200", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
                   <% if step['can_resolve'] %>
-                    <%= form.submit "This resolved the issue", name: "resolved_here", value: "true", class: "bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 px-5 py-2 rounded-lg text-sm font-medium border border-emerald-300 dark:border-emerald-700 shadow-sm hover:shadow-md transition-all duration-200", data: { turbo_confirm: "Mark this step as having resolved the issue? The scenario will end." } %>
+                    <%= button_tag "This resolved the issue", type: "submit", name: "resolved_here", value: "true", class: "bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 px-5 py-2 rounded-lg text-sm font-medium border border-emerald-300 dark:border-emerald-700 shadow-sm hover:shadow-md transition-all duration-200", data: { turbo_confirm: "Mark this step as having resolved the issue? The scenario will end." } %>
                   <% end %>
                   <%= form.submit "Continue", class: "bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all duration-200", data: { scenario_step_target: "submit" } %>
                 </div>
@@ -254,7 +254,7 @@
                 <div class="flex items-center space-x-3">
                   <%= link_to "Cancel", cancel_url, class: "bg-white/50 dark:bg-gray-800/50 py-2 px-4 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-200", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
                   <% if step['can_resolve'] %>
-                    <%= form.submit "This resolved the issue", name: "resolved_here", value: "true", class: "bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 px-5 py-2 rounded-lg text-sm font-medium border border-emerald-300 dark:border-emerald-700 shadow-sm hover:shadow-md transition-all duration-200", data: { turbo_confirm: "Mark this step as having resolved the issue? The scenario will end." } %>
+                    <%= button_tag "This resolved the issue", type: "submit", name: "resolved_here", value: "true", class: "bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 px-5 py-2 rounded-lg text-sm font-medium border border-emerald-300 dark:border-emerald-700 shadow-sm hover:shadow-md transition-all duration-200", data: { turbo_confirm: "Mark this step as having resolved the issue? The scenario will end." } %>
                   <% end %>
                   <%= form.submit "Continue", class: "bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all duration-200", data: { scenario_step_target: "submit" } %>
                 </div>
