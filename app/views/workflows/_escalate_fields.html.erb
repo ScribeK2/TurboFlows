@@ -76,15 +76,16 @@
   </div>
 
   <%# Reason Required Checkbox %>
-  <div class="mb-4">
+  <div class="mb-4" data-controller="checkbox-hidden">
     <label class="flex items-center cursor-pointer">
-      <input type="hidden" name="workflow[steps][][reason_required]" value="false">
-      <input type="checkbox"
-             name="workflow[steps][][reason_required]"
-             value="true"
-             <%= 'checked' if step['reason_required'] == true || step['reason_required'] == 'true' %>
-             class="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+      <input type="hidden" name="workflow[steps][][reason_required]"
+             value="<%= step['reason_required'] == true || step['reason_required'] == 'true' ? 'true' : 'false' %>"
+             data-checkbox-hidden-target="hidden"
              data-step-form-target="field">
+      <input type="checkbox"
+             data-checkbox-hidden-target="checkbox"
+             data-action="change->checkbox-hidden#toggle"
+             class="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded">
       <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Require CSR to provide a reason for escalation</span>
     </label>
   </div>
