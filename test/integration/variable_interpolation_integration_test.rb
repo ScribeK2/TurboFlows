@@ -132,7 +132,7 @@ class VariableInterpolationIntegrationTest < ActionDispatch::IntegrationTest
     assert_response :success
 
     # Should show interpolated instructions
-    assert_select ".text-blue-800", text: /Send email to Bob about password reset/
+    assert_select ".text-amber-900", text: /Send email to Bob about password reset/
   end
 
   test "action step title and description interpolation" do
