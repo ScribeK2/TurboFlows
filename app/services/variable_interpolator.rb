@@ -45,6 +45,22 @@ class VariableInterpolator
     end
   end
 
+  # Interpolate variables within Action Text rich text content
+  #
+  # @param rich_text [ActionText::RichText, String, nil] The rich text or string to interpolate
+  # @param variables [Hash] Hash of variable names to values
+  # @return [String] The interpolated HTML string
+  def self.interpolate_rich_text(rich_text, variables = {})
+    return "" if rich_text.blank? || variables.blank?
+
+    if rich_text.respond_to?(:body)
+      html = rich_text.body.to_s
+      interpolate(html, variables)
+    else
+      interpolate(rich_text.to_s, variables)
+    end
+  end
+
   # Extract all variable names from a text string
   #
   # @param text [String] The text containing {{variable_name}} patterns

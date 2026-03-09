@@ -86,14 +86,18 @@ class SubflowValidator
   end
 
   # Extract target workflow IDs from sub-flow steps
+  # Supports both ActiveRecord Steps and legacy JSONB during migration.
+  # Checks JSONB first (in-memory, no extra query) during transition period.
   # @param workflow [Workflow] The workflow to extract from
   # @return [Array<Integer>] Array of target workflow IDs
   def extract_subflow_target_ids(workflow)
-    return [] unless workflow.steps.is_a?(Array)
-
-    workflow.steps
-      .select { |s| (s["type"] == "sub_flow" || s["type"] == "sub-flow") && s["target_workflow_id"].present? }
-      .map { |s| s["target_workflow_id"].to_i }
+    if workflow.read_attribute(:steps).is_a?(Array)
+      workflow.read_attribute(:steps)
+        .select { |s| (s["type"] == "sub_flow" || s["type"] == "sub-flow") && s["target_workflow_id"].present? }
+        .map { |s| s["target_workflow_id"].to_i }
+    else
+      Steps::SubFlow.where(workflow_id: workflow.id).pluck(:sub_flow_workflow_id).compact
+    end
   end
 
   # Recursively check for circular sub-flow references
