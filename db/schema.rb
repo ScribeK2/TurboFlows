@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_09_162717) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_09_213711) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -148,8 +148,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_09_162717) do
     t.integer "workflow_id", null: false
     t.index ["sub_flow_workflow_id"], name: "index_steps_on_sub_flow_workflow_id"
     t.index ["type"], name: "index_steps_on_type"
-    t.index ["uuid"], name: "index_steps_on_uuid", unique: true
     t.index ["workflow_id", "position"], name: "index_steps_on_workflow_id_and_position"
+    t.index ["workflow_id", "uuid"], name: "index_steps_on_workflow_id_and_uuid", unique: true
     t.index ["workflow_id"], name: "index_steps_on_workflow_id"
   end
 
@@ -175,7 +175,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_09_162717) do
     t.integer "step_id", null: false
     t.integer "target_step_id", null: false
     t.datetime "updated_at", null: false
-    t.index ["step_id", "target_step_id"], name: "index_transitions_on_step_id_and_target_step_id", unique: true
+    t.index ["step_id", "target_step_id", "condition"], name: "index_transitions_on_step_id_and_target_step_id_and_condition", unique: true
     t.index ["step_id"], name: "index_transitions_on_step_id"
     t.index ["target_step_id"], name: "index_transitions_on_target_step_id"
   end
