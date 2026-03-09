@@ -45,32 +45,46 @@ class WorkflowChannel < ApplicationCable::Channel
   end
 
   # Handle step updates from other users
+  # Supports both AR step updates (by uuid) and legacy JSONB updates (by step_index)
   def step_update(data)
     workflow = find_workflow
     return unless workflow.can_be_edited_by?(current_user)
 
-    Rails.logger.info "WorkflowChannel: Broadcasting step_update - step_index: #{data['step_index']}"
+    # AR path: update by step UUID
+    if data["step_uuid"].present?
+      Rails.logger.info "WorkflowChannel: Broadcasting AR step_update - uuid: #{data['step_uuid']}"
 
-    # Don't broadcast back to the sender
-    ActionCable.server.broadcast("workflow:#{workflow.id}", {
-                                   type: "step_update",
-                                   step_index: data["step_index"],
-                                   step_data: data["step_data"],
-                                   user: user_info,
-                                   timestamp: Time.current.iso8601
-                                 })
+      ActionCable.server.broadcast("workflow:#{workflow.id}", {
+                                     type: "step_update",
+                                     step_uuid: data["step_uuid"],
+                                     step_data: data["step_data"],
+                                     user: user_info,
+                                     timestamp: Time.current.iso8601
+                                   })
+    else
+      # Legacy JSONB path
+      Rails.logger.info "WorkflowChannel: Broadcasting step_update - step_index: #{data['step_index']}"
+
+      ActionCable.server.broadcast("workflow:#{workflow.id}", {
+                                     type: "step_update",
+                                     step_index: data["step_index"],
+                                     step_data: data["step_data"],
+                                     user: user_info,
+                                     timestamp: Time.current.iso8601
+                                   })
+    end
   end
 
   # Handle auto-save requests from the client
-  # Uses optimistic locking to prevent race conditions when multiple users edit
+  # Uses optimistic locking to prevent race conditions when multiple users edit.
+  # Supports both AR step updates (step_updates array with uuid-keyed data)
+  # and legacy JSONB updates (steps array replacing entire JSON column).
   def autosave(data)
     workflow = find_workflow
     return unless workflow.can_be_edited_by?(current_user)
 
     client_lock_version = (data["lock_version"] || data[:lock_version]).to_i
     title = data["title"] || data[:title] || workflow.title
-    steps_data = data["steps"] || data[:steps] || []
-    formatted_steps = format_steps_data(steps_data)
 
     Rails.logger.info "Autosave: Workflow #{workflow.id}, client version: #{client_lock_version}, server version: #{workflow.lock_version}"
 
@@ -83,10 +97,20 @@ class WorkflowChannel < ApplicationCable::Channel
           return
         end
 
-        apply_autosave_updates(workflow, title, formatted_steps)
-        workflow.save!(validate: false)
-        broadcast_autosave_success(workflow)
+        # AR step path: receive individual step updates by UUID
+        if data["step_updates"].present? && data["step_updates"].is_a?(Array)
+          apply_ar_step_updates(workflow, data["step_updates"])
+          workflow.title = title if title.present?
+          workflow.save!(validate: false)
+        else
+          # Legacy JSONB path
+          steps_data = data["steps"] || data[:steps] || []
+          formatted_steps = format_steps_data(steps_data)
+          apply_autosave_updates(workflow, title, formatted_steps)
+          workflow.save!(validate: false)
+        end
 
+        broadcast_autosave_success(workflow)
         Rails.logger.info "Autosave: Successfully saved workflow #{workflow.id}, new version: #{workflow.lock_version}"
       end
     rescue ActiveRecord::StaleObjectError => e
@@ -197,6 +221,33 @@ class WorkflowChannel < ApplicationCable::Channel
                             message: "Another user has modified this workflow. Please review the changes.",
                             timestamp: Time.current.iso8601
                           })
+  end
+
+  # Apply individual AR step updates received via autosave
+  # Each update has { uuid: "...", attributes: { title: "...", ... } }
+  def apply_ar_step_updates(workflow, step_updates)
+    step_updates.each do |update|
+      next unless update.is_a?(Hash) && update["uuid"].present?
+
+      step = workflow.workflow_steps.unscoped.find_by(uuid: update["uuid"], workflow_id: workflow.id)
+      next unless step
+
+      attrs = (update["attributes"] || {}).slice(
+        "title", "question", "answer_type", "variable_name", "can_resolve",
+        "action_type", "target_type", "target_value", "priority", "reason_required",
+        "resolution_type", "resolution_code", "notes_required", "survey_trigger",
+        "sub_flow_workflow_id", "position"
+      )
+
+      # Rich text fields need special handling
+      %w[instructions content notes].each do |rt_field|
+        if update.dig("attributes", rt_field).present?
+          step.send(:"#{rt_field}=", update["attributes"][rt_field]) if step.respond_to?(:"#{rt_field}=")
+        end
+      end
+
+      step.update!(attrs) if attrs.present?
+    end
   end
 
   def apply_autosave_updates(workflow, title, formatted_steps)

@@ -190,14 +190,27 @@ class WorkflowsController < ApplicationController
 
   def export
     # Build comprehensive export data including Graph Mode fields
+    # Use AR steps if available, otherwise fall back to JSONB
+    steps_data = if @workflow.workflow_steps.any?
+                   serialize_ar_steps_for_export(@workflow)
+                 else
+                   @workflow.steps || []
+                 end
+
+    start_uuid = if @workflow.start_step.present?
+                   @workflow.start_step.uuid
+                 else
+                   @workflow.start_node_uuid
+                 end
+
     export_data = {
       title: @workflow.title,
       description: @workflow.description_text || "",
       graph_mode: @workflow.graph_mode?,
-      start_node_uuid: @workflow.start_node_uuid,
-      steps: @workflow.steps || [],
+      start_node_uuid: start_uuid,
+      steps: steps_data,
       exported_at: Time.current.iso8601,
-      export_version: "2.0" # Version 2.0 indicates Graph Mode support
+      export_version: "2.0"
     }
 
     send_data export_data.to_json,
@@ -214,48 +227,15 @@ class WorkflowsController < ApplicationController
     pdf.text @workflow.description_text, size: 12 if @workflow.description_text.present?
     pdf.move_down 10
 
-    # Show workflow mode
     mode_text = @workflow.graph_mode? ? "Graph Mode" : "Linear Mode"
     pdf.text "Mode: #{mode_text}", size: 10, style: :italic
     pdf.move_down 20
 
-    if @workflow.steps.present?
-      @workflow.steps.each_with_index do |step, index|
-        # Step header with type badge
-        step_type = step['type']&.capitalize || 'Unknown'
-        pdf.text "#{index + 1}. #{step['title']} [#{step_type}]", size: 14, style: :bold
-        pdf.text step['description'], size: 10 if step['description'].present?
-
-        # Type-specific content
-        case step['type']
-        when 'question'
-          pdf.text "Question: #{step['question']}", size: 10 if step['question'].present?
-          pdf.text "Variable: #{step['variable_name']}", size: 9, style: :italic if step['variable_name'].present?
-        when 'action'
-          pdf.text "Instructions: #{step['instructions']}", size: 10 if step['instructions'].present?
-        when 'message'
-          pdf.text "Message: #{step['content']}", size: 10 if step['content'].present?
-        when 'escalate'
-          pdf.text "Escalate to: #{step['target_type']}", size: 10 if step['target_type'].present?
-          pdf.text "Priority: #{step['priority']}", size: 10 if step['priority'].present?
-        when 'resolve'
-          pdf.text "Resolution: #{step['resolution_type']}", size: 10 if step['resolution_type'].present?
-        end
-
-        # Show transitions for graph mode workflows
-        if @workflow.graph_mode? && step['transitions'].present?
-          pdf.text "Transitions:", size: 10, style: :bold
-          step['transitions'].each do |transition|
-            target_step = @workflow.find_step_by_id(transition['target_uuid'])
-            target_name = target_step ? target_step['title'] : transition['target_uuid']
-            condition_text = transition['condition'].present? ? " (if #{transition['condition']})" : ""
-            # Use ASCII arrow instead of Unicode to avoid encoding issues
-            pdf.text "  -> #{target_name}#{condition_text}", size: 9
-          end
-        end
-
-        pdf.move_down 10
-      end
+    # Use AR steps if available, otherwise JSONB
+    if @workflow.workflow_steps.any?
+      export_pdf_ar_steps(pdf)
+    elsif @workflow.steps.present?
+      export_pdf_jsonb_steps(pdf)
     end
 
     send_data pdf.render, filename: "#{@workflow.title.parameterize}.pdf", type: "application/pdf"
@@ -284,15 +264,16 @@ class WorkflowsController < ApplicationController
   end
 
   # Sprint 3: Render step HTML for dynamic step creation
-  # This allows the JavaScript to request server-rendered HTML for new steps,
-  # ensuring all the new Sprint 2/3 features are included
+  # Supports both legacy JSONB mode and new ActiveRecord Step mode.
+  # When workflow has AR steps (workflow_steps.any?), creates an AR Step record.
+  # Otherwise falls back to building a JSONB hash for backward compatibility.
   def render_step
     Rails.logger.debug { "[render_step] Params: #{params.inspect}" }
 
     step_type = params[:step_type]
     step_index = params[:step_index].to_i
 
-    # Convert step_data to hash with indifferent access (allows both string and symbol keys)
+    # Convert step_data to hash with indifferent access
     raw_step_data = params[:step_data]
     step_data = if raw_step_data.is_a?(ActionController::Parameters)
                   raw_step_data.to_unsafe_h.with_indifferent_access
@@ -304,7 +285,48 @@ class WorkflowsController < ApplicationController
 
     Rails.logger.debug { "[render_step] step_type=#{step_type}, step_index=#{step_index}, step_data=#{step_data.inspect}" }
 
-    # Build a step hash from the parameters
+    # Try AR path if workflow has migrated steps
+    if @workflow.workflow_steps.loaded? ? @workflow.workflow_steps.any? : @workflow.workflow_steps.exists?
+      step_class = step_class_for(step_type)
+      position = @workflow.workflow_steps.maximum(:position).to_i + 1
+      attrs = { workflow: @workflow, position: position, title: step_data[:title] || "" }
+
+      case step_type
+      when "question"
+        attrs[:question] = step_data[:question] || ""
+        attrs[:answer_type] = step_data[:answer_type] || "yes_no"
+        attrs[:variable_name] = step_data[:variable_name] || ""
+      when "action"
+        attrs[:action_type] = step_data[:action_type] || "Instruction"
+      when "sub_flow"
+        attrs[:sub_flow_workflow_id] = step_data[:target_workflow_id] if step_data[:target_workflow_id].present?
+      end
+
+      step = step_class.new(attrs)
+      step.save! # Persist so it gets a UUID and ID
+
+      # Set rich text after save
+      case step_type
+      when "action"
+        step.update(instructions: step_data[:instructions]) if step_data[:instructions].present?
+      when "message"
+        step.update(content: step_data[:content]) if step_data[:content].present?
+      when "escalate"
+        step.update(notes: step_data[:notes]) if step_data[:notes].present?
+      end
+
+      begin
+        render partial: "workflows/step_item",
+               locals: { step: step, index: step.position, workflow: @workflow, expanded: true },
+               formats: [:html]
+      rescue StandardError => e
+        Rails.logger.error "[render_step] Error rendering AR step: #{e.message}"
+        render plain: "Error rendering step: #{e.message}", status: :internal_server_error
+      end
+      return
+    end
+
+    # Legacy JSONB path
     step = {
       'id' => SecureRandom.uuid,
       'type' => step_type,
@@ -312,7 +334,6 @@ class WorkflowsController < ApplicationController
       'description' => step_data[:description] || ''
     }
 
-    # Add type-specific fields
     case step_type
     when 'question'
       step['question'] = step_data[:question] || ''
@@ -328,15 +349,9 @@ class WorkflowsController < ApplicationController
       step['variable_mapping'] = step_data[:variable_mapping] || {}
     end
 
-    # Render the step_item partial
     begin
       render partial: 'workflows/step_item',
-             locals: {
-               step: step,
-               index: step_index,
-               workflow: @workflow,
-               expanded: true
-             },
+             locals: { step: step, index: step_index, workflow: @workflow, expanded: true },
              formats: [:html]
     rescue StandardError => e
       Rails.logger.error "[render_step] Error rendering step: #{e.message}"
@@ -666,12 +681,159 @@ class WorkflowsController < ApplicationController
 
   # Preload all workflows referenced by sub-flow steps to avoid N+1 queries in partials
   def preload_subflow_targets
+    # AR path
+    if @workflow.workflow_steps.any?
+      subflow_ids = Steps::SubFlow.where(workflow_id: @workflow.id).pluck(:sub_flow_workflow_id).compact
+      @subflow_targets = Workflow.where(id: subflow_ids).index_by(&:id) if subflow_ids.any?
+      return
+    end
+
+    # Legacy JSONB path
     return unless @workflow&.steps.present?
 
     subflow_ids = @workflow.steps
       .select { |s| %w[sub_flow sub-flow].include?(s["type"]) && s["target_workflow_id"].present? }
       .map { |s| s["target_workflow_id"].to_i }
     @subflow_targets = Workflow.where(id: subflow_ids).index_by(&:id) if subflow_ids.any?
+  end
+
+  # Resolve step type string to STI class
+  def step_class_for(type)
+    case type.to_s
+    when "question"  then Steps::Question
+    when "action"    then Steps::Action
+    when "message"   then Steps::Message
+    when "escalate"  then Steps::Escalate
+    when "resolve"   then Steps::Resolve
+    when "sub_flow"  then Steps::SubFlow
+    else Steps::Action
+    end
+  end
+
+  # Serialize AR steps to JSONB-compatible format for export
+  def serialize_ar_steps_for_export(workflow)
+    workflow.workflow_steps.includes(:transitions).map do |step|
+      data = {
+        "id" => step.uuid,
+        "type" => step.type.demodulize.underscore,
+        "title" => step.title
+      }
+
+      case step
+      when Steps::Question
+        data["question"] = step.question
+        data["answer_type"] = step.answer_type
+        data["variable_name"] = step.variable_name
+        data["options"] = step.options if step.options.present?
+        data["can_resolve"] = step.can_resolve
+      when Steps::Action
+        data["instructions"] = step.instructions&.body&.to_s || ""
+        data["action_type"] = step.action_type
+        data["can_resolve"] = step.can_resolve
+        data["output_fields"] = step.output_fields if step.output_fields.present?
+      when Steps::Message
+        data["content"] = step.content&.body&.to_s || ""
+        data["can_resolve"] = step.can_resolve
+      when Steps::Escalate
+        data["target_type"] = step.target_type
+        data["target_value"] = step.target_value
+        data["priority"] = step.priority
+        data["reason_required"] = step.reason_required
+        data["notes"] = step.notes&.body&.to_s || ""
+      when Steps::Resolve
+        data["resolution_type"] = step.resolution_type
+        data["resolution_code"] = step.resolution_code
+        data["notes_required"] = step.notes_required
+        data["survey_trigger"] = step.survey_trigger
+      when Steps::SubFlow
+        data["target_workflow_id"] = step.sub_flow_workflow_id
+        data["variable_mapping"] = step.variable_mapping if step.variable_mapping.present?
+      end
+
+      if step.transitions.any?
+        data["transitions"] = step.transitions.map do |t|
+          target = t.target_step
+          transition_data = { "target_uuid" => target.uuid }
+          transition_data["condition"] = t.condition if t.condition.present?
+          transition_data["label"] = t.label if t.label.present?
+          transition_data
+        end
+      else
+        data["transitions"] = []
+      end
+
+      data
+    end
+  end
+
+  # PDF export for AR steps
+  def export_pdf_ar_steps(pdf)
+    @workflow.workflow_steps.includes(:transitions).each_with_index do |step, index|
+      step_type = step.type.demodulize.capitalize
+      pdf.text "#{index + 1}. #{step.title} [#{step_type}]", size: 14, style: :bold
+
+      case step
+      when Steps::Question
+        pdf.text "Question: #{step.question}", size: 10 if step.question.present?
+        pdf.text "Variable: #{step.variable_name}", size: 9, style: :italic if step.variable_name.present?
+      when Steps::Action
+        pdf.text "Instructions: #{step.instructions&.to_plain_text}", size: 10 if step.instructions.present?
+      when Steps::Message
+        pdf.text "Message: #{step.content&.to_plain_text}", size: 10 if step.content.present?
+      when Steps::Escalate
+        pdf.text "Escalate to: #{step.target_type}", size: 10 if step.target_type.present?
+        pdf.text "Priority: #{step.priority}", size: 10 if step.priority.present?
+      when Steps::Resolve
+        pdf.text "Resolution: #{step.resolution_type}", size: 10 if step.resolution_type.present?
+      end
+
+      if @workflow.graph_mode? && step.transitions.any?
+        pdf.text "Transitions:", size: 10, style: :bold
+        step.transitions.each do |transition|
+          target_name = transition.target_step&.title || transition.target_step_id.to_s
+          condition_text = transition.condition.present? ? " (if #{transition.condition})" : ""
+          pdf.text "  -> #{target_name}#{condition_text}", size: 9
+        end
+      end
+
+      pdf.move_down 10
+    end
+  end
+
+  # PDF export for legacy JSONB steps
+  def export_pdf_jsonb_steps(pdf)
+    @workflow.steps.each_with_index do |step, index|
+      step_type = step['type']&.capitalize || 'Unknown'
+      pdf.text "#{index + 1}. #{step['title']} [#{step_type}]", size: 14, style: :bold
+      pdf.text step['description'], size: 10 if step['description'].present?
+
+      case step['type']
+      when 'question'
+        pdf.text "Question: #{step['question']}", size: 10 if step['question'].present?
+        pdf.text "Variable: #{step['variable_name']}", size: 9, style: :italic if step['variable_name'].present?
+      when 'action'
+        pdf.text "Instructions: #{step['instructions']}", size: 10 if step['instructions'].present?
+      when 'message'
+        pdf.text "Message: #{step['content']}", size: 10 if step['content'].present?
+      when 'escalate'
+        pdf.text "Escalate to: #{step['target_type']}", size: 10 if step['target_type'].present?
+        pdf.text "Priority: #{step['priority']}", size: 10 if step['priority'].present?
+      when 'resolve'
+        pdf.text "Resolution: #{step['resolution_type']}", size: 10 if step['resolution_type'].present?
+      end
+
+      if @workflow.graph_mode? && step['transitions'].present?
+        pdf.text "Transitions:", size: 10, style: :bold
+        step['transitions'].each do |transition|
+          target_step = @workflow.find_step_by_id(transition['target_uuid'])
+          target_name = target_step ? target_step['title'] : transition['target_uuid']
+          condition_text = transition['condition'].present? ? " (if #{transition['condition']})" : ""
+          pdf.text "  -> #{target_name}#{condition_text}", size: 9
+        end
+      end
+
+      pdf.move_down 10
+    end
   end
 
   # Determine graph_mode for new workflows

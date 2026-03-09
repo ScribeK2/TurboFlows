@@ -40,6 +40,11 @@ Rails.application.routes.draw do
       end
     end
     resources :scenarios, only: %i[new create]
+    resources :steps, except: [:index] do
+      member do
+        patch :reorder
+      end
+    end
   end
 
   # Folder management (accessible to editors/admins)
