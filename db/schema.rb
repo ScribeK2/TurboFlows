@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_09_162412) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_09_162530) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -167,6 +167,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_09_162412) do
     t.index ["is_public"], name: "index_templates_on_is_public"
   end
 
+  create_table "transitions", force: :cascade do |t|
+    t.string "condition"
+    t.datetime "created_at", null: false
+    t.string "label"
+    t.integer "position"
+    t.integer "step_id", null: false
+    t.integer "target_step_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["step_id", "target_step_id"], name: "index_transitions_on_step_id_and_target_step_id", unique: true
+    t.index ["step_id"], name: "index_transitions_on_step_id"
+    t.index ["target_step_id"], name: "index_transitions_on_target_step_id"
+  end
+
   create_table "user_groups", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.integer "group_id", null: false
@@ -249,6 +262,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_09_162412) do
   add_foreign_key "scenarios", "workflow_versions", on_delete: :nullify
   add_foreign_key "scenarios", "workflows"
   add_foreign_key "steps", "workflows"
+  add_foreign_key "transitions", "steps"
+  add_foreign_key "transitions", "steps", column: "target_step_id"
   add_foreign_key "user_groups", "groups"
   add_foreign_key "user_groups", "users"
   add_foreign_key "workflow_versions", "users", column: "published_by_id"
