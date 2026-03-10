@@ -16,37 +16,20 @@ class WorkflowPublisher
   end
 
   def publish
-    has_ar_steps = @workflow.workflow_steps.any?
-    has_jsonb_steps = @workflow.steps.present?
-
-    return Result.new(version: nil, error: "Workflow has no steps") unless has_ar_steps || has_jsonb_steps
+    return Result.new(version: nil, error: "Workflow has no steps") unless @workflow.workflow_steps.any?
 
     # Validate graph structure before publishing
-    if @workflow.graph_mode?
-      if has_ar_steps
-        validate_ar_graph!
-      else
-        validator = GraphValidator.new(
-          @workflow.graph_steps,
-          @workflow.start_node_uuid || @workflow.steps.first&.dig("id")
-        )
-        unless validator.valid?
-          return Result.new(version: nil, error: validator.errors.join(", "))
-        end
-      end
-    end
+    validate_ar_graph! if @workflow.graph_mode?
 
     version = nil
 
     Workflow.transaction do
       next_number = (@workflow.versions.maximum(:version_number) || 0) + 1
 
-      snapshot = has_ar_steps ? build_ar_steps_snapshot : @workflow.steps.deep_dup
-
       version = WorkflowVersion.create!(
         workflow: @workflow,
         version_number: next_number,
-        steps_snapshot: snapshot,
+        steps_snapshot: build_ar_steps_snapshot,
         metadata_snapshot: build_metadata,
         published_by: @user,
         published_at: Time.current,
@@ -64,17 +47,11 @@ class WorkflowPublisher
   private
 
   def build_metadata
-    start_uuid = if @workflow.start_step.present?
-                   @workflow.start_step.uuid
-                 else
-                   @workflow.start_node_uuid
-                 end
-
     {
       "title" => @workflow.title,
-      "description" => @workflow.description_text || @workflow.description,
+      "description" => @workflow.description_text,
       "graph_mode" => @workflow.graph_mode,
-      "start_node_uuid" => start_uuid
+      "start_node_uuid" => @workflow.start_step&.uuid
     }
   end
 
