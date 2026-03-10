@@ -33,6 +33,8 @@ Rails.application.routes.draw do
       # Publishing & versioning
       post :publish
       get :versions
+      # AR step persistence
+      patch :sync_steps
     end
     resources :versions, only: [:show], controller: "workflow_versions" do
       member do

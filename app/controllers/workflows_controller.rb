@@ -1,10 +1,10 @@
 class WorkflowsController < ApplicationController
   before_action :set_workflow,
-                only: %i[show edit update destroy export export_pdf preview variables save_as_template start begin_execution step1 update_step1 step2 update_step2 step3 create_from_draft render_step publish versions]
+                only: %i[show edit update destroy export export_pdf preview variables save_as_template start begin_execution step1 update_step1 step2 update_step2 step3 create_from_draft render_step publish versions sync_steps]
   before_action :ensure_draft_workflow!, only: %i[step1 update_step1 step2 update_step2 step3 create_from_draft]
   before_action :ensure_editor_or_admin!, only: %i[new create import import_file start_wizard]
   before_action :ensure_can_view_workflow!, only: %i[show export export_pdf start begin_execution preview variables versions]
-  before_action :ensure_can_edit_workflow!, only: %i[edit update save_as_template publish render_step]
+  before_action :ensure_can_edit_workflow!, only: %i[edit update save_as_template publish render_step sync_steps]
   before_action :ensure_can_delete_workflow!, only: [:destroy]
   before_action :parse_transitions_json, only: %i[create update update_step2]
 
@@ -180,6 +180,114 @@ class WorkflowsController < ApplicationController
       @accessible_groups = Group.visible_to(current_user).order(:name)
       @selected_group_ids = @workflow.group_ids
       render :edit, status: :unprocessable_content
+    end
+  end
+
+  def sync_steps
+    client_lock_version = params[:lock_version].to_i
+
+    if client_lock_version > 0 && @workflow.lock_version != client_lock_version
+      render json: { error: "This workflow was modified by another user. Please refresh and try again." },
+             status: :conflict
+      return
+    end
+
+    incoming_steps = params[:steps] || []
+    start_node_uuid = params[:start_node_uuid]
+
+    begin
+      Workflow.transaction do
+        existing_steps = @workflow.workflow_steps.unscoped
+          .where(workflow_id: @workflow.id)
+          .includes(:transitions, :incoming_transitions)
+          .index_by(&:uuid)
+
+        incoming_uuids = Set.new
+        step_records = {}
+
+        # Phase 1: Create or update steps
+        incoming_steps.each_with_index do |step_data, index|
+          step_data = step_data.permit!.to_h if step_data.respond_to?(:permit!)
+          uuid = step_data["id"].presence || SecureRandom.uuid
+          incoming_uuids << uuid
+
+          step_type = step_data["type"].to_s
+          sti_class = step_class_for(step_type)
+
+          if (existing = existing_steps[uuid])
+            attrs = build_step_attrs(step_data, index)
+            existing.update!(attrs)
+            assign_rich_text_fields(existing, step_data)
+            step_records[uuid] = existing
+          else
+            attrs = build_step_attrs(step_data, index).merge(
+              workflow: @workflow,
+              type: sti_class.name,
+              uuid: uuid
+            )
+            step_record = Step.create!(attrs)
+            assign_rich_text_fields(step_record, step_data)
+            step_records[uuid] = step_record
+          end
+        end
+
+        # Phase 2: Delete steps not in incoming set
+        existing_steps.each do |uuid, step|
+          unless incoming_uuids.include?(uuid)
+            step.incoming_transitions.delete_all
+            step.destroy!
+          end
+        end
+
+        # Phase 3: Reconcile transitions
+        incoming_steps.each do |step_data|
+          step_data = step_data.permit!.to_h if step_data.respond_to?(:permit!)
+          uuid = step_data["id"]
+          source_step = step_records[uuid]
+          next unless source_step
+
+          incoming_transitions = (step_data["transitions"] || []).select { |t| t.is_a?(Hash) || t.respond_to?(:permit!) }
+
+          desired = incoming_transitions.map do |t|
+            t = t.permit!.to_h if t.respond_to?(:permit!)
+            target = step_records[t["target_uuid"]]
+            next nil unless target
+            { target_step_id: target.id, condition: t["condition"].presence, label: t["label"].presence }
+          end.compact
+
+          existing_trans = source_step.transitions.unscoped.where(step_id: source_step.id).to_a
+          existing_trans.each do |et|
+            match = desired.find { |d| d[:target_step_id] == et.target_step_id && d[:condition] == et.condition }
+            et.destroy! unless match
+          end
+
+          desired.each_with_index do |d, pos|
+            t = Transition.find_or_initialize_by(
+              step_id: source_step.id,
+              target_step_id: d[:target_step_id],
+              condition: d[:condition]
+            )
+            t.label = d[:label]
+            t.position = pos
+            t.save!
+          end
+        end
+
+        # Phase 4: Set start step
+        if start_node_uuid.present? && step_records[start_node_uuid]
+          @workflow.update_column(:start_step_id, step_records[start_node_uuid].id)
+        elsif step_records.values.first
+          @workflow.update_column(:start_step_id, step_records.values.first.id)
+        else
+          @workflow.update_column(:start_step_id, nil)
+        end
+
+        @workflow.touch
+      end
+
+      render json: { success: true, lock_version: @workflow.reload.lock_version }
+    rescue ActiveRecord::RecordInvalid => e
+      render json: { error: e.message }, status: :unprocessable_entity
     end
   end
 
@@ -707,6 +815,40 @@ class WorkflowsController < ApplicationController
     when "resolve"   then Steps::Resolve
     when "sub_flow"  then Steps::SubFlow
     else Steps::Action
+    end
+  end
+
+  def build_step_attrs(step_data, position)
+    attrs = { title: step_data["title"], position: position }
+
+    case step_data["type"].to_s
+    when "question"
+      attrs.merge!(question: step_data["question"], answer_type: step_data["answer_type"],
+                    variable_name: step_data["variable_name"], options: step_data["options"])
+    when "action"
+      attrs.merge!(can_resolve: step_data["can_resolve"] || false, action_type: step_data["action_type"],
+                    output_fields: step_data["output_fields"], jumps: step_data["jumps"])
+    when "message"
+      attrs.merge!(can_resolve: step_data["can_resolve"] || false, jumps: step_data["jumps"])
+    when "escalate"
+      attrs.merge!(target_type: step_data["target_type"], target_value: step_data["target_value"],
+                    priority: step_data["priority"], reason_required: step_data["reason_required"] || false)
+    when "resolve"
+      attrs.merge!(resolution_type: step_data["resolution_type"], resolution_code: step_data["resolution_code"],
+                    notes_required: step_data["notes_required"] || false, survey_trigger: step_data["survey_trigger"] || false)
+    when "sub_flow"
+      attrs.merge!(sub_flow_workflow_id: step_data["target_workflow_id"], variable_mapping: step_data["variable_mapping"])
+    end
+
+    attrs
+  end
+
+  def assign_rich_text_fields(step_record, step_data)
+    { "instructions" => Steps::Action, "content" => Steps::Message, "notes" => Steps::Escalate }.each do |field, klass|
+      if step_record.is_a?(klass) && step_data[field].present?
+        step_record.send(:"#{field}=", step_data[field])
+        step_record.save!
+      end
     end
   end
 
