@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import Fuse from "fuse.js"
-import { renderStepIcon } from "../services/icon_service"
+import { renderStepIcon } from "services/icon_service"
 
 export default class extends Controller {
   static targets = ["button", "dropdown", "search", "options", "hiddenInput"]

@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
-import { BranchTemplateService } from "../services/branch_template_service"
-import { renderIcon, UI_ICON_PATHS, ANSWER_ICON_PATHS } from "../services/icon_service"
+import { BranchTemplateService } from "services/branch_template_service"
+import { renderIcon, UI_ICON_PATHS, ANSWER_ICON_PATHS } from "services/icon_service"
 
 export default class extends Controller {
   static targets = ["panel", "templatesContainer", "customizationPanel", "customizationContent", "backdrop"]

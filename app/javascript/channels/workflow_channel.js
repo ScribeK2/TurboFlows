@@ -1,4 +1,4 @@
-import consumer from "./consumer"
+import consumer from "channels/consumer"
 
 // Create a function to subscribe to workflow channel
 export function subscribeToWorkflow(workflowId, callbacks = {}) {

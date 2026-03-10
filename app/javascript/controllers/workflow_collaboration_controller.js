@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { subscribeToWorkflow } from "../channels/workflow_channel"
+import { subscribeToWorkflow } from "channels/workflow_channel"
 
 export default class extends Controller {
   static targets = ["container", "presence"]

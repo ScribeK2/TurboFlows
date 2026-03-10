@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
-import { subscribeToWorkflow } from "../channels/workflow_channel"
-import { renderIcon, UI_ICON_PATHS } from "../services/icon_service"
+import { subscribeToWorkflow } from "channels/workflow_channel"
+import { renderIcon, UI_ICON_PATHS } from "services/icon_service"
 
 export default class extends Controller {
   static targets = ["status", "lockVersion", "conflictModal"]

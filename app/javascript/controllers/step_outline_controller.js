@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { renderStepIcon, renderIcon, UI_ICON_PATHS } from "../services/icon_service"
+import { renderStepIcon, renderIcon, UI_ICON_PATHS } from "services/icon_service"
 
 /**
  * Step Outline Controller
