@@ -32,10 +32,26 @@ export default class extends Controller {
     document.addEventListener("inline-step:create", this.boundHandleInlineStepCreate)
     // Set up event listeners for title changes (debounced)
     this.setupTitleChangeListeners()
-    
-    // Skip initial dropdown refresh - step_selector controllers handle their own initialization
-    // This prevents O(n²) DOM queries on page load for large workflows
-    // Dropdowns will be populated lazily when opened
+
+    // Intercept form submit to save via sync_steps for existing workflows
+    this.boundFormSubmit = async (e) => {
+      const workflowId = this.workflowIdValue || getWorkflowIdFromForm(this.element)
+      if (!workflowId) return // New workflow, let form submit normally
+
+      // Check if visual editor is handling submission
+      const visualEditor = document.getElementById("visual-editor-container")
+      if (visualEditor && !visualEditor.classList.contains("hidden")) return
+
+      e.preventDefault()
+      const success = await this.saveToServer()
+      if (success) {
+        window.location.href = `/workflows/${workflowId}`
+      }
+    }
+    const form = this.element.closest("form")
+    if (form) {
+      form.addEventListener("submit", this.boundFormSubmit)
+    }
   }
 
   disconnect() {
@@ -47,6 +63,10 @@ export default class extends Controller {
     }
     if (this.boundHandleInlineStepCreate) {
       document.removeEventListener("inline-step:create", this.boundHandleInlineStepCreate)
+    }
+    if (this.boundFormSubmit) {
+      const form = this.element.closest("form")
+      if (form) form.removeEventListener("submit", this.boundFormSubmit)
     }
     // Clean up container listeners
     if (this.hasContainerTarget) {
@@ -575,36 +595,189 @@ export default class extends Controller {
 
   extractStepData(stepElement) {
     if (!stepElement) return {}
-    
+
     const data = {}
-    
+
     // Extract title
     const titleInput = stepElement.querySelector("input[name*='[title]']")
     if (titleInput) data.title = titleInput.value
-    
+
     // Extract description
     const descInput = stepElement.querySelector("textarea[name*='[description]']")
     if (descInput) data.description = descInput.value
-    
+
     // Extract type-specific fields
     const typeInput = stepElement.querySelector("input[name*='[type]']")
     if (typeInput) data.type = typeInput.value
-    
+
     if (data.type === "question") {
       const questionInput = stepElement.querySelector("input[name*='[question]']")
       if (questionInput) data.question = questionInput.value
-      
+
       const answerTypeInput = stepElement.querySelector("input[name*='[answer_type]']")
       if (answerTypeInput) data.answer_type = answerTypeInput.value
-      
+
       const variableInput = stepElement.querySelector("input[name*='[variable_name]']")
       if (variableInput) data.variable_name = variableInput.value
     } else if (data.type === "action") {
       const instructionsInput = stepElement.querySelector("textarea[name*='[instructions]']")
       if (instructionsInput) data.instructions = instructionsInput.value
     }
-    
+
     return data
+  }
+
+  // Collect full step data from all DOM step elements for sync_steps submission
+  collectStepsFromDOM() {
+    const stepElements = this.containerTarget.querySelectorAll(".step-item")
+    const steps = []
+
+    stepElements.forEach((el, index) => {
+      const idInput = el.querySelector("input[name*='[id]']")
+      const typeInput = el.querySelector("input[name*='[type]']")
+      if (!idInput || !typeInput) return
+
+      const step = {
+        id: idInput.value,
+        type: typeInput.value,
+        position: index
+      }
+
+      // Title
+      const titleInput = el.querySelector("input[name*='[title]']")
+      if (titleInput) step.title = titleInput.value
+
+      // Transitions
+      const transInput = el.querySelector("input[name*='[transitions_json]']")
+      if (transInput && transInput.value) {
+        try { step.transitions = JSON.parse(transInput.value) } catch { step.transitions = [] }
+      } else {
+        step.transitions = []
+      }
+
+      // Type-specific fields
+      switch (step.type) {
+        case "question": {
+          const q = el.querySelector("input[name*='[question]'], textarea[name*='[question]']")
+          if (q) step.question = q.value
+          const at = el.querySelector("input[name*='[answer_type]']")
+          if (at) step.answer_type = at.value
+          const vn = el.querySelector("input[name*='[variable_name]']")
+          if (vn) step.variable_name = vn.value
+          // Options (multiple choice)
+          const optLabels = el.querySelectorAll("input[name*='[options][][label]']")
+          const optValues = el.querySelectorAll("input[name*='[options][][value]']")
+          if (optLabels.length > 0) {
+            step.options = Array.from(optLabels).map((label, i) => ({
+              label: label.value,
+              value: optValues[i]?.value || ""
+            }))
+          }
+          break
+        }
+        case "action": {
+          const inst = el.querySelector("textarea[name*='[instructions]']")
+          // Also check for Action Text rich text (trix/lexxy editor)
+          const richInst = el.querySelector("input[name*='[instructions]'][type='hidden'][id*='trix']") ||
+                           el.querySelector("[name*='[instructions]']")
+          if (inst) step.instructions = inst.value
+          else if (richInst) step.instructions = richInst.value
+          const cr = el.querySelector("input[name*='[can_resolve]']")
+          if (cr) step.can_resolve = cr.value === "true" || cr.value === "1"
+          break
+        }
+        case "message": {
+          const content = el.querySelector("textarea[name*='[content]']") ||
+                          el.querySelector("[name*='[content]']")
+          if (content) step.content = content.value
+          const cr = el.querySelector("input[name*='[can_resolve]']")
+          if (cr) step.can_resolve = cr.value === "true" || cr.value === "1"
+          break
+        }
+        case "escalate": {
+          const tt = el.querySelector("select[name*='[target_type]'], input[name*='[target_type]']")
+          if (tt) step.target_type = tt.value
+          const tv = el.querySelector("input[name*='[target_value]']")
+          if (tv) step.target_value = tv.value
+          const p = el.querySelector("select[name*='[priority]']")
+          if (p) step.priority = p.value
+          const rr = el.querySelector("input[name*='[reason_required]']")
+          if (rr) step.reason_required = rr.value === "true" || rr.value === "1"
+          const notes = el.querySelector("textarea[name*='[notes]']") ||
+                        el.querySelector("[name*='[notes]']")
+          if (notes) step.notes = notes.value
+          break
+        }
+        case "resolve": {
+          const rt = el.querySelector("select[name*='[resolution_type]'], input[name*='[resolution_type]']")
+          if (rt) step.resolution_type = rt.value
+          const rc = el.querySelector("input[name*='[resolution_code]']")
+          if (rc) step.resolution_code = rc.value
+          const nr = el.querySelector("input[name*='[notes_required]']")
+          if (nr) step.notes_required = nr.value === "true" || nr.value === "1"
+          const st = el.querySelector("input[name*='[survey_trigger]']")
+          if (st) step.survey_trigger = st.value === "true" || st.value === "1"
+          break
+        }
+        case "sub_flow": {
+          const twf = el.querySelector("select[name*='[target_workflow_id]'], input[name*='[target_workflow_id]']")
+          if (twf) step.target_workflow_id = twf.value
+          break
+        }
+      }
+
+      steps.push(step)
+    })
+
+    return steps
+  }
+
+  async saveToServer() {
+    const workflowId = this.workflowIdValue || getWorkflowIdFromForm(this.element)
+    if (!workflowId) {
+      console.error("[WorkflowBuilder] No workflow ID for sync_steps")
+      return false
+    }
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+    const lockInput = this.element.closest("form")?.querySelector("input[name='workflow[lock_version]']")
+    const lockVersion = lockInput ? parseInt(lockInput.value) : 0
+
+    const steps = this.collectStepsFromDOM()
+    const startInput = this.element.closest("form")?.querySelector("input[name='workflow[start_node_uuid]']")
+    const startNodeUuid = startInput?.value || (steps[0]?.id || null)
+
+    const payload = { steps, start_node_uuid: startNodeUuid, lock_version: lockVersion }
+
+    try {
+      const response = await fetch(`/workflows/${workflowId}/sync_steps`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken || "",
+          "Accept": "application/json"
+        },
+        credentials: "same-origin",
+        body: JSON.stringify(payload)
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (lockInput) lockInput.value = data.lock_version
+        return true
+      } else if (response.status === 409) {
+        alert("This workflow was modified by another user. Please refresh and try again.")
+        return false
+      } else {
+        const data = await response.json().catch(() => ({}))
+        alert(data.error || "Failed to save workflow.")
+        return false
+      }
+    } catch (error) {
+      console.error("[WorkflowBuilder] Save failed:", error)
+      alert("Network error. Please try again.")
+      return false
+    }
   }
 
   log(...args) {
