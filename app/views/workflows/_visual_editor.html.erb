@@ -1,16 +1,21 @@
 <div id="visual-editor-container"
      class="hidden"
      data-controller="visual-editor"
-     data-visual-editor-workflow-id-value="<%= workflow.id %>">
+     data-visual-editor-workflow-id-value="<%= workflow.id %>"
+     data-visual-editor-lock-version-value="<%= workflow.respond_to?(:lock_version) ? workflow.lock_version : 0 %>">
 
-  <%# Steps data for JS parsing %>
+  <%# Steps data for JS parsing — prefer AR steps over JSONB %>
   <script type="application/json" data-visual-editor-target="stepsData">
-    <%= json_escape(workflow.steps.to_json).html_safe %>
+    <% if workflow.respond_to?(:workflow_steps) && workflow.workflow_steps.any? %>
+      <%= json_escape(serialize_steps_for_editor(workflow).to_json).html_safe %>
+    <% else %>
+      <%= json_escape((workflow.steps || []).to_json).html_safe %>
+    <% end %>
   </script>
 
-  <%# Hidden inputs for form submission %>
+  <%# Hidden inputs for form submission (kept for list mode fallback) %>
   <input type="hidden" name="workflow[visual_editor_steps_json]" data-visual-editor-target="stepsInput" value="">
-  <input type="hidden" name="workflow[start_node_uuid]" data-visual-editor-target="startNodeInput" value="<%= workflow.start_node_uuid %>">
+  <input type="hidden" name="workflow[start_node_uuid]" data-visual-editor-target="startNodeInput" value="<%= (workflow.respond_to?(:start_step) && workflow.start_step&.uuid) || workflow.start_node_uuid %>">
 
   <%# Toolbar %>
   <div class="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 rounded-t-lg">

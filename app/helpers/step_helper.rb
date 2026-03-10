@@ -64,4 +64,50 @@ module StepHelper
       workflow.steps || []
     end
   end
+
+  # Serialize AR steps to JSON-compatible array for the visual editor.
+  # Returns the same shape that VisualEditorService expects.
+  def serialize_steps_for_editor(workflow)
+    workflow.workflow_steps.includes(:transitions).map do |s|
+      data = {
+        "id" => s.uuid,
+        "type" => s.type.demodulize.underscore,
+        "title" => s.title,
+        "description" => s.try(:description).to_s,
+        "transitions" => s.transitions.map { |t|
+          target = Step.find_by(id: t.target_step_id)
+          {
+            "target_uuid" => target&.uuid,
+            "condition" => t.condition,
+            "label" => t.label
+          }
+        }.select { |t| t["target_uuid"].present? }
+      }
+
+      case s
+      when Steps::Question
+        data.merge!("question" => s.question, "answer_type" => s.answer_type,
+                     "variable_name" => s.variable_name, "options" => s.options)
+      when Steps::Action
+        data.merge!("action_type" => s.action_type, "can_resolve" => s.can_resolve,
+                     "instructions" => s.instructions&.body&.to_s || "",
+                     "output_fields" => s.output_fields, "jumps" => s.jumps)
+      when Steps::Message
+        data.merge!("content" => s.content&.body&.to_s || "", "can_resolve" => s.can_resolve,
+                     "jumps" => s.jumps)
+      when Steps::Escalate
+        data.merge!("target_type" => s.target_type, "target_value" => s.target_value,
+                     "priority" => s.priority, "reason_required" => s.reason_required,
+                     "notes" => s.notes&.body&.to_s || "")
+      when Steps::Resolve
+        data.merge!("resolution_type" => s.resolution_type, "resolution_code" => s.resolution_code,
+                     "notes_required" => s.notes_required, "survey_trigger" => s.survey_trigger)
+      when Steps::SubFlow
+        data.merge!("target_workflow_id" => s.sub_flow_workflow_id,
+                     "variable_mapping" => s.variable_mapping)
+      end
+
+      data
+    end
+  end
 end
