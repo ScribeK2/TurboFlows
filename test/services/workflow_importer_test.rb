@@ -52,8 +52,8 @@ class WorkflowImporterTest < ActiveSupport::TestCase
 
     assert result.success?
     assert_equal "Multi-step Workflow", result.workflow.title
-    assert result.workflow.steps.length >= 1
-    assert_equal "action", result.workflow.steps.first["type"]
+    assert result.workflow.workflow_steps.count >= 1
+    assert_equal "Steps::Action", result.workflow.workflow_steps.first.type
   end
 
   test "reports incomplete steps when present" do

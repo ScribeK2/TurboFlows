@@ -20,24 +20,23 @@ class WorkflowImporter
       return failure(parse_errors, warnings: parser.warnings)
     end
 
+    steps_data = workflow_data[:steps] || []
+    incomplete_count = steps_data.count { |step| step["_import_incomplete"] }
+
+    warnings = parser.warnings.dup
+    warnings.concat(validate_parsed_graph(steps_data, workflow_data[:start_node_uuid])) if workflow_data[:graph_mode] != false
+
     workflow = @user.workflows.build(
       title: workflow_data[:title],
       description: workflow_data[:description] || "",
-      steps: workflow_data[:steps] || [],
       graph_mode: workflow_data[:graph_mode] != false,
-      start_node_uuid: workflow_data[:start_node_uuid] || workflow_data[:steps]&.first&.dig('id'),
       is_public: false,
-      status: 'published'
+      status: "published"
     )
-
-    incomplete_count = (workflow_data[:steps] || []).count { |step| step['_import_incomplete'] }
-
-    warnings = parser.warnings.dup
-    warnings.concat(validate_imported_graph(workflow)) if workflow.graph_mode?
 
     if workflow.save
       # Create AR Step and Transition records from the parsed data
-      create_ar_steps(workflow, workflow_data[:steps] || [])
+      create_ar_steps(workflow, steps_data, workflow_data[:start_node_uuid])
 
       Result.new(
         success: true,
@@ -73,7 +72,7 @@ class WorkflowImporter
 
   # Create ActiveRecord Step and Transition records from parsed step hashes.
   # Runs after workflow is saved so we have a workflow_id.
-  def create_ar_steps(workflow, steps_data)
+  def create_ar_steps(workflow, steps_data, start_node_uuid = nil)
     return if steps_data.blank?
 
     uuid_to_step = {}
@@ -119,7 +118,13 @@ class WorkflowImporter
         attrs[:variable_mapping] = step_hash["variable_mapping"] if step_hash["variable_mapping"].present?
       end
 
-      step = step_class.create!(attrs)
+      step = step_class.new(attrs)
+      # Incomplete imported steps may lack required fields — skip validation
+      if step_hash["_import_incomplete"]
+        step.save!(validate: false)
+      else
+        step.save!
+      end
 
       # Set rich text fields
       step.update(instructions: step_hash["instructions"]) if step_type == "action" && step_hash["instructions"].present?
@@ -153,13 +158,10 @@ class WorkflowImporter
     end
 
     # Set start_step_id
-    start_uuid = workflow.start_node_uuid || steps_data.first&.dig("id")
-    if start_uuid && uuid_to_step[start_uuid]
-      workflow.update_column(:start_step_id, uuid_to_step[start_uuid].id)
+    effective_start_uuid = start_node_uuid || steps_data.first&.dig("id")
+    if effective_start_uuid && uuid_to_step[effective_start_uuid]
+      workflow.update_column(:start_step_id, uuid_to_step[effective_start_uuid].id)
     end
-  rescue StandardError => e
-    Rails.logger.error "WorkflowImporter: Failed to create AR steps: #{e.message}"
-    # Don't fail the import — JSONB steps were already saved successfully
   end
 
   def normalize_step_type(type)
@@ -183,17 +185,17 @@ class WorkflowImporter
     end
   end
 
-  def validate_imported_graph(workflow)
+  def validate_parsed_graph(steps_data, start_node_uuid)
     errors = []
-    return errors unless workflow.steps.present?
+    return errors if steps_data.blank?
 
-    graph_steps = workflow.steps.each_with_object({}) do |step, hash|
-      hash[step['id']] = step if step.is_a?(Hash) && step['id']
+    graph_steps = steps_data.each_with_object({}) do |step, hash|
+      hash[step["id"]] = step if step.is_a?(Hash) && step["id"]
     end
 
-    start_uuid = workflow.start_node_uuid || workflow.steps.first&.dig('id')
+    effective_start = start_node_uuid || steps_data.first&.dig("id")
 
-    validator = GraphValidator.new(graph_steps, start_uuid)
+    validator = GraphValidator.new(graph_steps, effective_start)
     unless validator.valid?
       validator.errors.each { |e| errors << "Graph validation: #{e}" }
     end
