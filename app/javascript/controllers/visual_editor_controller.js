@@ -21,6 +21,7 @@ export default class extends Controller {
 
   static values = {
     workflowId: Number,
+    lockVersion: Number,
     mode: { type: String, default: "visual" }
   }
 
@@ -74,11 +75,17 @@ export default class extends Controller {
     }
     window.addEventListener("beforeunload", this.boundBeforeUnload)
 
-    // Sync hidden inputs before form submission and clear dirty flag
-    // so the beforeunload warning doesn't fire during a legitimate save
-    this.boundFormSubmit = () => {
-      this.syncHiddenInputs()
-      this.service.dirty = false
+    // Intercept form submission — save via sync_steps API when visual editor is active
+    this.boundFormSubmit = (e) => {
+      if (this.element.classList.contains("hidden")) {
+        // Visual editor is hidden (list mode active), let form submit normally
+        this.syncHiddenInputs()
+        this.service.dirty = false
+        return
+      }
+
+      e.preventDefault()
+      this.saveToServer()
     }
     const form = this.element.closest("form")
     if (form) {
@@ -144,6 +151,63 @@ export default class extends Controller {
     }
     if (this.hasStartNodeInputTarget) {
       this.startNodeInputTarget.value = this.service.startNodeUuid || ""
+    }
+  }
+
+  async saveToServer() {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+    const url = `/workflows/${this.workflowIdValue}/sync_steps`
+
+    const payload = {
+      steps: this.service.steps,
+      start_node_uuid: this.service.startNodeUuid,
+      lock_version: this.lockVersionValue
+    }
+
+    try {
+      const response = await fetch(url, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken || "",
+          "Accept": "application/json"
+        },
+        credentials: "same-origin",
+        body: JSON.stringify(payload)
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        this.lockVersionValue = data.lock_version
+        this.service.dirty = false
+
+        const lockInput = this.element.closest("form")?.querySelector("input[name='workflow[lock_version]']")
+        if (lockInput) lockInput.value = data.lock_version
+
+        this.showFlash("Workflow saved successfully.", "success")
+      } else if (response.status === 409) {
+        this.showFlash("This workflow was modified by another user. Please refresh and try again.", "error")
+      } else {
+        const data = await response.json().catch(() => ({}))
+        this.showFlash(data.error || "Failed to save workflow.", "error")
+      }
+    } catch (error) {
+      console.error("[VisualEditor] Save failed:", error)
+      this.showFlash("Network error. Please try again.", "error")
+    }
+  }
+
+  showFlash(message, type) {
+    const statusEl = document.querySelector("[data-autosave-target='status']")
+    if (statusEl) {
+      statusEl.textContent = message
+      statusEl.classList.toggle("text-green-600", type === "success")
+      statusEl.classList.toggle("text-red-600", type === "error")
+
+      setTimeout(() => {
+        statusEl.textContent = "Ready to save"
+        statusEl.classList.remove("text-green-600", "text-red-600")
+      }, 3000)
     }
   }
 
