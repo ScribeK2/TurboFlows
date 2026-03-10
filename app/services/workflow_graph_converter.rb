@@ -3,18 +3,14 @@
 #
 # Usage:
 #   converter = WorkflowGraphConverter.new(workflow)
-#   converted_steps = converter.convert
-#   if converted_steps
-#     workflow.steps = converted_steps
-#     workflow.graph_mode = true
-#     workflow.save
+#   if converter.convert
+#     workflow.update!(graph_mode: true)
 #   end
 #
 # The converter:
-# - Preserves all existing step data
-# - Converts sequential order to explicit transitions
-# - Maps decision branches to graph transitions
-# - Handles legacy decision format (true_path/false_path)
+# - Creates Transition records from sequential step order
+# - Converts jump-based branches to graph transitions
+# - Handles sub-flow step continuation transitions
 # - Validates the resulting graph structure
 class WorkflowGraphConverter
   include ConditionNegation
@@ -27,30 +23,34 @@ class WorkflowGraphConverter
   end
 
   # Convert the workflow's steps to graph format
-  # @return [Array<Hash>, nil] Converted steps array or nil if conversion failed
+  # Creates Transition records and sets start_step_id
+  # @return [Boolean] true if conversion succeeded
   def convert
     @errors = []
 
-    return nil unless workflow&.steps.present?
-    return workflow.steps if workflow.graph_mode?
+    steps = workflow.workflow_steps.order(:position).to_a
+    return false if steps.empty?
+    return true if workflow.graph_mode?
 
-    steps = deep_copy(workflow.steps)
+    Workflow.transaction do
+      # Remove existing transitions
+      Transition.where(step_id: steps.map(&:id)).delete_all
 
-    # Ensure all steps have IDs
-    ensure_step_ids(steps)
+      # Convert each step to graph format
+      steps.each_with_index do |step, index|
+        convert_step_to_graph(step, index, steps)
+      end
 
-    # Build step ID lookup
-    step_id_to_index = build_step_index_map(steps)
+      # Set start step
+      workflow.update_column(:start_step_id, steps.first.id) unless workflow.start_step_id.present?
 
-    # Convert each step to graph format
-    steps.each_with_index do |step, index|
-      convert_step_to_graph(step, index, steps, step_id_to_index)
+      # Validate the converted graph
+      unless validate_converted_graph(steps)
+        raise ActiveRecord::Rollback
+      end
     end
 
-    # Validate the converted graph
-    if validate_converted_graph(steps)
-      steps
-    end
+    @errors.empty?
   end
 
   # Check if conversion would be valid without modifying the workflow
@@ -58,139 +58,132 @@ class WorkflowGraphConverter
   def valid_for_conversion?
     @errors = []
 
-    return false unless workflow&.steps.present?
+    steps = workflow.workflow_steps.order(:position).to_a
+    return false if steps.empty?
     return true if workflow.graph_mode?
 
-    steps = deep_copy(workflow.steps)
-    ensure_step_ids(steps)
-    step_id_to_index = build_step_index_map(steps)
-
-    steps.each_with_index do |step, index|
-      convert_step_to_graph(step, index, steps, step_id_to_index)
-    end
-
-    validate_converted_graph(steps)
+    # Simulate conversion without saving
+    validate_simulated_conversion(steps)
   end
 
   private
 
-  # Deep copy the steps array to avoid modifying the original
-  def deep_copy(obj)
-    obj.deep_dup
-  end
-
-  # Ensure all steps have UUIDs
-  def ensure_step_ids(steps)
-    steps.each do |step|
-      step['id'] ||= SecureRandom.uuid if step.is_a?(Hash)
-    end
-  end
-
-  # Build a map of step ID to array index
-  def build_step_index_map(steps)
-    map = {}
-    steps.each_with_index do |step, index|
-      map[step['id']] = index if step.is_a?(Hash) && step['id']
-    end
-    map
-  end
-
-  # Convert a single step to graph format by adding transitions
-  def convert_step_to_graph(step, index, steps, step_id_to_index)
-    return unless step.is_a?(Hash)
-
-    step['transitions'] ||= []
-
-    case step['type']
-    when 'sub_flow'
+  # Convert a single step to graph format by creating Transition records
+  def convert_step_to_graph(step, index, steps)
+    case step
+    when Steps::SubFlow
       convert_subflow_step(step, index, steps)
     else
-      # All other steps: add transition to next step (if exists)
       convert_sequential_step(step, index, steps)
     end
   end
 
-  # Convert a sub-flow step to graph format
+  # Convert a sub-flow step: add transition to next step after sub-flow completes
   def convert_subflow_step(step, index, steps)
-    return if step['transitions'].present? && step['transitions'].any?
+    return if step.transitions.any?
 
-    # Add transition to next step after sub-flow completes
     if index < steps.length - 1
       next_step = steps[index + 1]
-      if next_step && next_step['id']
-        step['transitions'] = [{
-          'target_uuid' => next_step['id'],
-          'condition' => nil,
-          'label' => 'After sub-flow'
-        }]
-      end
-    else
-      step['transitions'] = [] # Terminal sub-flow
+      Transition.create!(
+        step: step,
+        target_step: next_step,
+        label: "After sub-flow",
+        position: 0
+      )
     end
   end
 
-  # Convert a sequential step (question, action, checkpoint) to graph format
+  # Convert a sequential step: add jump transitions + default next-step transition
   def convert_sequential_step(step, index, steps)
-    # Check for jumps and add those as transitions
-    if step['jumps'].present? && step['jumps'].is_a?(Array)
-      step['jumps'].each do |jump|
-        condition = jump['condition'] || jump[:condition]
-        next_step_id = jump['next_step_id'] || jump[:next_step_id]
+    position = 0
 
+    # Convert jumps to transitions
+    if step.jumps.present? && step.jumps.is_a?(Array)
+      step.jumps.each do |jump|
+        condition = jump["condition"] || jump[:condition]
+        next_step_id = jump["next_step_id"] || jump[:next_step_id]
         next unless next_step_id.present?
 
-        step['transitions'] << {
-          'target_uuid' => next_step_id,
-          'condition' => condition,
-          'label' => "Jump: #{condition}"
-        }
+        target = steps.find { |s| s.uuid == next_step_id }
+        next unless target
+
+        Transition.create!(
+          step: step,
+          target_step: target,
+          condition: condition,
+          label: condition.present? ? "Jump: #{condition}" : nil,
+          position: position
+        )
+        position += 1
       end
     end
 
     # Add default transition to next step (unless it's the last step)
     if index < steps.length - 1
       next_step = steps[index + 1]
-      if next_step && next_step['id']
-        # Only add if no unconditional jump already exists
-        has_default = step['transitions'].any? { |t| t['condition'].blank? }
-        unless has_default
-          step['transitions'] << {
-            'target_uuid' => next_step['id'],
-            'condition' => nil,
-            'label' => nil
-          }
-        end
+      # Only add if no unconditional transition already exists
+      has_default = step.transitions.reload.any? { |t| t.condition.blank? }
+      unless has_default
+        Transition.create!(
+          step: step,
+          target_step: next_step,
+          position: position
+        )
       end
     end
-  end
-
-  # Resolve a path reference (title or ID) to a step UUID
-  def resolve_path_to_uuid(path, steps, step_id_to_index)
-    return nil if path.blank?
-
-    # Check if it's already a UUID
-    if path.match?(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i) && step_id_to_index.key?(path)
-      return path
-    end
-
-    # Search by title
-    step = steps.find { |s| s['title'] == path }
-    step&.dig('id')
   end
 
   # Validate the converted graph structure
   def validate_converted_graph(steps)
     return false if steps.empty?
 
-    # Build graph steps hash
     graph_steps = {}
     steps.each do |step|
-      graph_steps[step['id']] = step if step['id']
+      step_hash = {
+        "id" => step.uuid,
+        "type" => step.type.demodulize.underscore,
+        "title" => step.title,
+        "transitions" => step.transitions.reload.map { |t| { "target_uuid" => t.target_step.uuid, "condition" => t.condition } }
+      }
+      graph_steps[step.uuid] = step_hash
     end
 
-    start_uuid = steps.first['id']
+    start_uuid = steps.first.uuid
     validator = GraphValidator.new(graph_steps, start_uuid)
 
+    unless validator.valid?
+      @errors.concat(validator.errors)
+      return false
+    end
+
+    true
+  end
+
+  # Simulate conversion to check validity without persisting
+  def validate_simulated_conversion(steps)
+    simulated_transitions = {}
+
+    steps.each_with_index do |step, index|
+      simulated_transitions[step.uuid] = []
+
+      if step.is_a?(Steps::SubFlow) && index < steps.length - 1
+        simulated_transitions[step.uuid] << { "target_uuid" => steps[index + 1].uuid }
+      elsif index < steps.length - 1
+        simulated_transitions[step.uuid] << { "target_uuid" => steps[index + 1].uuid }
+      end
+    end
+
+    graph_steps = {}
+    steps.each do |step|
+      graph_steps[step.uuid] = {
+        "id" => step.uuid,
+        "type" => step.type.demodulize.underscore,
+        "title" => step.title,
+        "transitions" => simulated_transitions[step.uuid] || []
+      }
+    end
+
+    validator = GraphValidator.new(graph_steps, steps.first.uuid)
     unless validator.valid?
       @errors.concat(validator.errors)
       return false
