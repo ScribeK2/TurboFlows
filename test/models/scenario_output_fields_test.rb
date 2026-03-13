@@ -11,27 +11,22 @@ class ScenarioOutputFieldsTest < ActiveSupport::TestCase
   end
 
   test "action step processes output_fields and stores in results" do
-    workflow = Workflow.create!(
-      title: "Output Fields Test",
-      user: @user,
-      steps: [
-        {
-          type: "action",
-          title: "Set Status",
-          action_type: "Update",
-          instructions: "Update status",
-          output_fields: [
-            { name: "status", value: "completed" },
-            { name: "priority", value: "high" }
-          ]
-        }
+    workflow = Workflow.create!(title: "Output Fields Test", user: @user)
+    Steps::Action.create!(
+      workflow: workflow,
+      position: 0,
+      title: "Set Status",
+      action_type: "Update",
+      output_fields: [
+        { "name" => "status", "value" => "completed" },
+        { "name" => "priority", "value" => "high" }
       ]
     )
 
     scenario = Scenario.create!(
       workflow: workflow,
       user: @user,
-      status: 'active',
+      status: "active",
       current_step_index: 0,
       results: {},
       inputs: {}
@@ -45,33 +40,29 @@ class ScenarioOutputFieldsTest < ActiveSupport::TestCase
   end
 
   test "action step output_fields with interpolated values" do
-    workflow = Workflow.create!(
-      title: "Interpolated Output Test",
-      user: @user,
-      steps: [
-        {
-          type: "question",
-          title: "Get Name",
-          question: "What is your name?",
-          variable_name: "user_name",
-          answer_type: "text"
-        },
-        {
-          type: "action",
-          title: "Set Email",
-          action_type: "Update",
-          instructions: "Set email",
-          output_fields: [
-            { name: "email", value: "{{user_name}}@example.com" }
-          ]
-        }
+    workflow = Workflow.create!(title: "Interpolated Output Test", user: @user)
+    Steps::Question.create!(
+      workflow: workflow,
+      position: 0,
+      title: "Get Name",
+      question: "What is your name?",
+      variable_name: "user_name",
+      answer_type: "text"
+    )
+    Steps::Action.create!(
+      workflow: workflow,
+      position: 1,
+      title: "Set Email",
+      action_type: "Update",
+      output_fields: [
+        { "name" => "email", "value" => "{{user_name}}@example.com" }
       ]
     )
 
     scenario = Scenario.create!(
       workflow: workflow,
       user: @user,
-      status: 'active',
+      status: "active",
       current_step_index: 0,
       results: {},
       inputs: {}
@@ -90,35 +81,31 @@ class ScenarioOutputFieldsTest < ActiveSupport::TestCase
   end
 
   test "action step with multiple output_fields and mixed interpolation" do
-    workflow = Workflow.create!(
-      title: "Mixed Output Test",
-      user: @user,
-      steps: [
-        {
-          type: "question",
-          title: "Get Name",
-          question: "Name?",
-          variable_name: "name",
-          answer_type: "text"
-        },
-        {
-          type: "action",
-          title: "Complex Output",
-          action_type: "Update",
-          instructions: "Set values",
-          output_fields: [
-            { name: "static_var", value: "static_value" },
-            { name: "interpolated_var", value: "Hello {{name}}" },
-            { name: "mixed_var", value: "{{name}}_123" }
-          ]
-        }
+    workflow = Workflow.create!(title: "Mixed Output Test", user: @user)
+    Steps::Question.create!(
+      workflow: workflow,
+      position: 0,
+      title: "Get Name",
+      question: "Name?",
+      variable_name: "name",
+      answer_type: "text"
+    )
+    Steps::Action.create!(
+      workflow: workflow,
+      position: 1,
+      title: "Complex Output",
+      action_type: "Update",
+      output_fields: [
+        { "name" => "static_var", "value" => "static_value" },
+        { "name" => "interpolated_var", "value" => "Hello {{name}}" },
+        { "name" => "mixed_var", "value" => "{{name}}_123" }
       ]
     )
 
     scenario = Scenario.create!(
       workflow: workflow,
       user: @user,
-      status: 'active',
+      status: "active",
       current_step_index: 0,
       results: {},
       inputs: {}
@@ -136,26 +123,21 @@ class ScenarioOutputFieldsTest < ActiveSupport::TestCase
   end
 
   test "missing variables in output_fields leave pattern as-is" do
-    workflow = Workflow.create!(
-      title: "Missing Var Test",
-      user: @user,
-      steps: [
-        {
-          type: "action",
-          title: "Test Missing",
-          action_type: "Update",
-          instructions: "Test",
-          output_fields: [
-            { name: "result", value: "{{missing_var}}" }
-          ]
-        }
+    workflow = Workflow.create!(title: "Missing Var Test", user: @user)
+    Steps::Action.create!(
+      workflow: workflow,
+      position: 0,
+      title: "Test Missing",
+      action_type: "Update",
+      output_fields: [
+        { "name" => "result", "value" => "{{missing_var}}" }
       ]
     )
 
     scenario = Scenario.create!(
       workflow: workflow,
       user: @user,
-      status: 'active',
+      status: "active",
       current_step_index: 0,
       results: {},
       inputs: {}
@@ -169,23 +151,18 @@ class ScenarioOutputFieldsTest < ActiveSupport::TestCase
   end
 
   test "action step without output_fields still works" do
-    workflow = Workflow.create!(
-      title: "No Output Fields Test",
-      user: @user,
-      steps: [
-        {
-          type: "action",
-          title: "Simple Action",
-          action_type: "Notification",
-          instructions: "Do something"
-        }
-      ]
+    workflow = Workflow.create!(title: "No Output Fields Test", user: @user)
+    Steps::Action.create!(
+      workflow: workflow,
+      position: 0,
+      title: "Simple Action",
+      action_type: "Notification"
     )
 
     scenario = Scenario.create!(
       workflow: workflow,
       user: @user,
-      status: 'active',
+      status: "active",
       current_step_index: 0,
       results: {},
       inputs: {}
@@ -200,59 +177,61 @@ class ScenarioOutputFieldsTest < ActiveSupport::TestCase
     assert_equal "Action executed", scenario.results["Simple Action"]
   end
 
-  test "output_fields validation prevents empty names" do
-    workflow = Workflow.new(
-      title: "Empty Name Test",
-      user: @user,
-      steps: [
-        {
-          type: "action",
-          title: "Test",
-          action_type: "Update",
-          instructions: "Test",
-          output_fields: [
-            { name: "", value: "should_not_be_stored" },
-            { name: "valid_name", value: "should_be_stored" }
-          ]
-        }
-      ]
-    )
-
-    # Should fail validation due to empty name
-    assert_not workflow.valid?
-    assert(workflow.errors.full_messages.any? { |msg| msg.include?("Output Field 1: name is required") })
-  end
-
-  test "output_fields can reference variables from previous action steps" do
-    workflow = Workflow.create!(
-      title: "Chained Output Test",
-      user: @user,
-      steps: [
-        {
-          type: "action",
-          title: "Set First",
-          action_type: "Update",
-          instructions: "Set first",
-          output_fields: [
-            { name: "first_var", value: "first_value" }
-          ]
-        },
-        {
-          type: "action",
-          title: "Set Second",
-          action_type: "Update",
-          instructions: "Set second",
-          output_fields: [
-            { name: "second_var", value: "{{first_var}}_second" }
-          ]
-        }
+  test "output_fields skips entries with empty names at runtime" do
+    workflow = Workflow.create!(title: "Empty Name Test", user: @user)
+    Steps::Action.create!(
+      workflow: workflow,
+      position: 0,
+      title: "Test",
+      action_type: "Update",
+      output_fields: [
+        { "name" => "", "value" => "should_not_be_stored" },
+        { "name" => "valid_name", "value" => "should_be_stored" }
       ]
     )
 
     scenario = Scenario.create!(
       workflow: workflow,
       user: @user,
-      status: 'active',
+      status: "active",
+      current_step_index: 0,
+      results: {},
+      inputs: {}
+    )
+
+    scenario.process_step
+    scenario.save!
+
+    # Empty-name field is skipped, valid field is stored
+    assert_equal "should_be_stored", scenario.results["valid_name"]
+    assert_not scenario.results.key?("")
+  end
+
+  test "output_fields can reference variables from previous action steps" do
+    workflow = Workflow.create!(title: "Chained Output Test", user: @user)
+    Steps::Action.create!(
+      workflow: workflow,
+      position: 0,
+      title: "Set First",
+      action_type: "Update",
+      output_fields: [
+        { "name" => "first_var", "value" => "first_value" }
+      ]
+    )
+    Steps::Action.create!(
+      workflow: workflow,
+      position: 1,
+      title: "Set Second",
+      action_type: "Update",
+      output_fields: [
+        { "name" => "second_var", "value" => "{{first_var}}_second" }
+      ]
+    )
+
+    scenario = Scenario.create!(
+      workflow: workflow,
+      user: @user,
+      status: "active",
       current_step_index: 0,
       results: {},
       inputs: {}

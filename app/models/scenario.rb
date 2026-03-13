@@ -66,13 +66,14 @@ class Scenario < ApplicationRecord
   end
 
   # Get the current step (works for both linear and graph mode)
+  # Returns an AR Step object or nil
   def current_step
-    return nil unless workflow&.steps&.present?
+    return nil unless workflow&.workflow_steps&.any?
 
     if graph_mode? && current_node_uuid.present?
-      workflow.find_step_by_id(current_node_uuid)
-    elsif current_step_index < workflow.steps.length
-      workflow.steps[current_step_index]
+      workflow.workflow_steps.find_by(uuid: current_node_uuid)
+    else
+      workflow.workflow_steps.find_by(position: current_step_index)
     end
   end
 
@@ -81,7 +82,7 @@ class Scenario < ApplicationRecord
     if graph_mode?
       current_node_uuid
     else
-      current_step&.dig('id')
+      current_step&.uuid
     end
   end
 
@@ -95,13 +96,13 @@ class Scenario < ApplicationRecord
     return true if completed?
     return true if stopped?
     return false if awaiting_subflow?
-    return true unless workflow&.steps&.present?
+    return true unless workflow&.workflow_steps&.any?
 
     if graph_mode?
       # In graph mode, complete when no current node or current node is nil
       current_node_uuid.nil? && !active?
     else
-      current_step_index >= workflow.steps.length
+      current_step_index >= workflow.workflow_steps.count
     end
   end
 
@@ -132,10 +133,10 @@ class Scenario < ApplicationRecord
 
     # Idempotency guard: prevent re-processing the same non-interactive step.
     # Question steps are excluded because users can legitimately re-answer after back navigation.
-    if execution_path.present? && step['type'] != 'question'
+    if execution_path.present? && step.step_type != 'question'
       last_entry = execution_path.last
       if graph_mode?
-        return false if last_entry&.dig('step_uuid') == step['id']
+        return false if last_entry&.dig('step_uuid') == step.uuid
       else
         return false if last_entry&.dig('step_index') == current_step_index
       end
@@ -159,7 +160,7 @@ class Scenario < ApplicationRecord
     # Add step to execution path
     path_entry = build_path_entry(step)
 
-    case step['type']
+    case step.step_type
     when 'question'
       process_question_step(step, answer, path_entry)
 
@@ -206,12 +207,12 @@ class Scenario < ApplicationRecord
   # Build execution path entry for a step
   def build_path_entry(step)
     entry = {
-      step_title: step['title'],
-      step_type: step['type']
+      step_title: step.title,
+      step_type: step.step_type
     }
 
     if graph_mode?
-      entry[:step_uuid] = step['id']
+      entry[:step_uuid] = step.uuid
     else
       entry[:step_index] = current_step_index
     end
@@ -221,14 +222,14 @@ class Scenario < ApplicationRecord
 
   # Process a question step
   def process_question_step(step, answer, path_entry)
-    input_key = step['variable_name'].presence || current_step_index.to_s
+    input_key = step.variable_name.presence || current_step_index.to_s
     self.inputs ||= {}
     self.inputs[input_key] = answer if answer.present?
-    self.inputs[step['title']] = answer if answer.present?
+    self.inputs[step.title] = answer if answer.present?
 
     self.results ||= {}
-    self.results[step['title']] = answer if answer.present?
-    self.results[step['variable_name']] = answer if step['variable_name'].present? && answer.present?
+    self.results[step.title] = answer if answer.present?
+    self.results[step.variable_name] = answer if step.variable_name.present? && answer.present?
 
     path_entry[:answer] = answer
     self.execution_path << path_entry
@@ -240,11 +241,11 @@ class Scenario < ApplicationRecord
   def process_action_step(step, path_entry, resolved_here: false)
     path_entry[:action_completed] = true
     self.results ||= {}
-    self.results[step['title']] = "Action executed"
+    self.results[step.title] = "Action executed"
 
     # Process output_fields if defined
-    if step['output_fields'].present? && step['output_fields'].is_a?(Array)
-      step['output_fields'].each do |output_field|
+    if step.output_fields.present? && step.output_fields.is_a?(Array)
+      step.output_fields.each do |output_field|
         next unless output_field.is_a?(Hash) && output_field['name'].present?
 
         variable_name = output_field['name'].to_s
@@ -257,7 +258,7 @@ class Scenario < ApplicationRecord
     self.execution_path << path_entry
 
     # Handle mid-step resolution if the agent indicated this step resolved the issue
-    if resolved_here && step['can_resolve']
+    if resolved_here && step.can_resolve
       resolve_at_current_step(step)
     else
       advance_to_next_step(step)
@@ -269,17 +270,18 @@ class Scenario < ApplicationRecord
   def process_message_step(step, path_entry, resolved_here: false)
     path_entry[:message_displayed] = true
     self.results ||= {}
-    self.results[step['title']] = "Message displayed"
+    self.results[step.title] = "Message displayed"
 
-    # Interpolate content if present
-    if step['content'].present?
-      path_entry[:content] = VariableInterpolator.interpolate(step['content'], self.results)
+    # Interpolate content if present (Action Text or plain string)
+    content_text = step.respond_to?(:content) && step.content.present? ? step.content.to_plain_text : nil
+    if content_text.present?
+      path_entry[:content] = VariableInterpolator.interpolate(content_text, self.results)
     end
 
     self.execution_path << path_entry
 
     # Handle mid-step resolution if the agent indicated this step resolved the issue
-    if resolved_here && step['can_resolve']
+    if resolved_here && step.can_resolve
       resolve_at_current_step(step)
     else
       advance_to_next_step(step)
@@ -291,15 +293,15 @@ class Scenario < ApplicationRecord
   def process_escalate_step(step, path_entry)
     path_entry[:escalated] = true
     self.results ||= {}
-    self.results[step['title']] = "Escalated"
+    self.results[step.title] = "Escalated"
 
     # Store escalation metadata in results
     self.results['_escalation'] = {
-      'type' => step['target_type'],
-      'value' => step['target_value'],
-      'priority' => step['priority'] || 'normal',
-      'reason_required' => step['reason_required'] || false,
-      'notes' => step['notes']
+      'type' => step.target_type,
+      'value' => step.target_value,
+      'priority' => step.priority || 'normal',
+      'reason_required' => step.reason_required || false,
+      'notes' => step.respond_to?(:notes) ? step.notes&.to_plain_text : nil
     }.compact
 
     self.execution_path << path_entry
@@ -312,14 +314,14 @@ class Scenario < ApplicationRecord
   def process_resolve_step(step, path_entry)
     path_entry[:resolved] = true
     self.results ||= {}
-    self.results[step['title']] = "Issue resolved"
+    self.results[step.title] = "Issue resolved"
 
     # Store resolution metadata in results
     self.results['_resolution'] = {
-      'type' => step['resolution_type'] || 'success',
-      'code' => step['resolution_code'],
-      'notes_required' => step['notes_required'] || false,
-      'survey_trigger' => step['survey_trigger'] || false
+      'type' => step.resolution_type || 'success',
+      'code' => step.resolution_code,
+      'notes_required' => step.notes_required || false,
+      'survey_trigger' => step.survey_trigger || false
     }.compact
 
     self.execution_path << path_entry
@@ -332,7 +334,7 @@ class Scenario < ApplicationRecord
 
   # Process a sub-flow step - creates child scenario
   def process_subflow_step(step, path_entry)
-    target_workflow_id = step['target_workflow_id']
+    target_workflow_id = step.sub_flow_workflow_id
     target_workflow = Workflow.find_by(id: target_workflow_id)
 
     unless target_workflow
@@ -344,7 +346,7 @@ class Scenario < ApplicationRecord
     end
 
     # Save current position for resumption
-    self.resume_node_uuid = step['id']
+    self.resume_node_uuid = step.uuid
 
     # Stop any stale active children from previous sub-flow attempts (e.g. back navigation)
     # to prevent active_child_scenario from finding the wrong child later.
@@ -356,7 +358,7 @@ class Scenario < ApplicationRecord
     child_results = (self.results || {}).dup
 
     # Apply variable mapping if defined
-    variable_mapping = step['variable_mapping'] || {}
+    variable_mapping = step.variable_mapping || {}
     if variable_mapping.is_a?(String)
       variable_mapping = begin
         JSON.parse(variable_mapping)
@@ -382,7 +384,8 @@ class Scenario < ApplicationRecord
 
     # Initialize child's starting position
     if target_workflow.graph_mode?
-      child_scenario.update!(current_node_uuid: target_workflow.start_node_uuid)
+      start_uuid = target_workflow.start_step&.uuid || target_workflow.workflow_steps.first&.uuid
+      child_scenario.update!(current_node_uuid: start_uuid)
     end
 
     path_entry[:subflow_started] = true
@@ -411,8 +414,8 @@ class Scenario < ApplicationRecord
       self.results ||= {}
 
       # Get variable mapping from the sub-flow step
-      resume_step = workflow.find_step_by_id(resume_node_uuid)
-      variable_mapping = resume_step&.dig('variable_mapping') || {}
+      resume_step = workflow.workflow_steps.find_by(uuid: resume_node_uuid)
+      variable_mapping = resume_step&.variable_mapping || {}
       if variable_mapping.is_a?(String)
         variable_mapping = begin
           JSON.parse(variable_mapping)
@@ -446,8 +449,9 @@ class Scenario < ApplicationRecord
 
     if graph_mode?
       resolver = StepResolver.new(workflow)
-      resume_step = workflow.find_step_by_id(resume_node_uuid)
-      next_uuid = resolver.resolve_next_after_subflow(resume_step, self.results) if resume_step
+      resume_step = workflow.workflow_steps.find_by(uuid: resume_node_uuid)
+      next_step = resolver.resolve_next_after_subflow(resume_step, self.results) if resume_step
+      next_uuid = next_step.is_a?(Step) ? next_step.uuid : nil
 
       # Guard against self-loop: if the resolved next step is the same sub_flow step
       # we just completed, treat it as end-of-workflow rather than looping infinitely.
@@ -459,10 +463,9 @@ class Scenario < ApplicationRecord
       end
     else
       # Linear mode: advance past the sub-flow step
-      resume_step = workflow.find_step_by_id(resume_node_uuid)
+      resume_step = workflow.workflow_steps.find_by(uuid: resume_node_uuid)
       if resume_step
-        resume_index = workflow.steps.index(resume_step)
-        self.current_step_index = (resume_index || 0) + 1
+        self.current_step_index = resume_step.position + 1
       end
     end
 
@@ -483,7 +486,7 @@ class Scenario < ApplicationRecord
     self.results ||= {}
     self.results['_resolution'] = {
       'type' => 'success',
-      'resolved_at_step' => step['id']
+      'resolved_at_step' => step.uuid
     }
 
     record_completion("resolved")
@@ -495,13 +498,15 @@ class Scenario < ApplicationRecord
   def advance_to_next_step(step)
     if graph_mode?
       resolver = StepResolver.new(workflow)
-      next_uuid = resolver.resolve_next(step, self.results)
+      next_result = resolver.resolve_next(step, self.results)
 
-      if next_uuid.is_a?(StepResolver::SubflowMarker)
+      if next_result.is_a?(StepResolver::SubflowMarker)
         # Will be handled in next process_step call
-        advance_to_step_uuid(next_uuid.step_uuid)
+        advance_to_step_uuid(next_result.step_uuid)
+      elsif next_result.is_a?(Step)
+        advance_to_step_uuid(next_result.uuid)
       else
-        advance_to_step_uuid(next_uuid)
+        advance_to_step_uuid(nil)
       end
     else
       next_step_index = determine_next_step_index(step, self.results)
@@ -527,11 +532,11 @@ class Scenario < ApplicationRecord
         if step.nil?
           record_completion("completed") unless outcome.present?
           self.status = 'completed'
-        elsif StepResolver.new(workflow).terminal?(step) && step['type'] != 'sub_flow'
+        elsif StepResolver.new(workflow).terminal?(step) && step.step_type != 'sub_flow'
           # Terminal node that's not a sub-flow - will complete after processing
         end
       end
-    elsif current_step_index >= workflow.steps.length
+    elsif current_step_index >= workflow.workflow_steps.count
       record_completion("completed") unless outcome.present?
       self.status = 'completed'
     end
@@ -541,21 +546,17 @@ class Scenario < ApplicationRecord
 
   # Check for universal jumps on any step type
   def check_jumps(step, results)
-    return nil unless step['jumps'].present? && step['jumps'].is_a?(Array)
+    return nil unless step.jumps.present? && step.jumps.is_a?(Array)
 
-    step['jumps'].each do |jump|
+    step.jumps.each do |jump|
       jump_condition = jump['condition'] || jump[:condition]
       jump_next_step_id = jump['next_step_id'] || jump[:next_step_id]
 
       next unless jump_condition.present? && jump_next_step_id.present?
 
-      # For question steps, condition might be the answer value
-      # For action steps, condition might be 'completed' or similar
-      # For decision steps, condition can be complex expressions
-
-      condition_result = case step['type']
+      condition_result = case step.step_type
                          when 'question'
-                           current_answer = results[step['title']] || results[step['variable_name']]
+                           current_answer = results[step.title] || results[step.variable_name]
                            current_answer.to_s == jump_condition.to_s
                          when 'action'
                            if jump_condition == 'completed'
@@ -569,9 +570,9 @@ class Scenario < ApplicationRecord
 
       next unless condition_result
 
-      next_step = find_step_by_id(jump_next_step_id)
-      if next_step
-        return workflow.steps.index(next_step)
+      target_step = workflow.workflow_steps.find_by(uuid: jump_next_step_id)
+      if target_step
+        return target_step.position
       end
     end
 
@@ -607,51 +608,39 @@ class Scenario < ApplicationRecord
   end
 
   def evaluate_condition(step, results)
-    condition = step['condition']
+    condition = step.respond_to?(:condition) ? step.condition : nil
     return false unless condition.present?
 
     evaluate_condition_string(condition, results)
   end
 
+  # Find an AR step by UUID
+  def find_step_by_uuid(uuid)
+    return nil unless uuid.present?
+    workflow.workflow_steps.find_by(uuid: uuid)
+  end
+
+  # Find an AR step by title
   def find_step_by_title(title)
     return nil unless title.present?
 
     # Exact match first
-    step = workflow.steps.find { |s| s['title'] == title }
+    step = workflow.workflow_steps.find_by(title: title)
     return step if step
 
     # Case-insensitive fallback
-    workflow.steps.find { |s| s['title']&.downcase == title.downcase }
+    workflow.workflow_steps.where("LOWER(title) = ?", title.downcase).first
   end
 
-  def find_step_by_id(id)
-    workflow.steps.find { |s| s['id'] == id }
-  end
-
-  # Resolve a step reference (ID or title) to a step object
-  # Prefers ID-based lookup but falls back to title for backward compatibility
-  # Returns the step hash or nil if not found
+  # Resolve a step reference (UUID or title) to an AR Step
   def resolve_step_reference(reference)
     return nil if reference.blank?
 
-    Rails.logger.debug { "[Scenario ##{id}] resolve_step_reference: '#{reference}'" }
+    # Try UUID first
+    step = find_step_by_uuid(reference)
+    return step if step
 
-    # First try to resolve to ID using workflow's helper (handles both IDs and titles)
-    step_id = workflow.resolve_step_reference_to_id(reference)
-    if step_id.present?
-      step = find_step_by_id(step_id)
-      Rails.logger.debug { "[Scenario ##{id}] Resolved via ID: #{step ? step['title'] : 'NOT FOUND'}" }
-      return step if step
-    end
-
-    # Fallback to title-based lookup for backward compatibility
-    step = find_step_by_title(reference)
-    Rails.logger.debug { "[Scenario ##{id}] Resolved via title: #{step ? step['title'] : 'NOT FOUND'}" }
-
-    unless step
-      Rails.logger.error "[Scenario ##{id}] Could not resolve '#{reference}'. Available: #{workflow.steps.map { |s| s['title'] }}"
-    end
-
-    step
+    # Fallback to title
+    find_step_by_title(reference)
   end
 end

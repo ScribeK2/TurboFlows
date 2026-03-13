@@ -14,52 +14,28 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
   # ==========================================================================
 
   test "duplicate variable_name overwrites previous value in scenario" do
-    workflow = Workflow.create!(
-      title: "Duplicate Variable Workflow",
-      user: @user,
-      steps: [
-        {
-          "id" => "step-1",
-          "type" => "question",
-          "title" => "First Question",
-          "question" => "First answer?",
-          "variable_name" => "shared_var"
-        },
-        {
-          "id" => "step-2",
-          "type" => "question",
-          "title" => "Second Question",
-          "question" => "Second answer?",
-          "variable_name" => "shared_var"
-        },
-        {
-          "id" => "step-3",
-          "type" => "action",
-          "title" => "Result",
-          "instructions" => "Done"
-        }
-      ]
-    )
+    workflow = Workflow.create!(title: "Duplicate Variable Workflow", user: @user)
+    Steps::Question.create!(workflow: workflow, position: 0, uuid: "step-1", title: "First Question", question: "First answer?", variable_name: "shared_var")
+    Steps::Question.create!(workflow: workflow, position: 1, uuid: "step-2", title: "Second Question", question: "Second answer?", variable_name: "shared_var")
+    Steps::Action.create!(workflow: workflow, position: 2, uuid: "step-3", title: "Result")
 
     scenario = Scenario.create!(
       workflow: workflow,
       user: @user,
-      status: 'active',
+      status: "active",
       current_step_index: 0,
       results: {},
       inputs: {}
     )
 
     # Answer first question
-    scenario.process_step("first_value")
+    scenario.process_step("first_answer")
 
-    assert_equal "first_value", scenario.results["shared_var"]
+    # Answer second question with same variable name
+    scenario.process_step("second_answer")
 
-    # Answer second question with same variable_name
-    scenario.process_step("second_value")
-
-    # Second value should overwrite first
-    assert_equal "second_value", scenario.results["shared_var"]
+    # The second answer should overwrite the first
+    assert_equal "second_answer", scenario.results["shared_var"]
   end
 
   # ==========================================================================

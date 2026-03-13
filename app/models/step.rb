@@ -10,6 +10,12 @@ class Step < ApplicationRecord
 
   default_scope { order(:position) }
 
+  # Short step type name (e.g., "question", "action", "sub_flow")
+  # Used by Scenario and other code that dispatches on step type.
+  def step_type
+    type.demodulize.underscore
+  end
+
   # Check if this step is a terminal node (no outgoing transitions)
   def terminal?
     transitions.empty?

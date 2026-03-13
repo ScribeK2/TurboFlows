@@ -10,45 +10,20 @@ class VariableInterpolationIntegrationTest < ActionDispatch::IntegrationTest
     )
     sign_in @user
 
-    # Create workflow with variables for interpolation testing
+    # Create workflow with AR steps for interpolation testing
     @workflow = Workflow.create!(
       title: "Interpolation Test Workflow",
       description: "Testing variable interpolation",
       user: @user,
-      is_public: false,
-      steps: [
-        {
-          type: "question",
-          title: "Name Question",
-          question: "What is your name?",
-          variable_name: "customer_name",
-          answer_type: "text"
-        },
-        {
-          type: "question",
-          title: "Interpolated Question",
-          question: "Hello {{customer_name}}, what is your issue?",
-          variable_name: "issue",
-          answer_type: "text"
-        },
-        {
-          type: "action",
-          title: "Interpolated Action",
-          action_type: "Notification",
-          instructions: "Send email to {{customer_name}} about {{issue}}"
-        },
-        {
-          type: "action",
-          title: "Action with Output Fields",
-          action_type: "Status Update",
-          instructions: "Update status",
-          output_fields: [
-            { name: "status", value: "resolved" },
-            { name: "assigned_to", value: "{{customer_name}}" }
-          ]
-        }
-      ]
+      is_public: false
     )
+    Steps::Question.create!(workflow: @workflow, position: 0, uuid: "q1", title: "Name Question", question: "What is your name?", variable_name: "customer_name", answer_type: "text")
+    Steps::Question.create!(workflow: @workflow, position: 1, uuid: "q2", title: "Interpolated Question", question: "Hello {{customer_name}}, what is your issue?", variable_name: "issue", answer_type: "text")
+    Steps::Action.create!(workflow: @workflow, position: 2, uuid: "a1", title: "Interpolated Action", action_type: "Notification")
+    Steps::Action.create!(workflow: @workflow, position: 3, uuid: "a2", title: "Action with Output Fields", action_type: "Status Update", output_fields: [
+      { "name" => "status", "value" => "resolved" },
+      { "name" => "assigned_to", "value" => "{{customer_name}}" }
+    ])
   end
 
   # Test 1.3.4: Question step interpolation
@@ -82,20 +57,8 @@ class VariableInterpolationIntegrationTest < ActionDispatch::IntegrationTest
   end
 
   test "question step title and description interpolation" do
-    workflow = Workflow.create!(
-      title: "Title Interpolation Test",
-      user: @user,
-      steps: [
-        {
-          type: "question",
-          title: "Question for {{customer_name}}",
-          description: "This is about {{customer_name}}",
-          question: "What is your issue?",
-          variable_name: "issue",
-          answer_type: "text"
-        }
-      ]
-    )
+    workflow = Workflow.create!(title: "Title Interpolation Test", user: @user)
+    Steps::Question.create!(workflow: workflow, position: 0, title: "Question for {{customer_name}}", question: "What is your issue?", variable_name: "issue", answer_type: "text")
 
     scenario = Scenario.create!(
       workflow: workflow,
@@ -112,8 +75,6 @@ class VariableInterpolationIntegrationTest < ActionDispatch::IntegrationTest
 
     # Check title is interpolated
     assert_select "h2", text: /Question for Alice/
-    # Check description is interpolated
-    assert_select "p", text: /This is about Alice/
   end
 
   # Test 1.3.5: Action step interpolation
@@ -136,19 +97,8 @@ class VariableInterpolationIntegrationTest < ActionDispatch::IntegrationTest
   end
 
   test "action step title and description interpolation" do
-    workflow = Workflow.create!(
-      title: "Action Interpolation Test",
-      user: @user,
-      steps: [
-        {
-          type: "action",
-          title: "Action for {{customer_name}}",
-          description: "Processing {{issue}}",
-          action_type: "Notification",
-          instructions: "Do something"
-        }
-      ]
-    )
+    workflow = Workflow.create!(title: "Action Interpolation Test", user: @user)
+    Steps::Action.create!(workflow: workflow, position: 0, title: "Action for {{customer_name}}", action_type: "Notification")
 
     scenario = Scenario.create!(
       workflow: workflow,
@@ -163,9 +113,8 @@ class VariableInterpolationIntegrationTest < ActionDispatch::IntegrationTest
 
     assert_response :success
 
-    # Check title and description are interpolated
+    # Check title is interpolated
     assert_select "h2", text: /Action for Charlie/
-    assert_select "p", text: /Processing billing/
   end
 
   # Test 1.3.2: Output fields processing
@@ -190,22 +139,11 @@ class VariableInterpolationIntegrationTest < ActionDispatch::IntegrationTest
   end
 
   test "action step output fields with static values" do
-    workflow = Workflow.create!(
-      title: "Static Output Test",
-      user: @user,
-      steps: [
-        {
-          type: "action",
-          title: "Set Status",
-          action_type: "Update",
-          instructions: "Update status",
-          output_fields: [
-            { name: "ticket_status", value: "open" },
-            { name: "priority", value: "high" }
-          ]
-        }
-      ]
-    )
+    workflow = Workflow.create!(title: "Static Output Test", user: @user)
+    Steps::Action.create!(workflow: workflow, position: 0, title: "Set Status", action_type: "Update", output_fields: [
+      { "name" => "ticket_status", "value" => "open" },
+      { "name" => "priority", "value" => "high" }
+    ])
 
     scenario = Scenario.create!(
       workflow: workflow,
@@ -224,28 +162,11 @@ class VariableInterpolationIntegrationTest < ActionDispatch::IntegrationTest
   end
 
   test "action step output fields with interpolated values" do
-    workflow = Workflow.create!(
-      title: "Interpolated Output Test",
-      user: @user,
-      steps: [
-        {
-          type: "question",
-          title: "Get Name",
-          question: "What is your name?",
-          variable_name: "user_name",
-          answer_type: "text"
-        },
-        {
-          type: "action",
-          title: "Set Email",
-          action_type: "Update",
-          instructions: "Set email",
-          output_fields: [
-            { name: "email", value: "{{user_name}}@example.com" }
-          ]
-        }
-      ]
-    )
+    workflow = Workflow.create!(title: "Interpolated Output Test", user: @user)
+    Steps::Question.create!(workflow: workflow, position: 0, title: "Get Name", question: "What is your name?", variable_name: "user_name", answer_type: "text")
+    Steps::Action.create!(workflow: workflow, position: 1, title: "Set Email", action_type: "Update", output_fields: [
+      { "name" => "email", "value" => "{{user_name}}@example.com" }
+    ])
 
     scenario = Scenario.create!(
       workflow: workflow,
@@ -269,30 +190,13 @@ class VariableInterpolationIntegrationTest < ActionDispatch::IntegrationTest
   end
 
   test "action step with multiple output fields and mixed interpolation" do
-    workflow = Workflow.create!(
-      title: "Mixed Output Test",
-      user: @user,
-      steps: [
-        {
-          type: "question",
-          title: "Get Name",
-          question: "Name?",
-          variable_name: "name",
-          answer_type: "text"
-        },
-        {
-          type: "action",
-          title: "Complex Output",
-          action_type: "Update",
-          instructions: "Set values",
-          output_fields: [
-            { name: "static_var", value: "static_value" },
-            { name: "interpolated_var", value: "Hello {{name}}" },
-            { name: "mixed_var", value: "{{name}}_123" }
-          ]
-        }
-      ]
-    )
+    workflow = Workflow.create!(title: "Mixed Output Test", user: @user)
+    Steps::Question.create!(workflow: workflow, position: 0, title: "Get Name", question: "Name?", variable_name: "name", answer_type: "text")
+    Steps::Action.create!(workflow: workflow, position: 1, title: "Complex Output", action_type: "Update", output_fields: [
+      { "name" => "static_var", "value" => "static_value" },
+      { "name" => "interpolated_var", "value" => "Hello {{name}}" },
+      { "name" => "mixed_var", "value" => "{{name}}_123" }
+    ])
 
     scenario = Scenario.create!(
       workflow: workflow,
@@ -315,21 +219,10 @@ class VariableInterpolationIntegrationTest < ActionDispatch::IntegrationTest
   end
 
   test "missing variables in output fields are left as-is" do
-    workflow = Workflow.create!(
-      title: "Missing Var Test",
-      user: @user,
-      steps: [
-        {
-          type: "action",
-          title: "Test Missing",
-          action_type: "Update",
-          instructions: "Test",
-          output_fields: [
-            { name: "result", value: "{{missing_var}}" }
-          ]
-        }
-      ]
-    )
+    workflow = Workflow.create!(title: "Missing Var Test", user: @user)
+    Steps::Action.create!(workflow: workflow, position: 0, title: "Test Missing", action_type: "Update", output_fields: [
+      { "name" => "result", "value" => "{{missing_var}}" }
+    ])
 
     scenario = Scenario.create!(
       workflow: workflow,

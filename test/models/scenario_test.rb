@@ -10,13 +10,12 @@ class ScenarioTest < ActiveSupport::TestCase
     @workflow = Workflow.create!(
       title: "Test Workflow",
       description: "A test workflow",
-      user: @user,
-      steps: [
-        { type: "question", title: "Question 1", question: "What is your name?" },
-        { type: "action", title: "Action Check", instructions: "Check the answer" },
-        { type: "action", title: "Action 1", instructions: "Do something" }
-      ]
+      user: @user
     )
+    # Create AR steps
+    Steps::Question.create!(workflow: @workflow, position: 0, uuid: "q1", title: "Question 1", question: "What is your name?", variable_name: "question_1")
+    Steps::Action.create!(workflow: @workflow, position: 1, uuid: "a1", title: "Action Check")
+    Steps::Action.create!(workflow: @workflow, position: 2, uuid: "a2", title: "Action 1")
   end
 
   test "should create scenario with valid attributes" do
@@ -139,15 +138,10 @@ class ScenarioTest < ActiveSupport::TestCase
   end
 
   test "should set outcome to resolved when hitting resolve step" do
-    resolve_workflow = Workflow.create!(
-      title: "Resolve Workflow",
-      user: @user,
-      graph_mode: true,
-      steps: [
-        { "id" => "step-1", "type" => "resolve", "title" => "Issue Resolved", "resolution_type" => "success" }
-      ],
-      start_node_uuid: "step-1"
-    )
+    resolve_workflow = Workflow.create!(title: "Resolve Workflow", user: @user, graph_mode: true)
+    resolve_step = Steps::Resolve.create!(workflow: resolve_workflow, position: 0, uuid: "step-1", title: "Issue Resolved", resolution_type: "success")
+    resolve_workflow.update_column(:start_step_id, resolve_step.id)
+
     scenario = Scenario.create!(
       workflow: resolve_workflow,
       user: @user,
@@ -161,15 +155,10 @@ class ScenarioTest < ActiveSupport::TestCase
   end
 
   test "should set outcome to escalated when hitting escalate step" do
-    escalate_workflow = Workflow.create!(
-      title: "Escalate Workflow",
-      user: @user,
-      graph_mode: true,
-      steps: [
-        { "id" => "step-1", "type" => "escalate", "title" => "Escalate Issue", "target_type" => "supervisor" }
-      ],
-      start_node_uuid: "step-1"
-    )
+    escalate_workflow = Workflow.create!(title: "Escalate Workflow", user: @user, graph_mode: true)
+    escalate_step = Steps::Escalate.create!(workflow: escalate_workflow, position: 0, uuid: "step-1", title: "Escalate Issue", target_type: "supervisor")
+    escalate_workflow.update_column(:start_step_id, escalate_step.id)
+
     scenario = Scenario.create!(
       workflow: escalate_workflow,
       user: @user,
@@ -211,82 +200,62 @@ class ScenarioTest < ActiveSupport::TestCase
 
   # can_resolve mid-step resolution tests
   test "action step with can_resolve ends scenario when resolved_here is true" do
-    workflow = Workflow.create!(
-      title: "Resolve Test",
-      user: @user,
-      graph_mode: true,
-      steps: [
-        { 'id' => 'step-1', 'type' => 'action', 'title' => 'Restart service', 'instructions' => 'Restart it', 'can_resolve' => true, 'transitions' => [{ 'target_uuid' => 'step-2' }] },
-        { 'id' => 'step-2', 'type' => 'resolve', 'title' => 'Done', 'resolution_type' => 'success', 'transitions' => [] }
-      ],
-      start_node_uuid: 'step-1'
-    )
+    workflow = Workflow.create!(title: "Resolve Test", user: @user, graph_mode: true)
+    step1 = Steps::Action.create!(workflow: workflow, position: 0, uuid: "step-1", title: "Restart service", can_resolve: true)
+    step2 = Steps::Resolve.create!(workflow: workflow, position: 1, uuid: "step-2", title: "Done", resolution_type: "success")
+    Transition.create!(step: step1, target_step: step2, position: 0)
+    workflow.update_column(:start_step_id, step1.id)
 
-    scenario = Scenario.create!(workflow: workflow, user: @user, inputs: {}, current_node_uuid: 'step-1')
+    scenario = Scenario.create!(workflow: workflow, user: @user, inputs: {}, current_node_uuid: "step-1")
     scenario.process_step(nil, resolved_here: true)
 
-    assert_equal 'completed', scenario.status
-    assert_equal 'resolved', scenario.outcome
-    assert_equal 'success', scenario.results['_resolution']['type']
-    assert_equal 'step-1', scenario.results['_resolution']['resolved_at_step']
-    assert_equal true, scenario.execution_path.last['resolved']
+    assert_equal "completed", scenario.status
+    assert_equal "resolved", scenario.outcome
+    assert_equal "success", scenario.results["_resolution"]["type"]
+    assert_equal "step-1", scenario.results["_resolution"]["resolved_at_step"]
+    assert_equal true, scenario.execution_path.last["resolved"]
   end
 
   test "action step with can_resolve continues normally when resolved_here is false" do
-    workflow = Workflow.create!(
-      title: "Continue Test",
-      user: @user,
-      graph_mode: true,
-      steps: [
-        { 'id' => 'step-1', 'type' => 'action', 'title' => 'Restart service', 'instructions' => 'Restart it', 'can_resolve' => true, 'transitions' => [{ 'target_uuid' => 'step-2' }] },
-        { 'id' => 'step-2', 'type' => 'resolve', 'title' => 'Done', 'resolution_type' => 'success', 'transitions' => [] }
-      ],
-      start_node_uuid: 'step-1'
-    )
+    workflow = Workflow.create!(title: "Continue Test", user: @user, graph_mode: true)
+    step1 = Steps::Action.create!(workflow: workflow, position: 0, uuid: "step-1", title: "Restart service", can_resolve: true)
+    step2 = Steps::Resolve.create!(workflow: workflow, position: 1, uuid: "step-2", title: "Done", resolution_type: "success")
+    Transition.create!(step: step1, target_step: step2, position: 0)
+    workflow.update_column(:start_step_id, step1.id)
 
-    scenario = Scenario.create!(workflow: workflow, user: @user, inputs: {}, current_node_uuid: 'step-1')
+    scenario = Scenario.create!(workflow: workflow, user: @user, inputs: {}, current_node_uuid: "step-1")
     scenario.process_step(nil, resolved_here: false)
 
-    assert_equal 'step-2', scenario.current_node_uuid
-    assert_not_equal 'completed', scenario.status
+    assert_equal "step-2", scenario.current_node_uuid
+    assert_not_equal "completed", scenario.status
   end
 
   test "message step with can_resolve ends scenario when resolved_here is true" do
-    workflow = Workflow.create!(
-      title: "Message Resolve Test",
-      user: @user,
-      graph_mode: true,
-      steps: [
-        { 'id' => 'step-1', 'type' => 'message', 'title' => 'Info', 'content' => 'Try this fix', 'can_resolve' => true, 'transitions' => [{ 'target_uuid' => 'step-2' }] },
-        { 'id' => 'step-2', 'type' => 'resolve', 'title' => 'Done', 'resolution_type' => 'success', 'transitions' => [] }
-      ],
-      start_node_uuid: 'step-1'
-    )
+    workflow = Workflow.create!(title: "Message Resolve Test", user: @user, graph_mode: true)
+    step1 = Steps::Message.create!(workflow: workflow, position: 0, uuid: "step-1", title: "Info", can_resolve: true)
+    step2 = Steps::Resolve.create!(workflow: workflow, position: 1, uuid: "step-2", title: "Done", resolution_type: "success")
+    Transition.create!(step: step1, target_step: step2, position: 0)
+    workflow.update_column(:start_step_id, step1.id)
 
-    scenario = Scenario.create!(workflow: workflow, user: @user, inputs: {}, current_node_uuid: 'step-1')
+    scenario = Scenario.create!(workflow: workflow, user: @user, inputs: {}, current_node_uuid: "step-1")
     scenario.process_step(nil, resolved_here: true)
 
-    assert_equal 'completed', scenario.status
-    assert_equal 'resolved', scenario.outcome
-    assert_equal 'step-1', scenario.results['_resolution']['resolved_at_step']
+    assert_equal "completed", scenario.status
+    assert_equal "resolved", scenario.outcome
+    assert_equal "step-1", scenario.results["_resolution"]["resolved_at_step"]
   end
 
   test "resolved_here is ignored when step does not have can_resolve" do
-    workflow = Workflow.create!(
-      title: "No Can Resolve Test",
-      user: @user,
-      graph_mode: true,
-      steps: [
-        { 'id' => 'step-1', 'type' => 'action', 'title' => 'Normal action', 'instructions' => 'Do it', 'transitions' => [{ 'target_uuid' => 'step-2' }] },
-        { 'id' => 'step-2', 'type' => 'resolve', 'title' => 'Done', 'resolution_type' => 'success', 'transitions' => [] }
-      ],
-      start_node_uuid: 'step-1'
-    )
+    workflow = Workflow.create!(title: "No Can Resolve Test", user: @user, graph_mode: true)
+    step1 = Steps::Action.create!(workflow: workflow, position: 0, uuid: "step-1", title: "Normal action", can_resolve: false)
+    step2 = Steps::Resolve.create!(workflow: workflow, position: 1, uuid: "step-2", title: "Done", resolution_type: "success")
+    Transition.create!(step: step1, target_step: step2, position: 0)
+    workflow.update_column(:start_step_id, step1.id)
 
-    scenario = Scenario.create!(workflow: workflow, user: @user, inputs: {}, current_node_uuid: 'step-1')
+    scenario = Scenario.create!(workflow: workflow, user: @user, inputs: {}, current_node_uuid: "step-1")
     scenario.process_step(nil, resolved_here: true)
 
     # Should continue normally since can_resolve is not set
-    assert_equal 'step-2', scenario.current_node_uuid
+    assert_equal "step-2", scenario.current_node_uuid
   end
 end

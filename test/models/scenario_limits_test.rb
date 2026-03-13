@@ -27,30 +27,12 @@ class ScenarioLimitsTest < ActiveSupport::TestCase
 
   test "process_step stops at iteration limit" do
     # Create a graph-mode workflow with an infinite loop (action loops back to question)
-    workflow = Workflow.new(
-      title: "Infinite Loop Workflow",
-      user: @user,
-      graph_mode: true,
-      start_node_uuid: 'step-1',
-      steps: [
-        {
-          "id" => "step-1",
-          "type" => "question",
-          "title" => "Step 1",
-          "question" => "What?",
-          "variable_name" => "answer",
-          "transitions" => [{ "target_uuid" => "step-2" }]
-        },
-        {
-          "id" => "step-2",
-          "type" => "action",
-          "title" => "Loop Back",
-          "instructions" => "Continue looping",
-          "transitions" => [{ "target_uuid" => "step-1" }]
-        }
-      ]
-    )
-    workflow.save!(validate: false)
+    workflow = Workflow.create!(title: "Infinite Loop Workflow", user: @user, graph_mode: true)
+    step1 = Steps::Question.create!(workflow: workflow, position: 0, uuid: "step-1", title: "Step 1", question: "What?", variable_name: "answer")
+    step2 = Steps::Action.create!(workflow: workflow, position: 1, uuid: "step-2", title: "Loop Back")
+    Transition.create!(step: step1, target_step: step2, position: 0)
+    Transition.create!(step: step2, target_step: step1, position: 0)
+    workflow.update_column(:start_step_id, step1.id)
 
     scenario = Scenario.create!(
       workflow: workflow,
@@ -75,23 +57,9 @@ class ScenarioLimitsTest < ActiveSupport::TestCase
   end
 
   test "normal workflows complete within limits" do
-    workflow = Workflow.create!(
-      title: "Normal Workflow",
-      user: @user,
-      steps: [
-        {
-          "type" => "question",
-          "title" => "Name",
-          "question" => "What is your name?",
-          "variable_name" => "name"
-        },
-        {
-          "type" => "action",
-          "title" => "Greet",
-          "instructions" => "Say hello"
-        }
-      ]
-    )
+    workflow = Workflow.create!(title: "Normal Workflow", user: @user)
+    Steps::Question.create!(workflow: workflow, position: 0, title: "Name", question: "What is your name?", variable_name: "name")
+    Steps::Action.create!(workflow: workflow, position: 1, title: "Greet")
 
     scenario = Scenario.create!(
       workflow: workflow,
@@ -112,14 +80,9 @@ class ScenarioLimitsTest < ActiveSupport::TestCase
   end
 
   test "step-by-step processing tracks iterations" do
-    workflow = Workflow.create!(
-      title: "Step Workflow",
-      user: @user,
-      steps: [
-        { "type" => "question", "title" => "Q1", "question" => "First?", "variable_name" => "q1" },
-        { "type" => "question", "title" => "Q2", "question" => "Second?", "variable_name" => "q2" }
-      ]
-    )
+    workflow = Workflow.create!(title: "Step Workflow", user: @user)
+    Steps::Question.create!(workflow: workflow, position: 0, title: "Q1", question: "First?", variable_name: "q1")
+    Steps::Question.create!(workflow: workflow, position: 1, title: "Q2", question: "Second?", variable_name: "q2")
 
     scenario = Scenario.create!(
       workflow: workflow,
