@@ -21,9 +21,9 @@ class IndexesTest < ActiveSupport::TestCase
 
   test "steps_count column exists and is accurate" do
     workflow = @data[:workflows].first
-    expected = workflow.steps.is_a?(Array) ? workflow.steps.size : 0
+    expected = workflow.workflow_steps.count
     assert_equal expected, workflow.steps_count,
-      "steps_count should match actual steps array length"
+      "steps_count should match actual AR steps count"
   end
 
   test "sorting by steps_count uses cached column instead of json function" do

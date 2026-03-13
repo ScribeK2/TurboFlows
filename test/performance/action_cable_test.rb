@@ -16,12 +16,12 @@ class ActionCableBroadcastTest < ActiveSupport::TestCase
       "Autosave success broadcast should not send full steps array to all subscribers")
   end
 
-  test "step_update broadcast sends only the changed step, not all steps" do
+  test "step_update broadcast sends only the changed step by UUID, not all steps" do
     channel_source = File.read(Rails.root.join("app/channels/workflow_channel.rb"))
 
     assert_match(/step_update/, channel_source)
-    assert_match(/step_index/, channel_source,
-      "step_update should broadcast individual step index")
+    assert_match(/step_uuid/, channel_source,
+      "step_update should broadcast individual step UUID")
     assert_match(/step_data/, channel_source,
       "step_update should broadcast individual step data")
   end

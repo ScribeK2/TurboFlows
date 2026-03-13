@@ -348,7 +348,16 @@ class VariableInterpolationIntegrationTest < ActionDispatch::IntegrationTest
   end
 
   test "workflow variables method includes output_fields" do
-    variables = @workflow.variables
+    # Create AR steps for the variables method (which now queries AR steps)
+    ar_workflow = Workflow.create!(title: "AR Variables Test", user: @user)
+    Steps::Question.create!(workflow: ar_workflow, position: 0, title: "Name Question", question: "What is your name?", variable_name: "customer_name")
+    Steps::Question.create!(workflow: ar_workflow, position: 1, title: "Issue Question", question: "What is your issue?", variable_name: "issue")
+    Steps::Action.create!(workflow: ar_workflow, position: 2, title: "Notification", output_fields: [
+      { "name" => "status", "value" => "resolved" },
+      { "name" => "assigned_to", "value" => "agent1" }
+    ])
+
+    variables = ar_workflow.variables
 
     # Should include question variable_name
     assert_includes variables, "customer_name"

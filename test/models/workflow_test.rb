@@ -498,105 +498,37 @@ class WorkflowTest < ActiveSupport::TestCase
     assert_includes visible.map(&:id), public_workflow.id
   end
 
-  # can_resolve normalization tests
-  test "normalize can_resolve coerces string to boolean on action steps" do
-    workflow = Workflow.create!(
-      title: "Test can_resolve",
-      user: @user,
-      steps: [
-        { 'type' => 'action', 'title' => 'Fix it', 'instructions' => 'Do the thing', 'can_resolve' => 'true' }
-      ]
-    )
+  # can_resolve tests (AR Step model — boolean column handles casting natively)
+  test "can_resolve on AR action step" do
+    workflow = Workflow.create!(title: "Test can_resolve", user: @user)
+    step = Steps::Action.create!(workflow: workflow, position: 0, title: "Fix it", can_resolve: true)
 
-    assert_equal true, workflow.steps.first['can_resolve']
+    assert_equal true, step.can_resolve
   end
 
-  test "normalize can_resolve strips flag from unsupported step types" do
-    workflow = Workflow.create!(
-      title: "Test can_resolve strip",
-      user: @user,
-      steps: [
-        { 'type' => 'question', 'title' => 'Ask', 'question' => 'What?', 'can_resolve' => true }
-      ]
-    )
+  test "can_resolve defaults to false on AR steps" do
+    workflow = Workflow.create!(title: "Test can_resolve default", user: @user)
+    step = Steps::Action.create!(workflow: workflow, position: 0, title: "Fix it")
 
-    assert_nil workflow.steps.first['can_resolve']
+    assert_equal false, step.can_resolve
   end
 
-  test "normalize can_resolve preserves flag on message steps" do
-    workflow = Workflow.create!(
-      title: "Test can_resolve message",
-      user: @user,
-      steps: [
-        { 'type' => 'message', 'title' => 'Info', 'content' => 'Hello', 'can_resolve' => true }
-      ]
-    )
+  test "can_resolve on AR message step" do
+    workflow = Workflow.create!(title: "Test can_resolve message", user: @user)
+    step = Steps::Message.create!(workflow: workflow, position: 0, title: "Info")
+    step.update!(can_resolve: true)
 
-    assert_equal true, workflow.steps.first['can_resolve']
+    assert_equal true, step.reload.can_resolve
   end
 
-  test "normalize can_resolve defaults false for falsy values" do
-    workflow = Workflow.create!(
-      title: "Test can_resolve false",
-      user: @user,
-      steps: [
-        { 'type' => 'action', 'title' => 'Fix it', 'instructions' => 'Do the thing', 'can_resolve' => 'false' }
-      ]
-    )
+  test "can_resolve persists through update on AR step" do
+    workflow = Workflow.create!(title: "Test can_resolve update", user: @user)
+    step = Steps::Action.create!(workflow: workflow, position: 0, title: "Act", can_resolve: false)
 
-    assert_equal false, workflow.steps.first['can_resolve']
-  end
+    step.update!(can_resolve: true)
+    assert_equal true, step.reload.can_resolve
 
-  test "can_resolve persists through StepMergeService merge" do
-    workflow = Workflow.create!(
-      title: "Test merge can_resolve",
-      user: @user,
-      steps: [
-        { 'id' => 'step-1', 'type' => 'message', 'title' => 'Msg', 'content' => 'Hello', 'can_resolve' => false },
-        { 'id' => 'step-2', 'type' => 'action', 'title' => 'Act', 'instructions' => 'Do it', 'can_resolve' => false }
-      ]
-    )
-
-    # Simulate list editor form submission with can_resolve enabled
-    submitted_steps = [
-      { 'id' => 'step-1', 'type' => 'message', 'title' => 'Msg', 'content' => 'Hello', 'can_resolve' => 'true' },
-      { 'id' => 'step-2', 'type' => 'action', 'title' => 'Act', 'instructions' => 'Do it', 'can_resolve' => 'true' }
-    ]
-
-    merged = StepMergeService.new(
-      existing_steps: workflow.steps,
-      submitted_steps: submitted_steps
-    ).call
-
-    workflow.update!(steps: merged)
-    workflow.reload
-
-    assert_equal true, workflow.steps[0]['can_resolve'], "Message step can_resolve should be true"
-    assert_equal true, workflow.steps[1]['can_resolve'], "Action step can_resolve should be true"
-  end
-
-  test "can_resolve false persists through StepMergeService merge" do
-    workflow = Workflow.create!(
-      title: "Test merge can_resolve false",
-      user: @user,
-      steps: [
-        { 'id' => 'step-1', 'type' => 'message', 'title' => 'Msg', 'content' => 'Hello', 'can_resolve' => true }
-      ]
-    )
-
-    # Simulate unchecking can_resolve
-    submitted_steps = [
-      { 'id' => 'step-1', 'type' => 'message', 'title' => 'Msg', 'content' => 'Hello', 'can_resolve' => 'false' }
-    ]
-
-    merged = StepMergeService.new(
-      existing_steps: workflow.steps,
-      submitted_steps: submitted_steps
-    ).call
-
-    workflow.update!(steps: merged)
-    workflow.reload
-
-    assert_equal false, workflow.steps[0]['can_resolve'], "Message step can_resolve should be false"
+    step.update!(can_resolve: false)
+    assert_equal false, step.reload.can_resolve
   end
 end

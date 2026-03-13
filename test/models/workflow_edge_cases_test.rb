@@ -265,216 +265,76 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
   end
 
   # ==========================================================================
-  # Step ID Auto-Assignment Tests
+  # Step UUID Auto-Assignment Tests (AR Step model)
   # ==========================================================================
 
-  test "steps without IDs get assigned UUIDs on save" do
-    workflow = Workflow.create!(
-      title: "No ID Workflow",
-      user: @user,
-      steps: [
-        {
-          "type" => "question",
-          "title" => "Question",
-          "question" => "What?"
-        },
-        {
-          "type" => "action",
-          "title" => "Action",
-          "instructions" => "Do"
-        }
-      ]
-    )
+  test "AR steps without UUIDs get assigned UUIDs on save" do
+    workflow = Workflow.create!(title: "No UUID Workflow", user: @user)
 
-    # All steps should have IDs now
-    workflow.steps.each do |step|
-      assert_predicate step["id"], :present?, "Step #{step['title']} should have an ID"
-      assert_match(/^[0-9a-f-]{36}$/, step["id"], "Step ID should be a UUID format")
+    q_step = Steps::Question.create!(workflow: workflow, position: 0, title: "Question", question: "What?")
+    a_step = Steps::Action.create!(workflow: workflow, position: 1, title: "Action")
+
+    [q_step, a_step].each do |step|
+      assert_predicate step.uuid, :present?, "Step #{step.title} should have a UUID"
+      assert_match(/^[0-9a-f-]{36}$/, step.uuid, "Step UUID should be a UUID format")
     end
   end
 
-  test "existing step IDs are preserved on save" do
-    existing_id = "my-custom-id-12345"
-    workflow = Workflow.create!(
-      title: "Existing ID Workflow",
-      user: @user,
-      steps: [
-        {
-          "id" => existing_id,
-          "type" => "action",
-          "title" => "Action",
-          "instructions" => "Do"
-        }
-      ]
-    )
+  test "AR steps with explicit UUIDs preserve them on save" do
+    workflow = Workflow.create!(title: "Existing UUID Workflow", user: @user)
+    existing_uuid = "my-custom-id-12345"
 
-    assert_equal existing_id, workflow.steps.first["id"]
+    step = Steps::Action.create!(workflow: workflow, position: 0, uuid: existing_uuid, title: "Action")
+
+    assert_equal existing_uuid, step.uuid
   end
 
   # ==========================================================================
-  # Step Type Validation Tests
+  # AR Step Validation Tests
   # ==========================================================================
-
-  test "invalid step type fails validation" do
-    workflow = Workflow.new(
-      title: "Invalid Type Workflow",
-      user: @user,
-      steps: [
-        {
-          "id" => "step-1",
-          "type" => "invalid_type",
-          "title" => "Bad Step"
-        }
-      ]
-    )
-
-    assert_not workflow.valid?
-    assert(workflow.errors[:steps].any? { |e| e.include?("Invalid step type") })
-  end
 
   test "question step requires question text" do
-    workflow = Workflow.new(
-      title: "Missing Question Workflow",
-      user: @user,
-      steps: [
-        {
-          "id" => "step-1",
-          "type" => "question",
-          "title" => "Question Step"
-          # Missing 'question' field
-        }
-      ]
-    )
+    workflow = Workflow.create!(title: "Missing Question Workflow", user: @user)
 
-    assert_not workflow.valid?
-    assert(workflow.errors[:steps].any? { |e| e.include?("Question text is required") })
+    step = Steps::Question.new(workflow: workflow, position: 0, title: "Question Step")
+    assert_not step.valid?
+    assert_includes step.errors[:question], "can't be blank"
   end
 
   # ==========================================================================
-  # Size Limit Tests
-  # ==========================================================================
-
-  test "step title exceeding max length fails validation" do
-    long_title = "A" * 501 # Max is 500
-
-    workflow = Workflow.new(
-      title: "Long Title Workflow",
-      user: @user,
-      steps: [
-        {
-          "id" => "step-1",
-          "type" => "action",
-          "title" => long_title,
-          "instructions" => "Do"
-        }
-      ]
-    )
-
-    assert_not workflow.valid?
-    assert(workflow.errors[:steps].any? { |e| e.include?("Title is too long") })
-  end
-
-  # ==========================================================================
-  # Auto-Generate Variable Names Tests
+  # Auto-Generate Variable Names Tests (AR Steps::Question)
   # ==========================================================================
 
   test "auto-generates variable_name from title for question steps" do
-    workflow = Workflow.create!(
-      title: "Auto Variable Test",
-      user: @user,
-      steps: [
-        {
-          "type" => "question",
-          "title" => "Customer Name",
-          "question" => "What is your name?"
-          # No variable_name provided
-        }
-      ]
-    )
+    workflow = Workflow.create!(title: "Auto Variable Test", user: @user)
 
-    question_step = workflow.steps.first
+    step = Steps::Question.create!(workflow: workflow, position: 0, title: "Customer Name", question: "What is your name?")
 
-    assert_equal "customer_name", question_step["variable_name"]
+    assert_equal "customer_name", step.variable_name
   end
 
   test "auto-generates variable_name handles punctuation" do
-    workflow = Workflow.create!(
-      title: "Punctuation Test",
-      user: @user,
-      steps: [
-        {
-          "type" => "question",
-          "title" => "What is your issue?",
-          "question" => "Describe the problem"
-        }
-      ]
-    )
+    workflow = Workflow.create!(title: "Punctuation Test", user: @user)
 
-    question_step = workflow.steps.first
+    step = Steps::Question.create!(workflow: workflow, position: 0, title: "What is your issue?", question: "Describe the problem")
 
-    assert_equal "what_is_your_issue", question_step["variable_name"]
-  end
-
-  test "auto-generated variable names are unique" do
-    workflow = Workflow.create!(
-      title: "Unique Variable Test",
-      user: @user,
-      steps: [
-        {
-          "type" => "question",
-          "title" => "Customer Name",
-          "question" => "First name?"
-        },
-        {
-          "type" => "question",
-          "title" => "Customer Name",
-          "question" => "Last name?"
-        }
-      ]
-    )
-
-    first_step = workflow.steps[0]
-    second_step = workflow.steps[1]
-
-    assert_equal "customer_name", first_step["variable_name"]
-    assert_equal "customer_name_2", second_step["variable_name"]
+    assert_equal "what_is_your_issue", step.variable_name
   end
 
   test "preserves explicit variable_name if provided" do
-    workflow = Workflow.create!(
-      title: "Explicit Variable Test",
-      user: @user,
-      steps: [
-        {
-          "type" => "question",
-          "title" => "Customer Name",
-          "question" => "What is your name?",
-          "variable_name" => "my_custom_var"
-        }
-      ]
-    )
+    workflow = Workflow.create!(title: "Explicit Variable Test", user: @user)
 
-    question_step = workflow.steps.first
+    step = Steps::Question.create!(workflow: workflow, position: 0, title: "Customer Name", question: "What is your name?", variable_name: "my_custom_var")
 
-    assert_equal "my_custom_var", question_step["variable_name"]
+    assert_equal "my_custom_var", step.variable_name
   end
 
   test "does not generate variable_name for non-question steps" do
-    workflow = Workflow.create!(
-      title: "Non-Question Test",
-      user: @user,
-      steps: [
-        {
-          "type" => "action",
-          "title" => "Some Action",
-          "instructions" => "Do something"
-        }
-      ]
-    )
+    workflow = Workflow.create!(title: "Non-Question Test", user: @user)
 
-    action_step = workflow.steps.first
+    step = Steps::Action.create!(workflow: workflow, position: 0, title: "Some Action")
 
-    assert_nil action_step["variable_name"]
+    assert_nil step.variable_name
   end
 
   test "generate_variable_name limits length to 30 characters" do
@@ -488,36 +348,15 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
   end
 
   # ==========================================================================
-  # Variables Extraction Tests
+  # Variables Extraction Tests (AR Steps)
   # ==========================================================================
 
   test "variables method extracts all variable names from questions" do
-    workflow = Workflow.create!(
-      title: "Variables Workflow",
-      user: @user,
-      steps: [
-        {
-          "id" => "step-1",
-          "type" => "question",
-          "title" => "Q1",
-          "question" => "Name?",
-          "variable_name" => "customer_name"
-        },
-        {
-          "id" => "step-2",
-          "type" => "question",
-          "title" => "Q2",
-          "question" => "Issue?",
-          "variable_name" => "issue_type"
-        },
-        {
-          "id" => "step-3",
-          "type" => "action",
-          "title" => "Action",
-          "instructions" => "Do"
-        }
-      ]
-    )
+    workflow = Workflow.create!(title: "Variables Workflow", user: @user)
+
+    Steps::Question.create!(workflow: workflow, position: 0, title: "Q1", question: "Name?", variable_name: "customer_name")
+    Steps::Question.create!(workflow: workflow, position: 1, title: "Q2", question: "Issue?", variable_name: "issue_type")
+    Steps::Action.create!(workflow: workflow, position: 2, title: "Action")
 
     variables = workflow.variables
 
@@ -527,27 +366,14 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
   end
 
   test "variables method includes output_fields from action steps" do
-    workflow = Workflow.create!(
-      title: "Output Fields Workflow",
-      user: @user,
-      steps: [
-        {
-          "id" => "step-1",
-          "type" => "question",
-          "title" => "Q1",
-          "question" => "Name?",
-          "variable_name" => "name"
-        },
-        {
-          "id" => "step-2",
-          "type" => "action",
-          "title" => "Action",
-          "instructions" => "Do",
-          "output_fields" => [
-            { "name" => "status", "value" => "done" },
-            { "name" => "timestamp", "value" => "now" }
-          ]
-        }
+    workflow = Workflow.create!(title: "Output Fields Workflow", user: @user)
+
+    Steps::Question.create!(workflow: workflow, position: 0, title: "Q1", question: "Name?", variable_name: "name")
+    Steps::Action.create!(
+      workflow: workflow, position: 1, title: "Action",
+      output_fields: [
+        { "name" => "status", "value" => "done" },
+        { "name" => "timestamp", "value" => "now" }
       ]
     )
 

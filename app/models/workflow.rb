@@ -49,10 +49,6 @@ class Workflow < ApplicationRecord
   MAX_STEP_CONTENT_LENGTH = 50_000  # 50KB per step field
   MAX_TOTAL_STEPS_SIZE = 5_000_000  # 5MB total for steps JSON
 
-  # Keep steps_count in sync with steps array
-  before_save :update_steps_count
-  # Clean up import flags when steps are completed
-  before_save :cleanup_import_flags
   # Set draft expiration before save (7 days from creation or update)
   before_save :set_draft_expiration, if: :draft?
   # Assign to Uncategorized group if no groups assigned (only for published workflows)
@@ -205,32 +201,6 @@ class Workflow < ApplicationRecord
   # Can be called from a scheduled job
   def self.cleanup_expired_drafts
     expired_drafts.delete_all
-  end
-
-  def cleanup_import_flags
-    return unless steps.present?
-
-    self.steps = steps.map do |step|
-      next step unless step.is_a?(Hash)
-
-      # Check if step is now complete
-      is_complete = case step['type']
-                    when 'question'
-                      step['question'].present?
-                    when 'action'
-                      step['instructions'].present?
-                    else
-                      true
-                    end
-
-      # Remove import flags if step is complete
-      if is_complete && step['_import_incomplete']
-        step.delete('_import_incomplete')
-        step.delete('_import_errors')
-      end
-
-      step
-    end
   end
 
   # Group helper methods
@@ -513,7 +483,7 @@ class Workflow < ApplicationRecord
 
   # Check if this workflow has any sub-flow steps
   def has_subflow_steps?
-    subflow_steps.any?
+    workflow_steps.where(type: "Steps::SubFlow").exists?
   end
 
   # Convert workflow to template format
@@ -610,16 +580,23 @@ class Workflow < ApplicationRecord
     end
   end
 
-  def update_steps_count
-    self.steps_count = steps.is_a?(Array) ? steps.size : 0
-  end
-
   # Validate graph structure (only in graph mode)
-  # Uses GraphValidator service for comprehensive checks
+  # Uses GraphValidator service for comprehensive checks via AR steps
   def validate_graph_structure
-    return unless graph_mode? && steps.present?
+    return unless graph_mode? && workflow_steps.any?
 
-    validator = GraphValidator.new(graph_steps, start_node_uuid || steps.first&.dig('id'))
+    graph_steps_hash = {}
+    workflow_steps.includes(:transitions).each do |step|
+      graph_steps_hash[step.uuid] = {
+        "id" => step.uuid,
+        "type" => step.type.demodulize.underscore,
+        "title" => step.title,
+        "transitions" => step.transitions.map { |t| { "target_uuid" => t.target_step.uuid, "condition" => t.condition } }
+      }
+    end
+
+    start_uuid = start_step&.uuid || workflow_steps.first&.uuid
+    validator = GraphValidator.new(graph_steps_hash, start_uuid)
 
     unless validator.valid?
       validator.errors.each do |error|
@@ -628,47 +605,35 @@ class Workflow < ApplicationRecord
     end
   end
 
-  # Validate sub-flow step references
+  # Validate sub-flow step references (using AR steps)
   def validate_subflow_steps
-    return unless steps.present?
+    sf_steps = workflow_steps.where(type: "Steps::SubFlow")
+    return unless sf_steps.any?
 
     # Batch-load all target workflows to avoid N+1 queries
-    target_ids = subflow_steps
-                   .reject { |s| s['_import_incomplete'] == true }
-                   .map { |s| s['target_workflow_id'] }
-                   .compact
+    target_ids = sf_steps.where.not(sub_flow_workflow_id: nil).pluck(:sub_flow_workflow_id)
     target_workflows = Workflow.where(id: target_ids).index_by(&:id)
 
-    subflow_steps.each_with_index do |step, _|
-      step_index = steps.index(step) + 1
-      next if step['_import_incomplete'] == true
-
-      target_id = step['target_workflow_id']
-
-      if target_id.blank?
-        errors.add(:steps, "Step #{step_index}: Sub-flow step requires a target workflow")
+    sf_steps.each do |step|
+      if step.sub_flow_workflow_id.blank?
+        errors.add(:steps, "Step #{step.position + 1}: Sub-flow step requires a target workflow")
         next
       end
 
-      # Check that target workflow exists
-      target_workflow = target_workflows[target_id.to_i]
+      target_workflow = target_workflows[step.sub_flow_workflow_id]
       unless target_workflow
-        errors.add(:steps, "Step #{step_index}: Target workflow #{target_id} does not exist")
+        errors.add(:steps, "Step #{step.position + 1}: Target workflow #{step.sub_flow_workflow_id} does not exist")
         next
       end
 
-      # Check that target workflow is published
       unless target_workflow.published?
-        errors.add(:steps, "Step #{step_index}: Target workflow '#{target_workflow.title}' is not published")
+        errors.add(:steps, "Step #{step.position + 1}: Target workflow '#{target_workflow.title}' is not published")
       end
 
-      # Check for circular references (self-reference)
-      if target_id.to_i == id
-        errors.add(:steps, "Step #{step_index}: Sub-flow cannot reference itself")
+      if step.sub_flow_workflow_id == id
+        errors.add(:steps, "Step #{step.position + 1}: Sub-flow cannot reference itself")
       end
     end
-
-    # Deep circular reference check is handled by SubflowValidator during save
   end
 
   # Validate no circular sub-flow references exist

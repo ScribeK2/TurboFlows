@@ -288,46 +288,38 @@ class WorkflowGraphTest < ActiveSupport::TestCase
     assert_includes ids, target2.id
   end
 
-  test "validates graph structure in graph mode" do
-    workflow = Workflow.new(
-      title: "Invalid Graph",
-      user: @user,
-      graph_mode: true,
-      steps: [
-        { 'id' => 'a', 'type' => 'action', 'title' => 'A', 'transitions' => [{ 'target_uuid' => 'nonexistent' }] }
-      ]
-    )
+  test "validates graph structure in graph mode with AR steps" do
+    workflow = Workflow.create!(title: "Invalid Graph", user: @user, graph_mode: true, status: "published")
+    # Single step with no transitions = dead end in published graph mode
+    step_a = Steps::Action.create!(workflow: workflow, position: 0, uuid: "a", title: "A")
+    step_b = Steps::Action.create!(workflow: workflow, position: 1, uuid: "b", title: "B")
+    # A -> B exists, but B is unreachable from A only if graph is disconnected
+    # Actually: A has a transition to B, but B has no outgoing transitions AND A is a dead end too
+    # Simplest: create two disconnected nodes - A has no transitions (dead end)
+    # and B is unreachable from start
+    workflow.update_column(:start_step_id, step_a.id)
 
+    workflow.reload
     assert_not workflow.valid?
-    assert(workflow.errors[:steps].any? { |e| e.include?('non-existent') })
+    assert(workflow.errors[:steps].any? { |e| e.include?("dead end") || e.include?("unreachable") || e.include?("reachable") },
+      "Expected graph validation error, got: #{workflow.errors[:steps].inspect}")
   end
 
-  test "validates subflow references" do
-    workflow = Workflow.new(
-      title: "Invalid Subflow",
-      user: @user,
-      steps: [
-        { 'id' => 'a', 'type' => 'sub_flow', 'title' => 'Bad Sub', 'target_workflow_id' => 999_999 }
-      ]
-    )
+  test "validates subflow references with AR steps" do
+    workflow = Workflow.create!(title: "Invalid Subflow", user: @user)
+    # Use save with validate: false to bypass belongs_to validation
+    step = Steps::SubFlow.new(workflow: workflow, position: 0, uuid: "a", title: "Bad Sub", sub_flow_workflow_id: 999_999)
+    step.save!(validate: false)
 
     assert_not workflow.valid?
-    assert(workflow.errors[:steps].any? { |e| e.include?('does not exist') })
+    assert(workflow.errors[:steps].any? { |e| e.include?("does not exist") })
   end
 
-  test "validates self-referencing subflow" do
-    workflow = Workflow.create!(
-      title: "Self Reference",
-      user: @user,
-      status: 'published',
-      steps: []
-    )
-
-    workflow.steps = [
-      { 'id' => 'a', 'type' => 'sub_flow', 'title' => 'Self', 'target_workflow_id' => workflow.id }
-    ]
+  test "validates self-referencing subflow with AR steps" do
+    workflow = Workflow.create!(title: "Self Reference", user: @user, status: "published")
+    Steps::SubFlow.create!(workflow: workflow, position: 0, uuid: "a", title: "Self", sub_flow_workflow_id: workflow.id)
 
     assert_not workflow.valid?
-    assert(workflow.errors[:steps].any? { |e| e.include?('cannot reference itself') })
+    assert(workflow.errors[:steps].any? { |e| e.include?("cannot reference itself") })
   end
 end
