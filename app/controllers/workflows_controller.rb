@@ -324,12 +324,7 @@ class WorkflowsController < ApplicationController
     pdf.text "Mode: #{mode_text}", size: 10, style: :italic
     pdf.move_down 20
 
-    # Use AR steps if available, otherwise JSONB
-    if @workflow.workflow_steps.any?
-      export_pdf_ar_steps(pdf)
-    elsif @workflow.steps.present?
-      export_pdf_jsonb_steps(pdf)
-    end
+    export_pdf_ar_steps(pdf) if @workflow.workflow_steps.any?
 
     send_data pdf.render, filename: "#{@workflow.title.parameterize}.pdf", type: "application/pdf"
   end
@@ -927,41 +922,6 @@ class WorkflowsController < ApplicationController
     end
   end
 
-  # PDF export for legacy JSONB steps
-  def export_pdf_jsonb_steps(pdf)
-    @workflow.steps.each_with_index do |step, index|
-      step_type = step['type']&.capitalize || 'Unknown'
-      pdf.text "#{index + 1}. #{step['title']} [#{step_type}]", size: 14, style: :bold
-      pdf.text step['description'], size: 10 if step['description'].present?
-
-      case step['type']
-      when 'question'
-        pdf.text "Question: #{step['question']}", size: 10 if step['question'].present?
-        pdf.text "Variable: #{step['variable_name']}", size: 9, style: :italic if step['variable_name'].present?
-      when 'action'
-        pdf.text "Instructions: #{step['instructions']}", size: 10 if step['instructions'].present?
-      when 'message'
-        pdf.text "Message: #{step['content']}", size: 10 if step['content'].present?
-      when 'escalate'
-        pdf.text "Escalate to: #{step['target_type']}", size: 10 if step['target_type'].present?
-        pdf.text "Priority: #{step['priority']}", size: 10 if step['priority'].present?
-      when 'resolve'
-        pdf.text "Resolution: #{step['resolution_type']}", size: 10 if step['resolution_type'].present?
-      end
-
-      if @workflow.graph_mode? && step['transitions'].present?
-        pdf.text "Transitions:", size: 10, style: :bold
-        step['transitions'].each do |transition|
-          target_step = @workflow.find_step_by_id(transition['target_uuid'])
-          target_name = target_step ? target_step['title'] : transition['target_uuid']
-          condition_text = transition['condition'].present? ? " (if #{transition['condition']})" : ""
-          pdf.text "  -> #{target_name}#{condition_text}", size: 9
-        end
-      end
-
-      pdf.move_down 10
-    end
-  end
 
   # Determine graph_mode for new workflows
   # Graph mode is the default; use ?force_linear_mode=1 to create linear workflow

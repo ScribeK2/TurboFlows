@@ -162,15 +162,15 @@ module WorkflowsHelper
   # Get step options for a select dropdown
   # Returns an array of [display_name, value] pairs
   def step_options_for_select(workflow, exclude_step_id: nil)
-    return [] unless workflow&.steps.present?
+    return [] unless workflow&.workflow_steps&.any?
 
-    workflow.steps.map.with_index do |step, index|
-      next nil unless step.is_a?(Hash) && step['title'].present?
-      next nil if exclude_step_id && step['id'] == exclude_step_id
+    workflow.workflow_steps.order(:position).map.with_index do |step, index|
+      next nil unless step.title.present?
+      next nil if exclude_step_id && step.uuid == exclude_step_id
 
       [
-        "#{step_type_icon(step['type'])} #{index + 1}. #{step['title']}",
-        step['title'] # Use title for now, can switch to ID after migration
+        "#{step_type_icon(step.step_type)} #{index + 1}. #{step.title}",
+        step.title
       ]
     end.compact
   end
@@ -204,8 +204,7 @@ module WorkflowsHelper
   # Renders small colored dots representing the composition of step types in a workflow.
   # Groups steps by type and shows up to 4 dots per type. Returns nil if no steps.
   def step_type_composition_dots(workflow)
-    steps = workflow.steps
-    return nil if steps.blank?
+    return nil unless workflow.workflow_steps.any?
 
     dot_colors = {
       'question' => 'bg-blue-500',
@@ -225,11 +224,7 @@ module WorkflowsHelper
       'sub_flow' => 'Sub-flow'
     }
 
-    # Group steps by type and count them
-    type_counts = steps.each_with_object(Hash.new(0)) do |step, counts|
-      step_type = step['type']
-      counts[step_type] += 1 if step_type.present?
-    end
+    type_counts = workflow.step_type_counts
 
     return nil if type_counts.empty?
 

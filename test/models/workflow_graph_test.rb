@@ -8,19 +8,8 @@ class WorkflowGraphTest < ActiveSupport::TestCase
   end
 
   test "graph_mode? returns correct value" do
-    linear_workflow = Workflow.create!(
-      title: "Linear",
-      user: @user,
-      graph_mode: false,
-      steps: []
-    )
-
-    graph_workflow = Workflow.create!(
-      title: "Graph",
-      user: @user,
-      graph_mode: true,
-      steps: []
-    )
+    linear_workflow = Workflow.create!(title: "Linear", user: @user, graph_mode: false)
+    graph_workflow = Workflow.create!(title: "Graph", user: @user, graph_mode: true)
 
     assert_not linear_workflow.graph_mode?
     assert_predicate graph_workflow, :graph_mode?
@@ -29,257 +18,90 @@ class WorkflowGraphTest < ActiveSupport::TestCase
   end
 
   test "graph_steps returns hash keyed by UUID" do
-    workflow = Workflow.create!(
-      title: "Graph Steps Test",
-      user: @user,
-      graph_mode: true,
-      start_node_uuid: 'uuid-1',
-      steps: [
-        { 'id' => 'uuid-1', 'type' => 'action', 'title' => 'Step 1', 'transitions' => [{ 'target_uuid' => 'uuid-2' }] },
-        { 'id' => 'uuid-2', 'type' => 'action', 'title' => 'Step 2', 'transitions' => [] }
-      ]
-    )
+    workflow = Workflow.create!(title: "Graph Steps Test", user: @user, graph_mode: true)
+    step1 = Steps::Action.create!(workflow: workflow, position: 0, uuid: "uuid-1", title: "Step 1")
+    step2 = Steps::Action.create!(workflow: workflow, position: 1, uuid: "uuid-2", title: "Step 2")
+    Transition.create!(step: step1, target_step: step2, position: 0)
 
     graph_steps = workflow.graph_steps
 
     assert_instance_of Hash, graph_steps
     assert_equal 2, graph_steps.length
-    assert graph_steps.key?('uuid-1')
-    assert graph_steps.key?('uuid-2')
-    assert_equal 'Step 1', graph_steps['uuid-1']['title']
+    assert graph_steps.key?("uuid-1")
+    assert graph_steps.key?("uuid-2")
+    assert_equal "Step 1", graph_steps["uuid-1"].title
   end
 
-  test "start_node returns correct step" do
-    workflow = Workflow.create!(
-      title: "Start Node Test",
-      user: @user,
-      graph_mode: true,
-      start_node_uuid: 'uuid-2',
-      steps: [
-        { 'id' => 'uuid-2', 'type' => 'question', 'title' => 'Start Step', 'question' => 'Begin?', 'transitions' => [{ 'target_uuid' => 'uuid-1' }] },
-        { 'id' => 'uuid-1', 'type' => 'action', 'title' => 'Not Start', 'transitions' => [] }
-      ]
-    )
+  test "start_node returns start_step when set" do
+    workflow = Workflow.create!(title: "Start Node Test", user: @user, graph_mode: true)
+    step1 = Steps::Action.create!(workflow: workflow, position: 0, uuid: "uuid-1", title: "Not Start")
+    step2 = Steps::Question.create!(workflow: workflow, position: 1, uuid: "uuid-2", title: "Start Step", question: "Begin?")
+    Transition.create!(step: step2, target_step: step1, position: 0)
+    workflow.update!(start_step: step2)
 
     start = workflow.start_node
 
     assert_not_nil start
-    assert_equal 'uuid-2', start['id']
-    assert_equal 'Start Step', start['title']
+    assert_equal "uuid-2", start.uuid
+    assert_equal "Start Step", start.title
   end
 
   test "start_node defaults to first step if not set" do
-    workflow = Workflow.create!(
-      title: "Default Start Test",
-      user: @user,
-      graph_mode: true,
-      start_node_uuid: nil,
-      steps: [
-        { 'id' => 'uuid-1', 'type' => 'action', 'title' => 'First Step', 'transitions' => [{ 'target_uuid' => 'uuid-2' }] },
-        { 'id' => 'uuid-2', 'type' => 'action', 'title' => 'Second Step', 'transitions' => [] }
-      ]
-    )
+    workflow = Workflow.create!(title: "Default Start Test", user: @user, graph_mode: true)
+    step1 = Steps::Action.create!(workflow: workflow, position: 0, uuid: "uuid-1", title: "First Step")
+    step2 = Steps::Action.create!(workflow: workflow, position: 1, uuid: "uuid-2", title: "Second Step")
+    Transition.create!(step: step1, target_step: step2, position: 0)
 
     start = workflow.start_node
 
     assert_not_nil start
-    assert_equal 'uuid-1', start['id']
+    assert_equal "uuid-1", start.uuid
   end
 
   test "terminal_nodes returns steps without transitions in graph mode" do
-    workflow = Workflow.create!(
-      title: "Terminal Test",
-      user: @user,
-      graph_mode: true,
-      start_node_uuid: 'a',
-      steps: [
-        { 'id' => 'a', 'type' => 'question', 'title' => 'Start', 'question' => 'Which path?', 'transitions' => [{ 'target_uuid' => 'b' }, { 'target_uuid' => 'c' }] },
-        { 'id' => 'b', 'type' => 'action', 'title' => 'End 1', 'transitions' => [] },
-        { 'id' => 'c', 'type' => 'action', 'title' => 'End 2', 'transitions' => [] }
-      ]
-    )
+    workflow = Workflow.create!(title: "Terminal Test", user: @user, graph_mode: true)
+    step_a = Steps::Question.create!(workflow: workflow, position: 0, uuid: "a", title: "Start", question: "Which path?")
+    step_b = Steps::Action.create!(workflow: workflow, position: 1, uuid: "b", title: "End 1")
+    step_c = Steps::Action.create!(workflow: workflow, position: 2, uuid: "c", title: "End 2")
+    Transition.create!(step: step_a, target_step: step_b, position: 0)
+    Transition.create!(step: step_a, target_step: step_c, position: 1)
+    workflow.update!(start_step: step_a)
 
     terminals = workflow.terminal_nodes
 
     assert_equal 2, terminals.length
-    assert(terminals.all? { |t| t['transitions'].empty? })
-  end
-
-  test "terminal_nodes returns last step in linear mode" do
-    workflow = Workflow.create!(
-      title: "Linear Terminal Test",
-      user: @user,
-      graph_mode: false,
-      steps: [
-        { 'id' => 'a', 'type' => 'action', 'title' => 'First' },
-        { 'id' => 'b', 'type' => 'action', 'title' => 'Last' }
-      ]
-    )
-
-    terminals = workflow.terminal_nodes
-
-    assert_equal 1, terminals.length
-    assert_equal 'Last', terminals[0]['title']
-  end
-
-  test "transitions_from returns step transitions" do
-    workflow = Workflow.create!(
-      title: "Transitions Test",
-      user: @user,
-      graph_mode: true,
-      steps: [
-        { 'id' => 'a', 'type' => 'action', 'title' => 'Start', 'transitions' => [
-          { 'target_uuid' => 'b', 'condition' => "x == 1" },
-          { 'target_uuid' => 'c' }
-        ] },
-        { 'id' => 'b', 'type' => 'action', 'title' => 'B', 'transitions' => [] },
-        { 'id' => 'c', 'type' => 'action', 'title' => 'C', 'transitions' => [] }
-      ]
-    )
-
-    transitions = workflow.transitions_from('a')
-
-    assert_equal 2, transitions.length
-    assert_equal 'b', transitions[0]['target_uuid']
-    assert_equal "x == 1", transitions[0]['condition']
-  end
-
-  test "steps_leading_to returns source steps" do
-    workflow = Workflow.create!(
-      title: "Leading To Test",
-      user: @user,
-      graph_mode: true,
-      start_node_uuid: 'start',
-      steps: [
-        { 'id' => 'start', 'type' => 'question', 'title' => 'Start', 'question' => 'Which path?', 'transitions' => [{ 'target_uuid' => 'a' }, { 'target_uuid' => 'b' }] },
-        { 'id' => 'a', 'type' => 'action', 'title' => 'A', 'transitions' => [{ 'target_uuid' => 'c' }] },
-        { 'id' => 'b', 'type' => 'action', 'title' => 'B', 'transitions' => [{ 'target_uuid' => 'c' }] },
-        { 'id' => 'c', 'type' => 'action', 'title' => 'Target', 'transitions' => [] }
-      ]
-    )
-
-    sources = workflow.steps_leading_to('c')
-
-    assert_equal 2, sources.length
-    titles = sources.map { |s| s['title'] }
-
-    assert_includes titles, 'A'
-    assert_includes titles, 'B'
-  end
-
-  test "add_transition creates new transition" do
-    # Start in linear mode to bypass reachability validation, then switch to graph mode
-    workflow = Workflow.create!(
-      title: "Add Transition Test",
-      user: @user,
-      graph_mode: false,
-      steps: [
-        { 'id' => 'a', 'type' => 'action', 'title' => 'A' },
-        { 'id' => 'b', 'type' => 'action', 'title' => 'B' }
-      ]
-    )
-
-    # Switch to graph mode and add transitions
-    workflow.graph_mode = true
-    workflow.steps[0]['transitions'] = []
-    workflow.steps[1]['transitions'] = []
-
-    result = workflow.add_transition('a', 'b', condition: "x == 1")
-
-    assert result
-    assert_equal 1, workflow.steps[0]['transitions'].length
-    assert_equal 'b', workflow.steps[0]['transitions'][0]['target_uuid']
-    assert_equal "x == 1", workflow.steps[0]['transitions'][0]['condition']
-  end
-
-  test "add_transition fails in linear mode" do
-    workflow = Workflow.create!(
-      title: "Linear Add Test",
-      user: @user,
-      graph_mode: false,
-      steps: [
-        { 'id' => 'a', 'type' => 'action', 'title' => 'A' },
-        { 'id' => 'b', 'type' => 'action', 'title' => 'B' }
-      ]
-    )
-
-    result = workflow.add_transition('a', 'b')
-
-    assert_not result
-  end
-
-  test "add_transition prevents duplicates" do
-    workflow = Workflow.create!(
-      title: "Duplicate Test",
-      user: @user,
-      graph_mode: true,
-      steps: [
-        { 'id' => 'a', 'type' => 'action', 'title' => 'A', 'transitions' => [{ 'target_uuid' => 'b' }] },
-        { 'id' => 'b', 'type' => 'action', 'title' => 'B', 'transitions' => [] }
-      ]
-    )
-
-    result = workflow.add_transition('a', 'b')
-
-    assert_not result
-    assert_equal 1, workflow.steps[0]['transitions'].length
-  end
-
-  test "remove_transition removes existing transition" do
-    workflow = Workflow.create!(
-      title: "Remove Transition Test",
-      user: @user,
-      graph_mode: true,
-      steps: [
-        { 'id' => 'a', 'type' => 'action', 'title' => 'A', 'transitions' => [{ 'target_uuid' => 'b' }, { 'target_uuid' => 'c' }] },
-        { 'id' => 'b', 'type' => 'action', 'title' => 'B', 'transitions' => [] },
-        { 'id' => 'c', 'type' => 'action', 'title' => 'C', 'transitions' => [] }
-      ]
-    )
-
-    result = workflow.remove_transition('a', 'b')
-
-    assert result
-    assert_equal 1, workflow.steps[0]['transitions'].length
-    assert_equal 'c', workflow.steps[0]['transitions'][0]['target_uuid']
+    terminal_titles = terminals.map(&:title).sort
+    assert_equal ["End 1", "End 2"], terminal_titles
   end
 
   test "subflow_steps returns sub_flow type steps" do
-    target = Workflow.create!(title: "Target", user: @user, status: 'published', steps: [])
+    target = Workflow.create!(title: "Target", user: @user, status: "published")
 
-    workflow = Workflow.create!(
-      title: "Subflow Test",
-      user: @user,
-      graph_mode: true,
-      start_node_uuid: 'a',
-      steps: [
-        { 'id' => 'a', 'type' => 'action', 'title' => 'Action', 'transitions' => [{ 'target_uuid' => 'b' }] },
-        { 'id' => 'b', 'type' => 'sub_flow', 'title' => 'Call Sub', 'target_workflow_id' => target.id, 'transitions' => [{ 'target_uuid' => 'c' }] },
-        { 'id' => 'c', 'type' => 'sub_flow', 'title' => 'Call Sub 2', 'target_workflow_id' => target.id, 'transitions' => [] }
-      ]
-    )
+    workflow = Workflow.create!(title: "Subflow Test", user: @user, graph_mode: true)
+    step_a = Steps::Action.create!(workflow: workflow, position: 0, uuid: "a", title: "Action")
+    step_b = Steps::SubFlow.create!(workflow: workflow, position: 1, uuid: "b", title: "Call Sub", sub_flow_workflow_id: target.id)
+    step_c = Steps::SubFlow.create!(workflow: workflow, position: 2, uuid: "c", title: "Call Sub 2", sub_flow_workflow_id: target.id)
+    Transition.create!(step: step_a, target_step: step_b, position: 0)
+    Transition.create!(step: step_b, target_step: step_c, position: 0)
+    workflow.update!(start_step: step_a)
 
     subflows = workflow.subflow_steps
 
     assert_equal 2, subflows.length
-    assert(subflows.all? { |s| s['type'] == 'sub_flow' })
+    assert(subflows.all? { |s| s.is_a?(Steps::SubFlow) })
   end
 
   test "referenced_workflow_ids returns unique workflow IDs" do
-    target1 = Workflow.create!(title: "Target 1", user: @user, status: 'published', steps: [])
-    target2 = Workflow.create!(title: "Target 2", user: @user, status: 'published', steps: [])
+    target1 = Workflow.create!(title: "Target 1", user: @user, status: "published")
+    target2 = Workflow.create!(title: "Target 2", user: @user, status: "published")
 
-    workflow = Workflow.create!(
-      title: "References Test",
-      user: @user,
-      graph_mode: true,
-      start_node_uuid: 'a',
-      steps: [
-        { 'id' => 'a', 'type' => 'sub_flow', 'title' => 'Sub 1', 'target_workflow_id' => target1.id, 'transitions' => [{ 'target_uuid' => 'b' }] },
-        { 'id' => 'b', 'type' => 'sub_flow', 'title' => 'Sub 2', 'target_workflow_id' => target2.id, 'transitions' => [{ 'target_uuid' => 'c' }] },
-        { 'id' => 'c', 'type' => 'sub_flow', 'title' => 'Sub 3', 'target_workflow_id' => target1.id, 'transitions' => [] }
-      ]
-    )
+    workflow = Workflow.create!(title: "References Test", user: @user, graph_mode: true)
+    step_a = Steps::SubFlow.create!(workflow: workflow, position: 0, uuid: "a", title: "Sub 1", sub_flow_workflow_id: target1.id)
+    step_b = Steps::SubFlow.create!(workflow: workflow, position: 1, uuid: "b", title: "Sub 2", sub_flow_workflow_id: target2.id)
+    step_c = Steps::SubFlow.create!(workflow: workflow, position: 2, uuid: "c", title: "Sub 3", sub_flow_workflow_id: target1.id)
+    Transition.create!(step: step_a, target_step: step_b, position: 0)
+    Transition.create!(step: step_b, target_step: step_c, position: 0)
+    workflow.update!(start_step: step_a)
 
     ids = workflow.referenced_workflow_ids
 
@@ -290,13 +112,8 @@ class WorkflowGraphTest < ActiveSupport::TestCase
 
   test "validates graph structure in graph mode with AR steps" do
     workflow = Workflow.create!(title: "Invalid Graph", user: @user, graph_mode: true, status: "published")
-    # Single step with no transitions = dead end in published graph mode
     step_a = Steps::Action.create!(workflow: workflow, position: 0, uuid: "a", title: "A")
     step_b = Steps::Action.create!(workflow: workflow, position: 1, uuid: "b", title: "B")
-    # A -> B exists, but B is unreachable from A only if graph is disconnected
-    # Actually: A has a transition to B, but B has no outgoing transitions AND A is a dead end too
-    # Simplest: create two disconnected nodes - A has no transitions (dead end)
-    # and B is unreachable from start
     workflow.update_column(:start_step_id, step_a.id)
 
     workflow.reload
@@ -307,7 +124,6 @@ class WorkflowGraphTest < ActiveSupport::TestCase
 
   test "validates subflow references with AR steps" do
     workflow = Workflow.create!(title: "Invalid Subflow", user: @user)
-    # Use save with validate: false to bypass belongs_to validation
     step = Steps::SubFlow.new(workflow: workflow, position: 0, uuid: "a", title: "Bad Sub", sub_flow_workflow_id: 999_999)
     step.save!(validate: false)
 
@@ -321,5 +137,67 @@ class WorkflowGraphTest < ActiveSupport::TestCase
 
     assert_not workflow.valid?
     assert(workflow.errors[:steps].any? { |e| e.include?("cannot reference itself") })
+  end
+
+  test "step_type_counts returns correct counts" do
+    workflow = Workflow.create!(title: "Counts Test", user: @user)
+    Steps::Question.create!(workflow: workflow, position: 0, uuid: "q1", title: "Q1", question: "?")
+    Steps::Question.create!(workflow: workflow, position: 1, uuid: "q2", title: "Q2", question: "?")
+    Steps::Action.create!(workflow: workflow, position: 2, uuid: "a1", title: "A1")
+
+    counts = workflow.step_type_counts
+
+    assert_equal 2, counts["question"]
+    assert_equal 1, counts["action"]
+  end
+
+  test "find_step_by_uuid returns correct step" do
+    workflow = Workflow.create!(title: "Find Test", user: @user)
+    step = Steps::Action.create!(workflow: workflow, position: 0, uuid: "test-uuid", title: "Test")
+
+    found = workflow.find_step_by_uuid("test-uuid")
+    assert_equal step, found
+
+    assert_nil workflow.find_step_by_uuid("nonexistent")
+    assert_nil workflow.find_step_by_uuid(nil)
+  end
+
+  test "find_step_by_title returns correct step" do
+    workflow = Workflow.create!(title: "Find Title Test", user: @user)
+    step = Steps::Action.create!(workflow: workflow, position: 0, uuid: "t1", title: "My Step")
+
+    assert_equal step, workflow.find_step_by_title("My Step")
+    assert_equal step, workflow.find_step_by_title("my step") # case-insensitive
+    assert_nil workflow.find_step_by_title("Nonexistent")
+  end
+
+  test "variables_with_metadata returns question variables" do
+    workflow = Workflow.create!(title: "Variables Test", user: @user)
+    Steps::Question.create!(workflow: workflow, position: 0, uuid: "q1", title: "Name", question: "What?", variable_name: "name", answer_type: "text")
+    Steps::Action.create!(workflow: workflow, position: 1, uuid: "a1", title: "Do Thing")
+
+    vars = workflow.variables_with_metadata
+
+    assert_equal 1, vars.length
+    assert_equal "name", vars[0][:name]
+    assert_equal "text", vars[0][:answer_type]
+  end
+
+  test "serialize_steps_for_template captures all step data" do
+    workflow = Workflow.create!(title: "Template Test", user: @user, graph_mode: true)
+    q = Steps::Question.create!(workflow: workflow, position: 0, uuid: "q1", title: "Ask", question: "What?", variable_name: "answer", answer_type: "text")
+    a = Steps::Action.create!(workflow: workflow, position: 1, uuid: "a1", title: "Do")
+    Transition.create!(step: q, target_step: a, position: 0, condition: "answer == 'yes'")
+
+    data = workflow.serialize_steps_for_template
+
+    assert_equal 2, data.length
+    assert_equal "question", data[0]["type"]
+    assert_equal "Ask", data[0]["title"]
+    assert_equal "What?", data[0]["question"]
+    assert_equal "answer", data[0]["variable_name"]
+    assert_equal 1, data[0]["transitions"].length
+    assert_equal "a1", data[0]["transitions"][0]["target_uuid"]
+    assert_equal "answer == 'yes'", data[0]["transitions"][0]["condition"]
   end
 end

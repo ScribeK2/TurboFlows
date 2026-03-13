@@ -25,9 +25,9 @@ class Workflow < ApplicationRecord
   has_many :versions, class_name: "WorkflowVersion", dependent: :destroy
   belongs_to :published_version, class_name: "WorkflowVersion", optional: true
 
-  # Find workflows that reference a given workflow as a sub-flow step
+  # Find workflows that reference a given workflow as a sub-flow step (via AR steps)
   def self.referencing_as_subflow(target_workflow_id)
-    where("steps::text LIKE ?", "%\"target_workflow_id\":#{target_workflow_id}%")
+    joins(:workflow_steps).where(steps: { type: "Steps::SubFlow", sub_flow_workflow_id: target_workflow_id })
   end
 
   # Steps stored as JSON - automatically serialized/deserialized
@@ -218,57 +218,54 @@ class Workflow < ApplicationRecord
   end
 
   # ============================================================================
-  # ID-Based Step Reference Helpers (Sprint 1: Decision Step Revolution)
-  # These methods support ID-based step references instead of title-based,
-  # making workflows more robust when steps are renamed.
+  # Step Reference Helpers (AR-based)
   # ============================================================================
 
-  # Find a step by its ID
-  # Returns the step hash or nil if not found
-  def find_step_by_id(step_id)
-    return nil unless steps.present? && step_id.present?
-
-    steps.find { |step| step['id'] == step_id }
+  # Find a step by its UUID
+  def find_step_by_uuid(uuid)
+    return nil unless uuid.present?
+    workflow_steps.find_by(uuid: uuid)
   end
 
-  # Find a step by its title (for backward compatibility)
-  # Returns the step hash or nil if not found
-  # Uses case-insensitive fallback if exact match not found
+  # Find a step by its title (case-insensitive fallback)
   def find_step_by_title(title)
-    return nil unless steps.present? && title.present?
-
-    # Exact match first
-    step = steps.find { |step| step['title'] == title }
-    return step if step
-
-    # Case-insensitive fallback
-    steps.find { |step| step['title']&.downcase == title.downcase }
+    return nil unless title.present?
+    workflow_steps.find_by(title: title) ||
+      workflow_steps.where("LOWER(title) = ?", title.downcase).first
   end
 
-  # Get step info for display purposes
-  # Returns an array of hashes with id, title, type, and index
+  # Resolve a step reference (UUID or title) to a UUID
+  def resolve_step_reference_to_id(reference)
+    return nil if reference.blank?
+    step = find_step_by_uuid(reference) || find_step_by_title(reference)
+    step&.uuid
+  end
+
+  # Resolve a step reference (UUID or title) to a title for display
+  def resolve_step_reference_to_title(reference)
+    return nil if reference.blank?
+    step = find_step_by_uuid(reference) || find_step_by_title(reference)
+    step&.title
+  end
+
+  # Get step options for select dropdowns
   def step_options_for_select
-    return [] unless steps.present?
-
-    steps.map.with_index do |step, index|
-      next nil unless step.is_a?(Hash) && step['title'].present?
-
+    workflow_steps.map.with_index do |step, index|
+      next nil unless step.title.present?
       {
-        id: step['id'],
-        title: step['title'],
-        type: step['type'],
+        id: step.uuid,
+        title: step.title,
+        type: step.step_type,
         index: index,
-        display_name: "#{index + 1}. #{step['title']}",
-        type_icon: step_type_icon(step['type'])
+        display_name: "#{index + 1}. #{step.title}",
+        type_icon: step_type_icon(step.step_type)
       }
     end.compact
   end
 
   # Count steps by type, returns hash like { 'question' => 3, 'action' => 2, ... }
   def step_type_counts
-    return {} unless steps.present?
-
-    steps.each_with_object(Hash.new(0)) { |step, counts| counts[step['type']] += 1 if step['type'].present? }
+    workflow_steps.group(:type).count.transform_keys { |k| k.demodulize.underscore }
   end
 
   # Returns the most common step type in this workflow
@@ -277,66 +274,20 @@ class Workflow < ApplicationRecord
   end
 
   # Get variables with their metadata (answer type, options) for condition builders
-  # Returns an array of hashes with variable info
   def variables_with_metadata
-    return [] unless steps.present?
-
-    steps.select { |step| step['type'] == 'question' && step['variable_name'].present? }
-         .map do |step|
-           {
-             name: step['variable_name'],
-             title: step['title'],
-             answer_type: step['answer_type'],
-             options: step['options'] || [],
-             display_name: "#{step['title']} (#{step['variable_name']})"
-           }
-         end
-  end
-
-  # Convert a step reference (title or ID) to ID
-  # Used for migrating from title-based to ID-based references
-  def resolve_step_reference_to_id(reference)
-    return nil if reference.blank?
-
-    # If it looks like a UUID, assume it's already an ID
-    if reference.match?(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i) && find_step_by_id(reference)
-      # Verify the ID exists
-      return reference
+    workflow_steps.where(type: "Steps::Question").where.not(variable_name: [nil, ""]).map do |step|
+      {
+        name: step.variable_name,
+        title: step.title,
+        answer_type: step.answer_type,
+        options: step.options || [],
+        display_name: "#{step.title} (#{step.variable_name})"
+      }
     end
-
-    # Otherwise, treat it as a title and find the corresponding ID
-    step = find_step_by_title(reference)
-    step&.dig('id')
-  end
-
-  # Convert a step reference (ID or title) to title for display
-  # Used for displaying step references in the UI
-  def resolve_step_reference_to_title(reference)
-    return nil if reference.blank?
-
-    # If it looks like a UUID, find the step and return its title
-    if reference.match?(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
-      step = find_step_by_id(reference)
-      return step['title'] if step
-    end
-
-    # Otherwise, it might already be a title (backward compatibility)
-    # Verify the title exists
-    step = find_step_by_title(reference)
-    step ? reference : nil
-  end
-
-  # Migrate all step references in branches from title-based to ID-based
-  # This is idempotent - safe to run multiple times
-  # Deprecated: decision steps have been removed. This method is a no-op.
-  def migrate_step_references_to_ids!
-    false
   end
 
   # ============================================================================
-  # Graph Mode Support (DAG-Based Workflow)
-  # These methods support the graph-based workflow structure where steps are
-  # connected via explicit transitions rather than sequential array order.
+  # Graph Mode Support
   # ============================================================================
 
   # Check if workflow is in graph mode
@@ -350,135 +301,28 @@ class Workflow < ApplicationRecord
   end
 
   # Get steps as a hash keyed by UUID for graph-based operations
-  # Returns { "uuid-1" => step_hash, "uuid-2" => step_hash, ... }
   def graph_steps
-    return {} unless steps.present?
-
-    steps.each_with_object({}) do |step, hash|
-      next unless step.is_a?(Hash) && step['id'].present?
-
-      hash[step['id']] = step
-    end
+    workflow_steps.includes(:transitions).index_by(&:uuid)
   end
 
   # Get the starting node for graph traversal
-  # Returns the step hash of the start node, or nil if not found
   def start_node
-    return nil unless steps.present?
-
-    if start_node_uuid.present?
-      find_step_by_id(start_node_uuid)
-    else
-      # Default to first step if no start node is set
-      steps.first
-    end
+    start_step || workflow_steps.first
   end
 
-  # Get all terminal nodes (steps with no outgoing transitions)
-  # In graph mode, a terminal node has no transitions array or an empty one
+  # Get all terminal steps (no outgoing transitions)
   def terminal_nodes
-    return [] unless steps.present?
-
-    if graph_mode?
-      steps.select do |step|
-        transitions = step['transitions'] || []
-        transitions.empty? && step['type'] != 'sub_flow'
-      end
-    else
-      # In linear mode, the last step is the terminal
-      [steps.last].compact
-    end
+    workflow_steps.left_joins(:transitions).where(transitions: { id: nil })
   end
 
-  # Get all transitions from a given step
-  # Returns array of { condition: string, target_uuid: string } hashes
-  def transitions_from(step_or_id)
-    step = step_or_id.is_a?(Hash) ? step_or_id : find_step_by_id(step_or_id)
-    return [] unless step
-
-    step['transitions'] || []
-  end
-
-  # Get all steps that transition to a given step
-  # Returns array of step hashes
-  def steps_leading_to(step_or_id)
-    target_id = step_or_id.is_a?(Hash) ? step_or_id['id'] : step_or_id
-    return [] unless target_id && steps.present?
-
-    steps.select do |step|
-      transitions = step['transitions'] || []
-      transitions.any? { |t| t['target_uuid'] == target_id }
-    end
-  end
-
-  # Add a transition between two steps (graph mode only)
-  # condition: optional condition string for the transition
-  # Returns true if successful, false otherwise
-  def add_transition(from_step_id, to_step_id, condition: nil)
-    return false unless graph_mode?
-
-    from_step = find_step_by_id(from_step_id)
-    to_step = find_step_by_id(to_step_id)
-    return false unless from_step && to_step
-
-    from_step['transitions'] ||= []
-
-    # Don't add duplicate transitions
-    existing = from_step['transitions'].find { |t| t['target_uuid'] == to_step_id }
-    return false if existing
-
-    transition = { 'target_uuid' => to_step_id }
-    transition['condition'] = condition if condition.present?
-    from_step['transitions'] << transition
-
-    true
-  end
-
-  # Remove a transition between two steps (graph mode only)
-  # Returns true if successful, false otherwise
-  def remove_transition(from_step_id, to_step_id)
-    return false unless graph_mode?
-
-    from_step = find_step_by_id(from_step_id)
-    return false unless from_step
-
-    from_step['transitions'] ||= []
-    initial_count = from_step['transitions'].length
-    from_step['transitions'].reject! { |t| t['target_uuid'] == to_step_id }
-
-    from_step['transitions'].length < initial_count
-  end
-
-  # Convert this workflow from linear to graph mode
-  # This creates explicit transitions based on the current step order
-  # Returns true if conversion was successful
-  def convert_to_graph_mode!
-    return true if graph_mode?
-    return false unless steps.present?
-
-    converter = WorkflowGraphConverter.new(self)
-    converted_steps = converter.convert
-
-    if converted_steps
-      self.steps = converted_steps
-      self.graph_mode = true
-      self.start_node_uuid = steps.first&.dig('id')
-      save
-    else
-      false
-    end
-  end
-
-  # Get sub-flow step configuration
+  # Get sub-flow steps
   def subflow_steps
-    return [] unless steps.present?
-
-    steps.select { |step| step['type'] == 'sub_flow' }
+    workflow_steps.where(type: "Steps::SubFlow")
   end
 
   # Get all workflow IDs referenced as sub-flows
   def referenced_workflow_ids
-    subflow_steps.map { |step| step['target_workflow_id'] }.compact.uniq
+    subflow_steps.pluck(:sub_flow_workflow_id).compact.uniq
   end
 
   # Check if this workflow has any sub-flow steps
@@ -487,84 +331,56 @@ class Workflow < ApplicationRecord
   end
 
   # Convert workflow to template format
-  # Returns a hash with template attributes
   def convert_to_template(name: nil, category: nil, description: nil, is_public: true)
     {
       name: name || title,
       description: description || description_text,
       category: category || "custom",
-      workflow_data: steps || [],
+      workflow_data: serialize_steps_for_template,
       is_public:
     }
   end
 
-  # ============================================================================
-  # ActiveRecord Step Methods (used during and after migration)
-  # These methods query the `steps` table instead of the JSONB column.
-  # During migration both paths coexist. After Task 28 removes the JSONB
-  # column, the legacy methods above will be deleted and `workflow_steps`
-  # will be renamed to `steps`.
-  # ============================================================================
-
-  # Find a step record by UUID
-  def find_workflow_step_by_uuid(uuid)
-    return nil unless uuid.present?
-    workflow_steps.unscoped.find_by(uuid: uuid)
-  end
-
-  # Find a step record by title (case-insensitive fallback)
-  def find_workflow_step_by_title(title)
-    return nil unless title.present?
-    workflow_steps.find_by(title: title) ||
-      workflow_steps.where("LOWER(title) = ?", title.downcase).first
-  end
-
-  # Get the start step (ActiveRecord)
-  def ar_start_node
-    start_step || workflow_steps.first
-  end
-
-  # Get terminal steps (no outgoing transitions)
-  def ar_terminal_nodes
-    workflow_steps.left_joins(:transitions).where(transitions: { id: nil })
-  end
-
-  # Get steps as hash keyed by UUID for graph operations
-  def ar_graph_steps
-    workflow_steps.includes(:transitions).index_by(&:uuid)
-  end
-
-  # Get variables metadata from question steps (ActiveRecord)
-  def ar_variables_with_metadata
-    Steps::Question.where(workflow_id: id).map do |step|
-      {
-        name: step.variable_name,
-        title: step.title,
-        answer_type: step.answer_type,
-        options: step.options || [],
-        display_name: "#{step.title} (#{step.variable_name})"
+  # Serialize AR steps for template export
+  def serialize_steps_for_template
+    workflow_steps.includes(:transitions).order(:position).map do |step|
+      data = {
+        "type" => step.step_type,
+        "title" => step.title,
+        "position" => step.position,
+        "uuid" => step.uuid
       }
+
+      case step
+      when Steps::Question
+        data["question"] = step.question
+        data["variable_name"] = step.variable_name
+        data["answer_type"] = step.answer_type
+        data["options"] = step.options if step.options.present?
+      when Steps::Action
+        data["action_type"] = step.action_type
+        data["instructions"] = step.instructions&.to_plain_text
+        data["output_fields"] = step.output_fields if step.output_fields.present?
+      when Steps::Message
+        data["content"] = step.content&.to_plain_text
+      when Steps::Escalate
+        data["target_type"] = step.target_type
+        data["priority"] = step.priority
+      when Steps::Resolve
+        data["resolution_type"] = step.resolution_type
+      when Steps::SubFlow
+        data["sub_flow_workflow_id"] = step.sub_flow_workflow_id
+        data["variable_mapping"] = step.variable_mapping if step.variable_mapping.present?
+      end
+
+      if step.transitions.any?
+        data["transitions"] = step.transitions.order(:position).map do |t|
+          { "target_uuid" => t.target_step&.uuid, "condition" => t.condition, "label" => t.label }.compact
+        end
+      end
+
+      data
     end
-  end
-
-  # Get step options for select dropdowns (ActiveRecord)
-  def ar_step_options_for_select
-    workflow_steps.map.with_index do |step, index|
-      next nil unless step.title.present?
-      {
-        id: step.uuid,
-        title: step.title,
-        type: step.type.demodulize.underscore,
-        index: index,
-        display_name: "#{index + 1}. #{step.title}",
-        type_icon: step_type_icon(step.type.demodulize.underscore)
-      }
-    end.compact
-  end
-
-  # Find workflows referencing a given workflow as a sub-flow (ActiveRecord)
-  def self.ar_referencing_as_subflow(target_workflow_id)
-    joins(:workflow_steps).where(steps: { type: "Steps::SubFlow", sub_flow_workflow_id: target_workflow_id })
   end
 
   private

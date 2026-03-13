@@ -170,19 +170,19 @@ class ScenariosController < ApplicationController
       next unless path_entry['answer'].present?
 
       if @scenario.graph_mode? && path_entry['step_uuid'].present?
-        step = @workflow.find_step_by_id(path_entry['step_uuid'])
+        step = @workflow.find_step_by_uuid(path_entry['step_uuid'])
       elsif path_entry['step_index'].present?
         idx = path_entry['step_index'].to_i
-        step = @workflow.steps[idx] if idx >= 0 && idx < @workflow.steps.length
+        step = @workflow.workflow_steps.find_by(position: idx) if idx >= 0
       end
 
-      next unless step && step['type'] == 'question'
+      next unless step.is_a?(Steps::Question)
 
-      input_key = step['variable_name'].presence || (path_entry['step_index'] || 0).to_s
+      input_key = step.variable_name.presence || (path_entry['step_index'] || 0).to_s
       @scenario.inputs[input_key] = path_entry['answer']
-      @scenario.inputs[step['title']] = path_entry['answer']
-      @scenario.results[step['title']] = path_entry['answer']
-      @scenario.results[step['variable_name']] = path_entry['answer'] if step['variable_name'].present?
+      @scenario.inputs[step.title] = path_entry['answer']
+      @scenario.results[step.title] = path_entry['answer']
+      @scenario.results[step.variable_name] = path_entry['answer'] if step.variable_name.present?
     end
   end
 
