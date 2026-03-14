@@ -96,18 +96,9 @@
       Notes/Instructions
       <span class="font-normal text-gray-500 dark:text-gray-400">(optional)</span>
     </label>
-    <% if ar_step?(step) %>
-      <%= form_with model: [workflow, step], url: workflow_step_path(workflow, step), method: :patch, local: true do |f| %>
-        <%= f.rich_text_area :notes,
-            data: { step_form_target: "field", variable_autocomplete_target: "input" } %>
-      <% end %>
-    <% else %>
-      <textarea name="workflow[steps][][notes]"
-                placeholder="Additional context or instructions for the escalation..."
-                rows="2"
-                data-step-form-target="field"
-                data-variable-autocomplete-target="input"
-                class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"><%= step['notes'] %></textarea>
+    <%= form_with model: [workflow, step], url: workflow_step_path(workflow, step), method: :patch, local: true do |f| %>
+      <%= f.rich_text_area :notes,
+          data: { step_form_target: "field", variable_autocomplete_target: "input" } %>
     <% end %>
   </div>
 </div>

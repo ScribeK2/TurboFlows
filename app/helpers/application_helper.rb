@@ -4,18 +4,6 @@ module ApplicationHelper
     workflow.description.present? ? workflow.description.to_s : "No description"
   end
 
-  # Temporary: simple HTML sanitizer replacing the old Redcarpet-based markdown renderer.
-  # Will be removed when all callers are migrated to Action Text (Tasks 17-19).
-  def render_step_markdown(text)
-    return "".html_safe if text.blank?
-
-    html = simple_text_to_html(text.to_s)
-    safe_html = sanitize(html,
-                         tags: %w[p br strong em b i ul ol li h1 h2 h3 h4 h5 h6 a code pre table thead tbody tr th td hr blockquote del],
-                         attributes: %w[href target rel])
-    content_tag(:div, safe_html, class: "prose prose-sm dark:prose-invert max-w-none")
-  end
-
   # Render glassmorphism card with block content
   def render_card(title: nil, icon: nil, with_3d: false, css_class: nil, controller: nil, content_class: nil, footer: nil, &)
     content = capture(&) if block_given?
@@ -51,13 +39,6 @@ module ApplicationHelper
   end
 
   private
-
-  # Minimal text-to-HTML: wraps plain text paragraphs in <p> tags.
-  # Temporary bridge until all callers use Action Text.
-  def simple_text_to_html(text)
-    return text if text.match?(/<[a-z][\s\S]*>/i) # Already HTML
-    text.split(/\n{2,}/).map { |para| "<p>#{ERB::Util.html_escape(para.strip)}</p>" }.join
-  end
 
   def build_tree_nodes(parents, all_groups)
     parents.map do |parent|

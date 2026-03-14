@@ -16,7 +16,7 @@ class RenderStepTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
-    @workflow&.destroy
+    @workflow&.reload&.destroy
     @user&.destroy
   end
 

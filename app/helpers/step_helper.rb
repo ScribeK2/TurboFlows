@@ -1,58 +1,38 @@
 module StepHelper
-  # Unified field access for both AR Step objects and legacy JSONB hashes.
-  # Returns the value of a field from either format.
+  # Unified field access for AR Step objects.
+  # Handles type normalization, UUID mapping, and rich text extraction.
   #
   # Examples:
-  #   step_field(step, 'title')         # works for Hash or Step
-  #   step_field(step, 'instructions')  # returns plain text for AR rich text fields
-  #   step_field(step, 'type')          # returns "action" for both formats
+  #   step_field(step, 'title')         # returns step.title
+  #   step_field(step, 'instructions')  # returns plain text for rich text fields
+  #   step_field(step, 'type')          # returns "action" (not "Steps::Action")
   def step_field(step, field)
-    if step.is_a?(Step)
-      case field.to_s
-      when "type"
-        step.type.demodulize.underscore
-      when "id"
-        step.uuid
-      when "target_workflow_id"
-        step.respond_to?(:sub_flow_workflow_id) ? step.sub_flow_workflow_id : nil
-      when "instructions", "content", "notes"
-        # Rich text fields - return body as string for interpolation
-        rt = step.try(field)
-        rt.respond_to?(:body) ? rt.body.to_s : rt.to_s
-      else
-        step.try(field)
-      end
-    elsif step.is_a?(Hash)
-      step[field.to_s] || step[field.to_sym]
+    case field.to_s
+    when "type"
+      step.type.demodulize.underscore
+    when "id"
+      step.uuid
+    when "target_workflow_id"
+      step.respond_to?(:sub_flow_workflow_id) ? step.sub_flow_workflow_id : nil
+    when "instructions", "content", "notes"
+      # Rich text fields - return body as string for interpolation
+      rt = step.try(field)
+      rt.respond_to?(:body) ? rt.body.to_s : rt.to_s
+    else
+      step.try(field)
     end
   end
 
-  # Check if step is an AR Step object (vs legacy Hash)
-  def ar_step?(step)
-    step.is_a?(Step)
-  end
-
-  # Render rich text content for AR steps or markdown for JSONB steps.
+  # Render rich text content with optional variable interpolation.
   # Used in scenario player and workflow show views.
   def render_step_content(step, field, variables = {})
-    if ar_step?(step)
-      rt = step.try(field)
-      if rt.present? && variables.present?
-        VariableInterpolator.interpolate_rich_text(rt, variables).html_safe
-      elsif rt.present?
-        rt.to_s.html_safe
-      else
-        "".html_safe
-      end
+    rt = step.try(field)
+    if rt.present? && variables.present?
+      VariableInterpolator.interpolate_rich_text(rt, variables).html_safe
+    elsif rt.present?
+      rt.to_s.html_safe
     else
-      text = step[field.to_s]
-      if text.present? && variables.present?
-        render_step_markdown(VariableInterpolator.interpolate(text, variables))
-      elsif text.present?
-        render_step_markdown(text)
-      else
-        "".html_safe
-      end
+      "".html_safe
     end
   end
 

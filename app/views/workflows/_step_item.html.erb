@@ -12,8 +12,8 @@
 %>
 
 <% expanded = local_assigns.fetch(:expanded, true) %>
-<% step_type = ar_step?(step) ? step_field(step, 'type') : step['type']&.to_s&.downcase %>
-<% step_id = ar_step?(step) ? step.uuid : (step['id'] || SecureRandom.uuid) %>
+<% step_type = step_field(step, 'type') %>
+<% step_id = step.uuid %>
 
 <%# Step type background colors (using slate/emerald theme) %>
 <% type_bg_colors = {
@@ -117,7 +117,7 @@
   <input type="hidden" name="workflow[steps][][type]" value="<%= step_type %>">
 
   <%# Transitions data stored as hidden field (always rendered for flow preview) %>
-  <% transitions = step['transitions'] || [] %>
+  <% transitions = step.transitions.map { |t| { 'target_uuid' => t.target_step&.uuid, 'condition' => t.condition, 'label' => t.label } } %>
   <input type="hidden"
          name="workflow[steps][][transitions_json]"
          value="<%= transitions.to_json %>"

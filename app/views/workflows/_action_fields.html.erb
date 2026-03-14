@@ -23,19 +23,9 @@
     <%# Template panel at full column width with z-index above Live Preview %>
     <%= render 'workflows/instruction_templates' %>
 
-    <% if ar_step?(step) %>
-      <%= form_with model: [workflow, step], url: workflow_step_path(workflow, step), method: :patch, local: true do |f| %>
-        <%= f.rich_text_area :instructions,
-            data: { step_form_target: "field", instruction_template_target: "instructionsField", variable_autocomplete_target: "input" } %>
-      <% end %>
-    <% else %>
-      <textarea name="workflow[steps][][instructions]"
-                placeholder="Enter step-by-step instructions for the CSR to follow..."
-                rows="5"
-                data-step-form-target="field"
-                data-instruction-template-target="instructionsField"
-                data-variable-autocomplete-target="input"
-                class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"><%= step['instructions'] %></textarea>
+    <%= form_with model: [workflow, step], url: workflow_step_path(workflow, step), method: :patch, local: true do |f| %>
+      <%= f.rich_text_area :instructions,
+          data: { step_form_target: "field", instruction_template_target: "instructionsField", variable_autocomplete_target: "input" } %>
     <% end %>
   </div>
 

@@ -365,77 +365,40 @@ class WorkflowsController < ApplicationController
 
     Rails.logger.debug { "[render_step] step_type=#{step_type}, step_index=#{step_index}, step_data=#{step_data.inspect}" }
 
-    # Try AR path if workflow has migrated steps
-    if @workflow.steps.loaded? ? @workflow.steps.any? : @workflow.steps.exists?
-      step_class = step_class_for(step_type)
-      position = @workflow.steps.maximum(:position).to_i + 1
-      attrs = { workflow: @workflow, position: position, title: step_data[:title] || "" }
-
-      case step_type
-      when "question"
-        attrs[:question] = step_data[:question] || ""
-        attrs[:answer_type] = step_data[:answer_type] || "yes_no"
-        attrs[:variable_name] = step_data[:variable_name] || ""
-      when "action"
-        attrs[:action_type] = step_data[:action_type] || "Instruction"
-      when "sub_flow"
-        attrs[:sub_flow_workflow_id] = step_data[:target_workflow_id] if step_data[:target_workflow_id].present?
-      end
-
-      step = step_class.new(attrs)
-      step.save! # Persist so it gets a UUID and ID
-
-      # Set rich text after save
-      case step_type
-      when "action"
-        step.update(instructions: step_data[:instructions]) if step_data[:instructions].present?
-      when "message"
-        step.update(content: step_data[:content]) if step_data[:content].present?
-      when "escalate"
-        step.update(notes: step_data[:notes]) if step_data[:notes].present?
-      end
-
-      begin
-        render partial: "workflows/step_item",
-               locals: { step: step, index: step.position, workflow: @workflow, expanded: true },
-               formats: [:html]
-      rescue StandardError => e
-        Rails.logger.error "[render_step] Error rendering AR step: #{e.message}"
-        render plain: "Error rendering step: #{e.message}", status: :internal_server_error
-      end
-      return
-    end
-
-    # Legacy JSONB path
-    step = {
-      'id' => SecureRandom.uuid,
-      'type' => step_type,
-      'title' => step_data[:title] || '',
-      'description' => step_data[:description] || ''
-    }
+    step_class = step_class_for(step_type)
+    position = @workflow.steps.maximum(:position).to_i + 1
+    attrs = { workflow: @workflow, position: position, title: step_data[:title] || "" }
 
     case step_type
-    when 'question'
-      step['question'] = step_data[:question] || ''
-      step['answer_type'] = step_data[:answer_type] || 'yes_no'
-      step['variable_name'] = step_data[:variable_name] || ''
-      step['options'] = step_data[:options] || []
-    when 'action'
-      step['action_type'] = step_data[:action_type] || 'Instruction'
-      step['instructions'] = step_data[:instructions] || ''
-      step['attachments'] = step_data[:attachments] || []
-    when 'sub_flow'
-      step['target_workflow_id'] = step_data[:target_workflow_id] || ''
-      step['variable_mapping'] = step_data[:variable_mapping] || {}
+    when "question"
+      attrs[:question] = step_data[:question] || ""
+      attrs[:answer_type] = step_data[:answer_type] || "yes_no"
+      attrs[:variable_name] = step_data[:variable_name] || ""
+    when "action"
+      attrs[:action_type] = step_data[:action_type] || "Instruction"
+    when "sub_flow"
+      attrs[:sub_flow_workflow_id] = step_data[:target_workflow_id] if step_data[:target_workflow_id].present?
+    end
+
+    step = step_class.new(attrs)
+    step.save! # Persist so it gets a UUID and ID
+
+    # Set rich text after save
+    case step_type
+    when "action"
+      step.update(instructions: step_data[:instructions]) if step_data[:instructions].present?
+    when "message"
+      step.update(content: step_data[:content]) if step_data[:content].present?
+    when "escalate"
+      step.update(notes: step_data[:notes]) if step_data[:notes].present?
     end
 
     begin
-      render partial: 'workflows/step_item',
-             locals: { step: step, index: step_index, workflow: @workflow, expanded: true },
+      render partial: "workflows/step_item",
+             locals: { step: step, index: step.position, workflow: @workflow, expanded: true },
              formats: [:html]
     rescue StandardError => e
       Rails.logger.error "[render_step] Error rendering step: #{e.message}"
-      Rails.logger.error e.backtrace.first(10).join("\n")
       render plain: "Error rendering step: #{e.message}", status: :internal_server_error
     end
   end
