@@ -16,6 +16,7 @@ class Workflow < ApplicationRecord
   # ActiveRecord step associations (parallel to JSONB during migration)
   # IMPORTANT: nullify_start_step must run BEFORE dependent :destroy on steps
   # to avoid circular FK constraint (workflows.start_step_id → steps.id)
+  before_destroy :nullify_published_version, prepend: true
   before_destroy :nullify_start_step, prepend: true
   has_many :steps, class_name: "Step", dependent: :destroy
   belongs_to :start_step, class_name: "Step", optional: true
@@ -389,6 +390,10 @@ class Workflow < ApplicationRecord
   end
 
   private
+
+  def nullify_published_version
+    update_column(:published_version_id, nil) if published_version_id.present?
+  end
 
   def nullify_start_step
     update_column(:start_step_id, nil) if start_step_id.present?
