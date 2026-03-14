@@ -270,7 +270,7 @@ class Workflow < ApplicationRecord
 
   # Count steps by type, returns hash like { 'question' => 3, 'action' => 2, ... }
   def step_type_counts
-    steps.group(:type).count.transform_keys { |k| k.demodulize.underscore }
+    steps.reorder(nil).group(:type).count.transform_keys { |k| k.demodulize.underscore }
   end
 
   # Returns the most common step type in this workflow
