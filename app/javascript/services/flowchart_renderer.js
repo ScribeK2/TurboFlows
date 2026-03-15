@@ -8,7 +8,6 @@ export class FlowchartRenderer {
     this.nodeHeight = options.nodeHeight || 120
     this.nodeMargin = options.nodeMargin || 40
     this.compact = options.compact || false
-    this.darkMode = options.darkMode || false
     this.clickable = options.clickable || false
     this.arrowIdPrefix = options.arrowIdPrefix || ''
     this.rankSep = options.rankSep || 80
@@ -224,7 +223,7 @@ export class FlowchartRenderer {
     const fontSize = this.compact ? 9 : 11
     const charWidth = this.compact ? 5 : 6
 
-    const svgClass = this.interactive ? 'absolute inset-0' : 'absolute inset-0 pointer-events-none'
+    const svgClass = this.interactive ? 'flowchart-svg' : 'flowchart-svg flowchart-svg--non-interactive'
     let svgHtml = `<svg class="${svgClass}" style="width: ${maxX}px; height: ${maxY}px; z-index: 0;">`
     svgHtml += this.buildSvgDefs()
 
@@ -293,32 +292,6 @@ export class FlowchartRenderer {
     return svgHtml
   }
 
-  // Get step background color class (matches step_item colors)
-  getStepColorClass(type) {
-    switch(type) {
-      case "question": return "bg-slate-100 text-slate-700"
-      case "action": return "bg-emerald-100 text-emerald-700"
-      case "sub_flow": return "bg-indigo-100 text-indigo-700"
-      case "message": return "bg-cyan-100 text-cyan-700"
-      case "escalate": return "bg-orange-100 text-orange-700"
-      case "resolve": return "bg-green-100 text-green-700"
-      default: return "bg-gray-100 text-gray-700"
-    }
-  }
-
-  // Get step border color class (matches step_item colors)
-  getStepBorderClass(type) {
-    switch(type) {
-      case "question": return "border-slate-400"
-      case "action": return "border-emerald-400"
-      case "sub_flow": return "border-indigo-400"
-      case "message": return "border-cyan-400"
-      case "escalate": return "border-orange-400"
-      case "resolve": return "border-green-400"
-      default: return "border-gray-300"
-    }
-  }
-
   // Get step color (hex) - matches step_item header colors
   getStepColor(type) {
     const colors = {
@@ -347,16 +320,11 @@ export class FlowchartRenderer {
 
   // Build HTML for a single step node (polished card design)
   buildNodeHtml(step, pos, options = {}) {
-    const borderClass = this.getStepBorderClass(step.type)
     const headerColor = this.getStepColor(step.type)
-    const fontSize = this.compact ? "text-xs" : "text-sm"
+    const fontSize = this.compact ? "step-card__title--compact" : ""
     const padding = this.compact ? 8 : 12
     const badgeSize = this.compact ? 18 : 24
     const icon = this.getStepIcon(step.type)
-
-    const darkModeClasses = this.darkMode
-      ? "dark:bg-gray-800 dark:text-gray-100"
-      : ""
 
     const escapedStepId = this.escapeHtml(step.id || '')
     const escapedStepType = this.escapeHtml(step.type || 'unknown')
@@ -365,42 +333,41 @@ export class FlowchartRenderer {
     if (this.interactive) {
       const isStart = step.isStartNode
       const startBadge = isStart
-        ? '<span class="ml-auto text-[10px] font-bold uppercase tracking-wider bg-white/30 text-white px-1.5 py-0.5 rounded">START</span>'
+        ? '<span class="step-card__start-badge">START</span>'
         : ''
 
       return `
-        <div class="absolute workflow-node z-10 group cursor-pointer transition-all duration-150"
+        <div class="absolute workflow-node step-card step-card--${escapedStepType}${isStart ? ' is-start' : ''}"
              style="left: ${pos.x}px; top: ${pos.y}px; width: ${this.nodeWidth}px;"
              data-step-index="${step.index}"
              data-step-id="${escapedStepId}"
              data-step-type="${escapedStepType}">
-          <div class="rounded-xl bg-white shadow-sm hover:shadow-md overflow-hidden border ${borderClass} ${darkModeClasses} transition-shadow duration-200${isStart ? ' ring-2 ring-green-400 ring-offset-1' : ''}"
-               style="min-height: ${this.nodeHeight}px;">
+          <div class="step-card__inner" style="min-height: ${this.nodeHeight}px;">
             <!-- Colored header bar -->
-            <div class="flex items-center gap-2 px-3 py-2" style="background-color: ${headerColor};">
-              <span class="inline-flex items-center justify-center rounded-full bg-white/25 text-white font-bold"
+            <div class="step-card__header" style="background-color: ${headerColor};">
+              <span class="step-card__number"
                     style="width: ${badgeSize}px; height: ${badgeSize}px; font-size: ${this.compact ? 10 : 12}px;">
                 ${step.index + 1}
               </span>
-              <span class="text-white/80 font-bold" style="font-size: ${this.compact ? 11 : 13}px;">${icon}</span>
-              <span class="text-xs font-semibold uppercase text-white/80 tracking-wider">${escapedStepType}</span>
+              <span class="step-card__icon" style="font-size: ${this.compact ? 11 : 13}px;">${icon}</span>
+              <span class="step-card__type">${escapedStepType}</span>
               ${startBadge}
             </div>
             <!-- Content -->
-            <div style="padding: ${padding}px;">
-              <h4 class="font-semibold ${fontSize} text-gray-900 break-words" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+            <div class="step-card__body" style="padding: ${padding}px;">
+              <h4 class="step-card__title" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
                 ${this.escapeHtml(step.title || 'Step ' + (step.index + 1))}
               </h4>
-              ${step.type === "resolve" ? '<p class="text-xs text-green-600 mt-1 font-medium">Terminal</p>' : ""}
-              ${step.can_resolve ? '<p class="text-xs text-emerald-600 mt-1 font-medium">Can resolve</p>' : ""}
-              <p class="text-xs text-gray-400 mt-2">Double-click to edit</p>
+              ${step.type === "resolve" ? '<p class="step-card__hint step-card__hint--resolve">Terminal</p>' : ""}
+              ${step.can_resolve ? '<p class="step-card__hint step-card__hint--can-resolve">Can resolve</p>' : ""}
+              <p class="step-card__hint">Double-click to edit</p>
             </div>
           </div>
           <!-- Input port (top center) -->
-          <div class="input-port absolute left-1/2 -translate-x-1/2 -top-2 w-4 h-4 rounded-full bg-blue-400 border-2 border-white shadow opacity-0 group-hover:opacity-100 transition-opacity z-20"
+          <div class="input-port"
                data-port="input" data-step-id="${escapedStepId}"></div>
           <!-- Output port (bottom center) -->
-          <div class="output-port absolute left-1/2 -translate-x-1/2 -bottom-2 w-4 h-4 rounded-full bg-gray-400 border-2 border-white shadow opacity-0 group-hover:opacity-100 transition-opacity cursor-crosshair z-20"
+          <div class="output-port"
                data-port="output" data-step-id="${escapedStepId}"></div>
         </div>
       `
@@ -408,29 +375,28 @@ export class FlowchartRenderer {
 
     // Non-interactive (preview) mode: original behavior
     return `
-      <div class="absolute workflow-node z-10 ${this.clickable ? 'cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-slate-400 transition-all duration-150' : ''}"
+      <div class="absolute workflow-node step-card step-card--${escapedStepType}${this.clickable ? ' is-clickable' : ''}"
            style="left: ${pos.x}px; top: ${pos.y}px; width: ${this.nodeWidth}px;"
            data-step-index="${step.index}"
            ${this.clickable ? 'data-action="click->wizard-flow-preview#editStep"' : ''}>
-        <div class="rounded-xl bg-white shadow-sm hover:shadow-md overflow-hidden border ${borderClass} ${darkModeClasses} transition-shadow duration-200"
-             style="min-height: ${this.nodeHeight}px;">
+        <div class="step-card__inner" style="min-height: ${this.nodeHeight}px;">
           <!-- Colored header bar -->
-          <div class="flex items-center gap-2 px-3 py-2" style="background-color: ${headerColor};">
-            <span class="inline-flex items-center justify-center rounded-full bg-white/25 text-white font-bold"
+          <div class="step-card__header" style="background-color: ${headerColor};">
+            <span class="step-card__number"
                   style="width: ${badgeSize}px; height: ${badgeSize}px; font-size: ${this.compact ? 10 : 12}px;">
               ${step.index + 1}
             </span>
-            <span class="text-white/80 font-bold" style="font-size: ${this.compact ? 11 : 13}px;">${icon}</span>
-            <span class="text-xs font-semibold uppercase text-white/80 tracking-wider">${this.escapeHtml(step.type || 'unknown')}</span>
+            <span class="step-card__icon" style="font-size: ${this.compact ? 11 : 13}px;">${icon}</span>
+            <span class="step-card__type">${this.escapeHtml(step.type || 'unknown')}</span>
           </div>
           <!-- Content -->
-          <div style="padding: ${padding}px;">
-            <h4 class="font-semibold ${fontSize} text-gray-900 break-words" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+          <div class="step-card__body" style="padding: ${padding}px;">
+            <h4 class="step-card__title" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
               ${this.escapeHtml(step.title || 'Step ' + (step.index + 1))}
             </h4>
-            ${step.type === "resolve" ? '<p class="text-xs text-green-600 mt-1 font-medium">Terminal</p>' : ""}
-            ${step.can_resolve ? '<p class="text-xs text-emerald-600 mt-1 font-medium">Can resolve</p>' : ""}
-            ${this.clickable ? '<p class="text-xs text-gray-400 mt-2">Click to edit</p>' : ''}
+            ${step.type === "resolve" ? '<p class="step-card__hint step-card__hint--resolve">Terminal</p>' : ""}
+            ${step.can_resolve ? '<p class="step-card__hint step-card__hint--can-resolve">Can resolve</p>' : ""}
+            ${this.clickable ? '<p class="step-card__hint">Click to edit</p>' : ''}
           </div>
         </div>
       </div>
@@ -440,14 +406,14 @@ export class FlowchartRenderer {
   // Render the complete flowchart
   render(steps) {
     if (!steps || steps.length === 0) {
-      return '<p class="text-gray-500 ' + (this.darkMode ? 'dark:text-gray-400' : '') + ' text-center py-8">No steps to preview</p>'
+      return '<p class="flowchart-empty">No steps to preview</p>'
     }
 
     const connections = this.buildConnections(steps)
     const positions = this.calculatePositions(steps, connections)
 
     if (Object.keys(positions).length === 0) {
-      return '<p class="text-gray-500 text-center py-8">Unable to render flow preview</p>'
+      return '<p class="flowchart-empty">Unable to render flow preview</p>'
     }
 
     // Calculate canvas dimensions
@@ -455,12 +421,8 @@ export class FlowchartRenderer {
     const maxX = Math.max(...positionValues.map(p => p.x + this.nodeWidth)) + this.nodeMargin * 2
     const maxY = Math.max(...positionValues.map(p => p.y + this.nodeHeight)) + this.nodeMargin * 2
 
-    // Dot grid background pattern
-    const dotColor = this.darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'
-    const dotGridStyle = 'background-image: radial-gradient(circle, ' + dotColor + ' 1px, transparent 1px); background-size: 20px 20px;'
-
     // Build SVG and nodes
-    let html = '<div class="relative" style="min-height: ' + maxY + 'px; width: ' + maxX + 'px; ' + dotGridStyle + '">'
+    let html = '<div class="flowchart-canvas" style="min-height: ' + maxY + 'px; width: ' + maxX + 'px;">'
     html += this.buildConnectionsSvg(connections, positions, maxX, maxY)
 
     steps.forEach((step, arrayIndex) => {
