@@ -1,33 +1,33 @@
-<div class="flex flex-col items-center space-y-2">
+<div class="flex flex-col items-center gap-2">
   <%- if controller_name != 'sessions' %>
-    <p class="text-sm text-gray-500 dark:text-gray-400">
+    <p class="text-sm">
       Already have an account?
-      <%= link_to "Log in", new_session_path(resource_name), class: "text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 font-medium transition-colors duration-200" %>
+      <%= link_to "Log in", new_session_path(resource_name), class: "auth-links__item" %>
     </p>
   <% end %>
 
   <%- if devise_mapping.registerable? && controller_name != 'registrations' %>
-    <p class="text-sm text-gray-500 dark:text-gray-400">
+    <p class="text-sm">
       Don't have an account?
-      <%= link_to "Sign up", new_registration_path(resource_name), class: "text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 font-medium transition-colors duration-200" %>
+      <%= link_to "Sign up", new_registration_path(resource_name), class: "auth-links__item" %>
     </p>
   <% end %>
 
   <%- if devise_mapping.recoverable? && controller_name != 'passwords' && controller_name != 'registrations' %>
     <p class="text-sm">
-      <%= link_to "Forgot your password?", new_password_path(resource_name), class: "text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 font-medium transition-colors duration-200" %>
+      <%= link_to "Forgot your password?", new_password_path(resource_name), class: "auth-links__item" %>
     </p>
   <% end %>
 
   <%- if devise_mapping.confirmable? && controller_name != 'confirmations' %>
     <p class="text-sm">
-      <%= link_to "Didn't receive confirmation instructions?", new_confirmation_path(resource_name), class: "text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 font-medium transition-colors duration-200" %>
+      <%= link_to "Didn't receive confirmation instructions?", new_confirmation_path(resource_name), class: "auth-links__item" %>
     </p>
   <% end %>
 
   <%- if devise_mapping.lockable? && resource_class.unlock_strategy == :email && controller_name != 'unlocks' %>
     <p class="text-sm">
-      <%= link_to "Didn't receive unlock instructions?", new_unlock_path(resource_name), class: "text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 font-medium transition-colors duration-200" %>
+      <%= link_to "Didn't receive unlock instructions?", new_unlock_path(resource_name), class: "auth-links__item" %>
     </p>
   <% end %>
 </div>

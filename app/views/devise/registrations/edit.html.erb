@@ -1,150 +1,141 @@
-<div class="max-w-4xl mx-auto space-y-6">
+<div class="page-content">
   <!-- Page Header -->
   <div class="mb-6">
-    <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Account Settings</h1>
-    <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Manage your account information, email, and security settings.</p>
+    <h1 class="text-xl font-bold">Account Settings</h1>
+    <p class="text-sm form-hint">Manage your account information, email, and security settings.</p>
   </div>
+
   <!-- Account Overview Card - Display Name Only (No Password Required) -->
   <% overview_content = capture do %>
-    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+    <p class="text-sm form-hint mb-4">
       This information helps identify you in Flows.
     </p>
 
     <%= form_for(resource, as: resource_name, url: registration_path(resource_name), html: { method: :patch }) do |f| %>
       <%= render "devise/shared/error_messages", resource: resource %>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <%= f.label :display_name, "Display name", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
-          <%= f.text_field :display_name, class: "mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-slate-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400" %>
-          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+      <div class="flex gap-4 flex-wrap">
+        <div class="form-group flex-1">
+          <%= f.label :display_name, "Display name", class: "form-label" %>
+          <%= f.text_field :display_name, class: "form-input" %>
+          <p class="form-hint">
             This name appears in the top bar instead of your email.
           </p>
         </div>
 
-        <div>
-          <span class="block text-sm font-medium text-gray-700 dark:text-gray-300">Role</span>
-          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-1
-            <%= case resource.role
-               when 'admin'
-                 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300'
-               when 'editor'
-                 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
-               else
-                 'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-300'
-               end %>">
+        <div class="form-group">
+          <span class="form-label">Role</span>
+          <span class="badge <%= case resource.role
+             when 'admin' then 'badge--admin'
+             when 'editor' then 'badge--editor'
+             else 'badge--regular'
+             end %>">
             <%= resource.role.capitalize %>
           </span>
         </div>
       </div>
 
-      <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+      <div class="flex gap-6 flex-wrap mt-4">
         <div>
-          <p class="text-gray-500 dark:text-gray-400">Workflows</p>
-          <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100"><%= resource.workflows.count %></p>
+          <p class="form-hint">Workflows</p>
+          <p class="font-semibold"><%= resource.workflows.count %></p>
         </div>
         <div>
-          <p class="text-gray-500 dark:text-gray-400">Groups</p>
-          <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100"><%= resource.groups.count %></p>
+          <p class="form-hint">Groups</p>
+          <p class="font-semibold"><%= resource.groups.count %></p>
         </div>
         <div>
-          <p class="text-gray-500 dark:text-gray-400">Member since</p>
-          <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100"><%= l(resource.created_at.to_date, format: :long) %></p>
+          <p class="form-hint">Member since</p>
+          <p class="font-semibold"><%= l(resource.created_at.to_date, format: :long) %></p>
         </div>
       </div>
 
-      <div class="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
-        <div class="flex items-center justify-between">
-          <%= link_to "Back to dashboard", root_path, class: "text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm font-medium transition-colors duration-200" %>
-          <%= f.submit "Save display name", class: "bg-slate-600 hover:bg-slate-700 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer" %>
-        </div>
+      <div class="flex items-center justify-between mt-6 pt-4" style="border-top: 1px solid var(--border-color);">
+        <%= link_to "Back to dashboard", root_path, class: "btn btn--plain btn--sm" %>
+        <%= f.submit "Save display name", class: "btn btn--primary" %>
       </div>
     <% end %>
   <% end %>
 
   <%= render partial: "shared/card", locals: {
     title: "Account overview",
-    icon: '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A7 7 0 0112 4a7 7 0 016.879 13.804A9.953 9.953 0 0112 20a9.953 9.953 0 01-6.879-2.196z"></path></svg>',
+    icon: '<svg class="icon icon--lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A7 7 0 0112 4a7 7 0 016.879 13.804A9.953 9.953 0 0112 20a9.953 9.953 0 01-6.879-2.196z"></path></svg>',
     content: overview_content,
     content_class: "space-y-4"
   } %>
 
   <!-- Email Settings Card (Requires Current Password) -->
   <% email_content = capture do %>
-    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+    <p class="text-sm form-hint mb-4">
       Update the email address you use to sign in. We may send a confirmation email to complete this change.
     </p>
 
     <%= form_for(resource, as: resource_name, url: registration_path(resource_name), html: { method: :patch }) do |f| %>
       <%= render "devise/shared/error_messages", resource: resource %>
 
-      <div class="field">
-        <%= f.label :email, "Email", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
-        <%= f.email_field :email, autocomplete: "email", class: "mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-slate-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400" %>
+      <div class="form-group">
+        <%= f.label :email, "Email", class: "form-label" %>
+        <%= f.email_field :email, autocomplete: "email", class: "form-input" %>
       </div>
 
-      <div class="field mt-4">
-        <%= f.label :current_password, "Current password", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
-        <%= f.password_field :current_password, autocomplete: "current-password", class: "mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-slate-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400" %>
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">We need your current password to confirm this change.</p>
+      <div class="form-group mt-4">
+        <%= f.label :current_password, "Current password", class: "form-label" %>
+        <%= f.password_field :current_password, autocomplete: "current-password", class: "form-input" %>
+        <p class="form-hint">We need your current password to confirm this change.</p>
       </div>
 
-      <div class="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
-        <div class="flex items-center justify-between">
-          <%= link_to "Back to dashboard", root_path, class: "text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm font-medium transition-colors duration-200" %>
-          <%= f.submit "Update email", class: "bg-slate-600 hover:bg-slate-700 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer" %>
-        </div>
+      <div class="flex items-center justify-between mt-6 pt-4" style="border-top: 1px solid var(--border-color);">
+        <%= link_to "Back to dashboard", root_path, class: "btn btn--plain btn--sm" %>
+        <%= f.submit "Update email", class: "btn btn--primary" %>
       </div>
     <% end %>
   <% end %>
 
   <%= render partial: "shared/card", locals: {
     title: "Email settings",
-    icon: '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12H8m0 0l4-4m-4 4l4 4m8-4a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>',
+    icon: '<svg class="icon icon--lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12H8m0 0l4-4m-4 4l4 4m8-4a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>',
     content: email_content,
     content_class: "space-y-4"
   } %>
 
   <!-- Password Settings Card (Requires Current Password) -->
   <% password_content = capture do %>
-    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+    <p class="text-sm form-hint mb-4">
       Use a strong, unique password to keep your account secure.
     </p>
 
     <%= form_for(resource, as: resource_name, url: registration_path(resource_name), html: { method: :patch }) do |f| %>
       <%= render "devise/shared/error_messages", resource: resource %>
 
-      <div class="field">
-        <%= f.label :current_password, "Current password", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
-        <%= f.password_field :current_password, autocomplete: "current-password", class: "mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-slate-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400" %>
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">We need your current password to confirm your changes.</p>
+      <div class="form-group">
+        <%= f.label :current_password, "Current password", class: "form-label" %>
+        <%= f.password_field :current_password, autocomplete: "current-password", class: "form-input" %>
+        <p class="form-hint">We need your current password to confirm your changes.</p>
       </div>
 
-      <div class="field">
-        <%= f.label :password, "New password", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+      <div class="form-group">
+        <%= f.label :password, "New password", class: "form-label" %>
         <% if @minimum_password_length %>
-          <em class="text-xs text-gray-500 dark:text-gray-400">(<%= @minimum_password_length %> characters minimum)</em>
+          <em class="form-hint">(<%= @minimum_password_length %> characters minimum)</em>
         <% end %>
-        <%= f.password_field :password, autocomplete: "new-password", class: "mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-slate-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400" %>
+        <%= f.password_field :password, autocomplete: "new-password", class: "form-input" %>
       </div>
 
-      <div class="field">
-        <%= f.label :password_confirmation, "Confirm new password", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
-        <%= f.password_field :password_confirmation, autocomplete: "new-password", class: "mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-slate-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400" %>
+      <div class="form-group">
+        <%= f.label :password_confirmation, "Confirm new password", class: "form-label" %>
+        <%= f.password_field :password_confirmation, autocomplete: "new-password", class: "form-input" %>
       </div>
 
-      <div class="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
-        <div class="flex items-center justify-between">
-          <%= link_to "Back to dashboard", root_path, class: "text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm font-medium transition-colors duration-200" %>
-          <%= f.submit "Update password", class: "bg-slate-600 hover:bg-slate-700 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer" %>
-        </div>
+      <div class="flex items-center justify-between mt-6 pt-4" style="border-top: 1px solid var(--border-color);">
+        <%= link_to "Back to dashboard", root_path, class: "btn btn--plain btn--sm" %>
+        <%= f.submit "Update password", class: "btn btn--primary" %>
       </div>
     <% end %>
   <% end %>
 
   <%= render partial: "shared/card", locals: {
     title: "Security",
-    icon: '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c1.657 0 3-1.343 3-3S13.657 5 12 5 9 6.343 9 8s1.343 3 3 3z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21v-2a4 4 0 00-3-3.87M9 15.13A4 4 0 006 19v2"></path></svg>',
+    icon: '<svg class="icon icon--lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c1.657 0 3-1.343 3-3S13.657 5 12 5 9 6.343 9 8s1.343 3 3 3z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21v-2a4 4 0 00-3-3.87M9 15.13A4 4 0 006 19v2"></path></svg>',
     content: password_content,
     content_class: "space-y-4"
   } %>

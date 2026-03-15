@@ -1,27 +1,27 @@
-<div class="solid-card max-w-md w-full mx-auto p-8 animate-fade-in-up">
-  <div class="text-center mb-6">
-    <h2 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Welcome back</h2>
-    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Sign in to your account</p>
+<div class="auth-card animate-fade-in-up">
+  <div class="auth-card__header">
+    <h2 class="auth-card__title">Welcome back</h2>
+    <p class="auth-card__subtitle">Sign in to your account</p>
   </div>
 
-  <%= form_for(resource, as: resource_name, url: session_path(resource_name), html: { class: "space-y-5", data: { turbo: false } }) do |f| %>
-    <div>
-      <%= f.label :email, class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
-      <%= f.email_field :email, autofocus: true, autocomplete: "email", aria: { required: true }, class: "mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2.5 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 dark:focus:ring-slate-400 dark:focus:border-slate-400 transition-colors duration-200" %>
+  <%= form_for(resource, as: resource_name, url: session_path(resource_name), html: { class: "auth-form", data: { turbo: false } }) do |f| %>
+    <div class="auth-form__field">
+      <%= f.label :email, class: "form-label" %>
+      <%= f.email_field :email, autofocus: true, autocomplete: "email", aria: { required: true }, class: "form-input" %>
     </div>
 
-    <div data-controller="password-toggle">
-      <%= f.label :password, class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
-      <div class="relative mt-1">
-        <%= f.password_field :password, autocomplete: "current-password", aria: { required: true }, data: { password_toggle_target: "input" }, class: "block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2.5 px-3 pr-10 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 dark:focus:ring-slate-400 dark:focus:border-slate-400 transition-colors duration-200" %>
-        <button type="button" data-action="click->password-toggle#toggle" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200" aria-label="Toggle password visibility">
+    <div class="auth-form__field" data-controller="password-toggle">
+      <%= f.label :password, class: "form-label" %>
+      <div class="relative">
+        <%= f.password_field :password, autocomplete: "current-password", aria: { required: true }, data: { password_toggle_target: "input" }, class: "form-input" %>
+        <button type="button" data-action="click->password-toggle#toggle" class="btn btn--plain btn--circle absolute" style="right: 0.5rem; top: 50%; transform: translateY(-50%);" aria-label="Toggle password visibility">
           <!-- Eye icon (show password) -->
-          <svg data-password-toggle-target="showIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <svg data-password-toggle-target="showIcon" class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
           </svg>
           <!-- Eye-off icon (hide password) -->
-          <svg data-password-toggle-target="hideIcon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <svg data-password-toggle-target="hideIcon" class="icon is-hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
           </svg>
         </button>
@@ -29,18 +29,18 @@
     </div>
 
     <% if devise_mapping.rememberable? %>
-      <div class="flex items-center">
-        <%= f.check_box :remember_me, class: "h-4 w-4 rounded border-gray-300 dark:border-gray-600 accent-slate-600 dark:accent-slate-500 focus:ring-slate-500 dark:focus:ring-slate-400" %>
-        <%= f.label :remember_me, class: "ml-2 block text-sm text-gray-700 dark:text-gray-300" %>
+      <div class="auth-form__check">
+        <%= f.check_box :remember_me, class: "form-checkbox" %>
+        <%= f.label :remember_me, class: "form-label" %>
       </div>
     <% end %>
 
-    <div>
-      <%= f.submit "Sign in", class: "w-full bg-slate-600 hover:bg-slate-700 text-white py-2.5 rounded-full text-sm font-medium shadow-md hover:shadow-lg transition-all duration-300 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 cursor-pointer" %>
+    <div class="auth-form__actions">
+      <%= f.submit "Sign in", class: "btn btn--primary w-full" %>
     </div>
   <% end %>
 
-  <div class="pt-4 border-t border-gray-200 dark:border-gray-700 mt-6">
+  <div class="auth-links">
     <%= render "devise/shared/links" %>
   </div>
 </div>
