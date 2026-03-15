@@ -3,43 +3,42 @@
   <% is_selected = @selected_group&.id == group.id || @selected_ancestor_ids&.include?(group.id) %>
   <% has_children = group.children.any? %>
   <% workflows_count = group.workflows_count(include_descendants: true) %>
-  
+
   <div class="flex items-center" style="padding-left: <%= level * 1.5 %>rem;">
     <% if has_children %>
-      <button type="button" 
-              class="group-toggle p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors mr-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 dark:focus:ring-offset-gray-800"
+      <button type="button"
+              class="group-toggle btn btn--plain p-1 mr-1"
               data-action="click->workflow-sidebar#toggleGroup"
               data-group-id="<%= group.id %>"
               aria-label="Toggle group"
               aria-expanded="false">
-        <svg class="w-4 h-4 text-gray-500 dark:text-gray-400 transform transition-transform duration-200" data-icon data-group-id="<%= group.id %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="icon icon--sm" data-icon data-group-id="<%= group.id %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
         </svg>
       </button>
     <% else %>
-      <span class="w-6"></span>
+      <span style="width: 1.5rem; display: inline-block;"></span>
     <% end %>
-    
+
     <%= link_to workflows_path(group_id: group.id, search: params[:search]),
-                class: "flex items-center flex-1 pl-2 pr-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 border-l-4 #{'border-blue-600 dark:border-blue-400 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' if is_selected} #{'border-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700' unless is_selected} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 dark:focus:ring-offset-gray-800" do %>
-      <svg class="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                class: "group-sidebar__link flex-1 #{is_selected ? 'group-sidebar__link--active' : ''}" do %>
+      <svg class="icon icon--sm mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
       </svg>
-      <span class="flex-1 min-w-0 break-words"><%= group.name %></span>
+      <span class="flex-1 break-words" style="min-width: 0;"><%= group.name %></span>
       <% if workflows_count > 0 %>
-        <span class="ml-2 text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded flex-shrink-0 transition-colors duration-200 <%= 'bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-300' if is_selected %>">
+        <span class="ml-2 badge flex-shrink-0">
           <%= workflows_count %>
         </span>
       <% end %>
     <% end %>
   </div>
-  
+
   <% if has_children %>
-    <ul class="children hidden ml-4 space-y-1 overflow-hidden transition-all duration-300 ease-in-out" data-children data-group-id="<%= group.id %>">
+    <ul class="children hidden ml-4" style="display: flex; flex-direction: column; gap: 0.25rem; border-left: 2px solid var(--color-border); padding-left: 0.5rem; overflow: hidden;" data-children data-group-id="<%= group.id %>">
       <% group.children.order(:position, :name).each do |child| %>
         <%= render partial: "workflows/group_sidebar_item", locals: { group: child, level: level + 1, selected_group: @selected_group } %>
       <% end %>
     </ul>
   <% end %>
 </li>
-

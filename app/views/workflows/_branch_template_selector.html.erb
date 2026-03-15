@@ -4,59 +4,59 @@
 <div data-controller="branch-template-selector"
      data-branch-template-selector-variable-value="<%= local_assigns[:variable] || '' %>"
      data-branch-template-selector-answer-type-value="<%= local_assigns[:answer_type] || '' %>">
-  
+
   <button type="button"
-          class="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+          class="btn btn--plain btn--sm flex items-center gap-1"
           data-action="click->branch-template-selector#togglePanel">
-    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z" />
     </svg>
     Use Template
   </button>
-  
+
   <%# Modal Backdrop %>
-  <div data-branch-template-selector-target="backdrop" 
-       class="hidden fixed inset-0 bg-black bg-opacity-50 z-50"
+  <div data-branch-template-selector-target="backdrop"
+       class="is-hidden dialog-backdrop"
        data-action="click->branch-template-selector#togglePanel">
   </div>
-  
+
   <%# Modal Dialog - Centered %>
   <div data-branch-template-selector-target="panel"
-       class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto">
-      <div class="flex items-start justify-between p-4 border-b border-gray-200">
+       class="is-hidden dialog-wrapper" style="pointer-events: none;">
+    <div class="dialog dialog--lg" style="max-height: 90vh; display: flex; flex-direction: column; pointer-events: auto;">
+      <div class="dialog__header">
         <div>
-          <h4 class="text-lg font-semibold text-gray-900">Branch Templates</h4>
-          <p class="text-sm text-gray-600 mt-1">Quickly create branches using pre-built templates</p>
+          <h4 class="dialog__title">Branch Templates</h4>
+          <p class="form-hint mt-1 mb-0">Quickly create branches using pre-built templates</p>
         </div>
         <button type="button"
-                class="text-gray-400 hover:text-gray-600 ml-4"
+                class="dialog__close"
                 data-action="click->branch-template-selector#togglePanel">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
-      
-      <div class="p-4 overflow-y-auto flex-1">
-        <div data-branch-template-selector-target="templatesContainer" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+      <div class="dialog__body overflow-y-auto flex-1">
+        <div data-branch-template-selector-target="templatesContainer" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
           <!-- Templates will be rendered here by JavaScript -->
         </div>
       </div>
-      
-      <div data-branch-template-selector-target="customizationPanel" class="hidden p-4 border-t border-gray-200 bg-gray-50">
-        <h5 class="text-sm font-medium text-gray-900 mb-3">Customize Template</h5>
+
+      <div data-branch-template-selector-target="customizationPanel" class="hidden dialog__footer" style="flex-direction: column; align-items: stretch; background: var(--color-surface-muted);">
+        <h5 class="text-sm font-medium mb-3">Customize Template</h5>
         <div data-branch-template-selector-target="customizationContent" class="mb-3">
           <!-- Customization options will be rendered here -->
         </div>
         <div class="flex gap-2 justify-end">
           <button type="button"
-                  class="px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                  class="btn btn--plain"
                   data-action="click->branch-template-selector#cancelCustomization">
             Cancel
           </button>
           <button type="button"
-                  class="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                  class="btn btn--primary"
                   data-action="click->branch-template-selector#applyTemplate">
             Apply Template
           </button>
@@ -65,4 +65,3 @@
     </div>
   </div>
 </div>
-

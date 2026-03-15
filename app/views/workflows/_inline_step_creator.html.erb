@@ -17,29 +17,29 @@
 
   <%# Collapsed state - hover-reveal dashed line with + button %>
   <div data-inline-step-creator-target="addButton"
-       class="group/add flex items-center justify-center py-1">
-    <div class="flex-1 border-t border-dashed border-slate-200 dark:border-slate-700 group-hover/add:border-emerald-400 dark:group-hover/add:border-emerald-500 transition-colors"></div>
+       class="inline-step-creator__trigger">
+    <div class="inline-step-creator__line"></div>
     <button type="button"
             data-action="click->inline-step-creator#expand"
-            class="opacity-0 group-hover/add:opacity-100 transition-all duration-200 mx-2 p-1.5 rounded-full bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm hover:shadow-md btn-press"
+            class="inline-step-creator__add-btn"
             title="Add a new step here">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
       </svg>
     </button>
-    <div class="flex-1 border-t border-dashed border-slate-200 dark:border-slate-700 group-hover/add:border-emerald-400 dark:group-hover/add:border-emerald-500 transition-colors"></div>
+    <div class="inline-step-creator__line"></div>
   </div>
 
   <%# Expanded state - step type selector %>
   <div data-inline-step-creator-target="typeSelector"
        class="hidden">
-    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg p-3">
+    <div class="card p-3">
       <div class="flex items-center justify-between mb-2">
-        <span class="text-xs font-medium text-gray-700 dark:text-gray-300">Add Step</span>
+        <span class="text-xs font-medium">Add Step</span>
         <button type="button"
                 data-action="click->inline-step-creator#collapse"
-                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                class="btn btn--plain p-1">
+          <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
           </svg>
         </button>
@@ -47,70 +47,70 @@
 
       <% if @workflow&.graph_mode? %>
         <%# Graph Mode: Show Question, Message, Action, Escalate, Resolve %>
-        <div class="grid grid-cols-5 gap-2">
+        <div class="inline-step-creator__grid inline-step-creator__grid--5">
           <button type="button"
                   data-action="click->inline-step-creator#createStep"
                   data-step-type="question"
-                  class="flex items-center justify-center p-2.5 rounded-full transition-all duration-200 hover:scale-105 bg-slate-600 hover:bg-slate-700">
+                  class="inline-step-creator__type-btn inline-step-creator__type-btn--question">
             <span class="text-xs font-medium text-white">Question</span>
           </button>
 
           <button type="button"
                   data-action="click->inline-step-creator#createStep"
                   data-step-type="message"
-                  class="flex items-center justify-center p-2.5 rounded-full transition-all duration-200 hover:scale-105 bg-cyan-500 hover:bg-cyan-600">
+                  class="inline-step-creator__type-btn inline-step-creator__type-btn--message">
             <span class="text-xs font-medium text-white">Message</span>
           </button>
 
           <button type="button"
                   data-action="click->inline-step-creator#createStep"
                   data-step-type="action"
-                  class="flex items-center justify-center p-2.5 rounded-full transition-all duration-200 hover:scale-105 bg-emerald-500 hover:bg-emerald-600">
+                  class="inline-step-creator__type-btn inline-step-creator__type-btn--action">
             <span class="text-xs font-medium text-white">Action</span>
           </button>
 
           <button type="button"
                   data-action="click->inline-step-creator#createStep"
                   data-step-type="escalate"
-                  class="flex items-center justify-center p-2.5 rounded-full transition-all duration-200 hover:scale-105 bg-orange-500 hover:bg-orange-600">
+                  class="inline-step-creator__type-btn inline-step-creator__type-btn--escalate">
             <span class="text-xs font-medium text-white">Escalate</span>
           </button>
 
           <button type="button"
                   data-action="click->inline-step-creator#createStep"
                   data-step-type="resolve"
-                  class="flex items-center justify-center p-2.5 rounded-full transition-all duration-200 hover:scale-105 bg-green-500 hover:bg-green-600">
+                  class="inline-step-creator__type-btn inline-step-creator__type-btn--resolve">
             <span class="text-xs font-medium text-white">Resolve</span>
           </button>
         </div>
       <% else %>
         <%# Non-graph mode: Same step types without graph-specific UI %>
-        <div class="grid grid-cols-4 gap-2">
+        <div class="inline-step-creator__grid inline-step-creator__grid--4">
           <button type="button"
                   data-action="click->inline-step-creator#createStep"
                   data-step-type="question"
-                  class="flex items-center justify-center p-2.5 rounded-full transition-all duration-200 hover:scale-105 bg-slate-600 hover:bg-slate-700">
+                  class="inline-step-creator__type-btn inline-step-creator__type-btn--question">
             <span class="text-xs font-medium text-white">Question</span>
           </button>
 
           <button type="button"
                   data-action="click->inline-step-creator#createStep"
                   data-step-type="action"
-                  class="flex items-center justify-center p-2.5 rounded-full transition-all duration-200 hover:scale-105 bg-emerald-500 hover:bg-emerald-600">
+                  class="inline-step-creator__type-btn inline-step-creator__type-btn--action">
             <span class="text-xs font-medium text-white">Action</span>
           </button>
 
           <button type="button"
                   data-action="click->inline-step-creator#createStep"
                   data-step-type="message"
-                  class="flex items-center justify-center p-2.5 rounded-full transition-all duration-200 hover:scale-105 bg-cyan-500 hover:bg-cyan-600">
+                  class="inline-step-creator__type-btn inline-step-creator__type-btn--message">
             <span class="text-xs font-medium text-white">Message</span>
           </button>
 
           <button type="button"
                   data-action="click->inline-step-creator#createStep"
                   data-step-type="sub_flow"
-                  class="flex items-center justify-center p-2.5 rounded-full transition-all duration-200 hover:scale-105 bg-indigo-500 hover:bg-indigo-600">
+                  class="inline-step-creator__type-btn inline-step-creator__type-btn--sub-flow">
             <span class="text-xs font-medium text-white">Sub-flow</span>
           </button>
         </div>

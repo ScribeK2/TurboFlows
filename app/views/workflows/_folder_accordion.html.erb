@@ -1,39 +1,39 @@
 <%# Renders a single folder as an expandable accordion
     Locals: folder, workflows (ActiveRecord relation), selected_group %>
-<details class="group solid-card overflow-hidden mb-3" data-controller="folder-accordion">
-  <summary class="flex items-center justify-between px-5 py-4 cursor-pointer select-none hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors list-none [&::-webkit-details-marker]:hidden"
+<details class="folder-accordion card mb-3" data-controller="folder-accordion">
+  <summary class="folder-accordion__summary"
            data-action="toggle->folder-accordion#toggle">
-    <div class="flex items-center space-x-3">
+    <div class="flex items-center gap-3">
       <%# Chevron icon — rotates 90deg when open %>
-      <svg class="w-4 h-4 text-slate-400 dark:text-slate-500 transition-transform duration-200"
+      <svg class="icon icon--sm folder-accordion__chevron"
            data-folder-accordion-target="chevron"
            fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
       </svg>
 
       <%# Folder icon %>
-      <svg class="w-5 h-5 text-slate-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
       </svg>
 
-      <span class="font-semibold text-slate-800 dark:text-slate-200"><%= folder.name %></span>
+      <span class="font-semibold"><%= folder.name %></span>
     </div>
 
-    <span class="text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2.5 py-1 rounded-full">
+    <span class="badge">
       <%= pluralize(workflows.size, "workflow") %>
     </span>
   </summary>
 
   <%# Expanded content: workflow cards %>
-  <div class="border-t border-slate-200 dark:border-slate-700">
+  <div class="folder-accordion__body">
     <% if workflows.any? %>
-      <ul class="divide-y divide-slate-100 dark:divide-slate-700/50">
+      <ul class="wf-list">
         <% workflows.each_with_index do |workflow, index| %>
           <%= render partial: "workflows/workflow_list_item", locals: { workflow: workflow, index: index } %>
         <% end %>
       </ul>
     <% else %>
-      <div class="px-5 py-6 text-center text-sm text-gray-400 dark:text-gray-500">
+      <div class="text-center py-6 text-sm">
         No workflows in this folder.
       </div>
     <% end %>

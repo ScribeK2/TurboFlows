@@ -5,19 +5,18 @@
 <%# We'll use single quotes in the HTML attribute to avoid quote conflicts %>
 <% escaped_data = templates_data.gsub("'", "&#39;").gsub('"', '&quot;') %>
 
-<div class="field-container mb-3" 
+<div class="form-group mb-3"
      data-controller="step-template"
      data-step-template-step-type-value="<%= step_type %>"
      data-step-template-templates-data="<%= escaped_data %>">
-  <label class="block text-sm font-medium text-gray-700 mb-1">Apply Template</label>
+  <label class="form-label">Apply Template</label>
   <select data-step-template-target="select"
           data-action="change->step-template#applyTemplate"
-          class="w-full border rounded px-3 py-2 text-sm">
+          class="form-select w-full">
     <option value="">-- Select a template --</option>
     <% StepTemplate.all_for_type(step_type).each do |template| %>
       <option value="<%= template[:key] %>"><%= template[:name] %></option>
     <% end %>
   </select>
-  <p class="mt-1 text-xs text-gray-500">Quickly fill form fields with a predefined template</p>
+  <p class="form-hint">Quickly fill form fields with a predefined template</p>
 </div>
-
