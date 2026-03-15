@@ -1,76 +1,76 @@
 <%# Modal for editing graph transitions between steps %>
 <div id="transition-modal"
-     class="hidden fixed inset-0 z-50 overflow-y-auto"
+     class="is-hidden dialog-overlay"
      data-controller="transition-editor"
      data-transition-editor-workflow-id-value="<%= @workflow.id %>">
-  <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-    <%# Backdrop %>
-    <div class="fixed inset-0 bg-slate-900/60 transition-opacity"
-         data-action="click->transition-editor#close"></div>
+  <div class="dialog-wrapper">
+    <div class="dialog-centering">
+      <%# Backdrop %>
+      <div class="dialog-backdrop"
+           data-action="click->transition-editor#close"></div>
 
-    <%# Center modal %>
-    <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+      <%# Center modal spacer %>
+      <span class="dialog-spacer">&#8203;</span>
 
-    <%# Modal panel %>
-    <div class="solid-modal inline-block align-bottom text-left overflow-hidden transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full animate-scale-in">
-      <div class="px-6 pt-5 pb-4">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">Edit Transition</h3>
+      <%# Modal panel %>
+      <div class="dialog dialog--md">
+        <div class="dialog__header">
+          <h3 class="dialog__title">Edit Transition</h3>
           <button type="button"
                   data-action="click->transition-editor#close"
-                  class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200">
+                  class="dialog__close">
             <span class="sr-only">Close</span>
-            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg class="icon icon--sm" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <div class="space-y-4">
+        <div class="dialog__body" style="display: flex; flex-direction: column; gap: 1rem;">
           <%# From Step (read-only) %>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">From Step</label>
-            <div class="px-3 py-2 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-gray-100"
+          <div class="form-group">
+            <label class="form-label">From Step</label>
+            <div class="form-input" style="background: var(--color-surface-muted);"
                  data-transition-editor-target="fromStep">
               --
             </div>
           </div>
 
           <%# To Step (read-only) %>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">To Step</label>
-            <div class="px-3 py-2 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-gray-100"
+          <div class="form-group">
+            <label class="form-label">To Step</label>
+            <div class="form-input" style="background: var(--color-surface-muted);"
                  data-transition-editor-target="toStep">
               --
             </div>
           </div>
 
           <%# Condition %>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <div class="form-group">
+            <label class="form-label">
               Condition
-              <span class="text-xs text-gray-500 dark:text-gray-400 font-normal">(optional)</span>
+              <span class="font-normal">(optional)</span>
             </label>
             <input type="text"
                    data-transition-editor-target="condition"
                    placeholder="e.g., answer == 'yes'"
-                   class="w-full border border-gray-300 dark:border-slate-600 rounded-lg shadow-sm py-2 px-3 bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                   class="form-input">
+            <p class="form-hint">
               Leave empty for default/unconditional transition. Use format: variable == 'value' or variable != 'value'
             </p>
           </div>
 
           <%# Label %>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <div class="form-group">
+            <label class="form-label">
               Label
-              <span class="text-xs text-gray-500 dark:text-gray-400 font-normal">(optional)</span>
+              <span class="font-normal">(optional)</span>
             </label>
             <input type="text"
                    data-transition-editor-target="label"
                    placeholder="e.g., Yes, No, Default"
-                   class="w-full border border-gray-300 dark:border-slate-600 rounded-lg shadow-sm py-2 px-3 bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                   class="form-input">
+            <p class="form-hint">
               Display label for this transition in the flow preview.
             </p>
           </div>
@@ -80,21 +80,21 @@
           <input type="hidden" data-transition-editor-target="toStepId">
         </div>
 
-        <div class="mt-6 flex justify-between">
+        <div class="dialog__footer flex items-center justify-between">
           <button type="button"
                   data-action="click->transition-editor#deleteTransition"
-                  class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm font-medium">
+                  class="btn btn--negative btn--sm">
             Delete Transition
           </button>
-          <div class="flex space-x-3">
+          <div class="flex gap-3">
             <button type="button"
                     data-action="click->transition-editor#close"
-                    class="bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-full text-sm font-medium border border-slate-200 dark:border-slate-600 transition-all duration-200">
+                    class="btn btn--plain">
               Cancel
             </button>
             <button type="button"
                     data-action="click->transition-editor#saveTransition"
-                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md hover:shadow-lg transition-all duration-300">
+                    class="btn btn--primary">
               Save Transition
             </button>
           </div>
