@@ -20,9 +20,6 @@ jobs:
           ruby-version: .ruby-version
           bundler-cache: true
 
-      - name: Build Tailwind CSS
-        run: bundle exec rails tailwindcss:build
-
       - name: Setup database
         run: bundle exec rails db:schema:load
         env:
@@ -60,9 +57,6 @@ jobs:
         with:
           ruby-version: .ruby-version
           bundler-cache: true
-
-      - name: Build Tailwind CSS
-        run: bundle exec rails tailwindcss:build
 
       - name: Setup database
         run: bundle exec rails db:schema:load
