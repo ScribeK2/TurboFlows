@@ -9,7 +9,7 @@ export default class extends Controller {
   open() {
     const modal = document.getElementById(this.modalIdValue)
     if (modal) {
-      modal.classList.remove("hidden")
+      modal.classList.remove("is-hidden")
       document.body.style.overflow = "hidden"
     }
   }
@@ -17,7 +17,7 @@ export default class extends Controller {
   close() {
     const modal = document.getElementById(this.modalIdValue)
     if (modal) {
-      modal.classList.add("hidden")
+      modal.classList.add("is-hidden")
       document.body.style.overflow = ""
     }
   }

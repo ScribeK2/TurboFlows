@@ -36,21 +36,21 @@ export default class extends Controller {
     // Create search input
     const searchInput = document.createElement("input")
     searchInput.type = "text"
-    searchInput.className = "searchable-dropdown-search w-full border rounded px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+    searchInput.className = "searchable-dropdown-search form-input"
     searchInput.placeholder = this.placeholderValue
     searchInput.setAttribute("data-searchable-dropdown-target", "search")
     searchInput.setAttribute("autocomplete", "off")
     
     // Create dropdown arrow
     const arrow = document.createElement("div")
-    arrow.className = "absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none"
-    arrow.innerHTML = `<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    arrow.className = "searchable-dropdown-arrow"
+    arrow.innerHTML = `<svg class="dropdown-arrow-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
     </svg>`
     
     // Create options container
     const optionsContainer = document.createElement("div")
-    optionsContainer.className = "searchable-dropdown-options absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto hidden"
+    optionsContainer.className = "searchable-dropdown-options is-hidden"
     optionsContainer.setAttribute("data-searchable-dropdown-target", "options")
     
     // Insert search input before select
@@ -59,7 +59,7 @@ export default class extends Controller {
     select.parentElement.appendChild(optionsContainer)
     
     // Hide original select
-    select.classList.add("hidden")
+    select.classList.add("is-hidden")
     
     // Build options from select
     this.buildOptions()
@@ -107,7 +107,7 @@ export default class extends Controller {
     search.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         e.preventDefault()
-        const firstOption = options.querySelector(".searchable-option:not(.hidden)")
+        const firstOption = options.querySelector(".searchable-option:not(.is-hidden)")
         if (firstOption) {
           this.selectOption(firstOption.dataset.value, firstOption.textContent.trim())
         }
@@ -130,9 +130,9 @@ export default class extends Controller {
     options.forEach(option => {
       const text = option.textContent.toLowerCase().trim()
       if (text.includes(query) || query === "") {
-        option.classList.remove("hidden")
+        option.classList.remove("is-hidden")
       } else {
-        option.classList.add("hidden")
+        option.classList.add("is-hidden")
       }
     })
     
@@ -150,13 +150,13 @@ export default class extends Controller {
 
   showOptions() {
     if (this.hasOptionsTarget) {
-      this.optionsTarget.classList.remove("hidden")
+      this.optionsTarget.classList.remove("is-hidden")
     }
   }
 
   hideOptions() {
     if (this.hasOptionsTarget) {
-      this.optionsTarget.classList.add("hidden")
+      this.optionsTarget.classList.add("is-hidden")
     }
   }
 
@@ -183,30 +183,30 @@ export default class extends Controller {
 
   highlightNextOption() {
     const visibleOptions = Array.from(this.optionTargets).filter(opt => !opt.classList.contains("hidden"))
-    const currentIndex = visibleOptions.findIndex(opt => opt.classList.contains("bg-blue-100"))
+    const currentIndex = visibleOptions.findIndex(opt => opt.classList.contains("is-highlighted"))
     
-    visibleOptions.forEach(opt => opt.classList.remove("bg-blue-100"))
+    visibleOptions.forEach(opt => opt.classList.remove("is-highlighted"))
     
     if (currentIndex < visibleOptions.length - 1) {
-      visibleOptions[currentIndex + 1].classList.add("bg-blue-100")
+      visibleOptions[currentIndex + 1].classList.add("is-highlighted")
       visibleOptions[currentIndex + 1].scrollIntoView({ block: "nearest" })
     } else if (visibleOptions.length > 0) {
-      visibleOptions[0].classList.add("bg-blue-100")
+      visibleOptions[0].classList.add("is-highlighted")
       visibleOptions[0].scrollIntoView({ block: "nearest" })
     }
   }
 
   highlightPreviousOption() {
     const visibleOptions = Array.from(this.optionTargets).filter(opt => !opt.classList.contains("hidden"))
-    const currentIndex = visibleOptions.findIndex(opt => opt.classList.contains("bg-blue-100"))
+    const currentIndex = visibleOptions.findIndex(opt => opt.classList.contains("is-highlighted"))
     
-    visibleOptions.forEach(opt => opt.classList.remove("bg-blue-100"))
+    visibleOptions.forEach(opt => opt.classList.remove("is-highlighted"))
     
     if (currentIndex > 0) {
-      visibleOptions[currentIndex - 1].classList.add("bg-blue-100")
+      visibleOptions[currentIndex - 1].classList.add("is-highlighted")
       visibleOptions[currentIndex - 1].scrollIntoView({ block: "nearest" })
     } else if (visibleOptions.length > 0) {
-      visibleOptions[visibleOptions.length - 1].classList.add("bg-blue-100")
+      visibleOptions[visibleOptions.length - 1].classList.add("is-highlighted")
       visibleOptions[visibleOptions.length - 1].scrollIntoView({ block: "nearest" })
     }
   }
@@ -228,7 +228,7 @@ export default class extends Controller {
       }
       
       const optionElement = document.createElement("div")
-      optionElement.className = "searchable-option px-3 py-2 cursor-pointer hover:bg-gray-100 text-gray-900"
+      optionElement.className = "searchable-option"
       optionElement.textContent = option.textContent.trim()
       optionElement.dataset.value = option.value
       optionElement.setAttribute("data-searchable-dropdown-target", "option")

@@ -9,7 +9,7 @@ export default class extends Controller {
   }
 
   toggle() {
-    if (this.menuTarget.classList.contains("hidden")) {
+    if (this.menuTarget.classList.contains("is-hidden")) {
       this.open()
     } else {
       this.close()
@@ -17,12 +17,8 @@ export default class extends Controller {
   }
 
   open() {
-    this.menuTarget.classList.remove("hidden")
-    // Trigger animation: remove scale-95/opacity-0, add scale-100/opacity-100
-    requestAnimationFrame(() => {
-      this.menuTarget.classList.remove("opacity-0", "scale-95")
-      this.menuTarget.classList.add("opacity-100", "scale-100")
-    })
+    this.menuTarget.classList.remove("is-hidden")
+    this.menuTarget.classList.add("is-open")
     // Update aria
     this.element.querySelector("[aria-expanded]").setAttribute("aria-expanded", "true")
     // Listen for outside clicks and escape
@@ -31,11 +27,10 @@ export default class extends Controller {
   }
 
   close() {
-    this.menuTarget.classList.remove("opacity-100", "scale-100")
-    this.menuTarget.classList.add("opacity-0", "scale-95")
+    this.menuTarget.classList.remove("is-open")
     // Wait for animation to finish before hiding
     setTimeout(() => {
-      this.menuTarget.classList.add("hidden")
+      this.menuTarget.classList.add("is-hidden")
     }, 150)
     // Update aria
     this.element.querySelector("[aria-expanded]").setAttribute("aria-expanded", "false")

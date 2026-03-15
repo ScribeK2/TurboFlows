@@ -15,17 +15,17 @@ export default class extends Controller {
   }
 
   show() {
-    this.element.classList.remove("hidden")
+    this.element.classList.remove("is-hidden")
     document.body.style.overflow = "hidden"
   }
 
   close() {
-    this.element.classList.add("hidden")
+    this.element.classList.add("is-hidden")
     document.body.style.overflow = ""
   }
 
   toggle() {
-    if (this.element.classList.contains("hidden")) {
+    if (this.element.classList.contains("is-hidden")) {
       this.show()
     } else {
       this.close()
