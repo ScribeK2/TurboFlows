@@ -2,28 +2,26 @@
 <%# Resolve steps are explicit terminal closures with resolution metadata %>
 
 <div class="field-container">
-  <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/30 rounded-lg p-3 mb-4">
-    <div class="flex items-start">
-      <svg class="w-5 h-5 text-green-600 dark:text-green-400 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-      <div class="flex-1">
-        <p class="text-sm text-green-800 dark:text-green-300">
-          <strong>Resolve Step:</strong> This is a terminal step that completes the workflow with resolution metadata. It cannot have outgoing connections. Use different resolution types to categorize outcomes.
-        </p>
-      </div>
+  <div class="alert alert--success flex items-start gap-3 mb-4">
+    <svg class="icon icon--sm flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+    <div class="flex-1">
+      <p class="text-sm">
+        <strong>Resolve Step:</strong> This is a terminal step that completes the workflow with resolution metadata. It cannot have outgoing connections. Use different resolution types to categorize outcomes.
+      </p>
     </div>
   </div>
 
   <%# Resolution Type %>
-  <div class="mb-4">
-    <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+  <div class="form-group">
+    <label class="form-label">
       Resolution Type
     </label>
     <div class="flex flex-wrap gap-2 mb-2"
          data-controller="selection-group"
-         data-selection-group-active-class="bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700"
-         data-selection-group-inactive-class="bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-700">
+         data-selection-group-active-class="is-active"
+         data-selection-group-inactive-class="">
       <% [
         { value: 'success', label: 'Success' },
         { value: 'transfer', label: 'Transfer' },
@@ -35,10 +33,7 @@
                 data-selection-group-target="button"
                 data-action="click->selection-group#select"
                 data-selection-group-value-param="<%= resolution[:value] %>"
-                class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors
-                       <%= is_selected ?
-                           'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700' :
-                           'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-700' %>">
+                class="btn btn--sm <%= is_selected ? 'btn--positive' : 'btn--plain' %>">
           <%= resolution[:label] %>
         </button>
       <% end %>

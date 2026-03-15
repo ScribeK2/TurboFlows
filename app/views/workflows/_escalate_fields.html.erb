@@ -2,37 +2,32 @@
 <%# Escalate steps transfer the interaction to another department/supervisor/channel/ticket %>
 
 <div class="field-container">
-  <div class="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/30 rounded-lg p-3 mb-4">
-    <div class="flex items-start">
-      <svg class="w-5 h-5 text-orange-600 dark:text-orange-400 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12" />
-      </svg>
-      <div class="flex-1">
-        <p class="text-sm text-orange-800 dark:text-orange-300">
-          <strong>Escalate Step:</strong> Transfer the interaction to another department, supervisor, channel, or ticket. This step can be terminal (end workflow) or continue to subsequent steps via connections.
-        </p>
-      </div>
+  <div class="alert alert--warning flex items-start gap-3 mb-4">
+    <svg class="icon icon--sm flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12" />
+    </svg>
+    <div class="flex-1">
+      <p class="text-sm">
+        <strong>Escalate Step:</strong> Transfer the interaction to another department, supervisor, channel, or ticket. This step can be terminal (end workflow) or continue to subsequent steps via connections.
+      </p>
     </div>
   </div>
 
   <%# Target Type %>
-  <div class="mb-4">
-    <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+  <div class="form-group">
+    <label class="form-label">
       Escalation Target Type
     </label>
     <div class="flex flex-wrap gap-2 mb-2"
          data-controller="selection-group"
-         data-selection-group-active-class="bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-700"
-         data-selection-group-inactive-class="bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-700">
+         data-selection-group-active-class="is-active"
+         data-selection-group-inactive-class="">
       <% %w[department supervisor channel ticket].each do |target_type| %>
         <button type="button"
                 data-selection-group-target="button"
                 data-action="click->selection-group#select"
                 data-selection-group-value-param="<%= target_type %>"
-                class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors
-                       <%= step['target_type'] == target_type ?
-                           'bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-700' :
-                           'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-700' %>">
+                class="btn btn--sm <%= step['target_type'] == target_type ? 'btn--secondary' : 'btn--plain' %>">
           <%= target_type.titleize %>
         </button>
       <% end %>
@@ -45,28 +40,28 @@
   </div>
 
   <%# Target Value %>
-  <div class="mb-4">
-    <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+  <div class="form-group">
+    <label class="form-label">
       Target Name/ID
     </label>
     <input type="text"
            name="workflow[steps][][target_value]"
            value="<%= step['target_value'] %>"
            placeholder="e.g., Billing Department, Supervisor, #escalations-channel"
-           class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm"
+           class="form-input"
            data-step-form-target="field">
-    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+    <p class="form-hint">
       The specific department, supervisor, or channel to escalate to.
     </p>
   </div>
 
   <%# Priority %>
-  <div class="mb-4">
-    <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+  <div class="form-group">
+    <label class="form-label">
       Priority
     </label>
     <select name="workflow[steps][][priority]"
-            class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm"
+            class="form-select"
             data-step-form-target="field">
       <option value="low" <%= 'selected' if step['priority'] == 'low' %>>Low</option>
       <option value="medium" <%= 'selected' if step['priority'] == 'medium' || step['priority'].blank? %>>Medium</option>
@@ -76,8 +71,8 @@
   </div>
 
   <%# Reason Required Checkbox %>
-  <div class="mb-4" data-controller="checkbox-hidden">
-    <label class="flex items-center cursor-pointer">
+  <div class="form-group" data-controller="checkbox-hidden">
+    <label class="flex items-center gap-2 cursor-pointer">
       <input type="hidden" name="workflow[steps][][reason_required]"
              value="<%= step['reason_required'] == true || step['reason_required'] == 'true' ? 'true' : 'false' %>"
              data-checkbox-hidden-target="hidden"
@@ -85,16 +80,16 @@
       <input type="checkbox"
              data-checkbox-hidden-target="checkbox"
              data-action="change->checkbox-hidden#toggle"
-             class="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded">
-      <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Require CSR to provide a reason for escalation</span>
+             class="form-checkbox">
+      <span class="text-sm">Require CSR to provide a reason for escalation</span>
     </label>
   </div>
 
   <%# Notes/Instructions %>
-  <div class="mb-4">
-    <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+  <div class="form-group">
+    <label class="form-label">
       Notes/Instructions
-      <span class="font-normal text-gray-500 dark:text-gray-400">(optional)</span>
+      <span class="font-normal">(optional)</span>
     </label>
     <%= form_with model: [workflow, step], url: workflow_step_path(workflow, step), method: :patch, local: true do |f| %>
       <%= f.rich_text_area :notes,

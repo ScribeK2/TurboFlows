@@ -18,32 +18,32 @@
 
   <%# Sidebar Container %>
   <div data-step-outline-target="outlineContainer"
-       class="<%= show_by_default ? 'w-64' : 'w-64' %> bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden flex flex-col">
+       class="card" style="width: 16rem; display: flex; flex-direction: column; overflow: hidden;">
 
     <%# Header %>
-    <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80">
+    <div class="card__header flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
         </svg>
-        <span class="font-semibold text-gray-900 dark:text-gray-100 text-sm">Step Outline</span>
+        <span class="font-semibold text-sm">Step Outline</span>
       </div>
-      <span data-step-count class="text-xs text-gray-500 dark:text-gray-400 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">
+      <span data-step-count class="badge">
         <%= step_count %> step<%= step_count != 1 ? 's' : '' %>
       </span>
     </div>
 
     <%# Quick Actions %>
-    <div class="px-3 py-2 border-b border-slate-200 dark:border-slate-700 flex gap-2" data-controller="step-controls">
+    <div class="flex gap-2 px-3 py-2" style="border-bottom: 1px solid var(--color-border);" data-controller="step-controls">
       <button type="button"
               data-action="click->step-controls#expandAll"
-              class="flex-1 text-xs px-2 py-1.5 rounded bg-slate-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+              class="btn btn--plain btn--sm flex-1"
               title="Expand all steps">
         Expand
       </button>
       <button type="button"
               data-action="click->step-controls#collapseAll"
-              class="flex-1 text-xs px-2 py-1.5 rounded bg-slate-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+              class="btn btn--plain btn--sm flex-1"
               title="Collapse all steps">
         Collapse
       </button>
@@ -51,7 +51,7 @@
 
     <%# Step List %>
     <div data-step-outline-target="stepList"
-         class="flex-1 overflow-y-auto p-2 space-y-1">
+         class="flex-1 overflow-y-auto p-2" style="display: flex; flex-direction: column; gap: 0.25rem;">
       <% if step_count > 0 %>
         <% workflow.steps.order(:position).each_with_index do |step, index| %>
           <%
@@ -66,7 +66,7 @@
               else false
             end
 
-            # Type colors (using slate/emerald theme)
+            # Type colors using CSS custom properties
             type_bg_styles = {
               'question' => 'background-color: #f1f5f9; color: #475569;',
               'action' => 'background-color: #d1fae5; color: #059669;',
@@ -86,24 +86,24 @@
             }
           %>
           <button type="button"
-                  class="step-outline-item w-full text-left px-3 py-2 rounded-lg transition-all duration-200 group hover:bg-slate-100 dark:hover:bg-slate-700/50 data-[active]:bg-emerald-50 data-[active]:dark:bg-emerald-900/20 data-[active]:border-l-2 data-[active]:border-emerald-500"
+                  class="step-outline-item"
                   data-action="click->step-outline#scrollToStep"
                   data-step-outline-target="outlineItem"
                   data-step-index="<%= index %>"
                   data-step-id="<%= step_id %>">
             <div class="flex items-center gap-2">
-              <span class="flex-shrink-0 w-6 h-6 rounded-full text-xs font-medium flex items-center justify-center"
+              <span class="step-card__number flex-shrink-0"
                     style="<%= type_bg_styles[step_type] || 'background-color: #f3f4f6; color: #374151;' %>">
                 <%= index + 1 %>
               </span>
-              <span class="flex-shrink-0 text-base font-bold" title="<%= step_type&.titleize %>">
+              <span class="flex-shrink-0 font-bold" title="<%= step_type&.titleize %>">
                 <%= type_icons[step_type] || '#' %>
               </span>
-              <span class="flex-1 text-sm truncate text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100">
+              <span class="flex-1 text-sm truncate">
                 <%= step_title %>
               </span>
               <% if has_warning %>
-                <span class="flex-shrink-0 text-amber-500" title="Incomplete">!</span>
+                <span class="flex-shrink-0" title="Incomplete" style="color: var(--color-warning);">!</span>
               <% end %>
             </div>
           </button>
@@ -113,17 +113,18 @@
 
     <%# Empty State %>
     <div data-step-outline-target="emptyState"
-         class="<%= step_count > 0 ? 'hidden' : '' %> flex-1 flex flex-col items-center justify-center p-4 text-center">
-      <svg class="w-10 h-10 text-gray-300 dark:text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+         class="<%= step_count > 0 ? 'hidden' : '' %> flex-1 text-center p-4"
+         style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+      <svg class="icon icon--xl mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
       </svg>
-      <p class="text-sm text-gray-500 dark:text-gray-400">No steps yet</p>
-      <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Add steps using the buttons above</p>
+      <p class="text-sm">No steps yet</p>
+      <p class="form-hint mt-1">Add steps using the buttons above</p>
     </div>
 
     <%# Footer with help %>
-    <div class="px-4 py-2 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700">
-      <p class="text-xs text-slate-700 dark:text-slate-300">
+    <div class="card__footer">
+      <p class="form-hint mb-0">
         Click a step to jump to it
       </p>
     </div>

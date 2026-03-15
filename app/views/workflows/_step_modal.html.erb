@@ -1,29 +1,29 @@
 <%# Step Addition Modal %>
 <div id="step-modal"
-     class="hidden fixed inset-0 z-50 overflow-y-auto"
+     class="is-hidden dialog-overlay"
      data-step-modal-target="modalContainer"
      data-action="click->step-modal#backdropClick">
   <%# Backdrop %>
-  <div class="fixed inset-0 bg-slate-900/60 transition-opacity z-0" data-step-modal-target="backdrop"></div>
+  <div class="dialog-backdrop" data-step-modal-target="backdrop"></div>
 
   <%# Modal wrapper for centering %>
-  <div class="fixed inset-0 z-10 overflow-y-auto">
-    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+  <div class="dialog-wrapper">
+    <div class="dialog-centering">
       <%# Center modal spacer %>
-      <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+      <span class="dialog-spacer">&#8203;</span>
 
       <%# Modal panel %>
-      <div class="solid-modal inline-block align-bottom text-left overflow-hidden transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full animate-scale-in relative z-20"
+      <div class="dialog dialog--lg"
            data-step-modal-target="modal"
            data-action="click->step-modal#stopPropagation">
-      <div class="px-4 pt-5 pb-4 sm:p-6">
+      <div class="dialog__body">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">Add Step</h3>
+          <h3 class="dialog__title">Add Step</h3>
           <button type="button"
                   data-action="click->step-modal#close"
-                  class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200 hover:scale-110">
+                  class="dialog__close">
             <span class="sr-only">Close</span>
-            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg class="icon icon--sm" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
@@ -31,16 +31,16 @@
 
         <form data-step-modal-target="form" id="step-modal-form" novalidate>
           <%# Step Type Selector %>
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Step Type</label>
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div class="form-group">
+            <label class="form-label">Step Type</label>
+            <div class="step-type-grid">
               <% [
                 { value: 'question', label: 'Question', icon: '?', color: 'slate' },
                 { value: 'action', label: 'Action', icon: '!', color: 'emerald' },
                 { value: 'message', label: 'Message', icon: 'i', color: 'cyan' },
                 { value: 'sub_flow', label: 'Sub-Flow', icon: '↪', color: 'indigo' }
               ].each do |type| %>
-                <label class="flex flex-col items-center gap-1 p-3 border-2 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors border-slate-300 dark:border-slate-600 step-type-option"
+                <label class="step-type-option"
                        data-step-type-option="<%= type[:value] %>"
                        data-step-type-color="<%= type[:color] %>"
                        data-type="<%= type[:value] %>">
@@ -52,67 +52,67 @@
                          data-step-modal-type-param="<%= type[:value] %>"
                          <%= 'checked' if type[:value] == 'question' %>
                          class="sr-only">
-                  <span class="text-2xl font-bold"><%= type[:icon] %></span>
-                  <span class="text-xs font-medium text-gray-700 dark:text-gray-300"><%= type[:label] %></span>
+                  <span class="step-type-option__icon"><%= type[:icon] %></span>
+                  <span class="step-type-option__label"><%= type[:label] %></span>
                 </label>
               <% end %>
             </div>
           </div>
 
           <%# Template Selector %>
-          <div class="mb-4" data-step-modal-target="templateContainer">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Apply Template (Optional)</label>
+          <div class="form-group" data-step-modal-target="templateContainer">
+            <label class="form-label">Apply Template (Optional)</label>
             <select data-step-modal-target="templateSelect"
                     data-action="change->step-modal#applyTemplate"
-                    class="w-full border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm py-2 px-3 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-slate-400">
+                    class="form-select">
               <option value="">-- Select a template --</option>
             </select>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Quickly fill form fields with a predefined template</p>
+            <p class="form-hint">Quickly fill form fields with a predefined template</p>
           </div>
 
           <%# Variable Suggestions %>
-          <div class="mb-4 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700" data-step-modal-target="variableSuggest">
-            <p class="text-xs text-gray-500 dark:text-gray-400">Loading variables...</p>
+          <div class="card card--muted p-3 mb-4" data-step-modal-target="variableSuggest">
+            <p class="form-hint mb-0">Loading variables...</p>
           </div>
 
           <%# Step Form Fields %>
-          <div id="step-form-fields" class="space-y-4">
+          <div id="step-form-fields" style="display: flex; flex-direction: column; gap: 1rem;">
             <%# Basic fields that apply to all step types %>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Title <span class="text-red-500">*</span></label>
+            <div class="form-group">
+              <label class="form-label">Title <span class="text-red-500">*</span></label>
               <input type="text"
                      name="title"
                      id="modal-step-title"
                      placeholder="Step title"
-                     class="w-full border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm py-2 px-3 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-slate-400">
+                     class="form-input">
             </div>
 
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Description</label>
+            <div class="form-group">
+              <label class="form-label">Description</label>
               <textarea name="description"
                         id="modal-step-description"
                         placeholder="Step description (optional)"
                         rows="2"
-                        class="w-full border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm py-2 px-3 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-slate-400"></textarea>
+                        class="form-textarea"></textarea>
             </div>
 
             <%# Type-specific fields - shown based on step type %>
-            <div id="type-specific-fields" class="space-y-4">
+            <div id="type-specific-fields" style="display: flex; flex-direction: column; gap: 1rem;">
               <%# Question fields %>
-              <div id="question-fields" class="hidden">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Question Text</label>
+              <div id="question-fields" class="hidden" style="display: flex; flex-direction: column; gap: 1rem;">
+                <div class="form-group">
+                  <label class="form-label">Question Text</label>
                   <input type="text"
                          name="question"
                          id="modal-step-question"
                          placeholder="Enter your question"
-                         class="w-full border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm py-2 px-3 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-slate-400">
+                         class="form-input">
                 </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Answer Type</label>
+                <div class="form-group">
+                  <label class="form-label">Answer Type</label>
                   <select name="answer_type"
                           id="modal-step-answer-type"
-                          class="w-full border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm py-2 px-3 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-slate-400">
+                          class="form-select">
                     <option value="">Select answer type...</option>
                     <option value="text">Text</option>
                     <option value="yes_no">Yes/No</option>
@@ -123,66 +123,66 @@
                     <option value="file">File Upload</option>
                   </select>
                 </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Variable Name</label>
+                <div class="form-group">
+                  <label class="form-label">Variable Name</label>
                   <input type="text"
                          name="variable_name"
                          id="modal-step-variable-name"
                          placeholder="e.g., user_name, age, etc."
-                         class="w-full border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm py-2 px-3 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-slate-400">
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Optional: Name this answer for use in transition conditions</p>
+                         class="form-input">
+                  <p class="form-hint">Optional: Name this answer for use in transition conditions</p>
                 </div>
               </div>
 
               <%# Action fields %>
-              <div id="action-fields" class="hidden">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Action Type</label>
+              <div id="action-fields" class="hidden" style="display: flex; flex-direction: column; gap: 1rem;">
+                <div class="form-group">
+                  <label class="form-label">Action Type</label>
                   <input type="text"
                          name="action_type"
                          id="modal-step-action-type"
                          placeholder="e.g., Email, Notification, etc."
-                         class="w-full border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm py-2 px-3 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-slate-400">
+                         class="form-input">
                 </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Instructions</label>
+                <div class="form-group">
+                  <label class="form-label">Instructions</label>
                   <textarea name="instructions"
                             id="modal-step-instructions"
                             placeholder="Detailed instructions for this action..."
                             rows="3"
-                            class="w-full border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm py-2 px-3 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-slate-400"></textarea>
+                            class="form-textarea"></textarea>
                 </div>
               </div>
 
               <%# Message fields %>
               <div id="message-fields" class="hidden">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Message Content</label>
+                <div class="form-group">
+                  <label class="form-label">Message Content</label>
                   <textarea name="content"
                             id="modal-step-content"
                             placeholder="Message to display..."
                             rows="3"
-                            class="w-full border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm py-2 px-3 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-slate-400"></textarea>
+                            class="form-textarea"></textarea>
                 </div>
               </div>
 
               <%# Sub-Flow fields %>
               <div id="sub_flow-fields" class="hidden">
-                <p class="text-sm text-gray-600 dark:text-gray-400">Sub-flow steps launch another workflow as a child process.</p>
+                <p class="form-hint">Sub-flow steps launch another workflow as a child process.</p>
               </div>
             </div>
           </div>
 
-          <div class="mt-6 flex justify-end space-x-3">
+          <div class="dialog__footer">
             <button type="button"
                     data-action="click->step-modal#close"
-                    class="bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-full text-sm font-medium border border-slate-200 dark:border-slate-600 transition-all duration-200 hover:scale-105">
+                    class="btn btn--plain">
               Cancel
             </button>
             <button type="button"
                     id="add-step-button"
                     data-action="click->step-modal#addStep"
-                    class="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105">
+                    class="btn btn--primary">
               Add Step
             </button>
           </div>
