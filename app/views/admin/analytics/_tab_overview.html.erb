@@ -1,50 +1,49 @@
-<div class="space-y-8">
+<div class="flex flex-col gap-6">
   <%# Outcome Breakdown %>
-  <div class="solid-card overflow-hidden">
-    <div class="px-6 py-5 border-b border-slate-200 dark:border-slate-700">
-      <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Outcome Breakdown</h3>
+  <div class="card">
+    <div class="card__header">
+      <h3>Outcome Breakdown</h3>
     </div>
     <% if @outcome_breakdown.any? %>
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-          <thead class="bg-slate-50 dark:bg-slate-800/50">
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Outcome</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Count</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">% of Total</th>
+              <th>Outcome</th>
+              <th>Count</th>
+              <th>% of Total</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+          <tbody>
             <% @outcome_breakdown.each do |outcome, count| %>
               <% pct = @total_runs > 0 ? (count.to_f / @total_runs * 100).round(1) : 0 %>
-              <tr class="even:bg-slate-50 dark:even:bg-slate-800/50">
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <%
-                    badge_class = case outcome
-                      when "resolved" then "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                      when "completed" then "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                      when "escalated" then "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                      when "error" then "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                      when "abandoned" then "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400"
-                      else "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400"
-                    end
-                    bar_class = case outcome
-                      when "resolved" then "bg-emerald-500"
-                      when "completed" then "bg-blue-500"
-                      when "escalated" then "bg-amber-500"
-                      when "error" then "bg-red-500"
-                      else "bg-slate-400"
-                    end
-                  %>
-                  <span class="inline-flex px-2.5 py-0.5 text-xs font-medium rounded-full <%= badge_class %>">
+              <%
+                badge_mod = case outcome
+                  when "resolved" then "badge--resolve"
+                  when "completed" then "badge--published"
+                  when "escalated" then "badge--escalate"
+                  when "error" then "badge--alert"
+                  else ""
+                end
+                bar_class = case outcome
+                  when "resolved" then "analytics-bar--resolved"
+                  when "completed" then "analytics-bar--completed"
+                  when "escalated" then "analytics-bar--escalated"
+                  when "error" then "analytics-bar--error"
+                  else "analytics-bar--default"
+                end
+              %>
+              <tr>
+                <td>
+                  <span class="badge <%= badge_mod %>">
                     <%= outcome&.capitalize || "Unknown" %>
                   </span>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100"><%= number_with_delimiter(count) %></td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                <td><%= number_with_delimiter(count) %></td>
+                <td>
                   <div class="flex items-center gap-3">
-                    <div class="flex-1 max-w-[120px] bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
-                      <div class="h-full rounded-full <%= bar_class %>" style="width: <%= pct %>%"></div>
+                    <div class="analytics-bar-track">
+                      <div class="analytics-bar <%= bar_class %>" style="width: <%= pct %>%"></div>
                     </div>
                     <span class="tabular-nums"><%= pct %>%</span>
                   </div>
@@ -55,45 +54,42 @@
         </table>
       </div>
     <% else %>
-      <div class="px-6 py-12 text-center">
-        <svg class="mx-auto h-10 w-10 text-gray-300 dark:text-gray-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-        <p class="text-gray-500 dark:text-gray-400 font-medium">No scenario data for this period</p>
-        <p class="text-gray-400 dark:text-gray-500 text-sm mt-1">Run workflows to see outcome breakdowns here.</p>
+      <div class="empty-state p-4">
+        <p class="empty-state__text">No scenario data for this period</p>
+        <p class="text-sm mt-1">Run workflows to see outcome breakdowns here.</p>
       </div>
     <% end %>
   </div>
 
   <%# Runs Over Time %>
-  <div class="solid-card overflow-hidden">
-    <div class="px-6 py-5 border-b border-slate-200 dark:border-slate-700">
-      <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Runs Over Time</h3>
+  <div class="card">
+    <div class="card__header">
+      <h3>Runs Over Time</h3>
     </div>
     <% if @runs_over_time.any? %>
       <% max_runs = @runs_over_time.values.max %>
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-          <thead class="bg-slate-50 dark:bg-slate-800/50">
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-48">Period</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Runs</th>
+              <th class="w-48">Period</th>
+              <th>Runs</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+          <tbody>
             <% @runs_over_time.sort.each do |period, count| %>
               <% bar_pct = max_runs > 0 ? (count.to_f / max_runs * 100).round : 0 %>
-              <tr class="even:bg-slate-50 dark:even:bg-slate-800/50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+              <tr>
+                <td>
                   <% date = period.is_a?(Date) ? period : Date.parse(period.to_s) %>
                   <%= @runs_grouped_by_week ? "Week of #{date.strftime("%b %-d, %Y")}" : date.strftime("%b %-d, %Y") %>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                <td>
                   <div class="flex items-center gap-3">
-                    <div class="flex-1 max-w-xs bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
-                      <div class="h-full rounded-full bg-slate-500 dark:bg-slate-400 transition-all duration-300" style="width: <%= bar_pct %>%"></div>
+                    <div class="analytics-bar-track">
+                      <div class="analytics-bar analytics-bar--default" style="width: <%= bar_pct %>%"></div>
                     </div>
-                    <span class="text-sm font-medium tabular-nums w-8 text-right"><%= number_with_delimiter(count) %></span>
+                    <span class="tabular-nums font-medium w-8 text-right"><%= number_with_delimiter(count) %></span>
                   </div>
                 </td>
               </tr>
@@ -102,12 +98,9 @@
         </table>
       </div>
     <% else %>
-      <div class="px-6 py-12 text-center">
-        <svg class="mx-auto h-10 w-10 text-gray-300 dark:text-gray-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-        </svg>
-        <p class="text-gray-500 dark:text-gray-400 font-medium">No scenario data for this period</p>
-        <p class="text-gray-400 dark:text-gray-500 text-sm mt-1">Activity trends will appear as scenarios are run.</p>
+      <div class="empty-state p-4">
+        <p class="empty-state__text">No scenario data for this period</p>
+        <p class="text-sm mt-1">Activity trends will appear as scenarios are run.</p>
       </div>
     <% end %>
   </div>

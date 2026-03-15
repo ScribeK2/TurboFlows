@@ -1,48 +1,43 @@
-<div class="solid-card overflow-hidden">
-  <div class="px-6 py-5 border-b border-slate-200 dark:border-slate-700">
-    <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Agent Activity</h3>
+<div class="card">
+  <div class="card__header">
+    <h3>Agent Activity</h3>
   </div>
   <% if @agent_stats.any? %>
-    <div class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-        <thead class="bg-slate-50 dark:bg-slate-800/50">
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
           <tr>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Agent</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Runs</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Completed</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Escalated</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Avg Duration</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last Active</th>
+            <th>Agent</th>
+            <th>Total Runs</th>
+            <th>Completed</th>
+            <th>Escalated</th>
+            <th>Avg Duration</th>
+            <th>Last Active</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+        <tbody>
           <% @agent_stats.each do |row| %>
-            <tr class="even:bg-slate-50 dark:even:bg-slate-800/50">
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+            <tr>
+              <td class="font-medium">
                 <%= row.user_display_name.presence || row.user_email %>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100"><%= number_with_delimiter(row.total_runs) %></td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100"><%= number_with_delimiter(row.completed_count) %></td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100"><%= number_with_delimiter(row.escalated_count) %></td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+              <td><%= number_with_delimiter(row.total_runs) %></td>
+              <td><%= number_with_delimiter(row.completed_count) %></td>
+              <td><%= number_with_delimiter(row.escalated_count) %></td>
+              <td>
                 <% avg = row.avg_duration.to_i %>
                 <%= avg > 60 ? "#{avg / 60}m #{avg % 60}s" : "#{avg}s" %>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                <%= row.last_active ? time_ago_in_words(row.last_active) + " ago" : "Never" %>
-              </td>
+              <td><%= row.last_active ? time_ago_in_words(row.last_active) + " ago" : "Never" %></td>
             </tr>
           <% end %>
         </tbody>
       </table>
     </div>
   <% else %>
-    <div class="px-6 py-12 text-center">
-      <svg class="mx-auto h-10 w-10 text-gray-300 dark:text-gray-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-      <p class="text-gray-500 dark:text-gray-400 font-medium">No agent data for this period</p>
-      <p class="text-gray-400 dark:text-gray-500 text-sm mt-1">Agent activity will appear as team members run scenarios.</p>
+    <div class="empty-state p-4">
+      <p class="empty-state__text">No agent data for this period</p>
+      <p class="text-sm mt-1">Agent activity will appear as team members run scenarios.</p>
     </div>
   <% end %>
 </div>

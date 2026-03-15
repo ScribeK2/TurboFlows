@@ -1,15 +1,14 @@
-<%= form_tag admin_analytics_path, method: :get, class: "solid-card px-6 py-4 mb-6 animate-fade-in-up", data: { controller: "analytics-filters" } do %>
+<%= form_tag admin_analytics_path, method: :get, class: "card card__body mb-4", data: { controller: "analytics-filters" } do %>
   <div class="flex flex-wrap items-end gap-4">
     <%# Date Range %>
     <div>
-      <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Date Range</label>
-      <div class="inline-flex rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
+      <label class="form-label text-xs uppercase tracking-wider mb-2">Date Range</label>
+      <div class="inline-flex rounded border overflow-hidden">
         <% current_range = params[:range] || "30d" %>
         <% %w[7d 30d 90d all].each do |range| %>
           <% active = current_range == range %>
           <button type="button"
-                  class="px-3 py-1.5 text-sm font-medium transition-colors duration-150
-                         <%= active ? 'bg-slate-700 text-white dark:bg-slate-500' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 hover:bg-slate-50 dark:hover:bg-slate-700' %>"
+                  class="btn btn--sm <%= active ? 'btn--primary' : 'btn--plain' %>"
                   data-action="click->analytics-filters#selectRange"
                   data-value="<%= range %>">
             <%= range == "all" ? "All" : range %>
@@ -20,14 +19,13 @@
 
     <%# Purpose %>
     <div>
-      <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Purpose</label>
-      <div class="inline-flex rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
+      <label class="form-label text-xs uppercase tracking-wider mb-2">Purpose</label>
+      <div class="inline-flex rounded border overflow-hidden">
         <% current_purpose = params[:purpose] || "all" %>
         <% %w[all simulation live].each do |purpose| %>
           <% active = current_purpose == purpose %>
           <button type="button"
-                  class="px-3 py-1.5 text-sm font-medium transition-colors duration-150
-                         <%= active ? 'bg-slate-700 text-white dark:bg-slate-500' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 hover:bg-slate-50 dark:hover:bg-slate-700' %>"
+                  class="btn btn--sm <%= active ? 'btn--primary' : 'btn--plain' %>"
                   data-action="click->analytics-filters#selectPurpose"
                   data-value="<%= purpose %>">
             <%= purpose.capitalize %>
@@ -38,31 +36,31 @@
 
     <%# Workflow %>
     <div>
-      <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Workflow</label>
+      <label class="form-label text-xs uppercase tracking-wider mb-2">Workflow</label>
       <%= select_tag :workflow_id,
             options_from_collection_for_select(@workflows_for_filter, :id, :title, params[:workflow_id]&.to_i),
             include_blank: "All Workflows",
-            class: "rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-gray-700 dark:text-gray-300 focus:ring-slate-500 focus:border-slate-500",
+            class: "form-select",
             onchange: "this.form.requestSubmit()" %>
     </div>
 
     <%# User %>
     <div>
-      <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Agent</label>
+      <label class="form-label text-xs uppercase tracking-wider mb-2">Agent</label>
       <%= select_tag :user_id,
             options_from_collection_for_select(@users_for_filter, :id, :email, params[:user_id]&.to_i),
             include_blank: "All Agents",
-            class: "rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-gray-700 dark:text-gray-300 focus:ring-slate-500 focus:border-slate-500",
+            class: "form-select",
             onchange: "this.form.requestSubmit()" %>
     </div>
 
     <%# Group %>
     <div>
-      <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Group</label>
+      <label class="form-label text-xs uppercase tracking-wider mb-2">Group</label>
       <%= select_tag :group_id,
             options_from_collection_for_select(@groups_for_filter, :id, :name, params[:group_id]&.to_i),
             include_blank: "All Groups",
-            class: "rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-gray-700 dark:text-gray-300 focus:ring-slate-500 focus:border-slate-500",
+            class: "form-select",
             onchange: "this.form.requestSubmit()" %>
     </div>
 

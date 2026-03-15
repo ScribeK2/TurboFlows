@@ -1,82 +1,78 @@
-<div class="space-y-8">
+<div class="flex flex-col gap-6">
   <%# Drop-off Points %>
-  <div class="solid-card overflow-hidden">
-    <div class="px-6 py-5 border-b border-slate-200 dark:border-slate-700">
-      <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Drop-off Points</h3>
-      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Steps where scenarios were abandoned most frequently.</p>
+  <div class="card">
+    <div class="card__header">
+      <div>
+        <h3>Drop-off Points</h3>
+        <p class="text-sm mt-1">Steps where scenarios were abandoned most frequently.</p>
+      </div>
     </div>
     <% if @dropoff_points.any? %>
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-          <thead class="bg-slate-50 dark:bg-slate-800/50">
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Step</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Workflow</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Abandon Count</th>
+              <th>Step</th>
+              <th>Workflow</th>
+              <th>Abandon Count</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+          <tbody>
             <% @dropoff_points.each do |point| %>
-              <tr class="even:bg-slate-50 dark:even:bg-slate-800/50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100"><%= point[:step_title] %></td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                  <%= link_to point[:workflow_title], workflow_path(point[:workflow_id]), class: "hover:text-slate-600 dark:hover:text-slate-400 transition-colors duration-200" %>
+              <tr>
+                <td class="font-medium"><%= point[:step_title] %></td>
+                <td>
+                  <%= link_to point[:workflow_title], workflow_path(point[:workflow_id]) %>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100"><%= number_with_delimiter(point[:count]) %></td>
+                <td><%= number_with_delimiter(point[:count]) %></td>
               </tr>
             <% end %>
           </tbody>
         </table>
       </div>
     <% else %>
-      <div class="px-6 py-12 text-center">
-        <svg class="mx-auto h-10 w-10 text-gray-300 dark:text-gray-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <p class="text-gray-500 dark:text-gray-400 font-medium">No drop-off data for this period</p>
-        <p class="text-gray-400 dark:text-gray-500 text-sm mt-1">Abandoned scenarios will show which steps agents leave most often.</p>
+      <div class="empty-state p-4">
+        <p class="empty-state__text">No drop-off data for this period</p>
+        <p class="text-sm mt-1">Abandoned scenarios will show which steps agents leave most often.</p>
       </div>
     <% end %>
   </div>
 
   <%# Busiest Hours %>
-  <div class="solid-card overflow-hidden">
-    <div class="px-6 py-5 border-b border-slate-200 dark:border-slate-700">
-      <div class="flex items-center justify-between">
-        <div>
-          <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Busiest Hours</h3>
-          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Scenario runs grouped by hour of day.</p>
-        </div>
-        <span class="text-xs text-gray-400 dark:text-gray-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
-          Times shown in server timezone (<%= Time.zone.name %>)
-        </span>
+  <div class="card">
+    <div class="card__header flex items-center justify-between">
+      <div>
+        <h3>Busiest Hours</h3>
+        <p class="text-sm mt-1">Scenario runs grouped by hour of day.</p>
       </div>
+      <span class="badge">
+        Times in <%= Time.zone.name %>
+      </span>
     </div>
     <% if @busiest_hours.any? %>
       <% max_count = @busiest_hours.map { |_, c| c }.max %>
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-          <thead class="bg-slate-50 dark:bg-slate-800/50">
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-48">Hour</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Run Count</th>
+              <th class="w-48">Hour</th>
+              <th>Run Count</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+          <tbody>
             <% @busiest_hours.each do |hour, count| %>
               <% bar_pct = max_count > 0 ? (count.to_f / max_count * 100).round : 0 %>
-              <tr class="even:bg-slate-50 dark:even:bg-slate-800/50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+              <tr>
+                <td class="font-medium">
                   <%= "#{hour.to_i.to_s.rjust(2, '0')}:00 - #{hour.to_i.to_s.rjust(2, '0')}:59" %>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                <td>
                   <div class="flex items-center gap-3">
-                    <div class="flex-1 max-w-xs bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
-                      <div class="h-full rounded-full transition-all duration-300
-                                  <%= bar_pct >= 80 ? 'bg-emerald-500' : bar_pct >= 40 ? 'bg-slate-500' : 'bg-slate-400' %>"
+                    <div class="analytics-bar-track">
+                      <div class="analytics-bar <%= bar_pct >= 80 ? 'analytics-bar--resolved' : bar_pct >= 40 ? 'analytics-bar--default' : 'analytics-bar--muted' %>"
                            style="width: <%= bar_pct %>%"></div>
                     </div>
-                    <span class="text-sm font-medium tabular-nums w-8 text-right"><%= number_with_delimiter(count) %></span>
+                    <span class="tabular-nums font-medium w-8 text-right"><%= number_with_delimiter(count) %></span>
                   </div>
                 </td>
               </tr>
@@ -85,12 +81,9 @@
         </table>
       </div>
     <% else %>
-      <div class="px-6 py-12 text-center">
-        <svg class="mx-auto h-10 w-10 text-gray-300 dark:text-gray-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <p class="text-gray-500 dark:text-gray-400 font-medium">No hourly data for this period</p>
-        <p class="text-gray-400 dark:text-gray-500 text-sm mt-1">Run scenarios to see peak activity hours.</p>
+      <div class="empty-state p-4">
+        <p class="empty-state__text">No hourly data for this period</p>
+        <p class="text-sm mt-1">Run scenarios to see peak activity hours.</p>
       </div>
     <% end %>
   </div>
