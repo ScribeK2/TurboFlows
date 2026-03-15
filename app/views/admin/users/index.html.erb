@@ -1,16 +1,14 @@
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="page-content">
   <!-- Header Section -->
-  <div class="mb-8 flex justify-between items-center animate-fade-in">
+  <div class="mb-4 flex items-center justify-between">
     <div>
-      <h1 class="text-4xl md:text-5xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
-        User Management
-      </h1>
-      <p class="mt-2 text-lg text-gray-600 dark:text-gray-400">
+      <h1>User Management</h1>
+      <p class="text-sm mt-1">
         Manage user roles, permissions, and group assignments across the system.
       </p>
     </div>
-    <%= link_to admin_root_path, class: "bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 inline-flex items-center" do %>
-      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <%= link_to admin_root_path, class: "btn btn--secondary flex items-center gap-2" do %>
+      <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
       </svg>
       Back to Dashboard
@@ -18,87 +16,87 @@
   </div>
 
   <!-- Users Table -->
-  <div class="solid-card overflow-hidden animate-fade-in-up">
-    <div class="px-6 py-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-      <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">All Users</h2>
+  <div class="card">
+    <div class="card__header flex items-center justify-between">
+      <h2>All Users</h2>
       <button type="button"
               id="bulk-toggle-btn"
-              class="text-sm px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-full shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 font-medium inline-flex items-center">
-        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              class="btn btn--secondary btn--sm flex items-center gap-2">
+        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
         Bulk Assign Groups
       </button>
     </div>
     <% if @users.any? %>
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-          <thead class="bg-slate-50 dark:bg-slate-800/50">
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bulk-select-column" style="display: none;">
-                <input type="checkbox" id="select-all-users" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+              <th class="bulk-select-column" style="display: none;">
+                <input type="checkbox" id="select-all-users" class="form-checkbox">
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Groups</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Workflows</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Joined</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Groups</th>
+              <th>Workflows</th>
+              <th>Joined</th>
+              <th>Actions</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+          <tbody>
             <% @users.each do |user| %>
-              <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors duration-200">
-                <td class="px-6 py-4 whitespace-nowrap bulk-select-column" style="display: none;">
-                  <input type="checkbox" name="user_ids[]" value="<%= user.id %>" class="user-checkbox h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+              <tr>
+                <td class="bulk-select-column" style="display: none;">
+                  <input type="checkbox" name="user_ids[]" value="<%= user.id %>" class="user-checkbox form-checkbox">
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm font-medium text-gray-900 dark:text-gray-100"><%= user.email %></div>
+                <td>
+                  <span class="font-medium"><%= user.email %></span>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <%= user.avatar_role_badge_classes %>">
+                <td>
+                  <span class="badge <%= user.avatar_role_badge_classes %>">
                     <%= user.role.capitalize %>
                   </span>
                 </td>
-                <td class="px-6 py-4">
+                <td>
                   <div class="flex flex-wrap gap-1">
                     <% if user.groups.any? %>
                       <% user.groups.each do |group| %>
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300" title="<%= group.full_path %>">
+                        <span class="badge" title="<%= group.full_path %>">
                           <%= group.name %>
                         </span>
                       <% end %>
                     <% else %>
-                      <span class="text-xs text-gray-400 dark:text-gray-500">None</span>
+                      <span class="text-xs">None</span>
                     <% end %>
                   </div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                <td class="text-sm">
                   <%= user.workflows.size %>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                <td class="text-sm">
                   <%= time_ago_in_words(user.created_at) %> ago
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <td>
                   <div class="flex items-center gap-2">
                     <%= form_with url: update_role_admin_user_path(user), method: :patch, data: { turbo: false, controller: "auto-submit" }, class: "inline-flex items-center" do |form| %>
-                      <%= form.select :role, options_for_select(User.roles.map { |key, _| [key.capitalize, key] }, user.role), {}, { class: "text-xs border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 cursor-pointer hover:border-blue-500 dark:hover:border-blue-400 transition-colors", data: { action: "change->auto-submit#submit" } } %>
+                      <%= form.select :role, options_for_select(User.roles.map { |key, _| [key.capitalize, key] }, user.role), {}, { class: "form-select", data: { action: "change->auto-submit#submit" } } %>
                     <% end %>
                     <button type="button"
-                            class="open-group-modal-btn text-xs px-3 py-1.5 bg-slate-600 hover:bg-slate-700 text-white rounded-full shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 font-medium inline-flex items-center"
+                            class="open-group-modal-btn btn btn--secondary btn--sm flex items-center gap-1"
                             data-modal-id="group-modal-<%= user.id %>"
                             title="Assign groups">
-                      <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg class="icon icon--xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                       </svg>
                       Groups
                     </button>
                     <button type="button"
-                            class="reset-password-btn text-xs px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-full shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 dark:focus:ring-offset-slate-800 font-medium inline-flex items-center"
+                            class="reset-password-btn btn btn--sm flex items-center gap-1"
                             data-user-id="<%= user.id %>"
                             data-user-email="<%= user.email %>"
                             title="Generate temporary password">
-                      <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg class="icon icon--xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                       </svg>
                       Reset
@@ -111,8 +109,8 @@
         </table>
       </div>
     <% else %>
-      <div class="px-6 py-12 text-center">
-        <p class="text-gray-500 dark:text-gray-400">No users found</p>
+      <div class="empty-state p-4">
+        <p class="empty-state__text">No users found</p>
       </div>
     <% end %>
   </div>
@@ -120,231 +118,192 @@
 
 <%# Group Assignment Modals %>
 <% @users.each do |user| %>
-  <div id="group-modal-<%= user.id %>" 
-       class="hidden fixed inset-0 z-50 overflow-y-auto"
+  <div id="group-modal-<%= user.id %>"
+       class="dialog-overlay is-hidden"
        data-controller="modal">
-    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-      <%# Backdrop %>
-      <div class="fixed inset-0 bg-slate-900/60 transition-opacity" 
-           data-modal-target="backdrop"
-           data-action="click->modal#backdropClick"></div>
-
-      <%# Center modal %>
-      <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
-
-      <%# Modal panel %>
-      <div class="solid-modal inline-block align-bottom text-left overflow-hidden transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full animate-scale-in relative z-10"
-           data-modal-target="content"
-           data-action="click->modal#stop">
-        <%= form_with url: update_groups_admin_user_path(user), method: :patch, local: true, class: "px-4 pt-5 pb-4 sm:p-6 sm:pb-4" do |form| %>
-          <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-300 dark:border-gray-700/30">
-            <div>
-              <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Assign Groups</h3>
-              <p class="mt-1 text-sm text-gray-700 dark:text-gray-400 font-medium"><%= user.email %></p>
-            </div>
-            <button type="button"
-                    class="close-group-modal-btn text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200 hover:scale-110 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                    data-modal-id="group-modal-<%= user.id %>">
-              <span class="sr-only">Close</span>
-              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <div class="space-y-4">
-            <p class="text-sm text-gray-700 dark:text-gray-400 leading-relaxed">
-              Select groups to grant this user access to. Users will only see workflows in their assigned groups (unless they are admins).
-            </p>
-            
-            <div class="max-h-80 overflow-y-auto border border-gray-300 dark:border-gray-700/30 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/30 ">
-              <% if @all_groups.any? %>
-                <div class="space-y-1">
-                  <% @all_groups.roots.includes(:children).order(:position, :name).each do |root_group| %>
-                    <%= render partial: "admin/users/group_checkbox", locals: { group: root_group, user: user, level: 0 } %>
-                  <% end %>
-                </div>
-              <% else %>
-                <div class="text-center py-8">
-                  <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                  </svg>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">No groups available. Create groups first.</p>
-                </div>
-              <% end %>
-            </div>
-          </div>
-
-          <div class="mt-6 flex justify-end space-x-3 pt-4 border-t border-gray-300 dark:border-gray-700/30">
-            <button type="button"
-                    class="close-group-modal-btn px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800/80 rounded-lg border border-gray-300 dark:border-gray-700/30 transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 shadow-sm hover:shadow-md"
-                    data-modal-id="group-modal-<%= user.id %>">
-              Cancel
-            </button>
-            <%= form.submit "Save Groups", class: "px-4 py-2 text-sm font-medium text-white bg-slate-600 hover:bg-slate-700 rounded-full shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800" %>
-          </div>
-        <% end %>
-      </div>
-    </div>
-  </div>
-<% end %>
-
-<%# Bulk Group Assignment Modal %>
-<div id="bulk-group-modal" 
-     class="hidden fixed inset-0 z-50 overflow-y-auto"
-     data-controller="modal">
-  <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-    <%# Backdrop %>
-    <div class="fixed inset-0 bg-slate-900/60 transition-opacity" 
-         data-modal-target="backdrop"
-         data-action="click->modal#backdropClick"></div>
-
-    <%# Center modal %>
-    <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
-
-    <%# Modal panel %>
-    <div class="solid-modal inline-block align-bottom text-left overflow-hidden transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full animate-scale-in relative z-10"
+    <div class="dialog"
          data-modal-target="content"
          data-action="click->modal#stop">
-      <%= form_with url: bulk_assign_groups_admin_users_path, method: :patch, local: true, class: "px-4 pt-5 pb-4 sm:p-6 sm:pb-4" do |form| %>
-        <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-300 dark:border-gray-700/30">
-          <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Bulk Assign Groups</h3>
+      <%= form_with url: update_groups_admin_user_path(user), method: :patch, local: true do |form| %>
+        <div class="dialog__header">
+          <div>
+            <h3 class="dialog__title">Assign Groups</h3>
+            <p class="text-sm font-medium mt-1"><%= user.email %></p>
+          </div>
           <button type="button"
-                  class="close-bulk-modal-btn text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200 hover:scale-110 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+                  class="dialog__close close-group-modal-btn"
+                  data-modal-id="group-modal-<%= user.id %>">
             <span class="sr-only">Close</span>
-            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <div class="space-y-4">
-          <p class="text-sm text-gray-700 dark:text-gray-400 leading-relaxed">
-            Select groups to assign to the selected users. This will replace their existing group assignments.
+        <div class="dialog__body">
+          <p class="text-sm mb-3">
+            Select groups to grant this user access to. Users will only see workflows in their assigned groups (unless they are admins).
           </p>
-          
-          <div id="selected-users-count" class="text-sm font-medium text-blue-700 dark:text-blue-400 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-            No users selected
-          </div>
-          
-          <div class="max-h-80 overflow-y-auto border border-gray-300 dark:border-gray-700/30 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/30 ">
+
+          <div class="admin-group-list">
             <% if @all_groups.any? %>
-              <div class="space-y-1">
-                <% @all_groups.roots.includes(:children).order(:position, :name).each do |root_group| %>
-                  <%= render partial: "admin/users/group_checkbox", locals: { group: root_group, user: nil, level: 0 } %>
-                <% end %>
-              </div>
+              <% @all_groups.roots.includes(:children).order(:position, :name).each do |root_group| %>
+                <%= render partial: "admin/users/group_checkbox", locals: { group: root_group, user: user, level: 0 } %>
+              <% end %>
             <% else %>
-              <div class="text-center py-8">
-                <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div class="empty-state p-4 text-center">
+                <svg class="icon icon--xl mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                 </svg>
-                <p class="text-sm text-gray-500 dark:text-gray-400">No groups available. Create groups first.</p>
+                <p class="text-sm">No groups available. Create groups first.</p>
               </div>
             <% end %>
           </div>
         </div>
 
-        <div class="mt-6 flex justify-end space-x-3 pt-4 border-t border-gray-300 dark:border-gray-700/30">
+        <div class="dialog__footer">
           <button type="button"
-                  class="close-bulk-modal-btn px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800/80 rounded-lg border border-gray-300 dark:border-gray-700/30 transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 shadow-sm hover:shadow-md">
+                  class="close-group-modal-btn btn btn--plain"
+                  data-modal-id="group-modal-<%= user.id %>">
             Cancel
           </button>
-          <%= form.submit "Assign to Selected Users", class: "px-4 py-2 text-sm font-medium text-white bg-slate-600 hover:bg-slate-700 rounded-full shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800" %>
+          <%= form.submit "Save Groups", class: "btn btn--primary" %>
         </div>
       <% end %>
     </div>
   </div>
+<% end %>
+
+<%# Bulk Group Assignment Modal %>
+<div id="bulk-group-modal"
+     class="dialog-overlay is-hidden"
+     data-controller="modal">
+  <div class="dialog"
+       data-modal-target="content"
+       data-action="click->modal#stop">
+    <%= form_with url: bulk_assign_groups_admin_users_path, method: :patch, local: true do |form| %>
+      <div class="dialog__header">
+        <h3 class="dialog__title">Bulk Assign Groups</h3>
+        <button type="button"
+                class="dialog__close close-bulk-modal-btn">
+          <span class="sr-only">Close</span>
+          <svg class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="dialog__body">
+        <p class="text-sm mb-3">
+          Select groups to assign to the selected users. This will replace their existing group assignments.
+        </p>
+
+        <div id="selected-users-count" class="text-sm font-medium mb-3">
+          No users selected
+        </div>
+
+        <div class="admin-group-list">
+          <% if @all_groups.any? %>
+            <% @all_groups.roots.includes(:children).order(:position, :name).each do |root_group| %>
+              <%= render partial: "admin/users/group_checkbox", locals: { group: root_group, user: nil, level: 0 } %>
+            <% end %>
+          <% else %>
+            <div class="empty-state p-4 text-center">
+              <svg class="icon icon--xl mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
+              <p class="text-sm">No groups available. Create groups first.</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="dialog__footer">
+        <button type="button"
+                class="close-bulk-modal-btn btn btn--plain">
+          Cancel
+        </button>
+        <%= form.submit "Assign to Selected Users", class: "btn btn--primary" %>
+      </div>
+    <% end %>
+  </div>
 </div>
 
 <%# Password Reset Modal %>
-<div id="password-reset-modal" 
-     class="hidden fixed inset-0 z-50 overflow-y-auto"
+<div id="password-reset-modal"
+     class="dialog-overlay is-hidden"
      data-controller="modal">
-  <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-    <%# Backdrop %>
-    <div class="fixed inset-0 bg-slate-900/60 transition-opacity" 
-         data-modal-target="backdrop"
-         data-action="click->modal#backdropClick"></div>
+  <div class="dialog"
+       data-modal-target="content"
+       data-action="click->modal#stop">
+    <div class="dialog__header">
+      <div>
+        <h3 class="dialog__title">Password Reset</h3>
+        <p class="text-sm font-medium mt-1" id="reset-modal-user-email"></p>
+      </div>
+      <button type="button"
+              id="password-reset-modal-close-x"
+              class="dialog__close">
+        <span class="sr-only">Close</span>
+        <svg class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
 
-    <%# Center modal %>
-    <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
-
-    <%# Modal panel %>
-    <div class="solid-modal inline-block align-bottom text-left overflow-hidden transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full animate-scale-in relative z-10"
-         data-modal-target="content"
-         data-action="click->modal#stop">
-      <div class="px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-        <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-300 dark:border-gray-700/30">
-          <div>
-            <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Password Reset</h3>
-            <p class="mt-1 text-sm text-gray-700 dark:text-gray-400 font-medium" id="reset-modal-user-email"></p>
+    <div class="dialog__body">
+      <div class="admin-info-box admin-info-box--info mb-3">
+        <div class="flex items-start gap-3">
+          <svg class="icon icon--sm flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div class="text-sm">
+            <p class="font-semibold mb-1">New Temporary Password Generated</p>
+            <p id="temp-password-display" class="font-mono text-lg mt-2 font-bold">
+              Loading...
+            </p>
+            <p class="mt-2 text-xs">
+              Copy this password and give it to the user. They should change it immediately after logging in.
+            </p>
           </div>
-          <button type="button" 
-                  id="password-reset-modal-close-x"
-                  class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200 hover:scale-110 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
-            <span class="sr-only">Close</span>
-            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <div class="space-y-4">
-          <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <div class="flex items-start">
-              <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div class="text-sm text-blue-800 dark:text-blue-200">
-                <p class="font-semibold mb-1">New Temporary Password Generated</p>
-                <p id="temp-password-display" class="font-mono text-lg bg-white dark:bg-gray-800 px-3 py-2 rounded border border-blue-300 dark:border-blue-700 mt-2 font-bold text-blue-900 dark:text-blue-100">
-                  Loading...
-                </p>
-                <p class="mt-2 text-xs text-blue-700 dark:text-blue-300">
-                  Copy this password and give it to the user. They should change it immediately after logging in.
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-            <div class="flex items-start">
-              <svg class="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-              <div class="text-sm text-yellow-800 dark:text-yellow-200">
-                <p class="font-semibold mb-1">Important Security Note</p>
-                <ul class="list-disc list-inside space-y-1 text-xs text-yellow-700 dark:text-yellow-300">
-                  <li>This is a one-time temporary password</li>
-                  <li>User should change it immediately after first login</li>
-                  <li>The password is secure and randomly generated</li>
-                  <li>This action has been logged for security purposes</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="mt-6 flex justify-end space-x-3 pt-4 border-t border-gray-300 dark:border-gray-700/30">
-          <button type="button"
-                  id="password-reset-modal-copy"
-                  class="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-800/40 rounded-lg border border-blue-300 dark:border-blue-700/30 transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 shadow-sm hover:shadow-md">
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-            </svg>
-            Copy Password
-          </button>
-          <button type="button"
-                  id="password-reset-modal-done"
-                  class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 rounded-full shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800">
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-            </svg>
-            Done
-          </button>
         </div>
       </div>
+
+      <div class="admin-info-box admin-info-box--warning">
+        <div class="flex items-start gap-3">
+          <svg class="icon icon--sm flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+          <div class="text-sm">
+            <p class="font-semibold mb-1">Important Security Note</p>
+            <ul class="list-disc list-inside text-xs">
+              <li>This is a one-time temporary password</li>
+              <li>User should change it immediately after first login</li>
+              <li>The password is secure and randomly generated</li>
+              <li>This action has been logged for security purposes</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dialog__footer">
+      <button type="button"
+              id="password-reset-modal-copy"
+              class="btn btn--plain flex items-center gap-2">
+        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+        </svg>
+        Copy Password
+      </button>
+      <button type="button"
+              id="password-reset-modal-done"
+              class="btn btn--positive flex items-center gap-2">
+        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+        Done
+      </button>
     </div>
   </div>
 </div>
@@ -353,22 +312,19 @@
   let bulkMode = false;
   let currentTempPassword = '';
 
-  // Get CSRF token for fetch requests
   function getCSRFToken() {
     const token = document.querySelector('meta[name="csrf-token"]');
     return token ? token.getAttribute('content') : '';
   }
 
   async function resetUserPassword(userId, userEmail, buttonElement) {
-    // Confirm action
-    if (!confirm(`Are you sure you want to generate a temporary password for ${userEmail}? They will be able to log in immediately with this password.`)) {
+    if (!confirm('Are you sure you want to generate a temporary password for ' + userEmail + '? They will be able to log in immediately with this password.')) {
       return;
     }
 
-    // Show loading state
     const originalHTML = buttonElement.innerHTML;
     buttonElement.disabled = true;
-    buttonElement.innerHTML = '<svg class="w-3 h-3 mr-1 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Generating...';
+    buttonElement.textContent = 'Generating...';
 
     try {
       const csrfToken = getCSRFToken();
@@ -376,7 +332,7 @@
         throw new Error('CSRF token not found. Please refresh the page.');
       }
 
-      const response = await fetch(`/admin/users/${userId}/reset_password`, {
+      const response = await fetch('/admin/users/' + userId + '/reset_password', {
         method: 'POST',
         headers: {
           'X-CSRF-Token': csrfToken,
@@ -389,19 +345,14 @@
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || `Server error: ${response.status}`);
+        throw new Error(data.error || 'Server error: ' + response.status);
       }
 
       if (data && data.success && data.password) {
-        // Store password globally for copy function
         currentTempPassword = data.password;
-
-        // Update modal with user email and password
         document.getElementById('reset-modal-user-email').textContent = data.email || userEmail;
         document.getElementById('temp-password-display').textContent = data.password;
-
-        // Show modal
-        document.getElementById('password-reset-modal').classList.remove('hidden');
+        document.getElementById('password-reset-modal').classList.remove('is-hidden');
       } else {
         alert('Failed to generate temporary password. Please try again.');
       }
@@ -409,24 +360,18 @@
       console.error('Password reset error:', error);
       alert('An error occurred while generating the temporary password. Please try again.');
     } finally {
-      // Restore button
       buttonElement.disabled = false;
       buttonElement.innerHTML = originalHTML;
     }
   }
 
-  // Copy password to clipboard
   function copyTempPassword(buttonElement) {
     if (currentTempPassword) {
       navigator.clipboard.writeText(currentTempPassword).then(function() {
-        // Show feedback
-        const copyBtn = buttonElement;
-        const originalText = copyBtn.innerHTML;
-        copyBtn.innerHTML = '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>Copied!';
-        copyBtn.classList.add('bg-green-100', 'dark:bg-green-900/30', 'border-green-300', 'dark:border-green-700/30');
+        const originalText = buttonElement.textContent;
+        buttonElement.textContent = 'Copied!';
         setTimeout(function() {
-          copyBtn.innerHTML = originalText;
-          copyBtn.classList.remove('bg-green-100', 'dark:bg-green-900/30', 'border-green-300', 'dark:border-green-700/30');
+          buttonElement.textContent = originalText;
         }, 2000);
       }).catch(function(err) {
         alert('Failed to copy password. Please copy it manually.');
@@ -439,28 +384,25 @@
     bulkMode = !bulkMode;
     const columns = document.querySelectorAll('.bulk-select-column');
     const btn = document.getElementById('bulk-toggle-btn');
-    
-    columns.forEach(col => {
+
+    columns.forEach(function(col) {
       col.style.display = bulkMode ? 'table-cell' : 'none';
     });
-    
+
     if (bulkMode) {
-      btn.innerHTML = '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>Cancel Bulk Mode';
-      btn.classList.remove('bg-slate-600', 'hover:bg-slate-700');
-      btn.classList.add('bg-red-600', 'hover:bg-red-700');
+      btn.textContent = 'Cancel Bulk Mode';
+      btn.classList.add('btn--negative');
     } else {
-      btn.innerHTML = '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>Bulk Assign Groups';
-      btn.classList.remove('bg-red-600', 'hover:bg-red-700');
-      btn.classList.add('bg-slate-600', 'hover:bg-slate-700');
-      // Uncheck all
-      document.querySelectorAll('.user-checkbox').forEach(cb => cb.checked = false);
+      btn.textContent = 'Bulk Assign Groups';
+      btn.classList.remove('btn--negative');
+      document.querySelectorAll('.user-checkbox').forEach(function(cb) { cb.checked = false; });
       document.getElementById('select-all-users').checked = false;
       updateSelectedCount();
     }
   }
 
   function toggleAllUsers(checkbox) {
-    document.querySelectorAll('.user-checkbox').forEach(cb => {
+    document.querySelectorAll('.user-checkbox').forEach(function(cb) {
       cb.checked = checkbox.checked;
     });
     updateSelectedCount();
@@ -470,26 +412,16 @@
     const selected = document.querySelectorAll('.user-checkbox:checked').length;
     const countEl = document.getElementById('selected-users-count');
     if (countEl) {
-      if (selected > 0) {
-        countEl.textContent = `${selected} user${selected > 1 ? 's' : ''} selected`;
-        countEl.classList.remove('text-gray-400');
-        countEl.classList.add('text-blue-600', 'dark:text-blue-400');
-      } else {
-        countEl.textContent = 'No users selected';
-        countEl.classList.remove('text-blue-600', 'dark:text-blue-400');
-        countEl.classList.add('text-gray-400');
-      }
+      countEl.textContent = selected > 0 ? (selected + ' user' + (selected > 1 ? 's' : '') + ' selected') : 'No users selected';
     }
   }
 
   function openBulkModal() {
-    const selectedIds = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
+    const selectedIds = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(function(cb) { return cb.value; });
     const form = document.querySelector('#bulk-group-modal form');
     if (form) {
-      // Remove existing hidden inputs
-      form.querySelectorAll('input[name="user_ids[]"]').forEach(input => input.remove());
-      // Add new hidden inputs
-      selectedIds.forEach(id => {
+      form.querySelectorAll('input[name="user_ids[]"]').forEach(function(input) { input.remove(); });
+      selectedIds.forEach(function(id) {
         const input = document.createElement('input');
         input.type = 'hidden';
         input.name = 'user_ids[]';
@@ -497,12 +429,10 @@
         form.appendChild(input);
       });
     }
-    document.getElementById('bulk-group-modal').classList.remove('hidden');
+    document.getElementById('bulk-group-modal').classList.remove('is-hidden');
   }
 
-  // Attach all button listeners (replacing inline onclick/onchange handlers blocked by CSP nonce policy)
   function attachAdminUserListeners() {
-    // Bulk toggle button
     const bulkBtn = document.getElementById('bulk-toggle-btn');
     if (bulkBtn && !bulkBtn.dataset.listenerAttached) {
       bulkBtn.dataset.listenerAttached = 'true';
@@ -515,47 +445,38 @@
       });
     }
 
-    // Select-all checkbox
     const selectAll = document.getElementById('select-all-users');
     if (selectAll && !selectAll.dataset.listenerAttached) {
       selectAll.dataset.listenerAttached = 'true';
-      selectAll.addEventListener('change', function() {
-        toggleAllUsers(this);
-      });
+      selectAll.addEventListener('change', function() { toggleAllUsers(this); });
     }
 
-    // Individual "Groups" buttons (open per-user modal)
     document.querySelectorAll('.open-group-modal-btn').forEach(function(btn) {
       if (btn.dataset.listenerAttached === 'true') return;
       btn.dataset.listenerAttached = 'true';
       btn.addEventListener('click', function() {
-        var modalId = btn.dataset.modalId;
-        var modal = document.getElementById(modalId);
-        if (modal) modal.classList.remove('hidden');
+        var modal = document.getElementById(btn.dataset.modalId);
+        if (modal) modal.classList.remove('is-hidden');
       });
     });
 
-    // Close buttons inside individual group modals (X and Cancel)
     document.querySelectorAll('.close-group-modal-btn').forEach(function(btn) {
       if (btn.dataset.listenerAttached === 'true') return;
       btn.dataset.listenerAttached = 'true';
       btn.addEventListener('click', function() {
-        var modalId = btn.dataset.modalId;
-        var modal = document.getElementById(modalId);
-        if (modal) modal.classList.add('hidden');
+        var modal = document.getElementById(btn.dataset.modalId);
+        if (modal) modal.classList.add('is-hidden');
       });
     });
 
-    // Close buttons inside bulk group modal (X and Cancel)
     document.querySelectorAll('.close-bulk-modal-btn').forEach(function(btn) {
       if (btn.dataset.listenerAttached === 'true') return;
       btn.dataset.listenerAttached = 'true';
       btn.addEventListener('click', function() {
-        document.getElementById('bulk-group-modal').classList.add('hidden');
+        document.getElementById('bulk-group-modal').classList.add('is-hidden');
       });
     });
 
-    // User checkboxes - update count on change
     document.querySelectorAll('.user-checkbox').forEach(function(cb) {
       if (cb.dataset.listenerAttached === 'true') return;
       cb.dataset.listenerAttached = 'true';
@@ -563,26 +484,41 @@
     });
   }
 
-  // Handle password reset button clicks using event delegation (works with Turbo)
   function attachResetListeners() {
     document.querySelectorAll('.reset-password-btn').forEach(function(buttonElement) {
-      // Skip if already has listener (check for data attribute)
-      if (buttonElement.dataset.listenerAttached === 'true') {
-        return;
-      }
+      if (buttonElement.dataset.listenerAttached === 'true') return;
       buttonElement.dataset.listenerAttached = 'true';
-      
       buttonElement.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        const userId = buttonElement.dataset.userId;
-        const userEmail = buttonElement.dataset.userEmail;
-        resetUserPassword(userId, userEmail, buttonElement);
+        resetUserPassword(buttonElement.dataset.userId, buttonElement.dataset.userEmail, buttonElement);
       });
     });
   }
 
-  // Attach all listeners on initial load
+  function attachModalCloseListeners() {
+    const modal = document.getElementById('password-reset-modal');
+    if (!modal) return;
+
+    const closeXBtn = document.getElementById('password-reset-modal-close-x');
+    if (closeXBtn && !closeXBtn.dataset.listenerAttached) {
+      closeXBtn.dataset.listenerAttached = 'true';
+      closeXBtn.addEventListener('click', function() { modal.classList.add('is-hidden'); });
+    }
+
+    const doneBtn = document.getElementById('password-reset-modal-done');
+    if (doneBtn && !doneBtn.dataset.listenerAttached) {
+      doneBtn.dataset.listenerAttached = 'true';
+      doneBtn.addEventListener('click', function() { modal.classList.add('is-hidden'); });
+    }
+
+    const copyBtn = document.getElementById('password-reset-modal-copy');
+    if (copyBtn && !copyBtn.dataset.listenerAttached) {
+      copyBtn.dataset.listenerAttached = 'true';
+      copyBtn.addEventListener('click', function() { copyTempPassword(copyBtn); });
+    }
+  }
+
   function attachAllListeners() {
     attachAdminUserListeners();
     attachResetListeners();
@@ -595,40 +531,5 @@
     attachAllListeners();
   }
 
-  // Re-attach on Turbo navigation
   document.addEventListener('turbo:load', attachAllListeners);
-
-  // Handle password reset modal close buttons
-  function attachModalCloseListeners() {
-    const modal = document.getElementById('password-reset-modal');
-    if (!modal) return;
-
-    // Close X button
-    const closeXBtn = document.getElementById('password-reset-modal-close-x');
-    if (closeXBtn && !closeXBtn.dataset.listenerAttached) {
-      closeXBtn.dataset.listenerAttached = 'true';
-      closeXBtn.addEventListener('click', function() {
-        modal.classList.add('hidden');
-      });
-    }
-
-    // Done button
-    const doneBtn = document.getElementById('password-reset-modal-done');
-    if (doneBtn && !doneBtn.dataset.listenerAttached) {
-      doneBtn.dataset.listenerAttached = 'true';
-      doneBtn.addEventListener('click', function() {
-        modal.classList.add('hidden');
-      });
-    }
-
-    // Copy button
-    const copyBtn = document.getElementById('password-reset-modal-copy');
-    if (copyBtn && !copyBtn.dataset.listenerAttached) {
-      copyBtn.dataset.listenerAttached = 'true';
-      copyBtn.addEventListener('click', function() {
-        copyTempPassword(copyBtn);
-      });
-    }
-  }
 </script>
-
