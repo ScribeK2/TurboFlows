@@ -10,7 +10,7 @@ export default class extends Controller {
     if (!childrenList) return
     
     // Toggle visibility
-    childrenList.classList.toggle('hidden')
+    childrenList.classList.toggle('is-hidden')
     
     // Rotate icon
     if (icon) {

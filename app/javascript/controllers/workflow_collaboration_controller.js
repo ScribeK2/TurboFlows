@@ -538,11 +538,7 @@ export default class extends Controller {
   showNotification(message, type = "info") {
     // Create a simple toast notification
     const notification = document.createElement("div")
-    notification.className = `fixed top-4 right-4 z-50 px-4 py-2 rounded-lg shadow-lg text-sm ${
-      type === "info" ? "bg-blue-500 text-white" : 
-      type === "error" ? "bg-red-500 text-white" : 
-      "bg-gray-500 text-white"
-    }`
+    notification.className = `toast toast--${type}`
     notification.textContent = message
     
     document.body.appendChild(notification)

@@ -18,11 +18,11 @@ export default class extends Controller {
 
     // Amber color when near limit (>80%)
     if (length > max * 0.8) {
-      this.counterTarget.classList.add("text-amber-500", "dark:text-amber-400")
-      this.counterTarget.classList.remove("text-gray-500", "dark:text-gray-400")
+      this.counterTarget.classList.add("status--warning")
+      this.counterTarget.classList.remove("status--muted")
     } else {
-      this.counterTarget.classList.remove("text-amber-500", "dark:text-amber-400")
-      this.counterTarget.classList.add("text-gray-500", "dark:text-gray-400")
+      this.counterTarget.classList.remove("status--warning")
+      this.counterTarget.classList.add("status--muted")
     }
 
     // Disable submit when empty or still default

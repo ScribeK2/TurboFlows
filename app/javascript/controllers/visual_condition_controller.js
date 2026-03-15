@@ -220,7 +220,7 @@ export default class extends Controller {
     
     // Create select element
     const select = document.createElement('select')
-    select.className = 'w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+    select.className = 'form-select'
     select.dataset.visualConditionTarget = 'valueSelect'
     select.dataset.action = 'change->visual-condition#updateCondition'
     
@@ -255,7 +255,7 @@ export default class extends Controller {
     // Create input element
     const input = document.createElement('input')
     input.type = type
-    input.className = 'w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+    input.className = 'form-input'
     input.placeholder = type === 'number' ? 'Enter a number...' : 'Enter a value...'
     input.dataset.visualConditionTarget = 'valueInput'
     input.dataset.action = 'input->visual-condition#updateCondition'
@@ -342,10 +342,10 @@ export default class extends Controller {
         <span class="text-gray-600 dark:text-gray-400">${this.escapeHtml(operatorLabel)}</span>
         <span class="text-green-600 dark:text-green-400 font-medium">"${this.escapeHtml(valueDisplay)}"</span>
       `
-      this.conditionPreviewTarget.classList.remove('text-gray-400', 'italic')
+      this.conditionPreviewTarget.classList.remove('is-empty')
     } else {
       this.conditionPreviewTarget.textContent = 'Select a variable and value to create a condition'
-      this.conditionPreviewTarget.classList.add('text-gray-400', 'italic')
+      this.conditionPreviewTarget.classList.add('is-empty')
     }
   }
 

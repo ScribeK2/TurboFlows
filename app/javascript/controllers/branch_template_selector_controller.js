@@ -41,7 +41,7 @@ export default class extends Controller {
       if (event.target.matches('[data-rule-builder-target="variableSelect"]')) {
         this.variableValue = event.target.value
         // Only reload if panel is visible
-        if (this.hasPanelTarget && !this.panelTarget.classList.contains('hidden')) {
+        if (this.hasPanelTarget && !this.panelTarget.classList.contains('is-hidden')) {
           if (this.loadTimeout) clearTimeout(this.loadTimeout)
           this.loadTimeout = setTimeout(() => {
             this.loadTemplates()
@@ -249,7 +249,7 @@ export default class extends Controller {
     }
     
     this.customizationContentTarget.innerHTML = customizationHtml
-    this.customizationPanelTarget.classList.remove('hidden')
+    this.customizationPanelTarget.classList.remove('is-hidden')
     
     // Scroll to customization panel
     this.customizationPanelTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -486,7 +486,7 @@ export default class extends Controller {
 
   hideCustomizationPanel() {
     if (this.hasCustomizationPanelTarget) {
-      this.customizationPanelTarget.classList.add('hidden')
+      this.customizationPanelTarget.classList.add('is-hidden')
     }
   }
 
@@ -508,13 +508,13 @@ export default class extends Controller {
     
     if (!this.hasPanelTarget) return
     
-    const isHidden = this.panelTarget.classList.contains('hidden')
+    const isHidden = this.panelTarget.classList.contains('is-hidden')
     
     if (isHidden) {
       // Show panel and backdrop
-      this.panelTarget.classList.remove('hidden')
+      this.panelTarget.classList.remove('is-hidden')
       if (this.hasBackdropTarget) {
-        this.backdropTarget.classList.remove('hidden')
+        this.backdropTarget.classList.remove('is-hidden')
       }
       this.loadTemplates()
       
@@ -526,9 +526,9 @@ export default class extends Controller {
       document.addEventListener('keydown', this.escapeHandler)
     } else {
       // Hide panel and backdrop
-      this.panelTarget.classList.add('hidden')
+      this.panelTarget.classList.add('is-hidden')
       if (this.hasBackdropTarget) {
-        this.backdropTarget.classList.add('hidden')
+        this.backdropTarget.classList.add('is-hidden')
       }
       
       // Restore body scroll

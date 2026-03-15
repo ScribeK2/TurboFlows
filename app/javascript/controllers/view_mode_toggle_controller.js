@@ -46,20 +46,20 @@ export default class extends Controller {
     const isList = this.modeValue === "list"
 
     if (this.listContainer) {
-      this.listContainer.classList.toggle("hidden", !isList)
+      this.listContainer.classList.toggle("is-hidden", !isList)
     }
     if (this.visualContainer) {
-      this.visualContainer.classList.toggle("hidden", isList)
+      this.visualContainer.classList.toggle("is-hidden", isList)
     }
 
     // Update button styling
     if (this.hasListBtnTarget && this.hasVisualBtnTarget) {
       if (isList) {
-        this.listBtnTarget.className = "px-4 py-1.5 text-sm font-medium rounded-md transition-colors bg-slate-600 text-white"
-        this.visualBtnTarget.className = "px-4 py-1.5 text-sm font-medium rounded-md transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+        this.listBtnTarget.className = "view-mode-btn is-active"
+        this.visualBtnTarget.className = "view-mode-btn"
       } else {
-        this.listBtnTarget.className = "px-4 py-1.5 text-sm font-medium rounded-md transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
-        this.visualBtnTarget.className = "px-4 py-1.5 text-sm font-medium rounded-md transition-colors bg-slate-600 text-white"
+        this.listBtnTarget.className = "view-mode-btn"
+        this.visualBtnTarget.className = "view-mode-btn is-active"
       }
     }
 

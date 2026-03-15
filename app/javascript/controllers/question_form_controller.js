@@ -84,9 +84,9 @@ export default class extends Controller {
       const label = radio.closest('label')
       if (!label) return
       if (radio.value === answerType) {
-        label.classList.add('bg-blue-50', 'border-blue-500')
+        label.classList.add('is-selected')
       } else {
-        label.classList.remove('bg-blue-50', 'border-blue-500')
+        label.classList.remove('is-selected')
       }
     })
 

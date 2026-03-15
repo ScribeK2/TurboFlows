@@ -42,26 +42,26 @@ export default class extends Controller {
 
   addFieldToDOM(field, index) {
     const fieldDiv = document.createElement("div")
-    fieldDiv.className = "flex gap-2 items-start"
+    fieldDiv.className = "output-field-row"
     fieldDiv.setAttribute("data-field-index", index)
     
     fieldDiv.innerHTML = `
-      <div class="flex-1 grid grid-cols-2 gap-2">
-        <input type="text" 
+      <div class="output-field-inputs">
+        <input type="text"
                placeholder="Variable name (e.g., status)"
                value="${this.escapeHtml(field.name || "")}"
-               class="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
+               class="form-input"
                data-action="input->output-fields#updateField"
                data-field-attr="name">
-        <input type="text" 
+        <input type="text"
                placeholder="Value (e.g., completed or {{other_var}})"
                value="${this.escapeHtml(field.value || "")}"
-               class="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
+               class="form-input"
                data-action="input->output-fields#updateField"
                data-field-attr="value">
       </div>
-      <button type="button" 
-              class="px-3 py-2 text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+      <button type="button"
+              class="btn btn--negative btn--sm"
               data-action="click->output-fields#removeField">
         Remove
       </button>

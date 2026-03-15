@@ -8,7 +8,7 @@ export default class extends Controller {
     const modal = document.getElementById(`template-preview-modal-${this.templateIdValue}`)
     if (!modal) return
 
-    modal.classList.remove("hidden")
+    modal.classList.remove("is-hidden")
     document.body.style.overflow = "hidden"
 
     // Trigger flow preview render after modal is visible

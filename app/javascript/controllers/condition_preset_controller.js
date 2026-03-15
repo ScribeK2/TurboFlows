@@ -541,7 +541,7 @@ export default class extends Controller {
    */
   showCustomInput() {
     if (!this.hasCustomContainerTarget) return
-    this.customContainerTarget.classList.remove('hidden')
+    this.customContainerTarget.classList.remove('is-hidden')
   }
 
   /**
@@ -549,7 +549,7 @@ export default class extends Controller {
    */
   hideCustomInput() {
     if (!this.hasCustomContainerTarget) return
-    this.customContainerTarget.classList.add('hidden')
+    this.customContainerTarget.classList.add('is-hidden')
   }
 
   /**
@@ -557,7 +557,7 @@ export default class extends Controller {
    */
   showNumericInput() {
     if (!this.hasNumericContainerTarget) return
-    this.numericContainerTarget.classList.remove('hidden')
+    this.numericContainerTarget.classList.remove('is-hidden')
   }
 
   /**
@@ -565,7 +565,7 @@ export default class extends Controller {
    */
   hideNumericInput() {
     if (!this.hasNumericContainerTarget) return
-    this.numericContainerTarget.classList.add('hidden')
+    this.numericContainerTarget.classList.add('is-hidden')
   }
 
   /**

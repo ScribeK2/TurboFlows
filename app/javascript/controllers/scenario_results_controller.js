@@ -27,8 +27,8 @@ export default class extends Controller {
     const icon = this.toggleIconTargets[index]
     if (!details) return
 
-    const isHidden = details.classList.contains("hidden")
-    details.classList.toggle("hidden")
+    const isHidden = details.classList.contains("is-hidden")
+    details.classList.toggle("is-hidden")
 
     if (icon) {
       icon.style.transform = isHidden ? "rotate(90deg)" : ""
@@ -40,7 +40,7 @@ export default class extends Controller {
 
   expandAll() {
     this.detailsTargets.forEach((details, index) => {
-      details.classList.remove("hidden")
+      details.classList.remove("is-hidden")
       const icon = this.toggleIconTargets[index]
       if (icon) icon.style.transform = "rotate(90deg)"
     })
@@ -52,7 +52,7 @@ export default class extends Controller {
 
   collapseAll() {
     this.detailsTargets.forEach((details, index) => {
-      details.classList.add("hidden")
+      details.classList.add("is-hidden")
       const icon = this.toggleIconTargets[index]
       if (icon) icon.style.transform = ""
     })

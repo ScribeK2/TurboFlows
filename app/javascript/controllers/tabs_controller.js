@@ -31,21 +31,21 @@ export default class extends Controller {
   showTab(index) {
     this.tabTargets.forEach((tab, i) => {
       if (i === index) {
-        tab.classList.add("border-slate-600", "text-slate-700", "dark:border-slate-400", "dark:text-slate-200")
-        tab.classList.remove("border-transparent", "text-gray-500", "dark:text-gray-400")
+        tab.classList.add("is-active")
+        tab.classList.remove("is-inactive")
         tab.setAttribute("aria-selected", "true")
       } else {
-        tab.classList.remove("border-slate-600", "text-slate-700", "dark:border-slate-400", "dark:text-slate-200")
-        tab.classList.add("border-transparent", "text-gray-500", "dark:text-gray-400")
+        tab.classList.remove("is-active")
+        tab.classList.add("is-inactive")
         tab.setAttribute("aria-selected", "false")
       }
     })
 
     this.panelTargets.forEach((panel, i) => {
       if (i === index) {
-        panel.classList.remove("hidden")
+        panel.classList.remove("is-hidden")
       } else {
-        panel.classList.add("hidden")
+        panel.classList.add("is-hidden")
       }
     })
   }

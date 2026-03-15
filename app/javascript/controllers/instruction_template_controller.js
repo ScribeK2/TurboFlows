@@ -219,13 +219,8 @@ export default class extends Controller {
     if (this.hasCategoryTabsTarget) {
       this.categoryTabsTarget.querySelectorAll("button").forEach(btn => {
         const isActive = btn.dataset.category === category
-        btn.classList.toggle("bg-emerald-100", isActive)
-        btn.classList.toggle("text-emerald-700", isActive)
-        btn.classList.toggle("dark:bg-emerald-900/30", isActive)
-        btn.classList.toggle("dark:text-emerald-300", isActive)
-        btn.classList.toggle("bg-transparent", !isActive)
-        btn.classList.toggle("text-slate-600", !isActive)
-        btn.classList.toggle("dark:text-slate-400", !isActive)
+        btn.classList.toggle("is-active", isActive)
+        btn.classList.toggle("is-inactive", !isActive)
       })
     }
     

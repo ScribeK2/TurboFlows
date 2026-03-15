@@ -266,7 +266,7 @@ export default class extends Controller {
       this.conditionInputTarget.value = ""
       if (this.hasConditionDisplayTarget) {
         this.conditionDisplayTarget.textContent = "Not set"
-        this.conditionDisplayTarget.className = "text-gray-400 italic"
+        this.conditionDisplayTarget.className = "condition-display is-empty"
       }
       this.updateValidation("")
       return
@@ -301,9 +301,9 @@ export default class extends Controller {
     // Update display with formatted condition
     if (this.hasConditionDisplayTarget) {
       this.conditionDisplayTarget.textContent = condition || "Not set"
-      this.conditionDisplayTarget.className = condition 
-        ? "text-gray-900 font-mono" 
-        : "text-gray-400 italic"
+      this.conditionDisplayTarget.className = condition
+        ? "condition-display"
+        : "condition-display is-empty"
     }
     
     // Trigger input event for preview updater
@@ -339,14 +339,14 @@ export default class extends Controller {
     
     if (!validation || !validation.message) {
       this.validationMessageTarget.textContent = ""
-      this.validationMessageTarget.className = "hidden"
+      this.validationMessageTarget.className = "is-hidden"
       return
     }
     
     this.validationMessageTarget.textContent = validation.message
     this.validationMessageTarget.className = validation.valid
-      ? "text-xs text-green-600 mt-1"
-      : "text-xs text-red-600 mt-1"
+      ? "validation-message status--success"
+      : "validation-message status--error"
   }
   
   getVariableType(variable) {

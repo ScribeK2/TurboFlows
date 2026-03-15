@@ -34,12 +34,12 @@ export default class extends Controller {
     if (!childrenList) return
     
     // Smooth toggle with animation
-    const isHidden = childrenList.classList.contains('hidden')
+    const isHidden = childrenList.classList.contains('is-hidden')
     
     if (isHidden) {
       // Expand
       childrenList.style.maxHeight = '0'
-      childrenList.classList.remove('hidden')
+      childrenList.classList.remove('is-hidden')
       // Force reflow
       childrenList.offsetHeight
       childrenList.style.maxHeight = childrenList.scrollHeight + 'px'
@@ -73,7 +73,7 @@ export default class extends Controller {
       
       // Hide after animation
       setTimeout(() => {
-        childrenList.classList.add('hidden')
+        childrenList.classList.add('is-hidden')
         childrenList.style.maxHeight = ''
       }, 300)
     }
@@ -92,9 +92,9 @@ export default class extends Controller {
         const childrenList = this.element.querySelector(`[data-children][data-group-id="${groupId}"]`)
         const toggleButton = current.querySelector(`[data-group-id="${groupId}"].group-toggle`)
         
-        if (childrenList && childrenList.classList.contains('hidden')) {
+        if (childrenList && childrenList.classList.contains('is-hidden')) {
           // Expand without animation for initial load
-          childrenList.classList.remove('hidden')
+          childrenList.classList.remove('is-hidden')
           childrenList.style.maxHeight = 'none'
           const icon = toggleButton?.querySelector('[data-icon]')
           if (icon) {
@@ -122,7 +122,7 @@ export default class extends Controller {
         if (toggleButton && item.querySelector('[data-children]')) {
           event.preventDefault()
           const childrenList = item.querySelector(`[data-children][data-group-id="${groupId}"]`)
-          if (childrenList && childrenList.classList.contains('hidden')) {
+          if (childrenList && childrenList.classList.contains('is-hidden')) {
             toggleButton.click()
           }
         }
@@ -131,7 +131,7 @@ export default class extends Controller {
         if (toggleButton && item.querySelector('[data-children]')) {
           event.preventDefault()
           const childrenList = item.querySelector(`[data-children][data-group-id="${groupId}"]`)
-          if (childrenList && !childrenList.classList.contains('hidden')) {
+          if (childrenList && !childrenList.classList.contains('is-hidden')) {
             toggleButton.click()
           }
         }

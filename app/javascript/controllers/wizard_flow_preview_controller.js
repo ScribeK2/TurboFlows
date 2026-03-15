@@ -184,7 +184,7 @@ export default class extends Controller {
       if (this.hasCanvasTarget) {
         this.canvasTarget.textContent = ''
         const msg = document.createElement('p')
-        msg.className = 'text-gray-500 dark:text-gray-400 text-center py-8'
+        msg.className = 'flowchart-empty'
         msg.textContent = 'No steps to preview. Add steps to see the flowchart.'
         this.canvasTarget.appendChild(msg)
       }

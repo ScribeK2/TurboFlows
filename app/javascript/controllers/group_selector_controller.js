@@ -22,7 +22,7 @@ export default class extends Controller {
       const groupOption = button.closest(".group-option")
       const childrenContainer = groupOption.querySelector(".children")
       if (childrenContainer) {
-        const isExpanded = !childrenContainer.classList.contains("hidden")
+        const isExpanded = !childrenContainer.classList.contains("is-hidden")
         const icon = button.querySelector("svg")
         if (icon) {
           if (isExpanded) {
@@ -43,7 +43,7 @@ export default class extends Controller {
 
   toggle(event) {
     event.stopPropagation()
-    this.dropdownTarget.classList.toggle("hidden")
+    this.dropdownTarget.classList.toggle("is-hidden")
   }
 
   filter(event) {
@@ -53,11 +53,11 @@ export default class extends Controller {
     if (searchTerm === "") {
       // Show all options when search is cleared
       options.forEach(option => {
-        option.classList.remove("hidden")
+        option.classList.remove("is-hidden")
         // Expand all when search is cleared (optional - you might want to keep collapsed state)
         const childrenContainer = option.querySelector(".children")
         if (childrenContainer) {
-          childrenContainer.classList.remove("hidden")
+          childrenContainer.classList.remove("is-hidden")
         }
       })
       return
@@ -67,11 +67,11 @@ export default class extends Controller {
     options.forEach(option => {
       const matches = this.matchesSearch(option, searchTerm)
       if (matches) {
-        option.classList.remove("hidden")
+        option.classList.remove("is-hidden")
         // Expand parent containers to show matching children
         this.expandToShow(option)
       } else {
-        option.classList.add("hidden")
+        option.classList.add("is-hidden")
       }
     })
   }
@@ -99,11 +99,11 @@ export default class extends Controller {
     let current = option.parentElement
     while (current && current !== this.treeTarget) {
       if (current.classList.contains("children")) {
-        current.classList.remove("hidden")
+        current.classList.remove("is-hidden")
         // Also show the parent group-option
         const parentOption = current.closest(".group-option")
         if (parentOption) {
-          parentOption.classList.remove("hidden")
+          parentOption.classList.remove("is-hidden")
         }
       }
       current = current.parentElement
@@ -152,7 +152,7 @@ export default class extends Controller {
       if (existingHiddenField) {
         // Hidden field exists but badge doesn't - create badge only
         const badge = document.createElement("span")
-        badge.className = "inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-all duration-200"
+        badge.className = "group-badge"
         badge.dataset.selectedId = groupId
         
         badge.innerHTML = `
@@ -160,8 +160,8 @@ export default class extends Controller {
           <button type="button" 
                   data-action="click->group-selector#remove"
                   data-group-id="${groupId}"
-                  class="ml-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 rounded">
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  class="group-badge__remove">
+            <svg class="group-badge__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
@@ -173,7 +173,7 @@ export default class extends Controller {
     
     // Neither badge nor hidden field exists - create both
     const badge = document.createElement("span")
-    badge.className = "inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-all duration-200"
+    badge.className = "group-badge"
     badge.dataset.selectedId = groupId
     
     badge.innerHTML = `
@@ -181,8 +181,8 @@ export default class extends Controller {
       <button type="button" 
               data-action="click->group-selector#remove"
               data-group-id="${groupId}"
-              class="ml-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 rounded">
-        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              class="group-badge__remove">
+        <svg class="group-badge__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
@@ -225,8 +225,8 @@ export default class extends Controller {
   }
 
   clickOutside(event) {
-    if (!this.element.contains(event.target) && !this.dropdownTarget.classList.contains("hidden")) {
-      this.dropdownTarget.classList.add("hidden")
+    if (!this.element.contains(event.target) && !this.dropdownTarget.classList.contains("is-hidden")) {
+      this.dropdownTarget.classList.add("is-hidden")
     }
   }
   
@@ -238,8 +238,8 @@ export default class extends Controller {
     const childrenContainer = groupOption.querySelector(".children")
     
     if (childrenContainer) {
-      const isExpanded = !childrenContainer.classList.contains("hidden")
-      childrenContainer.classList.toggle("hidden")
+      const isExpanded = !childrenContainer.classList.contains("is-hidden")
+      childrenContainer.classList.toggle("is-hidden")
       
       // Update icon
       const icon = button.querySelector("svg")
