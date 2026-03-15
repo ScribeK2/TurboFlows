@@ -133,6 +133,9 @@ semgrep-results*/
 # Playwright MCP
 .playwright-mcp/
 
+# Superpowers brainstorm
+.superpowers/
+
 # Screenshots (UI review artifacts)
 admin.png
 dashboard.png
