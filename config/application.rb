@@ -21,6 +21,6 @@ module Kizuflow
     config.time_zone = "UTC"
 
     # JavaScript via importmap-rails (no Node.js required)
-    # CSS via tailwindcss-rails standalone CLI
+    # CSS via Propshaft + vanilla CSS (no Tailwind)
   end
 end

@@ -14,7 +14,7 @@ Rails.application.configure do
 
   # Enable static file serving from the `/public` folder (turn off if using NGINX/Apache for it).
   # On Render, we need to serve static files ourselves, so enable this
-  # Static files served by Rails (importmap JS + tailwindcss-rails CSS)
+  # Static files served by Rails (importmap JS + Propshaft-compiled vanilla CSS)
   config.public_file_server.enabled = ENV.fetch("RAILS_SERVE_STATIC_FILES", "true") == "true"
   config.public_file_server.headers = {
     'Cache-Control' => "public, max-age=31536000"
