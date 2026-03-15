@@ -1,1 +1,55 @@
-/* base.css — Kizuflow Design System */
+/* base.css — Base element styles */
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  color: var(--color-ink);
+  background-color: var(--color-canvas);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  line-height: 1.25;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+h1 { font-size: var(--text-2xl); }
+h2 { font-size: var(--text-xl); }
+h3 { font-size: var(--text-lg); }
+
+a {
+  color: var(--color-link);
+  transition: color 0.1s ease;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+a:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+code, pre, kbd {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+kbd {
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-canvas-raised);
+  font-size: 0.8em;
+}
+
+::selection {
+  background: oklch(0.55 0.2 260 / 0.3);
+}
+
+[data-theme="dark"] ::selection {
+  background: oklch(0.7 0.18 260 / 0.3);
+}
