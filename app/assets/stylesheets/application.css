@@ -1,58 +1,41 @@
-/*
- * This is a manifest file that'll be compiled into application.css, which will include all the files
- * listed below.
- *
- * Any CSS (and SCSS, if configured) file within this directory, lib/assets/stylesheets, or any plugin's
- * vendor/assets/stylesheets directory can be referenced here using a relative path.
- *
- * You're free to add application-wide styles to this file and they'll appear at the bottom of the
- * compiled file so the styles you add here take precedence over styles defined in any other CSS
- * files in this directory. Styles in this file should be added after the last require_* statement.
- * It is generally better to create a new file per style scope.
- *
- */
+/* Kizuflow Design System
+ * Vanilla CSS with @layer cascade, inspired by 37signals Fizzy.
+ * Propshaft serves these as static files — no build step.
+ * @import resolved by browser at runtime (HTTP/2 multiplexing). */
 
-/* Image lightbox modal */
-.image-lightbox-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(0, 0, 0, 0.85);
-  padding: 2rem;
-  cursor: pointer;
-}
+@layer reset, base, components, modules, utilities;
 
-.image-lightbox-overlay img {
-  max-width: 90vw;
-  max-height: 90vh;
-  object-fit: contain;
-  border-radius: 0.5rem;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  cursor: default;
-}
+/* Foundation */
+@import "_variables.css" layer(base);
+@import "reset.css" layer(reset);
+@import "base.css" layer(base);
 
-.image-lightbox-close {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  width: 2.5rem;
-  height: 2.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(255, 255, 255, 0.15);
-  border: none;
-  border-radius: 9999px;
-  color: white;
-  font-size: 1.25rem;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
+/* Components (reusable UI elements) */
+@import "buttons.css" layer(components);
+@import "forms.css" layer(components);
+@import "cards.css" layer(components);
+@import "tables.css" layer(components);
+@import "badges.css" layer(components);
+@import "dialogs.css" layer(components);
+@import "flash.css" layer(components);
+@import "dropdowns.css" layer(components);
+@import "tooltips.css" layer(components);
+@import "pagination.css" layer(components);
+@import "icons.css" layer(components);
 
-.image-lightbox-close:hover {
-  background-color: rgba(255, 255, 255, 0.3);
-}
+/* Modules (page/feature-specific) */
+@import "layout.css" layer(modules);
+@import "navigation.css" layer(modules);
+@import "dashboard.css" layer(modules);
+@import "workflows.css" layer(modules);
+@import "editor.css" layer(modules);
+@import "steps.css" layer(modules);
+@import "transitions.css" layer(modules);
+@import "scenarios.css" layer(modules);
+@import "admin.css" layer(modules);
+@import "auth.css" layer(modules);
 
+/* Utilities (last — highest priority) */
+@import "animations.css" layer(utilities);
+@import "utilities.css" layer(utilities);
+@import "print.css" layer(utilities);
