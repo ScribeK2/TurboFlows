@@ -1,41 +1,41 @@
-<div class="max-w-4xl mx-auto px-4 py-8">
-  <div class="mb-6 flex justify-between items-center">
+<div class="page-content">
+  <div class="mb-4 flex items-center justify-between">
     <div>
-      <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-100">Folders in <%= @group.name %></h1>
-      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Organize workflows into folders within this group.</p>
+      <h1>Folders in <%= @group.name %></h1>
+      <p class="text-sm mt-1">Organize workflows into folders within this group.</p>
     </div>
-    <div class="flex space-x-3">
-      <%= link_to admin_groups_path, class: "px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors" do %>
+    <div class="flex gap-2">
+      <%= link_to admin_groups_path, class: "btn btn--secondary" do %>
         Back to Groups
       <% end %>
-      <%= link_to new_admin_group_folder_path(@group), class: "px-4 py-2 text-sm font-medium text-white bg-slate-600 hover:bg-slate-700 rounded-lg shadow-sm transition-colors" do %>
+      <%= link_to new_admin_group_folder_path(@group), class: "btn btn--primary" do %>
         New Folder
       <% end %>
     </div>
   </div>
 
   <% if @folders.any? %>
-    <div class="solid-card overflow-hidden">
-      <ul class="divide-y divide-slate-200 dark:divide-slate-700" data-controller="sortable-folders" data-sortable-folders-url-value="<%= admin_group_reorder_folders_path(@group) %>">
+    <div class="card">
+      <ul data-controller="sortable-folders" data-sortable-folders-url-value="<%= admin_group_reorder_folders_path(@group) %>">
         <% @folders.each do |folder| %>
-          <li class="px-6 py-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors" data-folder-id="<%= folder.id %>">
-            <div class="flex items-center">
-              <svg class="w-5 h-5 text-slate-400 mr-3 cursor-move" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <li class="wf-list-item" data-folder-id="<%= folder.id %>">
+            <div class="flex items-center flex-1 min-w-0">
+              <svg class="icon icon--sm mr-3 cursor-move flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16" />
               </svg>
               <div>
-                <span class="font-medium text-slate-800 dark:text-slate-200"><%= folder.name %></span>
-                <span class="ml-2 text-xs text-gray-500 dark:text-gray-400"><%= pluralize(folder.workflows_count, "workflow") %></span>
+                <span class="font-medium"><%= folder.name %></span>
+                <span class="text-xs ml-2"><%= pluralize(folder.workflows_count, "workflow") %></span>
                 <% if folder.description.present? %>
-                  <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5"><%= truncate(folder.description, length: 80) %></p>
+                  <p class="text-xs mt-0.5"><%= truncate(folder.description, length: 80) %></p>
                 <% end %>
               </div>
             </div>
-            <div class="flex items-center space-x-2">
-              <%= link_to edit_admin_group_folder_path(@group, folder), class: "px-3 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors" do %>
+            <div class="flex items-center gap-2">
+              <%= link_to edit_admin_group_folder_path(@group, folder), class: "btn btn--sm btn--secondary" do %>
                 Edit
               <% end %>
-              <%= link_to admin_group_folder_path(@group, folder), data: { turbo_method: :delete, turbo_confirm: "Delete folder '#{folder.name}'? Workflows will be moved to Uncategorized." }, class: "px-3 py-1 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors" do %>
+              <%= link_to admin_group_folder_path(@group, folder), data: { turbo_method: :delete, turbo_confirm: "Delete folder '#{folder.name}'? Workflows will be moved to Uncategorized." }, class: "btn btn--sm btn--negative" do %>
                 Delete
               <% end %>
             </div>
@@ -44,8 +44,8 @@
       </ul>
     </div>
   <% else %>
-    <div class="solid-card p-8 text-center">
-      <p class="text-gray-500 dark:text-gray-400">No folders yet. Create one to start organizing workflows.</p>
+    <div class="empty-state">
+      <p class="empty-state__text">No folders yet. Create one to start organizing workflows.</p>
     </div>
   <% end %>
 </div>

@@ -1,43 +1,41 @@
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="page-content">
   <!-- Breadcrumb -->
-  <nav class="mb-6 animate-fade-in">
-    <ol class="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-      <li><%= link_to "Admin", admin_root_path, class: "hover:text-gray-700 dark:hover:text-gray-300 transition-colors" %></li>
+  <nav class="mb-4">
+    <ol class="flex items-center gap-2 text-sm">
+      <li><%= link_to "Admin", admin_root_path %></li>
       <li><span>/</span></li>
-      <li><%= link_to "Groups", admin_groups_path, class: "hover:text-gray-700 dark:hover:text-gray-300 transition-colors" %></li>
+      <li><%= link_to "Groups", admin_groups_path %></li>
       <li><span>/</span></li>
-      <li class="text-gray-900 dark:text-gray-100 font-medium"><%= @group.name %></li>
+      <li class="font-medium"><%= @group.name %></li>
     </ol>
   </nav>
 
   <!-- Header Section -->
-  <div class="mb-8 flex justify-between items-center animate-fade-in">
+  <div class="mb-4 flex items-center justify-between">
     <div>
-      <h1 class="text-4xl md:text-5xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
-        <%= @group.name %>
-      </h1>
+      <h1><%= @group.name %></h1>
       <% if @group.description.present? %>
-        <p class="mt-2 text-lg text-gray-600 dark:text-gray-400"><%= @group.description %></p>
+        <p class="text-sm mt-1"><%= @group.description %></p>
       <% end %>
-      <div class="mt-2 flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+      <div class="flex items-center gap-4 text-sm mt-2">
         <span>Path: <%= @group.full_path %></span>
-        <span>•</span>
+        <span>&bull;</span>
         <span><%= pluralize(@group.workflows_count(include_descendants: true), 'workflow') %></span>
         <% if @group.parent.present? %>
-          <span>•</span>
-          <span>Parent: <%= link_to @group.parent.name, admin_group_path(@group.parent), class: "hover:text-blue-600 dark:hover:text-blue-400 transition-colors" %></span>
+          <span>&bull;</span>
+          <span>Parent: <%= link_to @group.parent.name, admin_group_path(@group.parent) %></span>
         <% end %>
       </div>
     </div>
     <div class="flex gap-2">
-      <%= link_to admin_groups_path, class: "bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 inline-flex items-center" do %>
-        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <%= link_to admin_groups_path, class: "btn btn--secondary flex items-center gap-2" do %>
+        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
         </svg>
         Back to Groups
       <% end %>
-      <%= link_to edit_admin_group_path(@group), class: "bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 inline-flex items-center" do %>
-        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <%= link_to edit_admin_group_path(@group), class: "btn btn--secondary flex items-center gap-2" do %>
+        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
         </svg>
         Edit Group
@@ -47,40 +45,33 @@
 
   <!-- Workflows in this Group -->
   <% if @workflows.any? %>
-    <div class="solid-card overflow-hidden animate-fade-in-up">
-      <div class="px-6 py-5 border-b border-slate-200 dark:border-slate-700">
-        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Workflows in this Group</h2>
+    <div class="card">
+      <div class="card__header">
+        <h2>Workflows in this Group</h2>
       </div>
-      <div class="divide-y divide-white/20 dark:divide-gray-700/30">
-        <% @workflows.each do |workflow| %>
-          <div class="px-6 py-4 hover:bg-white/10 dark:hover:bg-gray-800/10 transition-colors duration-200">
-            <div class="flex items-center justify-between">
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 mb-1">
-                  <%= link_to workflow.title, workflow_path(workflow), class: "text-base font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors" %>
-                  <% if workflow.is_public? %>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
-                      Public
-                    </span>
-                  <% end %>
-                </div>
-                <p class="text-sm text-gray-500 dark:text-gray-400">
-                  by <%= workflow.user.email %> • <%= pluralize(workflow.steps.size, "step") %> • Created <%= time_ago_in_words(workflow.created_at) %> ago
-                </p>
-              </div>
+      <% @workflows.each do |workflow| %>
+        <div class="wf-list-item">
+          <div class="wf-list-item__info">
+            <div class="flex items-center gap-2 mb-1">
+              <%= link_to workflow.title, workflow_path(workflow), class: "wf-list-item__title" %>
+              <% if workflow.is_public? %>
+                <span class="badge badge--published">Public</span>
+              <% end %>
             </div>
+            <p class="wf-list-item__meta">
+              by <%= workflow.user.email %> &bull; <%= pluralize(workflow.steps.size, "step") %> &bull; Created <%= time_ago_in_words(workflow.created_at) %> ago
+            </p>
           </div>
-        <% end %>
-      </div>
+        </div>
+      <% end %>
     </div>
   <% else %>
-    <div class="solid-card p-12 text-center animate-fade-in-up">
-      <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div class="empty-state">
+      <svg class="empty-state__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
-      <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-gray-100">No workflows in this group</h3>
-      <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Workflows assigned to this group will appear here.</p>
+      <h3 class="empty-state__title">No workflows in this group</h3>
+      <p class="empty-state__text">Workflows assigned to this group will appear here.</p>
     </div>
   <% end %>
 </div>
-

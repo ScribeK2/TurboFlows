@@ -1,77 +1,68 @@
-<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="page-content">
   <!-- Breadcrumb -->
-  <nav class="mb-6 animate-fade-in">
-    <ol class="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-      <li><%= link_to "Admin", admin_root_path, class: "hover:text-gray-700 dark:hover:text-gray-300 transition-colors" %></li>
+  <nav class="mb-4">
+    <ol class="flex items-center gap-2 text-sm">
+      <li><%= link_to "Admin", admin_root_path %></li>
       <li><span>/</span></li>
-      <li><%= link_to "Groups", admin_groups_path, class: "hover:text-gray-700 dark:hover:text-gray-300 transition-colors" %></li>
+      <li><%= link_to "Groups", admin_groups_path %></li>
       <li><span>/</span></li>
-      <li class="text-gray-900 dark:text-gray-100 font-medium">New Group</li>
+      <li class="font-medium">New Group</li>
     </ol>
   </nav>
 
-  <div class="mb-8 animate-fade-in">
-    <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">New Group</h1>
-    <p class="mt-2 text-gray-600 dark:text-gray-400">Create a new group for organizing workflows.</p>
+  <div class="mb-4">
+    <h1>New Group</h1>
+    <p class="text-sm mt-1">Create a new group for organizing workflows.</p>
   </div>
 
-  <%= form_with model: [:admin, @group], local: true, class: "solid-card overflow-hidden animate-fade-in-up" do |form| %>
+  <%= form_with model: [:admin, @group], local: true, class: "card" do |form| %>
     <% if @group.errors.any? %>
-      <div class="mx-6 mt-6 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 p-4">
-        <div class="flex">
-          <div class="ml-3">
-            <h3 class="text-sm font-medium text-red-800 dark:text-red-200">
-              <%= pluralize(@group.errors.count, "error") %> prohibited this group from being saved:
-            </h3>
-            <div class="mt-2 text-sm text-red-700 dark:text-red-300">
-              <ul class="list-disc pl-5 space-y-1">
-                <% @group.errors.full_messages.each do |message| %>
-                  <li><%= message %></li>
-                <% end %>
-              </ul>
-            </div>
+      <div class="card__body">
+        <div class="flash flash--alert">
+          <div class="flash__body">
+            <p class="font-medium"><%= pluralize(@group.errors.count, "error") %> prohibited this group from being saved:</p>
+            <ul class="list-disc pl-5 mt-2 text-sm">
+              <% @group.errors.full_messages.each do |message| %>
+                <li><%= message %></li>
+              <% end %>
+            </ul>
           </div>
         </div>
       </div>
     <% end %>
 
-    <div class="p-6 space-y-6">
-      <div>
-        <%= form.label :name, class: "block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1" %>
-        <%= form.text_field :name, class: "mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 transition-colors", placeholder: "e.g., Customer Experience, Sales, Support" %>
+    <div class="card__body">
+      <div class="form-group">
+        <%= form.label :name, class: "form-label" %>
+        <%= form.text_field :name, class: "form-input", placeholder: "e.g., Customer Experience, Sales, Support" %>
       </div>
 
-      <div>
-        <%= form.label :description, class: "block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1" %>
-        <%= form.text_area :description, rows: 4, class: "mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 transition-colors", placeholder: "Optional description for this group" %>
+      <div class="form-group">
+        <%= form.label :description, class: "form-label" %>
+        <%= form.text_area :description, rows: 4, class: "form-textarea", placeholder: "Optional description for this group" %>
       </div>
 
-      <div>
-        <%= form.label :parent_id, "Parent Group", class: "block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1" %>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
-          Select a parent group to create a subgroup, or leave blank for a root-level group.
-        </p>
-        <%= form.select :parent_id, 
+      <div class="form-group">
+        <%= form.label :parent_id, "Parent Group", class: "form-label" %>
+        <p class="form-hint">Select a parent group to create a subgroup, or leave blank for a root-level group.</p>
+        <%= form.select :parent_id,
             options_from_collection_for_select(@available_parents, :id, :name, @group.parent_id),
             { include_blank: "None (Root Group)" },
-            { class: "mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 transition-colors" } %>
+            { class: "form-select" } %>
       </div>
 
-      <div>
-        <%= form.label :position, class: "block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1" %>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
-          Optional: Set the display order (lower numbers appear first).
-        </p>
-        <%= form.number_field :position, class: "mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 transition-colors", placeholder: "0" %>
+      <div class="form-group">
+        <%= form.label :position, class: "form-label" %>
+        <p class="form-hint">Optional: Set the display order (lower numbers appear first).</p>
+        <%= form.number_field :position, class: "form-input", placeholder: "0" %>
       </div>
+    </div>
 
-      <div class="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
-        <%= link_to admin_groups_path, class: "bg-white hover:bg-gray-50 text-gray-700 px-6 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 transition-all duration-200 hover:scale-105" do %>
-          Cancel
-        <% end %>
-        <%= form.submit "Create Group", class: "bg-slate-600 hover:bg-slate-700 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800" %>
-      </div>
+    <div class="card__footer flex justify-end gap-3">
+      <%= link_to admin_groups_path, class: "btn btn--plain" do %>
+        Cancel
+      <% end %>
+      <%= form.submit "Create Group", class: "btn btn--primary" %>
     </div>
   <% end %>
 </div>
-

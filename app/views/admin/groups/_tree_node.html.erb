@@ -1,75 +1,74 @@
-<li class="group-item" data-group-id="<%= group.id %>">
-  <div class="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-white/10 dark:hover:bg-gray-800/10 transition-colors duration-200" style="padding-left: <%= level * 1.5 + 0.75 %>rem;">
+<li class="group-tree__node" data-group-id="<%= group.id %>">
+  <div class="flex items-center justify-between py-2 px-3 rounded" style="padding-left: <%= level * 1.5 + 0.75 %>rem;">
     <div class="flex items-center flex-1 min-w-0">
       <% if group.children.any? %>
-        <button type="button" 
-                class="group-toggle mr-2 p-1 rounded hover:bg-white/20 dark:hover:bg-gray-700/20 transition-colors"
+        <button type="button"
+                class="group-toggle mr-2 p-1 rounded"
                 data-action="click->group-tree#toggle"
                 data-group-id="<%= group.id %>"
                 aria-label="Toggle group">
-          <svg class="w-4 h-4 text-gray-500 dark:text-gray-400 transform transition-transform" data-icon data-group-id="<%= group.id %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="icon icon--sm" data-icon data-group-id="<%= group.id %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
           </svg>
         </button>
       <% else %>
         <span class="w-6 mr-2"></span>
       <% end %>
-      
+
       <div class="flex items-center gap-2 flex-1 min-w-0">
-        <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="icon icon--sm flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
         </svg>
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
-            <%= link_to admin_group_path(group), class: "text-base font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors" do %>
+            <%= link_to admin_group_path(group), class: "font-semibold" do %>
               <%= group.name %>
             <% end %>
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+            <span class="badge">
               <%= pluralize(group.workflows_count(include_descendants: true), 'workflow') %>
             </span>
           </div>
           <% if group.description.present? %>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 truncate"><%= group.description %></p>
+            <p class="text-sm mt-0.5 truncate"><%= group.description %></p>
           <% end %>
         </div>
       </div>
     </div>
-    
+
     <div class="flex items-center gap-2 ml-4">
-      <%= link_to new_admin_group_path(parent_id: group.id), 
-                  class: "px-3 py-1.5 text-xs font-medium text-green-600 dark:text-green-400 bg-green-50/50 dark:bg-green-900/20 rounded-lg hover:bg-green-50/80 dark:hover:bg-green-900/40 transition-all duration-200",
+      <%= link_to new_admin_group_path(parent_id: group.id),
+                  class: "btn btn--sm btn--plain",
                   title: "Add subgroup" do %>
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
       <% end %>
-      <%= link_to edit_admin_group_path(group), 
-                  class: "px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-50/80 dark:hover:bg-blue-900/40 transition-all duration-200",
+      <%= link_to edit_admin_group_path(group),
+                  class: "btn btn--sm btn--plain",
                   title: "Edit group" do %>
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
         </svg>
       <% end %>
-      <%= link_to admin_group_path(group), 
-                  data: { 
-                    turbo_method: :delete, 
+      <%= link_to admin_group_path(group),
+                  data: {
+                    turbo_method: :delete,
                     turbo_confirm: "Are you sure you want to delete the group '#{group.name}'? This action cannot be undone.#{group.children.any? ? ' Note: This group has subgroups that must be deleted or reassigned first.' : ''}#{group.workflows.any? ? ' Note: This group contains workflows that must be reassigned first.' : ''}"
                   },
-                  class: "px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-900/20 rounded-lg hover:bg-red-50/80 dark:hover:bg-red-900/40 transition-all duration-200",
+                  class: "btn btn--sm btn--negative",
                   title: "Delete group" do %>
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
         </svg>
       <% end %>
     </div>
   </div>
-  
+
   <% if group.children.any? %>
-    <ul class="children hidden ml-4 space-y-2" data-children data-group-id="<%= group.id %>">
+    <ul class="children is-hidden group-tree__indent" data-children data-group-id="<%= group.id %>">
       <% group.children.order(:position, :name).each do |child| %>
         <%= render partial: "admin/groups/tree_node", locals: { group: child, level: level + 1 } %>
       <% end %>
     </ul>
   <% end %>
 </li>
-
