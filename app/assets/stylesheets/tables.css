@@ -1,1 +1,46 @@
-/* tables.css — Kizuflow Design System */
+/* tables.css — Table components */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.table th {
+  text-align: left;
+  padding: 0.75rem 1rem;
+  background: var(--color-canvas-raised);
+  border-bottom: 2px solid var(--color-border);
+  font-weight: 600;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-ink-subtle);
+}
+
+.table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.table tr:hover td {
+  background: var(--color-canvas-raised);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Responsive table wrapper */
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.table-wrap .table th:first-child,
+.table-wrap .table td:first-child {
+  padding-left: 1.25rem;
+}
