@@ -1,1 +1,229 @@
-/* forms.css — Kizuflow Design System */
+/* forms.css — Form component styles */
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: var(--space-block);
+}
+
+.form-label {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-ink);
+  margin-bottom: 0.25rem;
+}
+
+.form-label.is-required::after {
+  content: " *";
+  color: var(--color-negative);
+}
+
+.form-input {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  line-height: 1.5;
+  appearance: none;
+}
+
+.form-input::placeholder {
+  color: var(--color-ink-muted);
+}
+
+.form-input:focus {
+  outline: var(--focus-ring);
+  outline-offset: 0;
+  border-color: transparent;
+}
+
+.form-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--color-canvas-raised);
+}
+
+.form-input.is-invalid {
+  border-color: var(--color-negative);
+}
+
+.form-input.is-invalid:focus {
+  outline-color: var(--color-negative);
+}
+
+.form-textarea {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  line-height: 1.5;
+  min-height: 8rem;
+  resize: vertical;
+}
+
+.form-textarea::placeholder {
+  color: var(--color-ink-muted);
+}
+
+.form-textarea:focus {
+  outline: var(--focus-ring);
+  outline-offset: 0;
+  border-color: transparent;
+}
+
+.form-textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--color-canvas-raised);
+}
+
+.form-textarea.is-invalid {
+  border-color: var(--color-negative);
+}
+
+.form-textarea.is-invalid:focus {
+  outline-color: var(--color-negative);
+}
+
+/* Select with custom chevron arrow */
+.form-select {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  background-color: var(--color-canvas);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.625rem center;
+  background-size: 1rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  line-height: 1.5;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.form-select:focus {
+  outline: var(--focus-ring);
+  outline-offset: 0;
+  border-color: transparent;
+}
+
+.form-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--color-canvas-raised);
+}
+
+.form-select.is-invalid {
+  border-color: var(--color-negative);
+}
+
+.form-select.is-invalid:focus {
+  outline-color: var(--color-negative);
+}
+
+/* Checkbox and radio */
+.form-checkbox,
+.form-radio {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--color-link);
+  cursor: pointer;
+  border-radius: var(--radius);
+  flex-shrink: 0;
+}
+
+.form-radio {
+  border-radius: var(--radius-full);
+}
+
+.form-checkbox:focus-visible,
+.form-radio:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Checkbox/radio label row */
+.form-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.form-check .form-label {
+  margin-bottom: 0;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+/* Hint / helper text */
+.form-hint {
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+  line-height: 1.4;
+}
+
+/* Validation error message */
+.field-container .error-message,
+.form-group .error-message {
+  font-size: var(--text-xs);
+  color: var(--color-negative);
+  margin-top: 0.25rem;
+  line-height: 1.4;
+}
+
+/* Rails-generated field_with_errors wrapper */
+.field_with_errors .form-input,
+.field_with_errors .form-textarea,
+.field_with_errors .form-select {
+  border-color: var(--color-negative);
+}
+
+.field_with_errors .form-label {
+  color: var(--color-negative);
+}
+
+/* Inline form layout */
+.form-inline {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.form-inline .form-group {
+  margin-bottom: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Search input variant */
+.form-search {
+  padding-left: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: left 0.625rem center;
+  background-size: 1rem 1rem;
+}
