@@ -1,1 +1,135 @@
-/* badges.css — Kizuflow Design System */
+/* badges.css — Badge and avatar components */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+/* Step type badges */
+.badge--question {
+  background: oklch(0.93 0.05 var(--color-step-question));
+  color: oklch(0.4 0.15 var(--color-step-question));
+}
+
+.badge--action {
+  background: oklch(0.93 0.05 var(--color-step-action));
+  color: oklch(0.4 0.15 var(--color-step-action));
+}
+
+.badge--message {
+  background: oklch(0.93 0.05 var(--color-step-message));
+  color: oklch(0.4 0.15 var(--color-step-message));
+}
+
+.badge--escalate {
+  background: oklch(0.93 0.05 var(--color-step-escalate));
+  color: oklch(0.4 0.15 var(--color-step-escalate));
+}
+
+.badge--resolve {
+  background: oklch(0.93 0.05 var(--color-step-resolve));
+  color: oklch(0.4 0.15 var(--color-step-resolve));
+}
+
+.badge--sub-flow {
+  background: oklch(0.93 0.05 var(--color-step-subflow));
+  color: oklch(0.4 0.15 var(--color-step-subflow));
+}
+
+/* Dark mode step badges */
+[data-theme="dark"] .badge--question {
+  background: oklch(0.25 0.06 var(--color-step-question));
+  color: oklch(0.8 0.1 var(--color-step-question));
+}
+
+[data-theme="dark"] .badge--action {
+  background: oklch(0.25 0.06 var(--color-step-action));
+  color: oklch(0.8 0.1 var(--color-step-action));
+}
+
+[data-theme="dark"] .badge--message {
+  background: oklch(0.25 0.06 var(--color-step-message));
+  color: oklch(0.8 0.1 var(--color-step-message));
+}
+
+[data-theme="dark"] .badge--escalate {
+  background: oklch(0.25 0.06 var(--color-step-escalate));
+  color: oklch(0.8 0.1 var(--color-step-escalate));
+}
+
+[data-theme="dark"] .badge--resolve {
+  background: oklch(0.25 0.06 var(--color-step-resolve));
+  color: oklch(0.8 0.1 var(--color-step-resolve));
+}
+
+[data-theme="dark"] .badge--sub-flow {
+  background: oklch(0.25 0.06 var(--color-step-subflow));
+  color: oklch(0.8 0.1 var(--color-step-subflow));
+}
+
+/* Role badges */
+.badge--admin {
+  background: oklch(0.93 0.05 145);
+  color: oklch(0.4 0.15 145);
+}
+
+.badge--editor {
+  background: oklch(0.93 0.05 260);
+  color: oklch(0.4 0.15 260);
+}
+
+.badge--regular {
+  background: var(--color-canvas-raised);
+  color: var(--color-ink-subtle);
+}
+
+[data-theme="dark"] .badge--admin {
+  background: oklch(0.25 0.06 145);
+  color: oklch(0.8 0.1 145);
+}
+
+[data-theme="dark"] .badge--editor {
+  background: oklch(0.25 0.06 260);
+  color: oklch(0.8 0.1 260);
+}
+
+/* Status badges */
+.badge--draft {
+  background: oklch(0.93 0.05 75);
+  color: oklch(0.45 0.1 75);
+}
+
+.badge--published {
+  background: oklch(0.93 0.05 145);
+  color: oklch(0.4 0.15 145);
+}
+
+[data-theme="dark"] .badge--draft {
+  background: oklch(0.25 0.04 75);
+  color: oklch(0.75 0.08 75);
+}
+
+[data-theme="dark"] .badge--published {
+  background: oklch(0.25 0.06 145);
+  color: oklch(0.8 0.1 145);
+}
+
+/* Avatar color classes */
+.avatar--admin { background: oklch(0.6 0.19 145); }
+.avatar--editor { background: oklch(0.55 0.2 260); }
+.avatar--regular { background: oklch(0.55 0.02 75); }
+
+/* Step type dots (for composition display) */
+.dot--question { background: oklch(0.55 0.2 var(--color-step-question)); }
+.dot--action { background: oklch(0.65 0.18 var(--color-step-action)); }
+.dot--message { background: oklch(0.55 0.18 var(--color-step-message)); }
+.dot--escalate { background: oklch(0.55 0.22 var(--color-step-escalate)); }
+.dot--resolve { background: oklch(0.6 0.19 var(--color-step-resolve)); }
+.dot--sub-flow { background: oklch(0.55 0.18 var(--color-step-subflow)); }
