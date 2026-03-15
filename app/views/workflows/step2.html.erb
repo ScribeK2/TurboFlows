@@ -1,29 +1,29 @@
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-  <div class="mb-8 animate-fade-in">
-    <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Add Steps</h1>
-    <p class="mt-2 text-gray-600 dark:text-gray-400">Step 2 of 3: Build your workflow by adding steps.</p>
+<div class="page-content">
+  <div class="mb-6">
+    <h1 class="page-title">Add Steps</h1>
+    <p class="text-sm mt-1">Step 2 of 3: Build your workflow by adding steps.</p>
   </div>
 
   <%= render partial: "wizard_progress", locals: { current_step: 2, workflow: @workflow } %>
 
-  <%= form_with model: @workflow, url: update_step2_workflow_path(@workflow), method: :patch, local: true, data: { turbo: false, controller: "error-highlight" }, class: "animate-fade-in-up" do |form| %>
-    <%= render partial: "shared/error_messages", locals: { object: @workflow, container_class: "mb-6", data_controller_target: "error-highlight-target" } %>
+  <%= form_with model: @workflow, url: update_step2_workflow_path(@workflow), method: :patch, local: true, data: { turbo: false, controller: "error-highlight" }, class: "" do |form| %>
+    <%= render partial: "shared/error_messages", locals: { object: @workflow, container_class: "mb-6" } %>
 
     <%# Mode Toggle (graph mode only) %>
     <% if @workflow.graph_mode? %>
       <div class="mb-4" data-controller="view-mode-toggle">
         <input type="hidden" name="workflow[editor_mode]" value="list" data-view-mode-toggle-target="modeInput">
-        <div class="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 p-0.5">
+        <div class="wf-mode-toggle">
           <button type="button"
                   data-action="click->view-mode-toggle#switchToList"
                   data-view-mode-toggle-target="listBtn"
-                  class="px-4 py-1.5 text-sm font-medium rounded-md transition-colors bg-slate-600 text-white">
+                  class="wf-mode-toggle__btn is-active">
             List
           </button>
           <button type="button"
                   data-action="click->view-mode-toggle#switchToVisual"
                   data-view-mode-toggle-target="visualBtn"
-                  class="px-4 py-1.5 text-sm font-medium rounded-md transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700">
+                  class="wf-mode-toggle__btn">
             Visual
           </button>
         </div>
@@ -33,18 +33,18 @@
     <%# List Editor Container %>
     <div id="list-editor-container">
 
-    <%# Two-Column Layout: Sidebar + Main Content (Sprint 3) %>
+    <%# Two-Column Layout: Sidebar + Main Content %>
     <div class="flex gap-6">
       <%# Step Outline Sidebar (shown for workflows with >3 steps) %>
       <% if @workflow.steps.any? && @workflow.steps.size > 3 %>
-        <div class="hidden lg:block flex-shrink-0 sticky top-24 self-start">
+        <div class="hidden lg:block flex-shrink-0" style="position: sticky; top: 6rem; align-self: start;">
           <%= render partial: "step_outline", locals: { workflow: @workflow } %>
         </div>
       <% end %>
 
       <%# Main Content %>
-      <div class="flex-1 min-w-0">
-        <div class="solid-card overflow-hidden p-6 space-y-6">
+      <div class="flex-1" style="min-width: 0;">
+        <div class="card p-6" style="display: flex; flex-direction: column; gap: 1.5rem;">
           <div data-controller="workflow-builder variable-autocomplete"
                data-workflow-builder-workflow-id-value="<%= @workflow.id %>"
                data-workflow-builder-graph-mode-value="<%= @workflow.graph_mode? %>"
@@ -54,101 +54,47 @@
                id="workflow-builder-container">
 
             <%# Header with Add Step Buttons %>
-            <div class="flex flex-wrap justify-between items-center gap-4 mb-4" data-floating-step-adder-target="sentinel">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">
+            <div class="flex items-center justify-between gap-4 mb-4" style="flex-wrap: wrap;" data-floating-step-adder-target="sentinel">
+              <label class="form-label mb-0">
                 Workflow Steps
                 <% if @workflow.steps.any? %>
-                  <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">
-                    (<%= @workflow.steps.size %> step<%= @workflow.steps.size != 1 ? 's' : '' %>)
-                  </span>
+                  <span class="text-xs ml-2">(<%= @workflow.steps.size %> step<%= @workflow.steps.size != 1 ? 's' : '' %>)</span>
                 <% end %>
               </label>
-              <div class="flex flex-wrap gap-2">
-                <%# Question button - always shown %>
+              <div class="flex gap-2" style="flex-wrap: wrap;">
                 <button type="button"
                         data-action="click->workflow-builder#addStepDirect"
                         data-step-type="question"
-                        class="inline-flex items-center text-white px-4 py-1.5 rounded-full text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 bg-slate-600 hover:bg-slate-700">
+                        class="btn btn--secondary btn--sm">
                   Question
                 </button>
 
                 <% if @workflow.graph_mode? %>
-                  <%# Graph Mode: Show all step types with graph-specific UI %>
-                  <button type="button"
-                          data-action="click->workflow-builder#addStepDirect"
-                          data-step-type="message"
-                          class="inline-flex items-center text-white px-4 py-1.5 rounded-full text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 bg-cyan-500 hover:bg-cyan-600">
-                    Message
-                  </button>
-                  <button type="button"
-                          data-action="click->workflow-builder#addStepDirect"
-                          data-step-type="action"
-                          class="inline-flex items-center text-white px-4 py-1.5 rounded-full text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 bg-emerald-500 hover:bg-emerald-600">
-                    Action
-                  </button>
-                  <button type="button"
-                          data-action="click->workflow-builder#addStepDirect"
-                          data-step-type="escalate"
-                          class="inline-flex items-center text-white px-4 py-1.5 rounded-full text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 bg-orange-500 hover:bg-orange-600">
-                    Escalate
-                  </button>
-                  <button type="button"
-                          data-action="click->workflow-builder#addStepDirect"
-                          data-step-type="resolve"
-                          class="inline-flex items-center text-white px-4 py-1.5 rounded-full text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 bg-green-500 hover:bg-green-600">
-                    Resolve
-                  </button>
-                  <button type="button"
-                          data-action="click->workflow-builder#addStepDirect"
-                          data-step-type="sub_flow"
-                          class="inline-flex items-center text-white px-4 py-1.5 rounded-full text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 bg-indigo-500 hover:bg-indigo-600">
-                    Sub-flow
-                  </button>
+                  <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="message" class="btn btn--sm" style="background: var(--step-message-color, #06b6d4); color: #fff;">Message</button>
+                  <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="action" class="btn btn--positive btn--sm">Action</button>
+                  <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="escalate" class="btn btn--sm" style="background: var(--step-escalate-color, #f97316); color: #fff;">Escalate</button>
+                  <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="resolve" class="btn btn--sm" style="background: var(--step-resolve-color, #22c55e); color: #fff;">Resolve</button>
+                  <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="sub_flow" class="btn btn--sm" style="background: var(--step-sub-flow-color, #6366f1); color: #fff;">Sub-flow</button>
                 <% else %>
-                  <%# Non-graph mode: Same step types without graph-specific UI %>
-                  <button type="button"
-                          data-action="click->workflow-builder#addStepDirect"
-                          data-step-type="message"
-                          class="inline-flex items-center text-white px-4 py-1.5 rounded-full text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 bg-cyan-500 hover:bg-cyan-600">
-                    Message
-                  </button>
-                  <button type="button"
-                          data-action="click->workflow-builder#addStepDirect"
-                          data-step-type="action"
-                          class="inline-flex items-center text-white px-4 py-1.5 rounded-full text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 bg-emerald-500 hover:bg-emerald-600">
-                    Action
-                  </button>
-                  <button type="button"
-                          data-action="click->workflow-builder#addStepDirect"
-                          data-step-type="sub_flow"
-                          class="inline-flex items-center text-white px-4 py-1.5 rounded-full text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 bg-indigo-500 hover:bg-indigo-600">
-                    Sub-flow
-                  </button>
+                  <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="message" class="btn btn--sm" style="background: var(--step-message-color, #06b6d4); color: #fff;">Message</button>
+                  <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="action" class="btn btn--positive btn--sm">Action</button>
+                  <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="sub_flow" class="btn btn--sm" style="background: var(--step-sub-flow-color, #6366f1); color: #fff;">Sub-flow</button>
                 <% end %>
               </div>
             </div>
 
-            <%# Expand/Collapse All Controls (Sprint 2) %>
+            <%# Expand/Collapse All Controls %>
             <% if @workflow.steps.any? && @workflow.steps.size > 3 %>
               <div class="flex justify-end gap-2 mb-3" data-controller="step-controls">
-                <button type="button"
-                        data-action="click->step-controls#expandAll"
-                        class="text-xs text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 underline">
-                  Expand all
-                </button>
-                <span class="text-gray-400">|</span>
-                <button type="button"
-                        data-action="click->step-controls#collapseAll"
-                        class="text-xs text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 underline">
-                  Collapse all
-                </button>
+                <button type="button" data-action="click->step-controls#expandAll" class="btn btn--plain btn--sm">Expand all</button>
+                <span>|</span>
+                <button type="button" data-action="click->step-controls#collapseAll" class="btn btn--plain btn--sm">Collapse all</button>
               </div>
             <% end %>
 
             <%# Steps Container %>
-            <div data-workflow-builder-target="container" class="space-y-2 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 min-h-[200px] bg-white/20 dark:bg-gray-800/20">
+            <div data-workflow-builder-target="container" class="wf-steps-container">
               <% if @workflow.steps.any? %>
-                <%# Inline step creator at the beginning %>
                 <%= render partial: "inline_step_creator", locals: { after_index: -1 } %>
 
                 <% @workflow.steps.order(:position).each_with_index do |step, index| %>
@@ -158,35 +104,18 @@
                     workflow: @workflow,
                     expanded: @workflow.steps.size <= 5 || index == @workflow.steps.size - 1
                   } %>
-
-                  <%# Inline step creator after each step %>
                   <%= render partial: "inline_step_creator", locals: { after_index: index } %>
                 <% end %>
               <% else %>
-                <%# Empty state %>
-                <div class="text-center py-12">
-                  <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="text-center py-10">
+                  <svg class="icon icon--xl mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
                   </svg>
-                  <h3 class="mt-3 text-lg font-medium text-gray-900 dark:text-gray-100">No steps yet</h3>
-                  <p class="mt-1 text-sm text-gray-500 dark:text-gray-400 mb-4">
-                    Get started by adding your first step using the buttons above.
-                  </p>
-
-                  <%# Quick start buttons in empty state %>
-                  <div class="flex flex-wrap justify-center gap-3">
-                    <button type="button"
-                            data-action="click->workflow-builder#addStepDirect"
-                            data-step-type="question"
-                            class="inline-flex items-center px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-full hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors font-medium">
-                      Start with a Question
-                    </button>
-                    <button type="button"
-                            data-action="click->workflow-builder#addStepDirect"
-                            data-step-type="action"
-                            class="inline-flex items-center px-4 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors font-medium">
-                      Start with an Action
-                    </button>
+                  <h3 class="font-medium mb-1">No steps yet</h3>
+                  <p class="text-sm mb-4">Get started by adding your first step using the buttons above.</p>
+                  <div class="flex justify-center gap-3" style="flex-wrap: wrap;">
+                    <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="question" class="btn btn--secondary btn--sm">Start with a Question</button>
+                    <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="action" class="btn btn--positive btn--sm">Start with an Action</button>
                   </div>
                 </div>
               <% end %>
@@ -197,7 +126,6 @@
           <div data-controller="flow-preview" class="mt-6">
             <%= render partial: "flow_preview" %>
           </div>
-
         </div>
       </div>
     </div>
@@ -208,11 +136,10 @@
       <%= render partial: "visual_editor", locals: { workflow: @workflow, wizard_next_url: step3_workflow_path(@workflow) } %>
     <% end %>
 
-    <%# Navigation Buttons (always visible, outside mode containers) %>
-    <div class="flex justify-between items-center pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
-      <%= link_to step1_workflow_path(@workflow),
-          class: "inline-flex items-center gap-2 bg-slate-100 dark:bg-slate-700 py-2 px-4 border border-slate-200 dark:border-slate-600 rounded-full shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:scale-105" do %>
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <%# Navigation Buttons %>
+    <div class="flex justify-between items-center pt-4 mt-4" style="border-top: 1px solid var(--color-border);">
+      <%= link_to step1_workflow_path(@workflow), class: "btn btn--plain" do %>
+        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
         </svg>
         Previous
@@ -220,94 +147,46 @@
 
       <div class="flex items-center gap-3">
         <% if @workflow.steps.any? %>
-          <span class="text-sm text-gray-500 dark:text-gray-400">
+          <span class="text-sm">
             <%= @workflow.steps.size %> step<%= @workflow.steps.size != 1 ? 's' : '' %> added
           </span>
         <% end %>
 
         <%= form.submit "Next: Review →",
-            class: "bg-slate-600 hover:bg-slate-700 text-white px-5 py-2 rounded-full text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer",
-            data: {
-              action: "click->step-form#logSubmit"
-            } %>
+            class: "btn btn--primary",
+            data: { action: "click->step-form#logSubmit" } %>
       </div>
     </div>
   <% end %>
 
   <%# Floating Action Button for Quick Step Adding %>
   <div data-controller="floating-step-adder" class="hidden" data-floating-step-adder-target="fab">
-    <div class="fixed bottom-6 right-6 z-30">
-      <%# FAB Toggle Button %>
+    <div style="position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 30;">
       <button type="button"
               data-action="click->floating-step-adder#toggle"
               data-floating-step-adder-target="toggleButton"
-              class="w-14 h-14 rounded-full bg-slate-600 hover:bg-slate-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center">
-        <svg class="w-7 h-7 transition-transform duration-200" data-floating-step-adder-target="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              class="btn btn--primary btn--circle" style="width: 3.5rem; height: 3.5rem;">
+        <svg class="icon" data-floating-step-adder-target="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
         </svg>
       </button>
 
-      <%# Popover with step type buttons %>
-      <div class="hidden absolute bottom-16 right-0 mb-2 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-3 min-w-[180px]"
-           data-floating-step-adder-target="popover">
-        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 px-1">Add Step</p>
-        <div class="flex flex-col gap-1.5">
-          <button type="button"
-                  data-action="click->floating-step-adder#addStep"
-                  data-step-type="question"
-                  class="inline-flex items-center text-white px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 bg-slate-600 hover:bg-slate-700">
-            Question
-          </button>
+      <div class="hidden editor-popover"
+           data-floating-step-adder-target="popover"
+           style="position: absolute; bottom: 4rem; right: 0; min-width: 11rem;">
+        <p class="text-xs font-medium mb-2 px-1">Add Step</p>
+        <div style="display: flex; flex-direction: column; gap: 0.375rem;">
+          <button type="button" data-action="click->floating-step-adder#addStep" data-step-type="question" class="btn btn--secondary btn--sm">Question</button>
           <% if @workflow.graph_mode? %>
-            <button type="button"
-                    data-action="click->floating-step-adder#addStep"
-                    data-step-type="message"
-                    class="inline-flex items-center text-white px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 bg-cyan-500 hover:bg-cyan-600">
-              Message
-            </button>
-            <button type="button"
-                    data-action="click->floating-step-adder#addStep"
-                    data-step-type="action"
-                    class="inline-flex items-center text-white px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 bg-emerald-500 hover:bg-emerald-600">
-              Action
-            </button>
-            <button type="button"
-                    data-action="click->floating-step-adder#addStep"
-                    data-step-type="escalate"
-                    class="inline-flex items-center text-white px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 bg-orange-500 hover:bg-orange-600">
-              Escalate
-            </button>
-            <button type="button"
-                    data-action="click->floating-step-adder#addStep"
-                    data-step-type="resolve"
-                    class="inline-flex items-center text-white px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 bg-green-500 hover:bg-green-600">
-              Resolve
-            </button>
-            <button type="button"
-                    data-action="click->floating-step-adder#addStep"
-                    data-step-type="sub_flow"
-                    class="inline-flex items-center text-white px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 bg-indigo-500 hover:bg-indigo-600">
-              Sub-flow
-            </button>
+            <button type="button" data-action="click->floating-step-adder#addStep" data-step-type="message" class="btn btn--sm" style="background: var(--step-message-color, #06b6d4); color: #fff;">Message</button>
+            <button type="button" data-action="click->floating-step-adder#addStep" data-step-type="action" class="btn btn--positive btn--sm">Action</button>
+            <button type="button" data-action="click->floating-step-adder#addStep" data-step-type="escalate" class="btn btn--sm" style="background: var(--step-escalate-color, #f97316); color: #fff;">Escalate</button>
+            <button type="button" data-action="click->floating-step-adder#addStep" data-step-type="resolve" class="btn btn--sm" style="background: var(--step-resolve-color, #22c55e); color: #fff;">Resolve</button>
+            <button type="button" data-action="click->floating-step-adder#addStep" data-step-type="sub_flow" class="btn btn--sm" style="background: var(--step-sub-flow-color, #6366f1); color: #fff;">Sub-flow</button>
           <% else %>
-            <button type="button"
-                    data-action="click->floating-step-adder#addStep"
-                    data-step-type="message"
-                    class="inline-flex items-center text-white px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 bg-cyan-500 hover:bg-cyan-600">
-              Message
-            </button>
-            <button type="button"
-                    data-action="click->floating-step-adder#addStep"
-                    data-step-type="action"
-                    class="inline-flex items-center text-white px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 bg-emerald-500 hover:bg-emerald-600">
-              Action
-            </button>
-            <button type="button"
-                    data-action="click->floating-step-adder#addStep"
-                    data-step-type="sub_flow"
-                    class="inline-flex items-center text-white px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 bg-indigo-500 hover:bg-indigo-600">
-              Sub-flow
-            </button>
+            <button type="button" data-action="click->floating-step-adder#addStep" data-step-type="message" class="btn btn--sm" style="background: var(--step-message-color, #06b6d4); color: #fff;">Message</button>
+            <button type="button" data-action="click->floating-step-adder#addStep" data-step-type="action" class="btn btn--positive btn--sm">Action</button>
+            <button type="button" data-action="click->floating-step-adder#addStep" data-step-type="sub_flow" class="btn btn--sm" style="background: var(--step-sub-flow-color, #6366f1); color: #fff;">Sub-flow</button>
           <% end %>
         </div>
       </div>

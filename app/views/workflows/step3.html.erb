@@ -1,42 +1,38 @@
-<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-  <div class="mb-8 animate-fade-in">
-    <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Review & Launch</h1>
-    <p class="mt-2 text-gray-600 dark:text-gray-400">Step 3 of 3: Review your workflow and create it.</p>
+<div class="page-content" style="max-width: 48rem; margin: 0 auto;">
+  <div class="mb-6">
+    <h1 class="page-title">Review & Launch</h1>
+    <p class="text-sm mt-1">Step 3 of 3: Review your workflow and create it.</p>
   </div>
 
   <%= render partial: "wizard_progress", locals: { current_step: 3, workflow: @workflow } %>
 
-  <%= form_with model: @workflow, url: create_from_draft_workflow_path(@workflow), method: :patch, local: true, data: { turbo: false }, class: "solid-card overflow-hidden animate-fade-in-up" do |form| %>
-    <%= render partial: "shared/error_messages", locals: { object: @workflow, container_class: "mx-6 mt-6" } %>
+  <%= form_with model: @workflow, url: create_from_draft_workflow_path(@workflow), method: :patch, local: true, data: { turbo: false }, class: "card" do |form| %>
+    <%= render partial: "shared/error_messages", locals: { object: @workflow, container_class: "card__body" } %>
 
-    <div class="p-6 space-y-6">
+    <div class="card__body" style="display: flex; flex-direction: column; gap: 1.5rem;">
       <!-- Workflow Summary -->
-      <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Workflow Summary</h3>
-        <div class="space-y-2">
+      <div class="card card--muted p-4">
+        <h3 class="font-semibold mb-3">Workflow Summary</h3>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
           <div>
-            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Title:</span>
-            <span class="text-sm text-gray-900 dark:text-gray-100 ml-2"><%= @workflow.title %></span>
+            <span class="text-sm font-medium">Title:</span>
+            <span class="text-sm ml-2"><%= @workflow.title %></span>
           </div>
           <% if @workflow.description_text.present? %>
             <div>
-              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Description:</span>
-              <div class="text-sm text-gray-900 dark:text-gray-100 mt-1 prose prose-sm dark:prose-invert max-w-none"><%= @workflow.description %></div>
+              <span class="text-sm font-medium">Description:</span>
+              <div class="text-sm mt-1"><%= @workflow.description %></div>
             </div>
           <% end %>
           <% if @workflow.groups.any? %>
             <div>
-              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Groups:</span>
-              <span class="text-sm text-gray-900 dark:text-gray-100 ml-2">
-                <%= @workflow.groups.map(&:name).join(", ") %>
-              </span>
+              <span class="text-sm font-medium">Groups:</span>
+              <span class="text-sm ml-2"><%= @workflow.groups.map(&:name).join(", ") %></span>
             </div>
           <% end %>
           <div>
-            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Steps:</span>
-            <span class="text-sm text-gray-900 dark:text-gray-100 ml-2">
-              <%= @workflow.steps.size %> step(s)
-            </span>
+            <span class="text-sm font-medium">Steps:</span>
+            <span class="text-sm ml-2"><%= @workflow.steps.size %> step(s)</span>
           </div>
         </div>
       </div>
@@ -46,26 +42,26 @@
       <% has_steps = steps.size > 0 %>
       <% all_have_titles = steps.all? { |s| s.title.present? && s.title.to_s.strip.present? } %>
       <% all_pass = has_steps && all_have_titles %>
-      <div class="rounded-lg p-4 border <%= all_pass ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/30' : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/30' %>">
-        <h3 class="text-sm font-semibold <%= all_pass ? 'text-emerald-800 dark:text-emerald-200' : 'text-amber-800 dark:text-amber-200' %> mb-2">Validation Summary</h3>
-        <ul class="space-y-1 text-sm">
-          <li class="flex items-center gap-2">
+      <div class="alert <%= all_pass ? 'alert--success' : 'alert--warning' %>">
+        <h3 class="font-semibold mb-2">Validation Summary</h3>
+        <ul style="display: flex; flex-direction: column; gap: 0.25rem;">
+          <li class="flex items-center gap-2 text-sm">
             <% if has_steps %>
-              <span class="text-emerald-600 dark:text-emerald-400">&#10003;</span>
-              <span class="text-gray-700 dark:text-gray-300">Workflow has steps (<%= steps.size %>)</span>
+              <span>&#10003;</span>
+              <span>Workflow has steps (<%= steps.size %>)</span>
             <% else %>
-              <span class="text-red-500 dark:text-red-400">&#10007;</span>
-              <span class="text-gray-700 dark:text-gray-300">Workflow has no steps</span>
+              <span>&#10007;</span>
+              <span>Workflow has no steps</span>
             <% end %>
           </li>
           <% if has_steps %>
-            <li class="flex items-center gap-2">
+            <li class="flex items-center gap-2 text-sm">
               <% if all_have_titles %>
-                <span class="text-emerald-600 dark:text-emerald-400">&#10003;</span>
-                <span class="text-gray-700 dark:text-gray-300">All steps have titles</span>
+                <span>&#10003;</span>
+                <span>All steps have titles</span>
               <% else %>
-                <span class="text-red-500 dark:text-red-400">&#10007;</span>
-                <span class="text-gray-700 dark:text-gray-300">Some steps are missing titles</span>
+                <span>&#10007;</span>
+                <span>Some steps are missing titles</span>
               <% end %>
             </li>
           <% end %>
@@ -74,78 +70,70 @@
 
       <!-- Interactive Flowchart Preview -->
       <% if @workflow.steps.any? %>
-        <div class="solid-card overflow-hidden animate-fade-in-up"
+        <div class="card"
              data-controller="wizard-flow-preview"
              data-wizard-flow-preview-workflow-id-value="<%= @workflow.id %>">
           <script type="application/json" data-wizard-flow-preview-steps-data="<%= @workflow.id %>">
             <%= raw json_escape(serialize_steps_for_editor(@workflow).to_json) %>
           </script>
-          <div class="px-6 py-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Workflow Flowchart</h3>
-            <div class="flex items-center gap-2">
-              <button type="button" data-action="click->wizard-flow-preview#zoomOut" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title="Zoom out">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"/></svg>
+          <div class="card__header flex justify-between items-center">
+            <h3 class="font-semibold">Workflow Flowchart</h3>
+            <div class="editor-zoom">
+              <button type="button" data-action="click->wizard-flow-preview#zoomOut" class="editor-zoom__btn" title="Zoom out">
+                <svg class="icon icon--sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"/></svg>
               </button>
-              <span data-wizard-flow-preview-target="zoomLevel" class="text-xs font-medium text-slate-500 dark:text-slate-400 min-w-[3rem] text-center">100%</span>
-              <button type="button" data-action="click->wizard-flow-preview#zoomIn" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title="Zoom in">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+              <span data-wizard-flow-preview-target="zoomLevel" class="editor-zoom__level">100%</span>
+              <button type="button" data-action="click->wizard-flow-preview#zoomIn" class="editor-zoom__btn" title="Zoom in">
+                <svg class="icon icon--sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
               </button>
-              <button type="button" data-action="click->wizard-flow-preview#fitToScreen" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title="Fit to screen">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+              <button type="button" data-action="click->wizard-flow-preview#fitToScreen" class="editor-zoom__btn" title="Fit to screen">
+                <svg class="icon icon--sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
               </button>
-              <div class="w-px h-5 bg-slate-200 dark:bg-slate-600 mx-1"></div>
-              <button type="button"
-                      data-action="click->wizard-flow-preview#refresh"
-                      class="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 font-medium transition-colors duration-200">
-                Refresh
-              </button>
+              <div class="w-px h-5 mx-1" style="background: var(--color-border);"></div>
+              <button type="button" data-action="click->wizard-flow-preview#refresh" class="btn btn--plain btn--sm">Refresh</button>
             </div>
           </div>
           <div
             data-wizard-flow-preview-target="canvas"
-            class="relative bg-gray-50 dark:bg-gray-800/30 rounded-lg p-4 m-6 overflow-auto"
-            style="min-height: 400px; max-height: 700px;"
+            class="editor-canvas p-4 m-4"
+            style="min-height: 400px; max-height: 700px; overflow: auto;"
           >
-            <p class="text-gray-500 dark:text-gray-400 text-center py-8">Loading preview...</p>
+            <p class="text-center py-8">Loading preview...</p>
           </div>
-          <div class="px-6 pb-6 text-xs text-gray-500 dark:text-gray-400">
-            <p><%= ui_svg_icon('lightbulb', css_classes: "w-4 h-4 inline-block align-text-bottom") %> Tip: Click on any step to edit it. Ctrl+scroll to zoom, Alt+drag to pan.</p>
+          <div class="px-6 pb-4 text-xs">
+            <p><%= ui_svg_icon('lightbulb', css_classes: "icon icon--xs inline-block") %> Tip: Click on any step to edit it. Ctrl+scroll to zoom, Alt+drag to pan.</p>
           </div>
         </div>
       <% else %>
-        <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/30 rounded-lg p-4">
-          <div class="flex items-start">
-            <svg class="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="alert alert--warning">
+          <div class="flex items-start gap-3">
+            <svg class="icon icon--sm flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
             <div>
-              <h3 class="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                No steps added yet
-              </h3>
-              <p class="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
-                <%= link_to "Go back to add steps", step2_workflow_path(@workflow), class: "text-slate-600 dark:text-slate-400 hover:underline" %> or create the workflow and add steps later.
+              <h3 class="font-medium">No steps added yet</h3>
+              <p class="text-sm mt-1">
+                <%= link_to "Go back to add steps", step2_workflow_path(@workflow) %> or create the workflow and add steps later.
               </p>
             </div>
           </div>
         </div>
       <% end %>
 
-      <%# Step Addition Modal (for potential future inline editing) %>
       <%= render partial: "workflows/step_modal" %>
 
-      <div class="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700">
-        <%= link_to step2_workflow_path(@workflow),
-            class: "inline-flex items-center gap-2 bg-slate-100 dark:bg-slate-700 py-2 px-4 border border-slate-200 dark:border-slate-600 rounded-full shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:scale-105" do %>
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="flex justify-between items-center pt-4" style="border-top: 1px solid var(--color-border);">
+        <%= link_to step2_workflow_path(@workflow), class: "btn btn--plain" do %>
+          <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
           </svg>
           Previous
         <% end %>
         <div class="flex items-center gap-3">
-          <button type="submit" name="save_draft" value="1" class="bg-white/50 dark:bg-gray-800/50 py-2 px-4 border border-slate-200 dark:border-slate-700 rounded-full shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-200 hover:scale-105">
+          <button type="submit" name="save_draft" value="1" class="btn btn--plain">
             Save as Draft
           </button>
-          <%= form.submit "Create Workflow", class: "bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105" %>
+          <%= form.submit "Create Workflow", class: "btn btn--positive" %>
         </div>
       </div>
     </div>

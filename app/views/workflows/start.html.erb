@@ -1,29 +1,27 @@
-<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-28 sm:pb-8">
+<div class="page-content" style="max-width: 48rem; margin: 0 auto; padding-bottom: 7rem;">
   <!-- Header Section -->
-  <div class="mb-8 animate-fade-in text-center">
-    <h1 class="text-4xl md:text-5xl font-bold text-gray-900 dark:text-gray-100 tracking-tight mb-4">
-      <%= @workflow.title %>
-    </h1>
+  <div class="mb-6 text-center">
+    <h1 class="page-title"><%= @workflow.title %></h1>
     <% if @workflow.has_description? %>
-      <div class="text-gray-600 dark:text-gray-300 prose prose-lg dark:prose-invert max-w-none mt-4 mx-auto text-left">
+      <div class="mt-3 text-left">
         <%= @workflow.description %>
       </div>
     <% end %>
   </div>
 
   <!-- Workflow Info Card -->
-  <div class="solid-card overflow-hidden animate-fade-in-up mb-6">
-    <div class="px-6 py-5">
-      <div class="flex items-center justify-center space-x-6 text-sm text-gray-600 dark:text-gray-400">
-        <div class="flex items-center">
-          <svg class="w-5 h-5 mr-2 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <div class="card mb-6">
+    <div class="card__body">
+      <div class="flex items-center justify-center gap-6 text-sm">
+        <div class="flex items-center gap-2">
+          <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
           <span><%= pluralize(@workflow.steps.size, "step") %></span>
         </div>
         <% if @workflow.is_public? %>
-          <div class="flex items-center">
-            <svg class="w-5 h-5 mr-2 text-emerald-500 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="flex items-center gap-2">
+            <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
             <span>Public</span>
@@ -40,55 +38,49 @@
   </div>
 
   <!-- Start Button -->
-  <div class="text-center animate-fade-in-up sm:relative sm:bg-transparent fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 sm:border-0 p-4 sm:p-0 z-10" style="animation-delay: 0.2s;">
+  <div class="text-center" style="position: fixed; bottom: 0; left: 0; right: 0; background: var(--color-surface); border-top: 1px solid var(--color-border); padding: 1rem; z-index: 10;">
     <%= form_with url: begin_execution_workflow_path(@workflow), method: :post, local: true,
         class: "inline-block",
         data: { controller: "form-submit", action: "submit->form-submit#submit" } do |form| %>
       <%= form.submit "Start Workflow",
           data: { form_submit_target: "submit" },
           aria: { label: "Start workflow: #{@workflow.title}" },
-          class: "bg-emerald-500 hover:bg-emerald-600 text-white px-12 py-5 rounded-full text-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 inline-flex items-center justify-center min-w-[200px] animate-subtle-pulse hover:animate-none btn-press" %>
+          class: "btn btn--positive btn--lg" %>
     <% end %>
-    <p class="text-sm text-gray-500 dark:text-gray-400 mt-3">
-      Begin step-by-step guided execution
-    </p>
+    <p class="text-sm mt-2">Begin step-by-step guided execution</p>
   </div>
 
   <!-- Workflow Steps Preview -->
   <% ar_steps = @workflow.steps.order(:position) %>
   <% if ar_steps.any? %>
-    <div class="mt-8 animate-fade-in-up" style="animation-delay: 0.3s;">
-      <div class="solid-card overflow-hidden">
-        <div class="px-6 py-4">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Workflow Steps (<%= ar_steps.size %> total)
-          </h3>
+    <div class="mt-6">
+      <div class="card">
+        <div class="card__header">
+          <h3 class="font-semibold">Workflow Steps (<%= ar_steps.size %> total)</h3>
         </div>
-        <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-700">
-          <div class="border-l-2 border-slate-200 dark:border-slate-700 ml-4" role="list">
-            <div class="space-y-3 pl-4">
-              <% ar_steps.each_with_index do |step, index| %>
-                <div class="flex items-start space-x-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50" role="listitem">
-                  <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-600 dark:bg-slate-500 text-white text-sm font-semibold flex-shrink-0">
-                    <%= index + 1 %>
+        <div class="card__body">
+          <div role="list" style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <% ar_steps.each_with_index do |step, index| %>
+              <div class="flex items-start gap-3 p-3 rounded-lg" style="background: var(--color-surface-alt);" role="listitem">
+                <span class="step-card__number flex-shrink-0">
+                  <%= index + 1 %>
+                </span>
+                <div class="flex-1" style="min-width: 0;">
+                  <h4 class="font-semibold flex items-center gap-1">
+                    <%= step_type_svg_icon(step.step_type, css_classes: "icon icon--sm") %> <%= step.title %>
+                  </h4>
+                  <% snippet = step.try(:question) || step.try(:content)&.to_s || step.try(:instructions)&.to_s %>
+                  <% if snippet.present? %>
+                    <div class="text-sm mt-1">
+                      <%= truncate(strip_tags(snippet.to_s), length: 200) %>
+                    </div>
+                  <% end %>
+                  <span class="badge badge--<%= step.step_type %> mt-2">
+                    <%= step_type_label(step.step_type) %>
                   </span>
-                  <div class="flex-1 min-w-0">
-                    <h4 class="text-base font-semibold text-gray-900 dark:text-gray-100">
-                      <span class="inline-flex items-center gap-1"><%= step_type_svg_icon(step.step_type, css_classes: "w-4 h-4 inline-block") %> <%= step.title %></span>
-                    </h4>
-                    <% snippet = step.try(:question) || step.try(:content)&.to_s || step.try(:instructions)&.to_s %>
-                    <% if snippet.present? %>
-                      <div class="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2 prose prose-sm dark:prose-invert max-w-none">
-                        <%= truncate(strip_tags(snippet.to_s), length: 200) %>
-                      </div>
-                    <% end %>
-                    <span class="<%= step_type_badge_classes(step.step_type) %> mt-2">
-                      <%= step_type_label(step.step_type) %>
-                    </span>
-                  </div>
                 </div>
-              <% end %>
-            </div>
+              </div>
+            <% end %>
           </div>
         </div>
       </div>
@@ -97,8 +89,8 @@
 
   <!-- Back Link -->
   <div class="mt-6 text-center">
-    <%= link_to workflows_path, class: "text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 text-sm font-medium transition-colors duration-200 inline-flex items-center" do %>
-      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <%= link_to workflows_path, class: "btn btn--plain btn--sm" do %>
+      <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
       </svg>
       Back to Workflows

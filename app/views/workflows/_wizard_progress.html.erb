@@ -1,63 +1,63 @@
-<nav role="navigation" aria-label="Workflow creation progress" class="mb-8" data-controller="wizard-navigation">
-  <div class="flex items-center justify-between">
+<nav role="navigation" aria-label="Workflow creation progress" class="wizard-progress mb-6" data-controller="wizard-navigation">
+  <div class="wizard-progress__steps">
     <!-- Step 1 -->
-    <div class="flex items-center">
+    <div class="wizard-progress__step">
       <% if current_step > 1 && local_assigns[:workflow] %>
-        <%= link_to step1_workflow_path(workflow), class: "flex items-center justify-center w-10 h-10 rounded-full bg-emerald-500 text-white border-2 border-emerald-500 hover:bg-emerald-600 hover:border-emerald-600 transition-colors duration-200", title: "Go back to Name & Group" do %>
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <%= link_to step1_workflow_path(workflow), class: "wizard-progress__indicator is-done", title: "Go back to Name & Group" do %>
+          <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
           </svg>
         <% end %>
       <% else %>
-        <div class="flex items-center justify-center w-10 h-10 rounded-full <%= current_step >= 1 ? 'bg-slate-600 text-white border-2 border-slate-600' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 border-2 border-gray-300 dark:border-gray-600' %>"
+        <div class="wizard-progress__indicator <%= current_step >= 1 ? 'is-active' : '' %>"
              <%= 'aria-current="step"' if current_step == 1 %>>
           <span class="text-sm font-semibold">1</span>
         </div>
       <% end %>
-      <div class="ml-3">
-        <p class="text-sm font-medium <%= current_step == 1 ? 'text-slate-600 dark:text-slate-400' : (current_step > 1 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-500 dark:text-gray-400') %>">Name & Group</p>
-        <p class="text-xs text-gray-500 dark:text-gray-400">Basic information</p>
+      <div class="wizard-progress__label">
+        <p class="text-sm font-medium <%= current_step == 1 ? 'text-active' : (current_step > 1 ? 'text-done' : '') %>">Name & Group</p>
+        <p class="text-xs">Basic information</p>
       </div>
     </div>
 
     <!-- Connector Line -->
-    <div class="flex-1 mx-4 h-0.5 <%= current_step > 1 ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600' %>"></div>
+    <div class="wizard-progress__connector <%= current_step > 1 ? 'is-done' : '' %>"></div>
 
     <!-- Step 2 -->
-    <div class="flex items-center">
+    <div class="wizard-progress__step">
       <% if current_step > 2 && local_assigns[:workflow] %>
-        <%= link_to step2_workflow_path(workflow), class: "flex items-center justify-center w-10 h-10 rounded-full bg-emerald-500 text-white border-2 border-emerald-500 hover:bg-emerald-600 hover:border-emerald-600 transition-colors duration-200", title: "Go back to Add Steps" do %>
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <%= link_to step2_workflow_path(workflow), class: "wizard-progress__indicator is-done", title: "Go back to Add Steps" do %>
+          <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
           </svg>
         <% end %>
       <% elsif current_step == 2 %>
-        <div class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-600 text-white border-2 border-slate-600" aria-current="step">
+        <div class="wizard-progress__indicator is-active" aria-current="step">
           <span class="text-sm font-semibold">2</span>
         </div>
       <% else %>
-        <div class="flex items-center justify-center w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 border-2 border-gray-300 dark:border-gray-600">
+        <div class="wizard-progress__indicator">
           <span class="text-sm font-semibold">2</span>
         </div>
       <% end %>
-      <div class="ml-3">
-        <p class="text-sm font-medium <%= current_step == 2 ? 'text-slate-600 dark:text-slate-400' : (current_step > 2 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-500 dark:text-gray-400') %>">Add Steps</p>
-        <p class="text-xs text-gray-500 dark:text-gray-400">Build your workflow</p>
+      <div class="wizard-progress__label">
+        <p class="text-sm font-medium <%= current_step == 2 ? 'text-active' : (current_step > 2 ? 'text-done' : '') %>">Add Steps</p>
+        <p class="text-xs">Build your workflow</p>
       </div>
     </div>
 
     <!-- Connector Line -->
-    <div class="flex-1 mx-4 h-0.5 <%= current_step > 2 ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600' %>"></div>
+    <div class="wizard-progress__connector <%= current_step > 2 ? 'is-done' : '' %>"></div>
 
     <!-- Step 3 -->
-    <div class="flex items-center">
-      <div class="flex items-center justify-center w-10 h-10 rounded-full <%= current_step == 3 ? 'bg-slate-600 text-white border-2 border-slate-600' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 border-2 border-gray-300 dark:border-gray-600' %>"
+    <div class="wizard-progress__step">
+      <div class="wizard-progress__indicator <%= current_step == 3 ? 'is-active' : '' %>"
            <%= 'aria-current="step"' if current_step == 3 %>>
         <span class="text-sm font-semibold">3</span>
       </div>
-      <div class="ml-3">
-        <p class="text-sm font-medium <%= current_step == 3 ? 'text-slate-600 dark:text-slate-400' : 'text-gray-500 dark:text-gray-400' %>">Review & Launch</p>
-        <p class="text-xs text-gray-500 dark:text-gray-400">Finalize workflow</p>
+      <div class="wizard-progress__label">
+        <p class="text-sm font-medium <%= current_step == 3 ? 'text-active' : '' %>">Review & Launch</p>
+        <p class="text-xs">Finalize workflow</p>
       </div>
     </div>
   </div>

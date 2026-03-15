@@ -1,22 +1,20 @@
-<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-  <div class="mb-8 animate-fade-in">
-    <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Create Workflow</h1>
-    <p class="mt-2 text-gray-600 dark:text-gray-400">Step 1 of 3: Name your workflow and assign it to a group.</p>
+<div class="page-content" style="max-width: 48rem; margin: 0 auto;">
+  <div class="mb-6">
+    <h1 class="page-title">Create Workflow</h1>
+    <p class="text-sm mt-1">Step 1 of 3: Name your workflow and assign it to a group.</p>
   </div>
 
   <%= render partial: "wizard_progress", locals: { current_step: 1, workflow: @workflow } %>
 
   <% if @workflow.draft? && @workflow.created_at.present? && @workflow.created_at < 5.days.ago %>
-    <div class="mb-6 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-500 p-4">
+    <div class="alert alert--warning mb-6">
       <div class="flex items-start gap-3">
-        <svg class="w-5 h-5 text-yellow-500 dark:text-yellow-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="icon icon--sm flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
         </svg>
         <div>
-          <h3 class="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-            Draft Expiration Warning
-          </h3>
-          <p class="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
+          <h3 class="font-medium">Draft Expiration Warning</h3>
+          <p class="text-sm mt-1">
             This draft will expire in <%= distance_of_time_in_words(@workflow.created_at + 7.days, Time.current) %>.
             Consider publishing it or saving your changes soon.
           </p>
@@ -25,18 +23,19 @@
     </div>
   <% end %>
 
-  <%= form_with model: @workflow, url: update_step1_workflow_path(@workflow), method: :patch, local: true, data: { turbo: false, controller: "wizard-step1-validation" }, html: { class: "solid-card animate-fade-in-up", style: "overflow: visible;" } do |form| %>
-    <%= render partial: "shared/error_messages", locals: { object: @workflow, container_class: "mx-6 mt-6" } %>
+  <%= form_with model: @workflow, url: update_step1_workflow_path(@workflow), method: :patch, local: true, data: { turbo: false, controller: "wizard-step1-validation" }, html: { class: "card", style: "overflow: visible;" } do |form| %>
+    <%= render partial: "shared/error_messages", locals: { object: @workflow, container_class: "card__body" } %>
 
-    <div class="p-6 space-y-6">
-      <div>
-        <%= form.label :title, class: "block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1" %>
-        <%= form.text_field :title, maxlength: 100, class: "mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 transition-colors", placeholder: "Enter workflow title", required: true, data: { wizard_step1_validation_target: "titleInput", action: "input->wizard-step1-validation#validate" } %>
-        <span class="mt-1 block text-xs text-gray-500 dark:text-gray-400" data-wizard-step1-validation-target="counter">0/100 characters</span>
+    <div class="card__body" style="display: flex; flex-direction: column; gap: 1.5rem;">
+      <div class="form-group">
+        <%= form.label :title, class: "form-label" %>
+        <%= form.text_field :title, maxlength: 100, class: "form-input", placeholder: "Enter workflow title", required: true,
+            data: { wizard_step1_validation_target: "titleInput", action: "input->wizard-step1-validation#validate" } %>
+        <span class="form-hint" data-wizard-step1-validation-target="counter">0/100 characters</span>
       </div>
 
-      <div>
-        <%= form.label :description, class: "block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1" %>
+      <div class="form-group">
+        <%= form.label :description, class: "form-label" %>
         <%= form.rich_text_area :description %>
       </div>
 
@@ -50,52 +49,50 @@
       <% if @selected_group_ids.present? %>
         <% primary_group = Group.find_by(id: @selected_group_ids.first) %>
         <% if primary_group&.folders&.any? %>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Folder (optional)</label>
-            <select name="workflow[folder_id]" class="block w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 px-3 py-2 focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-colors">
+          <div class="form-group">
+            <label class="form-label">Folder (optional)</label>
+            <select name="workflow[folder_id]" class="form-select">
               <option value="">Uncategorized</option>
               <% primary_group.folders.ordered.each do |folder| %>
                 <option value="<%= folder.id %>"><%= folder.name %></option>
               <% end %>
             </select>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Organize this workflow into a folder within the group.</p>
+            <p class="form-hint">Organize this workflow into a folder within the group.</p>
           </div>
         <% end %>
       <% end %>
 
       <%# Graph Mode Toggle - Hidden when graph mode is the default %>
       <% if show_graph_mode_toggle? %>
-        <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+        <div class="card card--muted p-4">
           <div class="flex items-center justify-between">
-            <div class="flex items-center">
-              <%= form.check_box :graph_mode, class: "h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded", id: "workflow_graph_mode_step1" %>
-              <%= form.label :graph_mode, class: "ml-2 block text-sm font-medium text-gray-700 dark:text-gray-300" do %>
+            <div class="flex items-center gap-2">
+              <%= form.check_box :graph_mode, class: "form-checkbox", id: "workflow_graph_mode_step1" %>
+              <%= form.label :graph_mode, class: "form-label mb-0" do %>
                 Enable Graph Mode
-                <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300">
-                  Beta
-                </span>
+                <span class="badge ml-1">Beta</span>
               <% end %>
             </div>
             <% if @workflow.graph_mode? %>
-              <span class="text-xs text-green-600 dark:text-green-400 font-medium">Active</span>
+              <span class="badge badge--published text-xs">Active</span>
             <% end %>
           </div>
-          <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          <p class="form-hint mt-2">
             Graph mode enables advanced DAG-based workflows with complex branching, sub-flows, and visual connection editing.
             Steps can connect to any other step, not just the next one in sequence.
           </p>
         </div>
       <% else %>
-        <%# Hidden field to preserve graph_mode value when toggle is hidden %>
         <%= form.hidden_field :graph_mode, value: @workflow.graph_mode? %>
       <% end %>
 
-      <div class="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700">
+      <div class="flex justify-between items-center pt-4" style="border-top: 1px solid var(--color-border);">
         <div class="flex items-center gap-3">
-          <%= link_to "Cancel", workflows_path, class: "bg-white/50 dark:bg-gray-800/50 py-2 px-4 border border-slate-200 dark:border-slate-700 rounded-full shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-200 hover:scale-105" %>
-          <%= link_to "Browse Templates", templates_path, class: "text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors duration-200" %>
+          <%= link_to "Cancel", workflows_path, class: "btn btn--plain" %>
+          <%= link_to "Browse Templates", templates_path, class: "btn btn--plain btn--sm" %>
         </div>
-        <%= form.submit "Next: Add Steps", class: "bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100", data: { wizard_step1_validation_target: "submitButton" } %>
+        <%= form.submit "Next: Add Steps", class: "btn btn--primary",
+            data: { wizard_step1_validation_target: "submitButton" } %>
       </div>
     </div>
   <% end %>
