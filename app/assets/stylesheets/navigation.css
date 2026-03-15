@@ -1,1 +1,168 @@
-/* navigation.css — Kizuflow Design System */
+/* navigation.css — Top navigation bar */
+
+.page-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-nav);
+  background: var(--color-canvas);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.page-header__inner {
+  max-width: 80rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 640px) {
+  .page-header__inner {
+    padding-inline: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .page-header__inner {
+    padding-inline: 2rem;
+  }
+}
+
+.page-header__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 4rem;
+}
+
+/* Brand / Logo */
+.nav__brand {
+  display: flex;
+  align-items: center;
+}
+
+.nav__brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  transition: transform 0.3s ease;
+}
+
+.nav__brand-link:hover {
+  transform: scale(1.05);
+  text-decoration: none;
+}
+
+.nav__brand-icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  color: var(--color-ink-muted);
+  transition: transform 0.3s ease;
+}
+
+.nav__brand-link:hover .nav__brand-icon {
+  transform: rotate(12deg);
+}
+
+.nav__brand-text {
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--color-ink);
+}
+
+/* Nav links */
+.nav__links {
+  display: none;
+  margin-left: 2rem;
+  gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .nav__links {
+    display: flex;
+  }
+}
+
+.nav-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 2px solid transparent;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-ink-subtle);
+  transition: color 0.2s ease, border-color 0.2s ease;
+  text-decoration: none;
+}
+
+.nav-item:hover {
+  color: var(--color-ink);
+  border-bottom-color: var(--color-border);
+  text-decoration: none;
+}
+
+.nav-item.is-active {
+  color: var(--color-ink);
+  border-bottom-color: var(--color-positive);
+  font-weight: 600;
+}
+
+/* Nav actions (right side) */
+.nav__actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Dark mode toggle */
+.dark-mode-toggle {
+  padding: 0.5rem;
+  border-radius: var(--radius-full);
+  background: var(--color-canvas-raised);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dark-mode-toggle:hover {
+  background: var(--color-border);
+  transform: scale(1.1);
+}
+
+.dark-mode-toggle:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Avatar button */
+.avatar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-lg);
+  color: oklch(1 0 0);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  border: none;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.avatar-btn:hover {
+  box-shadow: var(--shadow);
+  transform: scale(1.05);
+}
+
+.avatar-btn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}

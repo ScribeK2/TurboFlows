@@ -1,1 +1,48 @@
-/* layout.css — Kizuflow Design System */
+/* layout.css — Page structure */
+
+.page-body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-content {
+  padding-top: 4rem; /* height of fixed nav */
+  min-height: 100vh;
+  flex: 1;
+}
+
+.page-main {
+  max-width: 80rem;
+  margin-inline: auto;
+  padding: 2rem 1rem;
+}
+
+@media (min-width: 640px) {
+  .page-main {
+    padding: 2rem 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .page-main {
+    padding: 2rem 2rem;
+  }
+}
+
+/* Auth-specific layout */
+.auth-page {
+  padding-top: 4rem;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 640px) {
+  .auth-page {
+    padding-inline: 1.5rem;
+  }
+}
