@@ -1,1 +1,83 @@
-/* cards.css — Kizuflow Design System */
+/* cards.css — Card components */
+
+.card {
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow);
+}
+
+.card--bordered-top {
+  border-top: 3px solid var(--color-border);
+}
+
+/* Step type colored top borders */
+.card--question { border-top-color: oklch(0.55 0.2 var(--color-step-question)); }
+.card--action { border-top-color: oklch(0.65 0.18 var(--color-step-action)); }
+.card--message { border-top-color: oklch(0.55 0.18 var(--color-step-message)); }
+.card--escalate { border-top-color: oklch(0.55 0.22 var(--color-step-escalate)); }
+.card--resolve { border-top-color: oklch(0.6 0.19 var(--color-step-resolve)); }
+.card--sub-flow { border-top-color: oklch(0.55 0.18 var(--color-step-subflow)); }
+
+.card__header {
+  padding: var(--space-block) var(--space-inline);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.card__body {
+  padding: var(--space-block) var(--space-inline);
+}
+
+.card__footer {
+  padding: var(--space-block-half) var(--space-inline);
+  border-top: 1px solid var(--color-border);
+}
+
+/* Image lightbox (migrated from old application.css) */
+.image-lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: oklch(0 0 0 / 0.85);
+  padding: 2rem;
+  cursor: pointer;
+}
+
+.image-lightbox-overlay img {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 25px 50px -12px oklch(0 0 0 / 0.5);
+  cursor: default;
+}
+
+.image-lightbox-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: oklch(1 0 0 / 0.15);
+  border: none;
+  border-radius: var(--radius-full);
+  color: white;
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.image-lightbox-close:hover {
+  background-color: oklch(1 0 0 / 0.3);
+}
