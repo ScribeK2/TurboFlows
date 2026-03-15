@@ -49,14 +49,14 @@ export default class extends Controller {
     }
 
     // Show the modal
-    this.element.classList.remove("hidden")
+    this.element.classList.remove("is-hidden")
   }
 
   /**
    * Close the transition editor modal
    */
   close() {
-    this.element.classList.add("hidden")
+    this.element.classList.add("is-hidden")
 
     // Clear form
     if (this.hasConditionTarget) this.conditionTarget.value = ""

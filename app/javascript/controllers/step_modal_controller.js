@@ -58,7 +58,7 @@ export default class extends Controller {
     const modalContainer = this.hasModalContainerTarget ? this.modalContainerTarget : document.getElementById("step-modal")
     console.log("Modal container found:", !!modalContainer)
     if (modalContainer) {
-      modalContainer.classList.remove("hidden")
+      modalContainer.classList.remove("is-hidden")
       
       // Use requestAnimationFrame to ensure DOM is ready
       requestAnimationFrame(() => {
@@ -97,7 +97,7 @@ export default class extends Controller {
     // Hide the modal container
     const modalContainer = this.hasModalContainerTarget ? this.modalContainerTarget : document.getElementById("step-modal")
     if (modalContainer) {
-      modalContainer.classList.add("hidden")
+      modalContainer.classList.add("is-hidden")
       this.resetForm()
     }
   }
@@ -134,21 +134,13 @@ export default class extends Controller {
     // Remove all active styling from all step type options
     const allOptions = modalContainer.querySelectorAll(".step-type-option")
     allOptions.forEach(option => {
-      const color = option.dataset.stepTypeColor || "blue"
-      option.className = `flex flex-col items-center gap-1 p-3 border-2 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-gray-300 dark:border-gray-600 step-type-option`
+      option.classList.remove("is-selected")
     })
-    
+
     // Add active styling to selected option
     const selectedOption = modalContainer.querySelector(`.step-type-option[data-step-type-option="${stepType}"]`)
     if (selectedOption) {
-      const color = selectedOption.dataset.stepTypeColor || "blue"
-      const colorMap = {
-        blue: "border-blue-500 bg-blue-50 dark:bg-blue-900/20",
-        green: "border-green-500 bg-green-50 dark:bg-green-900/20",
-        purple: "border-purple-500 bg-purple-50 dark:bg-purple-900/20",
-        yellow: "border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20"
-      }
-      selectedOption.className = `flex flex-col items-center gap-1 p-3 border-2 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${colorMap[color] || colorMap.blue} step-type-option`
+      selectedOption.classList.add("is-selected")
     }
   }
 
@@ -162,12 +154,12 @@ export default class extends Controller {
     }
     
     Object.values(fieldContainers).forEach(container => {
-      if (container) container.classList.add("hidden")
+      if (container) container.classList.add("is-hidden")
     })
     
     // Show the selected type's fields
     if (fieldContainers[stepType]) {
-      fieldContainers[stepType].classList.remove("hidden")
+      fieldContainers[stepType].classList.remove("is-hidden")
     }
   }
 
@@ -328,16 +320,16 @@ export default class extends Controller {
     }
     
     const label = document.createElement("label")
-    label.className = "block text-xs font-medium text-gray-700 mb-1"
+    label.className = "form-label"
     label.textContent = "Available Variables:"
     container.appendChild(label)
-    
+
     const list = document.createElement("div")
-    list.className = "flex flex-wrap gap-1"
-    
+    list.className = "variable-suggest__list"
+
     variables.forEach(variable => {
       const badge = document.createElement("span")
-      badge.className = "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600"
+      badge.className = "variable-badge"
       badge.textContent = variable
       badge.dataset.variable = variable
       badge.addEventListener("click", () => this.insertVariable(variable))
@@ -437,7 +429,7 @@ export default class extends Controller {
     if (!form) {
       console.error("Form not found", {
         modalExists: !!document.getElementById("step-modal"),
-        modalVisible: document.getElementById("step-modal")?.classList.contains("hidden") === false,
+        modalVisible: document.getElementById("step-modal")?.classList.contains("is-hidden") === false,
         modalHTML: modalContainer ? modalContainer.innerHTML.substring(0, 500) : null
       })
       return

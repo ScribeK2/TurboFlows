@@ -162,7 +162,7 @@ export default class extends Controller {
         answerTypeRadio.dispatchEvent(new Event('change', { bubbles: true }))
         
         // Also update hidden field
-        const hiddenAnswerType = stepItem.querySelector("input[name*='[answer_type]'][type='hidden']")
+        const hiddenAnswerType = stepItem.querySelector("input[name*='[answer_type]'][type='is-hidden']")
         if (hiddenAnswerType) {
           hiddenAnswerType.value = template.answer_type
         }
@@ -197,22 +197,22 @@ export default class extends Controller {
             const escapedLabel = this.escapeHtml(String(label))
             const escapedValue = this.escapeHtml(String(value))
             const optionHtml = `
-              <div class="flex gap-2 items-center option-item">
-                <span class="drag-handle cursor-move text-gray-500 text-lg flex-shrink-0" title="Drag to reorder">☰</span>
+              <div class="option-item">
+                <span class="drag-handle" title="Drag to reorder">☰</span>
                 <input type="text"
                        name="workflow[steps][][options][][label]"
                        value="${escapedLabel}"
                        placeholder="Option label"
-                       class="flex-1 border rounded px-2 py-1 text-sm min-w-0"
+                       class="form-input"
                        data-step-form-target="field">
                 <input type="text"
                        name="workflow[steps][][options][][value]"
                        value="${escapedValue}"
                        placeholder="Option value"
-                       class="flex-1 border rounded px-2 py-1 text-sm min-w-0"
+                       class="form-input"
                        data-step-form-target="field">
                 <button type="button"
-                        class="text-red-500 hover:text-red-700 text-sm px-2 flex-shrink-0"
+                        class="btn btn--negative btn--sm"
                         data-action="click->question-form#removeOption">
                   Remove
                 </button>
@@ -224,7 +224,7 @@ export default class extends Controller {
           // Show options container if it was hidden
           const optionsContainer = questionForm.querySelector('[data-question-form-target="optionsContainer"]')
           if (optionsContainer) {
-            optionsContainer.classList.remove('hidden')
+            optionsContainer.classList.remove('is-hidden')
           }
         }
       }

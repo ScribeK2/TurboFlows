@@ -54,12 +54,12 @@ export default class extends Controller {
   updateState() {
     if (this.hasAddButtonTarget && this.hasTypeSelectorTarget) {
       if (this.expandedValue) {
-        this.addButtonTarget.classList.add("hidden")
-        this.typeSelectorTarget.classList.remove("hidden")
-        this.typeSelectorTarget.classList.add("animate-fade-in")
+        this.addButtonTarget.classList.add("is-hidden")
+        this.typeSelectorTarget.classList.remove("is-hidden")
+        this.typeSelectorTarget.classList.add("is-visible")
       } else {
-        this.addButtonTarget.classList.remove("hidden")
-        this.typeSelectorTarget.classList.add("hidden")
+        this.addButtonTarget.classList.remove("is-hidden")
+        this.typeSelectorTarget.classList.add("is-hidden")
       }
     }
   }

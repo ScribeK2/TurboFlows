@@ -55,24 +55,21 @@ export default class extends Controller {
     // Render step list
     this.stepListTarget.innerHTML = steps.map((step, index) => `
       <button type="button"
-              class="step-outline-item w-full text-left px-3 py-2 rounded-lg transition-all duration-200 group
-                     hover:bg-gray-100 dark:hover:bg-gray-700/50
-                     ${step.isActive ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''}"
+              class="step-outline-item${step.isActive ? ' is-active' : ''}"
               data-action="click->step-outline#scrollToStep"
               data-step-index="${index}"
               data-step-id="${step.id}">
-        <div class="flex items-center gap-2">
-          <span class="flex-shrink-0 w-6 h-6 rounded-full text-xs font-medium flex items-center justify-center
-                       ${this.getStepNumberClasses(step.type)}">
+        <div class="step-outline-item__inner">
+          <span class="step-outline-item__number step-outline-item__number--${step.type || 'default'}">
             ${index + 1}
           </span>
-          <span class="flex-shrink-0" title="${step.type}">
+          <span class="step-outline-item__icon" title="${step.type}">
             ${renderStepIcon(step.type, "w-4 h-4")}
           </span>
-          <span class="flex-1 text-sm truncate text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100">
+          <span class="step-outline-item__title">
             ${this.escapeHtml(step.title || `Untitled ${step.type || 'step'}`)}
           </span>
-          ${step.hasWarning ? `<span class="flex-shrink-0 text-amber-500" title="Incomplete">${renderIcon(UI_ICON_PATHS.warning, "w-4 h-4")}</span>` : ''}
+          ${step.hasWarning ? `<span class="step-outline-item__warning" title="Incomplete">${renderIcon(UI_ICON_PATHS.warning, "w-4 h-4")}</span>` : ''}
         </div>
       </button>
     `).join("")
@@ -149,9 +146,9 @@ export default class extends Controller {
       }
       
       // Highlight the step briefly
-      targetStep.classList.add("ring-2", "ring-blue-500", "ring-offset-2")
+      targetStep.classList.add("is-highlighted")
       setTimeout(() => {
-        targetStep.classList.remove("ring-2", "ring-blue-500", "ring-offset-2")
+        targetStep.classList.remove("is-highlighted")
       }, 1500)
       
       // Update active state in outline
@@ -166,9 +163,9 @@ export default class extends Controller {
     const items = this.stepListTarget?.querySelectorAll(".step-outline-item")
     items?.forEach((item, i) => {
       if (i == index) {
-        item.classList.add("bg-blue-50", "dark:bg-blue-900/30", "border-l-2", "border-blue-500")
+        item.classList.add("is-active")
       } else {
-        item.classList.remove("bg-blue-50", "dark:bg-blue-900/30", "border-l-2", "border-blue-500")
+        item.classList.remove("is-active")
       }
     })
   }
@@ -188,13 +185,13 @@ export default class extends Controller {
     if (!this.hasOutlineContainerTarget) return
     
     if (this.collapsedValue) {
-      this.outlineContainerTarget.classList.add("w-12")
-      this.outlineContainerTarget.classList.remove("w-64")
-      this.stepListTarget?.classList.add("hidden")
+      this.outlineContainerTarget.classList.add("is-collapsed")
+      this.outlineContainerTarget.classList.remove("is-expanded")
+      this.stepListTarget?.classList.add("is-hidden")
     } else {
-      this.outlineContainerTarget.classList.remove("w-12")
-      this.outlineContainerTarget.classList.add("w-64")
-      this.stepListTarget?.classList.remove("hidden")
+      this.outlineContainerTarget.classList.remove("is-collapsed")
+      this.outlineContainerTarget.classList.add("is-expanded")
+      this.stepListTarget?.classList.remove("is-hidden")
     }
   }
 
@@ -203,10 +200,10 @@ export default class extends Controller {
    */
   showEmptyState() {
     if (this.hasEmptyStateTarget) {
-      this.emptyStateTarget.classList.remove("hidden")
+      this.emptyStateTarget.classList.remove("is-hidden")
     }
     if (this.hasStepListTarget) {
-      this.stepListTarget.classList.add("hidden")
+      this.stepListTarget.classList.add("is-hidden")
     }
   }
 
@@ -215,10 +212,10 @@ export default class extends Controller {
    */
   hideEmptyState() {
     if (this.hasEmptyStateTarget) {
-      this.emptyStateTarget.classList.add("hidden")
+      this.emptyStateTarget.classList.add("is-hidden")
     }
     if (this.hasStepListTarget) {
-      this.stepListTarget.classList.remove("hidden")
+      this.stepListTarget.classList.remove("is-hidden")
     }
   }
 
@@ -236,15 +233,8 @@ export default class extends Controller {
    * Get CSS classes for step number badge based on type
    */
   getStepNumberClasses(type) {
-    const classes = {
-      question: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
-      action: "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300",
-      sub_flow: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300",
-      message: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300",
-      escalate: "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300",
-      resolve: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
-    }
-    return classes[type] || "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+    // Now returns a modifier class; CSS handles the colors via step-outline-item__number--{type}
+    return `step-outline-item__number--${type || 'default'}`
   }
 
   /**

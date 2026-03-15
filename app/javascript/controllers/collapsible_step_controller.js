@@ -67,10 +67,10 @@ export default class extends Controller {
   updateVisibility() {
     if (this.hasContentTarget) {
       if (this.expandedValue) {
-        this.contentTarget.classList.remove("hidden")
+        this.contentTarget.classList.remove("is-hidden")
         this.contentTarget.style.maxHeight = ""
       } else {
-        this.contentTarget.classList.add("hidden")
+        this.contentTarget.classList.add("is-hidden")
       }
     }
     
@@ -82,9 +82,9 @@ export default class extends Controller {
     // Show/hide summary
     if (this.hasStepSummaryTarget) {
       if (this.expandedValue) {
-        this.stepSummaryTarget.classList.add("hidden")
+        this.stepSummaryTarget.classList.add("is-hidden")
       } else {
-        this.stepSummaryTarget.classList.remove("hidden")
+        this.stepSummaryTarget.classList.remove("is-hidden")
         this.updateSummary()
       }
     }

@@ -177,8 +177,8 @@ export default class extends Controller {
     if (!this.hasDropdownTarget) return
     
     this.isOpen = true
-    this.dropdownTarget.classList.remove("hidden")
-    this.buttonTarget.classList.add("ring-2", "ring-blue-500")
+    this.dropdownTarget.classList.remove("is-hidden")
+    this.buttonTarget.classList.add("is-open")
     
     // Lazy load steps when dropdown is first opened (much faster initial page load)
     if (!this.stepsLoaded) {
@@ -199,8 +199,8 @@ export default class extends Controller {
     if (!this.hasDropdownTarget) return
     
     this.isOpen = false
-    this.dropdownTarget.classList.add("hidden")
-    this.buttonTarget.classList.remove("ring-2", "ring-blue-500")
+    this.dropdownTarget.classList.add("is-hidden")
+    this.buttonTarget.classList.remove("is-open")
     
     // Clear search
     if (this.hasSearchTarget) {
@@ -263,17 +263,15 @@ export default class extends Controller {
   updateButtonText(step) {
     if (!step) {
       const placeholder = this.hasPlaceholderValue ? this.placeholderValue : "-- Select step --"
-      this.buttonTarget.innerHTML = `<span class="text-gray-500">${placeholder}</span>`
+      this.buttonTarget.innerHTML = `<span class="step-selector__placeholder">${placeholder}</span>`
       return
     }
 
-    const typeColor = this.getTypeColor(step.type)
-
     this.buttonTarget.innerHTML = `
-      <div class="flex items-center gap-2">
-        <span class="${typeColor}">${renderStepIcon(step.type, "w-4 h-4")}</span>
-        <span class="font-medium">${this.escapeHtml(step.title)}</span>
-        <span class="text-xs text-gray-500">${this.escapeHtml(step.type)}</span>
+      <div class="step-selector__selected">
+        <span class="step-selector__icon step-selector__icon--${step.type}">${renderStepIcon(step.type, "w-4 h-4")}</span>
+        <span class="step-selector__title">${this.escapeHtml(step.title)}</span>
+        <span class="step-selector__type">${this.escapeHtml(step.type)}</span>
       </div>
     `
   }
@@ -290,13 +288,13 @@ export default class extends Controller {
     // If we have a selected value, show it without loading all steps
     if (this.selectedValueValue) {
       this.buttonTarget.innerHTML = `
-        <div class="flex items-center gap-2">
-          <span class="font-medium">${this.escapeHtml(this.selectedValueValue)}</span>
+        <div class="step-selector__selected">
+          <span class="step-selector__title">${this.escapeHtml(this.selectedValueValue)}</span>
         </div>
       `
     } else {
       const placeholder = this.hasPlaceholderValue ? this.placeholderValue : "-- Select step --"
-      this.buttonTarget.innerHTML = `<span class="text-gray-500">${placeholder}</span>`
+      this.buttonTarget.innerHTML = `<span class="step-selector__placeholder">${placeholder}</span>`
     }
   }
 
@@ -310,13 +308,13 @@ export default class extends Controller {
     } else if (this.selectedValueValue) {
       // Show selected value even if step not found (lazy loading case)
       this.buttonTarget.innerHTML = `
-        <div class="flex items-center gap-2">
-          <span class="font-medium">${this.escapeHtml(this.selectedValueValue)}</span>
+        <div class="step-selector__selected">
+          <span class="step-selector__title">${this.escapeHtml(this.selectedValueValue)}</span>
         </div>
       `
     } else {
       const placeholder = this.hasPlaceholderValue ? this.placeholderValue : "-- Select step --"
-      this.buttonTarget.innerHTML = `<span class="text-gray-500">${placeholder}</span>`
+      this.buttonTarget.innerHTML = `<span class="step-selector__placeholder">${placeholder}</span>`
     }
   }
 
@@ -325,7 +323,7 @@ export default class extends Controller {
     
     if (this.filteredSteps.length === 0) {
       this.optionsTarget.innerHTML = `
-        <div class="p-4 text-center text-gray-500 text-sm">
+        <div class="step-selector__empty">
           No steps available
         </div>
       `
@@ -333,27 +331,26 @@ export default class extends Controller {
     }
     
     const optionsHtml = this.filteredSteps.map(step => {
-      const typeColor = this.getTypeColor(step.type)
       const isSelected = step.title === this.selectedValueValue
 
       return `
         <button type="button"
-                class="w-full text-left p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors ${isSelected ? 'bg-blue-50 border-blue-200' : ''}"
+                class="step-selector__option${isSelected ? ' is-selected' : ''}"
                 data-action="click->step-selector#selectStep"
                 data-step-index="${step.index}"
                 data-step-selector-target="option">
-          <div class="flex items-start gap-3">
-            <div class="flex-shrink-0 mt-0.5">
-              <span class="${typeColor}">${renderStepIcon(step.type, "w-5 h-5")}</span>
+          <div class="step-selector__option-inner">
+            <div class="step-selector__option-icon">
+              <span class="step-selector__icon step-selector__icon--${step.type}">${renderStepIcon(step.type, "w-5 h-5")}</span>
             </div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 mb-1">
-                <span class="font-medium text-gray-900">${this.escapeHtml(step.title)}</span>
-                <span class="text-xs px-2 py-0.5 rounded ${this.getTypeBadgeColor(step.type)}">${this.escapeHtml(step.type)}</span>
+            <div class="step-selector__option-content">
+              <div class="step-selector__option-header">
+                <span class="step-selector__option-title">${this.escapeHtml(step.title)}</span>
+                <span class="step-type-badge step-type-badge--${step.type}">${this.escapeHtml(step.type)}</span>
               </div>
-              ${step.preview ? `<p class="text-xs text-gray-600 truncate">${this.escapeHtml(step.preview)}</p>` : ''}
+              ${step.preview ? `<p class="step-selector__option-preview">${this.escapeHtml(step.preview)}</p>` : ''}
             </div>
-            ${isSelected ? '<span class="text-blue-600">✓</span>' : ''}
+            ${isSelected ? '<span class="step-selector__check">✓</span>' : ''}
           </div>
         </button>
       `
@@ -363,27 +360,13 @@ export default class extends Controller {
   }
 
   getTypeColor(type) {
-    const colors = {
-      question: "text-blue-600",
-      action: "text-purple-600",
-      message: "text-cyan-600",
-      sub_flow: "text-indigo-600",
-      escalate: "text-orange-600",
-      resolve: "text-emerald-600"
-    }
-    return colors[type] || "text-gray-600"
+    // CSS handles colors via .step-selector__icon--{type} modifier
+    return `step-selector__icon--${type || "default"}`
   }
 
   getTypeBadgeColor(type) {
-    const colors = {
-      question: "bg-blue-100 text-blue-700",
-      action: "bg-purple-100 text-purple-700",
-      message: "bg-cyan-100 text-cyan-700",
-      sub_flow: "bg-indigo-100 text-indigo-700",
-      escalate: "bg-orange-100 text-orange-700",
-      resolve: "bg-emerald-100 text-emerald-700"
-    }
-    return colors[type] || "bg-gray-100 text-gray-700"
+    // CSS handles colors via .step-type-badge--{type} modifier
+    return `step-type-badge--${type || "default"}`
   }
 
   escapeHtml(text) {

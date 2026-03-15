@@ -39,13 +39,13 @@ export default class extends Controller {
   }
 
   showFab() {
-    this.fabTarget.classList.remove("hidden")
-    this.fabTarget.classList.add("animate-scale-in")
+    this.fabTarget.classList.remove("is-hidden")
+    this.fabTarget.classList.add("is-visible")
   }
 
   hideFab() {
-    this.fabTarget.classList.add("hidden")
-    this.fabTarget.classList.remove("animate-scale-in")
+    this.fabTarget.classList.add("is-hidden")
+    this.fabTarget.classList.remove("is-visible")
     this.close()
   }
 
@@ -60,13 +60,13 @@ export default class extends Controller {
 
   open() {
     this.isOpen = true
-    this.popoverTarget.classList.remove("hidden")
+    this.popoverTarget.classList.remove("is-hidden")
     this.iconTarget.style.transform = "rotate(45deg)"
   }
 
   close() {
     this.isOpen = false
-    this.popoverTarget.classList.add("hidden")
+    this.popoverTarget.classList.add("is-hidden")
     this.iconTarget.style.transform = "rotate(0deg)"
   }
 

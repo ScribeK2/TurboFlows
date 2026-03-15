@@ -186,13 +186,12 @@ export default class extends Controller {
     
     // Add error message
     const errorElement = document.createElement("div")
-    errorElement.className = "error-message text-red-600 text-xs mt-1"
+    errorElement.className = "error-message"
     errorElement.textContent = message
     errorContainer.appendChild(errorElement)
     
     // Add error styling to field
-    field.classList.add("border-red-500")
-    field.classList.remove("border-gray-300")
+    field.classList.add("is-invalid")
   }
 
   clearFieldError(field) {
@@ -205,8 +204,7 @@ export default class extends Controller {
     }
     
     // Remove error styling
-    field.classList.remove("border-red-500")
-    field.classList.add("border-gray-300")
+    field.classList.remove("is-invalid")
   }
 
   getErrorContainer(field) {

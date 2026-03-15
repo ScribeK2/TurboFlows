@@ -151,7 +151,7 @@ export default class extends Controller {
 
     if (this.transitions.length === 0) {
       this.transitionsListTarget.innerHTML = `
-        <p class="text-sm text-gray-500 dark:text-gray-400 italic py-2">
+        <p class="transitions-empty">
           No connections yet. Add a connection to link this step to another.
         </p>
       `
@@ -166,39 +166,39 @@ export default class extends Controller {
       }).join('')
 
       return `
-        <div class="flex flex-wrap items-center gap-2 p-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700"
+        <div class="transition-item"
              data-transition-index="${index}">
-          <svg class="w-4 h-4 text-indigo-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="transition-item__arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
           </svg>
           <select data-action="change->step-transitions#updateTransition"
                   data-transition-field="target_uuid"
-                  class="flex-1 min-w-[120px] text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                  class="form-select transition-item__target">
             <option value="">-- Select target step --</option>
             ${optionsHtml}
           </select>
-          <div class="flex items-center gap-1 flex-1 min-w-[180px]"
+          <div class="transition-item__condition"
                data-controller="condition-preset"
                data-condition-preset-condition-value="${this.escapeHtml(transition.condition || '')}"
                data-condition-preset-label-value="${this.escapeHtml(transition.label || '')}">
             <select data-condition-preset-target="presetDropdown"
                     data-action="change->condition-preset#handlePresetChange"
-                    class="flex-1 text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    class="form-select"
                     title="Select a condition preset or choose Custom">
             </select>
-            <div data-condition-preset-target="numericContainer" class="hidden flex items-center gap-1">
+            <div data-condition-preset-target="numericContainer" class="is-hidden condition-preset__numeric">
               <input type="number"
                      data-condition-preset-target="numericValueInput"
                      data-action="input->condition-preset#handleNumericChange"
                      placeholder="Value"
-                     class="w-20 text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400">
+                     class="form-input form-input--sm">
             </div>
-            <div data-condition-preset-target="customContainer" class="hidden flex items-center gap-1">
+            <div data-condition-preset-target="customContainer" class="is-hidden condition-preset__custom">
               <input type="text"
                      data-condition-preset-target="customInput"
                      data-action="input->condition-preset#handleCustomInput"
                      placeholder='e.g., answer == "yes"'
-                     class="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400">
+                     class="form-input">
             </div>
             <input type="hidden"
                    data-condition-preset-target="conditionHidden"
@@ -213,12 +213,12 @@ export default class extends Controller {
                  value="${this.escapeHtml(transition.label || '')}"
                  placeholder="Label"
                  title="Display label for this connection"
-                 class="w-20 text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400">
+                 class="form-input transition-item__label">
           <button type="button"
                   data-action="click->step-transitions#removeTransition"
-                  class="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                  class="btn btn--negative btn--icon"
                   title="Remove connection">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="btn__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
           </button>
