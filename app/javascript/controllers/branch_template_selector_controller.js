@@ -170,15 +170,15 @@ export default class extends Controller {
     return `
       <div class="border rounded-lg p-3 bg-white hover:border-purple-300 transition-all ${requiresVariable ? 'opacity-60' : ''}">
         <div class="flex items-start gap-2 mb-2">
-          <span class="text-gray-600">${this.resolveTemplateIcon(template.icon)}</span>
+          <span class="template-card__icon">${this.resolveTemplateIcon(template.icon)}</span>
           <div class="flex-1">
-            <h5 class="font-semibold text-sm text-gray-900">${this.escapeHtml(template.name)}</h5>
-            <p class="text-xs text-gray-600 mt-0.5">${this.escapeHtml(template.description)}</p>
+            <h5 class="template-card__name">${this.escapeHtml(template.name)}</h5>
+            <p class="template-card__description">${this.escapeHtml(template.description)}</p>
           </div>
         </div>
         
         <div class="mt-2 flex items-center justify-between">
-          <span class="text-xs text-gray-500">${branchesCount} branch${branchesCount !== 'N' && branchesCount !== 1 ? 'es' : ''}</span>
+          <span class="template-card__branches">${branchesCount} branch${branchesCount !== 'N' && branchesCount !== 1 ? 'es' : ''}</span>
           <button type="button"
                   class="px-3 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 ${requiresVariable ? 'opacity-50 cursor-not-allowed' : ''}"
                   data-template-id="${template.id}"
@@ -262,14 +262,14 @@ export default class extends Controller {
       <div class="space-y-3">
         ${ranges.map((range, index) => `
           <div class="flex items-center gap-2">
-            <label class="text-xs text-gray-700 w-20">${this.escapeHtml(range.label)}:</label>
+            <label class="range-label">${this.escapeHtml(range.label)}:</label>
             ${range.operator2 ? `
               <input type="number" 
                      class="w-20 border rounded px-2 py-1 text-sm"
                      value="${range.value}"
                      data-range-index="${index}"
                      data-range-field="value">
-              <span class="text-xs text-gray-500">to</span>
+              <span class="template-card__branches">to</span>
               <input type="number" 
                      class="w-20 border rounded px-2 py-1 text-sm"
                      value="${range.value2}"

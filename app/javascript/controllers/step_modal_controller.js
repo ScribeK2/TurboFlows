@@ -315,7 +315,7 @@ export default class extends Controller {
     container.innerHTML = ""
     
     if (variables.length === 0) {
-      container.innerHTML = '<p class="text-xs text-gray-500">No variables available yet</p>'
+      container.innerHTML = '<p class="form-hint">No variables available yet</p>'
       return
     }
     

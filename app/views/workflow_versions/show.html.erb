@@ -29,7 +29,7 @@
     </h2>
     <div style="display: flex; flex-direction: column; gap: 0.75rem;">
       <% @version.steps_snapshot.each_with_index do |step, index| %>
-        <div class="card p-4 rounded-lg">
+        <div class="version-step-item card">
           <div class="flex items-center gap-3">
             <span class="step-card__number">
               <%= index + 1 %>

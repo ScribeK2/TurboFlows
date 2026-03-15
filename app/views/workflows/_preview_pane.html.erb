@@ -45,7 +45,7 @@
             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
               <% if options.present? && options.is_a?(Array) %>
                 <% options.each do |option| %>
-                  <label class="flex items-center gap-2 p-2 card rounded-md" style="cursor: not-allowed;">
+                  <label class="preview-radio-option card" style="cursor: not-allowed;">
                     <input type="radio" name="preview_<%= index %>" disabled style="cursor: not-allowed;" />
                     <span class="text-sm"><%= option["label"] || option["value"] || "Option" %></span>
                   </label>
@@ -109,13 +109,13 @@
 
         <% if step.is_a?(Step) %>
           <% if step.instructions.present? %>
-            <div class="mt-2 p-3 card rounded-md">
+            <div class="preview-content-box card">
               <div class="text-sm"><%= render_step_content(step, 'instructions', sample_variables) %></div>
             </div>
           <% end %>
         <% else %>
           <% if step["instructions"].present? %>
-            <div class="mt-2 p-3 card rounded-md">
+            <div class="preview-content-box card">
               <div class="text-sm"><%= VariableInterpolator.interpolate(step["instructions"], sample_variables) %></div>
             </div>
           <% end %>
@@ -132,7 +132,7 @@
           <div class="text-sm"><%= VariableInterpolator.interpolate(sdesc, sample_variables) %></div>
         <% end %>
 
-        <div class="mt-2 p-3 card card--message rounded-md">
+        <div class="preview-content-box card card--message">
           <div class="flex items-start gap-2">
             <span class="step-card__number flex-shrink-0 step-card__number--message">i</span>
             <div class="flex-1">
@@ -165,7 +165,7 @@
           <div class="text-sm"><%= VariableInterpolator.interpolate(sdesc, sample_variables) %></div>
         <% end %>
 
-        <div class="mt-2 p-3 card card--escalate rounded-md">
+        <div class="preview-content-box card card--escalate">
           <div class="flex items-center gap-2 mb-2">
             <span class="step-card__number step-card__number--escalate">↑</span>
             <span class="font-medium">Escalation</span>
@@ -197,11 +197,11 @@
             <% end %>
 
             <% if step.is_a?(Step) && step.notes.present? %>
-              <div class="mt-2 p-2 card rounded text-sm">
+              <div class="preview-notes card">
                 <%= render_step_content(step, 'notes', sample_variables) %>
               </div>
             <% elsif step.is_a?(Hash) && step["notes"].present? %>
-              <div class="mt-2 p-2 card rounded text-sm">
+              <div class="preview-notes card">
                 <%= VariableInterpolator.interpolate(step["notes"], sample_variables) %>
               </div>
             <% end %>
@@ -219,7 +219,7 @@
           <div class="text-sm"><%= VariableInterpolator.interpolate(sdesc, sample_variables) %></div>
         <% end %>
 
-        <div class="mt-2 p-3 card card--resolve rounded-md">
+        <div class="preview-content-box card card--resolve">
           <div class="flex items-center gap-2 mb-2">
             <span class="step-card__number step-card__number--resolve">✓</span>
             <span class="font-medium">Resolution</span>

@@ -56,7 +56,7 @@
       <p class="stat-card__label">Scenarios Run</p>
       <% if @scenario_active > 0 %>
         <p class="stat-card__detail flex items-center gap-1">
-          <span class="inline-block w-2 h-2 rounded-full" style="background: var(--color-info);" aria-hidden="true"></span>
+          <span class="status-dot" style="background: var(--color-positive);" aria-hidden="true"></span>
           <%= @scenario_active %> active
         </p>
       <% end %>

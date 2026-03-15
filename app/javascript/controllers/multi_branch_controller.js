@@ -336,42 +336,42 @@ export default class extends Controller {
     // Note: stepOptions no longer needed - using step selector component instead
     
     return `
-      <div class="branch-item border rounded p-3 mb-3 bg-gray-50" data-branch-index="${index}">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-sm font-medium text-gray-700">Branch ${index + 1}</span>
+      <div class="branch-item" data-branch-index="${index}">
+        <div class="branch-item__header">
+          <span class="branch-item__label">Branch ${index + 1}</span>
           <button type="button" 
-                  class="text-red-500 hover:text-red-700 text-sm"
+                  class="btn btn--negative btn--sm"
                   data-action="click->multi-branch#removeBranch"
                   data-branch-index="${index}">
             Remove
           </button>
         </div>
         
-        <div class="grid grid-cols-1 gap-3">
+        <div class="branch-item__body">
           <div data-controller="rule-builder" 
                data-rule-builder-workflow-id-value="${this.workflowIdValue || ''}"
                data-rule-builder-variables-url-value="${this.variablesUrlValue || ''}">
-            <label class="block text-xs text-gray-600 mb-1">Condition</label>
+            <label class="form-label">Condition</label>
             <input type="hidden" 
                    name="workflow[steps][][branches][][condition]" 
                    value="${this.escapeHtml(condition)}"
                    data-rule-builder-target="conditionInput"
                    data-step-form-target="field">
             
-            <div class="grid grid-cols-3 gap-2 items-end">
+            <div class="branch-condition-grid">
               <div>
-                <label class="block text-xs text-gray-600 mb-1">Variable</label>
+                <label class="form-label">Variable</label>
                 <select data-rule-builder-target="variableSelect" 
-                        class="w-full border rounded px-2 py-1 text-sm"
+                        class="form-select"
                         data-action="change->rule-builder#buildCondition">
                   <option value="">-- Select variable --</option>
                 </select>
               </div>
               
               <div>
-                <label class="block text-xs text-gray-600 mb-1">Operator</label>
+                <label class="form-label">Operator</label>
                 <select data-rule-builder-target="operatorSelect" 
-                        class="w-full border rounded px-2 py-1 text-sm"
+                        class="form-select"
                         data-action="change->rule-builder#buildCondition">
                   <option value="">-- Select --</option>
                   <option value="==" ${condition.includes('==') ? 'selected' : ''}>Equals (==)</option>
@@ -384,27 +384,27 @@ export default class extends Controller {
               </div>
               
               <div>
-                <label class="block text-xs text-gray-600 mb-1">Value</label>
+                <label class="form-label">Value</label>
                 <input type="text" 
                        data-rule-builder-target="valueInput" 
                        placeholder="Value"
-                       class="w-full border rounded px-2 py-1 text-sm"
+                       class="form-input"
                        data-action="input->rule-builder#buildCondition">
               </div>
             </div>
             
-            <div class="mt-1 p-1 bg-gray-100 rounded text-xs font-mono text-gray-700">
-              <span class="text-gray-500">Condition:</span>
+            <div class="condition-preview">
+              <span class="condition-preview__label">Condition:</span>
               <span data-rule-builder-target="conditionDisplay">${condition || "Not set"}</span>
             </div>
           </div>
           
           <div>
-            <label class="block text-xs text-gray-600 mb-1">Go to:</label>
+            <label class="form-label">Go to:</label>
             <div data-controller="step-selector"
                  data-step-selector-selected-value-value="${path}"
                  data-step-selector-placeholder-value="-- Select step --"
-                 class="relative">
+                 class="step-selector">
               <input type="hidden" 
                      name="workflow[steps][][branches][][path]" 
                      value="${this.escapeHtml(path)}"
@@ -412,21 +412,21 @@ export default class extends Controller {
                      data-step-form-target="field"
                      data-multi-branch-target="branchPathSelect">
               <button type="button"
-                      class="w-full text-left border rounded px-3 py-2 text-sm bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      class="step-selector__button"
                       data-step-selector-target="button"
                       data-action="click->step-selector#toggle">
-                <span class="text-gray-500">-- Select step --</span>
+                <span class="step-selector__placeholder">-- Select step --</span>
               </button>
-              <div class="hidden absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-hidden"
+              <div class="step-selector__dropdown is-hidden"
                    data-step-selector-target="dropdown">
-                <div class="p-2 border-b border-gray-200">
+                <div class="step-selector__search-wrap">
                   <input type="text"
                          placeholder="Search steps..."
-                         class="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         class="form-input"
                          data-step-selector-target="search"
                          data-action="input->step-selector#search">
                 </div>
-                <div class="overflow-y-auto max-h-56" data-step-selector-target="options">
+                <div class="step-selector__options" data-step-selector-target="options">
                   <!-- Options will be rendered here -->
                 </div>
               </div>

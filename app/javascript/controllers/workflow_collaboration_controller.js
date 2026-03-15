@@ -507,14 +507,14 @@ export default class extends Controller {
     }
     
     const presenceHTML = `
-      <div class="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-        <span class="flex items-center">
-          <span class="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></span>
+      <div class="collab-presence">
+        <span class="collab-presence__info">
+          <span class="collab-presence__dot" aria-hidden="true"></span>
           ${otherUsers.length} ${otherUsers.length === 1 ? 'person' : 'people'} editing
         </span>
-        <div class="flex -space-x-2">
+        <div class="collab-presence__avatars">
           ${otherUsers.map(user => `
-            <div class="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center border-2 border-white dark:border-gray-800" 
+            <div class="collab-presence__avatar" 
                  title="${user.name || user.email}">
               ${(user.name || user.email).charAt(0).toUpperCase()}
             </div>

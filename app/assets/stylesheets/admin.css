@@ -261,3 +261,40 @@
   text-align: center;
   color: var(--color-ink-muted);
 }
+
+/* ============================================================================
+   Admin Info Box (informational/warning callouts)
+   ============================================================================ */
+
+.admin-info-box {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+}
+
+.admin-info-box--info {
+  background: oklch(0.96 0.04 260);
+  border-color: oklch(0.85 0.08 260);
+  color: oklch(0.35 0.14 260);
+}
+
+.admin-info-box--warning {
+  background: oklch(0.97 0.04 75);
+  border-color: oklch(0.85 0.1 75);
+  color: oklch(0.45 0.12 75);
+}
+
+[data-theme="dark"] .admin-info-box--info {
+  background: oklch(0.2 0.04 260);
+  border-color: oklch(0.3 0.08 260);
+  color: oklch(0.75 0.12 260);
+}
+
+[data-theme="dark"] .admin-info-box--warning {
+  background: oklch(0.2 0.04 75);
+  border-color: oklch(0.3 0.1 75);
+  color: oklch(0.8 0.1 75);
+}

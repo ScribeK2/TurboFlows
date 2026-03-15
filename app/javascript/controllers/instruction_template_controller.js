@@ -259,23 +259,23 @@ export default class extends Controller {
     // Render template items
     this.templateListTarget.innerHTML = templates.map(template => `
       <button type="button"
-              class="w-full text-left p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-emerald-300 dark:hover:border-emerald-600 transition-all duration-200 group"
+              class="template-list-item"
               data-action="click->instruction-template#insertTemplate"
               data-template-id="${template.id}"
               data-template-content="${this.escapeHtml(template.content)}">
-        <div class="flex items-start gap-3">
-          <svg class="w-5 h-5 text-slate-400 dark:text-slate-500 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="template-list-item__inner">
+          <svg class="icon icon--sm template-list-item__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${this.iconPaths[template.icon] || this.iconPaths['chat']}"/>
           </svg>
-          <div class="flex-1 min-w-0">
-            <div class="font-medium text-slate-900 dark:text-slate-100 text-sm group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
+          <div class="template-list-item__content">
+            <div class="template-list-item__name">
               ${template.name}
             </div>
-            <div class="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+            <div class="template-list-item__preview">
               ${this.escapeHtml(template.content.substring(0, 80))}${template.content.length > 80 ? '...' : ''}
             </div>
           </div>
-          <svg class="w-4 h-4 text-slate-400 group-hover:text-emerald-500 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="icon icon--sm template-list-item__add-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
           </svg>
         </div>
@@ -285,8 +285,8 @@ export default class extends Controller {
     // Show empty state if no templates
     if (templates.length === 0) {
       this.templateListTarget.innerHTML = `
-        <div class="text-center py-8 text-slate-500 dark:text-slate-400">
-          <svg class="mx-auto h-10 w-10 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="empty-state">
+          <svg class="icon icon--xl empty-state__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
           <p class="text-sm">No templates found</p>

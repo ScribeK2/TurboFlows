@@ -338,9 +338,9 @@ export default class extends Controller {
     
     if (variable && valueDisplay) {
       this.conditionPreviewTarget.innerHTML = `
-        <span class="text-blue-600 dark:text-blue-400 font-medium">${this.escapeHtml(variableDisplay)}</span>
-        <span class="text-gray-600 dark:text-gray-400">${this.escapeHtml(operatorLabel)}</span>
-        <span class="text-green-600 dark:text-green-400 font-medium">"${this.escapeHtml(valueDisplay)}"</span>
+        <span class="condition-token condition-token--variable">${this.escapeHtml(variableDisplay)}</span>
+        <span class="condition-token condition-token--operator">${this.escapeHtml(operatorLabel)}</span>
+        <span class="condition-token condition-token--value">"${this.escapeHtml(valueDisplay)}"</span>
       `
       this.conditionPreviewTarget.classList.remove('is-empty')
     } else {

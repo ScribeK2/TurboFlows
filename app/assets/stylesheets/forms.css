@@ -227,3 +227,10 @@
   background-position: left 0.625rem center;
   background-size: 1rem 1rem;
 }
+
+/* Required field indicator */
+.form-required-indicator {
+  color: var(--color-negative);
+  margin-left: 0.125rem;
+  font-weight: 400;
+}

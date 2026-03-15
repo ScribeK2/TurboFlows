@@ -239,7 +239,7 @@ export default class extends Controller {
     const steps = this.parseSteps()
 
     if (steps.length === 0) {
-      this.canvasTarget.innerHTML = '<p class="text-gray-500 text-center py-8">Add steps to see the flow preview</p>'
+      this.canvasTarget.innerHTML = '<p class="empty-state__text">Add steps to see the flow preview</p>'
       return
     }
 

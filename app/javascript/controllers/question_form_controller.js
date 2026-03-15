@@ -140,7 +140,7 @@ export default class extends Controller {
     
     const optionHtml = `
       <div class="flex gap-2 items-center option-item">
-        <span class="drag-handle cursor-move text-gray-500 text-lg flex-shrink-0" title="Drag to reorder">☰</span>
+        <span class="drag-handle" title="Drag to reorder">☰</span>
         <input type="text" 
                name="workflow[steps][][options][][label]" 
                placeholder="Option label" 
@@ -152,7 +152,7 @@ export default class extends Controller {
                class="flex-1 border rounded px-2 py-1 text-sm min-w-0"
                data-step-form-target="field">
         <button type="button" 
-                class="text-red-500 hover:text-red-700 text-sm px-2 flex-shrink-0"
+                class="btn btn--negative btn--sm"
                 data-action="click->question-form#removeOption">
           Remove
         </button>

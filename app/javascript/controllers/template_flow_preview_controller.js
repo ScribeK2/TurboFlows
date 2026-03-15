@@ -191,7 +191,7 @@ export default class extends Controller {
     const steps = this.parseSteps()
 
     if (steps.length === 0) {
-      this.canvasTarget.innerHTML = '<p class="text-gray-500 text-center py-4 text-sm">No steps in template</p>'
+      this.canvasTarget.innerHTML = '<p class="empty-state__text">No steps in template</p>'
       return
     }
 

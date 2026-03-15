@@ -492,3 +492,171 @@
   background: var(--color-border);
   border-radius: var(--radius-full);
 }
+
+/* ============================================================================
+   Stepper Pill — Progress breadcrumb dots/pills for the scenario stepper
+   ============================================================================ */
+
+.stepper-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  border: 2px solid var(--color-border);
+  background: var(--color-canvas-raised);
+  color: var(--color-ink-muted);
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.stepper-pill--current {
+  background: var(--color-link);
+  border-color: var(--color-link);
+  color: oklch(1 0 0);
+  box-shadow: 0 0 0 3px oklch(0.55 0.2 260 / 0.2);
+}
+
+.stepper-pill--pending {
+  opacity: 0.4;
+}
+
+.stepper-pill--completed {
+  background: var(--color-positive);
+  border-color: var(--color-positive);
+  color: oklch(1 0 0);
+}
+
+/* Step-type-colored completed pills */
+.stepper-pill--question  { background: oklch(0.55 0.18 var(--color-step-question)); border-color: oklch(0.55 0.18 var(--color-step-question)); color: oklch(1 0 0); }
+.stepper-pill--action    { background: oklch(0.55 0.15 var(--color-step-action)); border-color: oklch(0.55 0.15 var(--color-step-action)); color: oklch(1 0 0); }
+.stepper-pill--message   { background: oklch(0.55 0.18 var(--color-step-message)); border-color: oklch(0.55 0.18 var(--color-step-message)); color: oklch(1 0 0); }
+.stepper-pill--escalate  { background: oklch(0.55 0.22 var(--color-step-escalate)); border-color: oklch(0.55 0.22 var(--color-step-escalate)); color: oklch(1 0 0); }
+.stepper-pill--resolve   { background: oklch(0.6 0.19 var(--color-step-resolve)); border-color: oklch(0.6 0.19 var(--color-step-resolve)); color: oklch(1 0 0); }
+.stepper-pill--sub-flow  { background: oklch(0.55 0.18 var(--color-step-subflow)); border-color: oklch(0.55 0.18 var(--color-step-subflow)); color: oklch(1 0 0); }
+
+/* ============================================================================
+   Scenario Step Connector
+   ============================================================================ */
+
+.scenario-step-connector {
+  width: 1.5rem;
+  height: 2px;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+
+.scenario-step-current {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-full);
+  background: oklch(0.55 0.2 260 / 0.15);
+  border: 2px dashed var(--color-link);
+  color: var(--color-link);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ============================================================================
+   Scenario Progress Bar
+   ============================================================================ */
+
+.scenario-progress-bar-wrap {
+  height: 3px;
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.scenario-progress-bar {
+  height: 100%;
+  background: var(--color-link);
+  border-radius: var(--radius-full);
+  transition: width 0.3s ease;
+}
+
+/* ============================================================================
+   Step Content Box — Rich content display in scenario player
+   ============================================================================ */
+
+.step-content-box {
+  position: relative;
+  display: flex;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  background: var(--color-canvas);
+}
+
+.step-content-box__accent {
+  width: 4px;
+  flex-shrink: 0;
+  background: var(--color-ink-muted);
+}
+
+.step-content-box__body {
+  flex: 1;
+  padding: 1rem;
+  min-width: 0;
+}
+
+.step-content-box__icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius);
+  background: var(--color-canvas-raised);
+  flex-shrink: 0;
+}
+
+.step-content-box__label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-ink);
+  margin-bottom: 0.5rem;
+}
+
+/* Step type variants */
+.step-content-box--action .step-content-box__accent    { background: oklch(0.55 0.15 var(--color-step-action)); }
+.step-content-box--message .step-content-box__accent   { background: oklch(0.55 0.18 var(--color-step-message)); }
+.step-content-box--escalate .step-content-box__accent  { background: oklch(0.55 0.22 var(--color-step-escalate)); }
+.step-content-box--resolve .step-content-box__accent   { background: oklch(0.6 0.19 var(--color-step-resolve)); }
+
+.step-content-box--action .step-content-box__icon-wrap    { background: oklch(0.95 0.06 var(--color-step-action)); color: oklch(0.45 0.15 var(--color-step-action)); }
+.step-content-box--message .step-content-box__icon-wrap   { background: oklch(0.95 0.06 var(--color-step-message)); color: oklch(0.45 0.15 var(--color-step-message)); }
+.step-content-box--escalate .step-content-box__icon-wrap  { background: oklch(0.95 0.08 var(--color-step-escalate)); color: oklch(0.45 0.2 var(--color-step-escalate)); }
+.step-content-box--resolve .step-content-box__icon-wrap   { background: oklch(0.95 0.06 var(--color-step-resolve)); color: oklch(0.45 0.17 var(--color-step-resolve)); }
+
+[data-theme="dark"] .step-content-box {
+  background: var(--color-canvas-raised);
+}
+
+[data-theme="dark"] .step-content-box--action .step-content-box__icon-wrap    { background: oklch(0.22 0.06 var(--color-step-action)); color: oklch(0.7 0.14 var(--color-step-action)); }
+[data-theme="dark"] .step-content-box--message .step-content-box__icon-wrap   { background: oklch(0.22 0.06 var(--color-step-message)); color: oklch(0.7 0.14 var(--color-step-message)); }
+[data-theme="dark"] .step-content-box--escalate .step-content-box__icon-wrap  { background: oklch(0.22 0.08 var(--color-step-escalate)); color: oklch(0.7 0.16 var(--color-step-escalate)); }
+[data-theme="dark"] .step-content-box--resolve .step-content-box__icon-wrap   { background: oklch(0.22 0.06 var(--color-step-resolve)); color: oklch(0.7 0.14 var(--color-step-resolve)); }
+
+/* ============================================================================
+   Scenario Result Badge (icon circle in results list)
+   ============================================================================ */
+
+.scenario-result-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+  margin-right: 0.75rem;
+}

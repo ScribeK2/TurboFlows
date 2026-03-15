@@ -81,7 +81,7 @@ export default class extends Controller {
 
   expandSelectedPath() {
     // Find all groups that should be expanded (ancestors of selected group)
-    const selectedGroupItem = this.element.querySelector('.group-sidebar-item a[class*="bg-blue-100"]')
+    const selectedGroupItem = this.element.querySelector('.group-sidebar-item a.is-active')
     if (!selectedGroupItem) return
     
     // Walk up the tree and expand all parent groups
