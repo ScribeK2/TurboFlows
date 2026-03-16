@@ -1090,7 +1090,7 @@
 
 .wf-editor-layout--split {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 3fr 2fr;
   gap: var(--space-4);
   align-items: start;
 }
@@ -1101,6 +1101,17 @@
   top: 6rem;
   max-height: calc(100vh - 8rem);
   overflow: auto;
+}
+
+/* In split mode, hide the step outline sidebar — the flow preview fills that role */
+.wf-editor-layout--split .step-outline-sidebar-wrapper,
+.wf-editor-layout--split .wf-sidebar-sticky {
+  display: none;
+}
+
+/* In split mode, force the editor grid to single column (no sidebar) */
+.wf-editor-layout--split .wf-editor-grid--with-sidebar {
+  grid-template-columns: 1fr;
 }
 
 @media (max-width: 1024px) {

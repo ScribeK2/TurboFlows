@@ -290,7 +290,13 @@ export default class extends Controller {
     }
 
     const html = this.renderer.render(steps)
+    // Renderer output is built from escapeHtml-protected internal methods
     this.canvasTarget.innerHTML = html
     this.applyZoom()
+
+    // Auto-fit when content overflows (e.g. in split-pane mode)
+    if (this.canvasTarget.scrollWidth > this.canvasTarget.clientWidth + 10) {
+      this.fitToScreen()
+    }
   }
 }
