@@ -1,15 +1,29 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Toggles between List and Visual editor views on step2.
+// Toggles between List, Visual, and Split editor views on step2/edit.
 // Manages visibility of #list-editor-container and #visual-editor-container,
 // and syncs state between the two editors when switching modes.
+//
+// Modes:
+//   - list: List editor only (default)
+//   - visual: Visual (graph) editor only
+//   - split: List editor + flow preview side-by-side
 export default class extends Controller {
-  static targets = ["listBtn", "visualBtn", "modeInput"]
+  static targets = ["listBtn", "visualBtn", "splitBtn", "modeInput"]
   static values = { mode: { type: String, default: "list" } }
 
   connect() {
     this.listContainer = document.getElementById("list-editor-container")
     this.visualContainer = document.getElementById("visual-editor-container")
+
+    // Restore preferred mode from localStorage.
+    // Only restore "list" and "split" — "visual" requires explicit activation
+    // because it needs loadFromListForm() which can't run reliably on page load.
+    const savedMode = localStorage.getItem("kizuflow:editor-mode")
+    if (savedMode === "split") {
+      this.modeValue = "split"
+    }
+
     this.applyMode()
   }
 
@@ -27,11 +41,13 @@ export default class extends Controller {
     // Reload the page in list mode so the list editor has fresh server data.
     // The visual editor saves steps via a separate API (sync_steps), so the
     // list editor DOM is always stale — a reload is the reliable way to sync.
+    localStorage.setItem("kizuflow:editor-mode", "list")
     window.location.reload()
   }
 
   switchToVisual() {
     this.modeValue = "visual"
+    localStorage.setItem("kizuflow:editor-mode", "visual")
     this.applyMode()
 
     // Load current list form state into visual editor
@@ -41,32 +57,52 @@ export default class extends Controller {
     }
   }
 
+  switchToSplit() {
+    this.modeValue = "split"
+    localStorage.setItem("kizuflow:editor-mode", "split")
+    this.applyMode()
+  }
+
   applyMode() {
-    const isList = this.modeValue === "list"
+    const mode = this.modeValue
+    const isList = mode === "list"
+    const isVisual = mode === "visual"
+    const isSplit = mode === "split"
 
+    // List container visible in list and split modes
     if (this.listContainer) {
-      this.listContainer.classList.toggle("is-hidden", !isList)
+      this.listContainer.classList.toggle("is-hidden", isVisual)
     }
+    // Visual container visible only in visual mode
     if (this.visualContainer) {
-      this.visualContainer.classList.toggle("is-hidden", isList)
+      this.visualContainer.classList.toggle("is-hidden", !isVisual)
     }
 
-    // In visual mode, the list editor's required fields are hidden and can't be
-    // focused by the browser — this blocks form submission with validation errors.
-    // Disable HTML validation when visual mode is active (visual editor saves via API).
+    // Toggle split layout class on editor layout wrapper (outside controller scope)
+    const editorLayout = this.listContainer?.querySelector(".wf-editor-layout")
+    if (editorLayout) {
+      editorLayout.classList.toggle("wf-editor-layout--split", isSplit)
+    }
+
+    // In visual mode, disable HTML validation (visual editor saves via API)
     const form = this.listContainer?.closest("form")
     if (form) {
-      if (isList) {
-        form.removeAttribute("novalidate")
-      } else {
+      if (isVisual) {
         form.setAttribute("novalidate", "")
+      } else {
+        form.removeAttribute("novalidate")
       }
     }
 
     // Update button styling
-    if (this.hasListBtnTarget && this.hasVisualBtnTarget) {
+    if (this.hasListBtnTarget) {
       this.listBtnTarget.classList.toggle("is-active", isList)
-      this.visualBtnTarget.classList.toggle("is-active", !isList)
+    }
+    if (this.hasVisualBtnTarget) {
+      this.visualBtnTarget.classList.toggle("is-active", isVisual)
+    }
+    if (this.hasSplitBtnTarget) {
+      this.splitBtnTarget.classList.toggle("is-active", isSplit)
     }
 
     // Update hidden mode input

@@ -3,20 +3,19 @@ import { FlowchartRenderer } from "services/flowchart_renderer"
 import { VisualEditorService } from "services/visual_editor_service"
 
 // Main orchestrator for the visual workflow editor.
-// Wires together FlowchartRenderer (interactive mode), VisualEditorService,
-// and handles canvas interactions: drag-drop, connections, zoom/pan, modals.
+// Owns FlowchartRenderer, VisualEditorService, persistence, rendering,
+// node selection, and event routing to child controllers:
+//   - canvas-zoom (zoom/pan)
+//   - ve-step-modal (step editing modal)
+//   - ve-connection (connection drawing, condition popover, palette drag)
 //
-// XSS Safety: All user-provided content is escaped via escapeAttr() for attribute
-// contexts and the renderer's escapeHtml() for HTML contexts. The renderer output
-// (used in canvasContent) is built from escapeHtml-protected internal methods.
-// Modal form fields use escaped values in attributes only. Condition popover
-// buttons use escapeAttr() for all data attributes and display text.
+// XSS Safety: All user-provided content is escaped via the renderer's
+// escapeHtml() for HTML contexts. Child controllers use safe DOM methods
+// (createElement, textContent) for all user-facing content.
 export default class extends Controller {
   static targets = [
     "root", "canvas", "canvasContent", "emptyState", "stepsData",
-    "stepsInput", "startNodeInput", "stepCount", "zoomLevel",
-    "tempSvg", "conditionPopover", "conditionOptions", "palette",
-    "stepModal", "modalTitle", "modalBody"
+    "stepsInput", "startNodeInput", "stepCount"
   ]
 
   static values = {
@@ -34,18 +33,8 @@ export default class extends Controller {
       nodeHeight: 120
     })
 
-    this.zoomLevelNum = 1.0
-    this.isPanning = false
     this.isConnecting = false
     this.selectedStepId = null
-    this.editingStepId = null
-    this.connectionFromId = null
-    this.connectionStartX = 0
-    this.connectionStartY = 0
-    this.panStartX = 0
-    this.panStartY = 0
-    this.panScrollX = 0
-    this.panScrollY = 0
 
     // Parse steps from embedded JSON
     let steps = []
@@ -79,7 +68,6 @@ export default class extends Controller {
     // Intercept form submission — save via sync_steps API when visual editor is active
     this.boundFormSubmit = (e) => {
       if (this.element.classList.contains("is-hidden")) {
-        // Visual editor is hidden (list mode active), let form submit normally
         this.syncHiddenInputs()
         this.service.dirty = false
         return
@@ -90,10 +78,15 @@ export default class extends Controller {
     }
     const form = this.element.closest("form")
     if (form) {
-      // Use capturing phase so our handler fires BEFORE Turbo's submit observer.
-      // This lets us call preventDefault() before Turbo intercepts the form.
       form.addEventListener("submit", this.boundFormSubmit, true)
     }
+
+    // Listen for child controller events
+    this.element.addEventListener("visual-editor:auto-arrange", () => this.render())
+    this.element.addEventListener("visual-editor:step-saved", (e) => this.handleStepSaved(e))
+    this.element.addEventListener("visual-editor:step-deleted", (e) => this.handleStepDeleted(e))
+    this.element.addEventListener("visual-editor:add-transition", (e) => this.handleAddTransition(e))
+    this.element.addEventListener("visual-editor:add-step", (e) => this.handleAddStep(e))
 
     this.render()
   }
@@ -117,24 +110,28 @@ export default class extends Controller {
 
     if (steps.length === 0) {
       if (this.hasEmptyStateTarget) this.emptyStateTarget.classList.remove("is-hidden")
-      if (this.hasCanvasContentTarget) this.canvasContentTarget.innerHTML = ""
+      if (this.hasCanvasContentTarget) this.canvasContentTarget.textContent = ""
       this.updateStepCount(0)
       return
     }
 
     if (this.hasEmptyStateTarget) this.emptyStateTarget.classList.add("is-hidden")
 
-    // Renderer output is built from escapeHtml-protected internal methods
+    // Renderer output is built from escapeHtml-protected internal methods.
+    // This is the same trusted rendering used by flow_preview_controller.
     const html = this.renderer.render(steps)
     if (this.hasCanvasContentTarget) {
-      this.canvasContentTarget.innerHTML = html
+      this.canvasContentTarget.replaceChildren()
+      this.canvasContentTarget.insertAdjacentHTML("afterbegin", html)
     }
 
     this.updateStepCount(steps.length)
     this.highlightOrphans()
     this.highlightSelected()
-    this.applyZoom()
     this.attachNodeEventListeners()
+
+    // Notify child controllers (canvas-zoom applies zoom, etc.)
+    this.element.dispatchEvent(new CustomEvent("visual-editor:rendered", { bubbles: false }))
   }
 
   handleServiceChange() {
@@ -155,7 +152,6 @@ export default class extends Controller {
     if (this.hasStartNodeInputTarget) {
       this.startNodeInputTarget.value = this.service.startNodeUuid || ""
     }
-    // Notify flow preview and other listeners that steps changed
     document.dispatchEvent(new CustomEvent("workflow:updated"))
   }
 
@@ -163,12 +159,10 @@ export default class extends Controller {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
     const url = `/workflows/${this.workflowIdValue}/sync_steps`
 
-    // Collect title/description from the parent form so they're saved too
     const form = this.element.closest("form")
     const titleInput = form?.querySelector("input[name='workflow[title]']")
     const descField = form?.querySelector("[name='workflow[description]']")
 
-    // Read lock_version from the shared form input — autosave may have updated it
     const lockInput = form?.querySelector("input[name='workflow[lock_version]']")
     const currentLockVersion = lockInput ? parseInt(lockInput.value, 10) : this.lockVersionValue
 
@@ -200,7 +194,6 @@ export default class extends Controller {
         const lockInput = this.element.closest("form")?.querySelector("input[name='workflow[lock_version]']")
         if (lockInput) lockInput.value = data.lock_version
 
-        // Redirect after save — wizard goes to next step, edit goes to show page
         if (this.wizardNextUrlValue) {
           window.location.href = this.wizardNextUrlValue
           return
@@ -245,7 +238,6 @@ export default class extends Controller {
       if (!stepId) return
 
       node.addEventListener("click", (e) => {
-        // Don't select if clicking a port
         if (e.target.closest(".output-port") || e.target.closest(".input-port")) return
         e.stopPropagation()
         this.selectNode(stepId)
@@ -253,16 +245,25 @@ export default class extends Controller {
 
       node.addEventListener("dblclick", (e) => {
         e.stopPropagation()
-        this.openStepModal(stepId)
+        const step = this.service.findStep(stepId)
+        if (step) {
+          this.element.dispatchEvent(new CustomEvent("visual-editor:open-modal", {
+            bubbles: false,
+            detail: { step: { ...step } }
+          }))
+        }
       })
 
-      // Output port: start connection
+      // Output port: dispatch to connection controller
       const outputPort = node.querySelector(".output-port")
       if (outputPort) {
         outputPort.addEventListener("mousedown", (e) => {
           e.stopPropagation()
           e.preventDefault()
-          this.startConnection(stepId, e)
+          this.element.dispatchEvent(new CustomEvent("visual-editor:start-connection", {
+            bubbles: false,
+            detail: { stepId, event: e }
+          }))
         })
       }
     })
@@ -341,118 +342,29 @@ export default class extends Controller {
     })
   }
 
-  // --- Zoom / Pan ---
-
-  zoomIn() {
-    this.zoomLevelNum = Math.min(2.0, this.zoomLevelNum + 0.1)
-    this.applyZoom()
-  }
-
-  zoomOut() {
-    this.zoomLevelNum = Math.max(0.25, this.zoomLevelNum - 0.1)
-    this.applyZoom()
-  }
-
-  fitToScreen() {
-    if (!this.hasCanvasTarget || !this.hasCanvasContentTarget) return
-    const container = this.canvasTarget
-    const content = this.canvasContentTarget.firstElementChild
-    if (!content) return
-
-    const containerW = container.clientWidth
-    const containerH = container.clientHeight
-    const contentW = content.scrollWidth || containerW
-    const contentH = content.scrollHeight || containerH
-
-    const scaleX = containerW / contentW
-    const scaleY = containerH / contentH
-    this.zoomLevelNum = Math.max(0.25, Math.min(2.0, Math.min(scaleX, scaleY) * 0.9))
-    this.applyZoom()
-  }
-
-  applyZoom() {
-    if (this.hasCanvasContentTarget) {
-      this.canvasContentTarget.style.transform = `scale(${this.zoomLevelNum})`
-      this.canvasContentTarget.style.transformOrigin = "top left"
-    }
-    if (this.hasZoomLevelTarget) {
-      this.zoomLevelTarget.textContent = `${Math.round(this.zoomLevelNum * 100)}%`
-    }
-  }
-
-  autoArrange() {
-    // Re-render triggers dagre re-layout
-    this.render()
-  }
-
-  handleCanvasWheel(e) {
-    if (!e.ctrlKey && !e.metaKey) return
-    e.preventDefault()
-    const delta = e.deltaY > 0 ? -0.05 : 0.05
-    this.zoomLevelNum = Math.max(0.25, Math.min(2.0, this.zoomLevelNum + delta))
-    this.applyZoom()
-  }
-
-  handleCanvasMouseDown(e) {
-    // Alt+click or middle-click starts pan
-    if (e.altKey || e.button === 1) {
-      e.preventDefault()
-      this.isPanning = true
-      this.panStartX = e.clientX
-      this.panStartY = e.clientY
-      this.panScrollX = this.canvasTarget.scrollLeft
-      this.panScrollY = this.canvasTarget.scrollTop
-      this.canvasTarget.style.cursor = "grabbing"
-    }
-  }
-
-  handleCanvasMouseMove(e) {
-    if (this.isPanning) {
-      const dx = e.clientX - this.panStartX
-      const dy = e.clientY - this.panStartY
-      this.canvasTarget.scrollLeft = this.panScrollX - dx
-      this.canvasTarget.scrollTop = this.panScrollY - dy
-      return
-    }
-
-    if (this.isConnecting) {
-      this.updateConnectionLine(e)
-    }
-  }
-
-  handleCanvasMouseUp(e) {
-    if (this.isPanning) {
-      this.isPanning = false
-      this.canvasTarget.style.cursor = ""
-      return
-    }
-
-    if (this.isConnecting) {
-      this.finishConnection(e)
-    }
-  }
+  // --- Canvas Click (deselect) ---
 
   handleCanvasClick(e) {
-    // Click on empty canvas space deselects
     if (e.target === this.canvasTarget || e.target === this.canvasContentTarget) {
       this.deselectAll()
     }
   }
 
+  // --- Keyboard Dispatch ---
+
   handleKeyDown(e) {
     if (e.key === "Escape") {
-      if (this.isConnecting) {
-        this.cancelConnection()
-      } else if (this.hasStepModalTarget && !this.stepModalTarget.classList.contains("is-hidden")) {
-        this.closeModal()
+      // Check connection state via data attribute set by ve-connection controller
+      if (this.element.dataset.connecting === "true") {
+        this.element.dispatchEvent(new CustomEvent("visual-editor:cancel-connection", { bubbles: false }))
       } else {
-        this.hideConditionPopover()
+        this.element.dispatchEvent(new CustomEvent("visual-editor:close-modal", { bubbles: false }))
+        this.element.dispatchEvent(new CustomEvent("visual-editor:hide-popover", { bubbles: false }))
       }
       return
     }
 
     if ((e.key === "Delete" || e.key === "Backspace") && this.selectedStepId) {
-      // Don't delete if focus is in an input
       if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return
       e.preventDefault()
       const step = this.service.findStep(this.selectedStepId)
@@ -464,444 +376,37 @@ export default class extends Controller {
     }
   }
 
-  // --- Drag from Palette ---
+  // --- Child Controller Event Handlers ---
 
-  handlePaletteDragStart(e) {
-    const stepType = e.currentTarget.dataset.stepType
-    if (!stepType) return
-    e.dataTransfer.setData("text/plain", stepType)
-    e.dataTransfer.effectAllowed = "copy"
-
-    // Create a custom drag image for immediate visual feedback
-    const ghost = document.createElement("div")
-    ghost.textContent = this.capitalize(stepType.replace("_", " "))
-    ghost.style.cssText = "position:absolute;top:-9999px;left:-9999px;padding:6px 14px;border-radius:8px;font-size:13px;font-weight:600;color:#fff;white-space:nowrap;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,0.15);"
-    ghost.style.backgroundColor = this.renderer.getStepColor(stepType)
-    document.body.appendChild(ghost)
-    e.dataTransfer.setDragImage(ghost, ghost.offsetWidth / 2, ghost.offsetHeight / 2)
-
-    // Clean up the ghost element after the drag starts
-    requestAnimationFrame(() => document.body.removeChild(ghost))
-  }
-
-  handleCanvasDragOver(e) {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = "copy"
-  }
-
-  handleCanvasDrop(e) {
-    e.preventDefault()
-    const stepType = e.dataTransfer.getData("text/plain")
-    if (!stepType) return
-
-    const step = this.service.addStep(stepType)
-    // Auto-open modal for the new step
-    this.openStepModal(step.id)
-  }
-
-  // --- Connection Drawing ---
-
-  startConnection(fromStepId, e) {
-    this.isConnecting = true
-    this.connectionFromId = fromStepId
-
-    const canvasRect = this.canvasTarget.getBoundingClientRect()
-    this.connectionStartX = (e.clientX - canvasRect.left + this.canvasTarget.scrollLeft) / this.zoomLevelNum
-    this.connectionStartY = (e.clientY - canvasRect.top + this.canvasTarget.scrollTop) / this.zoomLevelNum
-
-    // Highlight input ports on other nodes
-    if (this.hasCanvasContentTarget) {
-      this.canvasContentTarget.querySelectorAll(".input-port").forEach(port => {
-        if (port.dataset.stepId !== fromStepId) {
-          port.classList.add("is-connection-target")
-        }
-      })
-    }
-  }
-
-  updateConnectionLine(e) {
-    if (!this.hasTempSvgTarget) return
-    const canvasRect = this.canvasTarget.getBoundingClientRect()
-    const endX = (e.clientX - canvasRect.left + this.canvasTarget.scrollLeft) / this.zoomLevelNum
-    const endY = (e.clientY - canvasRect.top + this.canvasTarget.scrollTop) / this.zoomLevelNum
-
-    // Build temp line via DOM methods for safety (no user content here, just coordinates)
-    const line = document.createElementNS("http://www.w3.org/2000/svg", "line")
-    line.setAttribute("x1", this.connectionStartX)
-    line.setAttribute("y1", this.connectionStartY)
-    line.setAttribute("x2", endX)
-    line.setAttribute("y2", endY)
-    line.setAttribute("stroke", "#6366f1")
-    line.setAttribute("stroke-width", "2")
-    line.setAttribute("stroke-dasharray", "6,3")
-    this.tempSvgTarget.replaceChildren(line)
-  }
-
-  finishConnection(e) {
-    this.isConnecting = false
-
-    // Clear temp line
-    if (this.hasTempSvgTarget) this.tempSvgTarget.replaceChildren()
-
-    // Reset port highlights
-    if (this.hasCanvasContentTarget) {
-      this.canvasContentTarget.querySelectorAll(".input-port").forEach(port => {
-        port.classList.remove("is-connection-target")
-      })
-    }
-
-    // Find target node under cursor
-    const target = document.elementFromPoint(e.clientX, e.clientY)
-    if (!target) return
-
-    const inputPort = target.closest(".input-port")
-    const nodeEl = target.closest(".workflow-node")
-    const toStepId = inputPort ? inputPort.dataset.stepId : (nodeEl ? nodeEl.dataset.stepId : null)
-
-    if (!toStepId || toStepId === this.connectionFromId) {
-      this.connectionFromId = null
-      return
-    }
-
-    // Check source step type for smart presets
-    const sourceStep = this.service.findStep(this.connectionFromId)
-    if (sourceStep && sourceStep.type === "question") {
-      this.showConditionPopover(e, this.connectionFromId, toStepId, sourceStep)
-    } else {
-      // Default transition (no condition)
-      this.service.addTransition(this.connectionFromId, toStepId, "", "")
-    }
-
-    this.connectionFromId = null
-  }
-
-  cancelConnection() {
-    this.isConnecting = false
-    this.connectionFromId = null
-    if (this.hasTempSvgTarget) this.tempSvgTarget.replaceChildren()
-
-    // Reset port highlights
-    if (this.hasCanvasContentTarget) {
-      this.canvasContentTarget.querySelectorAll(".input-port").forEach(port => {
-        port.classList.remove("is-connection-target")
-      })
-    }
-  }
-
-  // --- Condition Popover ---
-  // Popover buttons are built with all user text escaped via escapeAttr().
-
-  showConditionPopover(e, fromId, toId, sourceStep) {
-    if (!this.hasConditionPopoverTarget || !this.hasConditionOptionsTarget) return
-
-    const presets = this.buildConditionPresets(sourceStep)
-
-    // Build popover buttons using DOM methods
-    const container = this.conditionOptionsTarget
-    container.replaceChildren()
-
-    presets.forEach(preset => {
-      const btn = document.createElement("button")
-      btn.type = "button"
-      btn.className = "condition-preset-btn"
-      btn.dataset.action = "click->visual-editor#applyConditionPreset"
-      btn.dataset.fromId = fromId
-      btn.dataset.toId = toId
-      btn.dataset.condition = preset.condition
-      btn.dataset.label = preset.label
-      btn.textContent = preset.displayLabel
-      container.appendChild(btn)
-    })
-
-    this.conditionPopoverTarget.style.left = `${e.clientX}px`
-    this.conditionPopoverTarget.style.top = `${e.clientY}px`
-    this.conditionPopoverTarget.classList.remove("is-hidden")
-  }
-
-  hideConditionPopover() {
-    if (this.hasConditionPopoverTarget) {
-      this.conditionPopoverTarget.classList.add("is-hidden")
-    }
-  }
-
-  applyConditionPreset(e) {
-    const { fromId, toId, condition, label } = e.currentTarget.dataset
-    this.service.addTransition(fromId, toId, condition, label)
-    this.hideConditionPopover()
-  }
-
-  buildConditionPresets(step) {
-    const presets = []
-    const answerType = step.answer_type || "text"
-    // Use the step's variable_name for condition expressions, fall back to "answer"
-    const varName = step.variable_name || "answer"
-
-    switch (answerType) {
-      case "yes_no":
-        presets.push({ displayLabel: "Yes", condition: `${varName} == 'yes'`, label: "Yes" })
-        presets.push({ displayLabel: "No", condition: `${varName} == 'no'`, label: "No" })
-        break
-      case "multiple_choice":
-      case "dropdown":
-        if (Array.isArray(step.options)) {
-          step.options.forEach(opt => {
-            const val = opt.value || opt.label || opt
-            presets.push({ displayLabel: val, condition: `${varName} == '${val}'`, label: val })
-          })
-        }
-        break
-      case "number":
-        presets.push({ displayLabel: "> threshold", condition: `${varName} > 0`, label: "> threshold" })
-        presets.push({ displayLabel: "= threshold", condition: `${varName} == '0'`, label: "= threshold" })
-        presets.push({ displayLabel: "< threshold", condition: `${varName} < 0`, label: "< threshold" })
-        break
-    }
-
-    presets.push({ displayLabel: "Default (always)", condition: "", label: "Default" })
-    return presets
-  }
-
-  // --- Step Modal ---
-
-  openStepModal(stepId) {
-    const step = this.service.findStep(stepId)
-    if (!step) return
-
-    this.editingStepId = stepId
-
-    if (this.hasModalTitleTarget) {
-      this.modalTitleTarget.textContent = `Edit ${this.capitalize(step.type || 'Step')}`
-    }
-
-    if (this.hasModalBodyTarget) {
-      // Build modal form using DOM methods for safety
-      this.modalBodyTarget.replaceChildren()
-      this.buildStepFormDOM(step, this.modalBodyTarget)
-    }
-
-    if (this.hasStepModalTarget) {
-      this.stepModalTarget.classList.remove("is-hidden")
-    }
-  }
-
-  closeModal() {
-    if (this.hasStepModalTarget) {
-      this.stepModalTarget.classList.add("is-hidden")
-    }
-    this.editingStepId = null
-  }
-
-  saveModal() {
-    if (!this.editingStepId || !this.hasModalBodyTarget) return
-
-    const form = this.modalBodyTarget
-    const data = {}
-
-    // Read common fields
-    const titleInput = form.querySelector('[name="step-title"]')
-    if (titleInput) data.title = titleInput.value
-
-    const descInput = form.querySelector('[name="step-description"]')
-    if (descInput) data.description = descInput.value
-
-    // Read type-specific fields
-    const step = this.service.findStep(this.editingStepId)
-    if (step) {
-      switch (step.type) {
-        case "question":
-          this.readField(form, "step-question", data, "question")
-          this.readField(form, "step-answer-type", data, "answer_type")
-          this.readField(form, "step-variable-name", data, "variable_name")
-          break
-        case "action":
-          this.readField(form, "step-action-type", data, "action_type")
-          this.readField(form, "step-instructions", data, "instructions")
-          this.readCheckboxField(form, "step-can-resolve", data, "can_resolve")
-          break
-        case "message":
-          this.readField(form, "step-content", data, "content")
-          this.readCheckboxField(form, "step-can-resolve", data, "can_resolve")
-          break
-        case "escalate":
-          this.readField(form, "step-target-type", data, "target_type")
-          this.readField(form, "step-target-value", data, "target_value")
-          this.readField(form, "step-priority", data, "priority")
-          this.readField(form, "step-notes", data, "notes")
-          break
-        case "resolve":
-          this.readField(form, "step-resolution-type", data, "resolution_type")
-          this.readField(form, "step-resolution-code", data, "resolution_code")
-          break
-        case "sub_flow":
-          this.readField(form, "step-target-workflow-id", data, "target_workflow_id")
-          break
-      }
-    }
-
-    this.service.updateStep(this.editingStepId, data)
+  handleStepSaved(e) {
+    const { stepId, data } = e.detail
+    this.service.updateStep(stepId, data)
     this.render()
     this.syncHiddenInputs()
-    this.closeModal()
   }
 
-  readField(form, name, data, key) {
-    const el = form.querySelector(`[name="${name}"]`)
-    if (el) data[key] = el.value
+  handleStepDeleted(e) {
+    const { stepId } = e.detail
+    this.service.removeStep(stepId)
   }
 
-  readCheckboxField(form, name, data, key) {
-    const el = form.querySelector(`[name="${name}"]`)
-    if (el) data[key] = el.checked
+  handleAddTransition(e) {
+    const { fromId, toId, condition, label } = e.detail
+    this.service.addTransition(fromId, toId, condition, label)
   }
 
-  deleteStepFromModal() {
-    if (!this.editingStepId) return
-    const step = this.service.findStep(this.editingStepId)
-    const title = step ? step.title : "this step"
-    if (confirm(`Delete "${title}"?`)) {
-      this.service.removeStep(this.editingStepId)
-      this.closeModal()
-    }
-  }
-
-  // Build modal form using safe DOM methods (no innerHTML with user data)
-  buildStepFormDOM(step, container) {
-    const wrapper = document.createElement("div")
-    wrapper.className = "form-stack"
-
-    // Title field
-    wrapper.appendChild(this.createTextField("Title", "step-title", step.title || ""))
-
-    // Description field
-    wrapper.appendChild(this.createTextareaField("Description", "step-description", step.description || "", 2))
-
-    // Type-specific fields
-    switch (step.type) {
-      case "question":
-        wrapper.appendChild(this.createTextareaField("Question", "step-question", step.question || "", 2))
-        wrapper.appendChild(this.createSelectField("Answer Type", "step-answer-type", step.answer_type || "yes_no",
-          ["yes_no", "multiple_choice", "dropdown", "text", "number", "date", "file"].map(at => ({ value: at, label: at.replace(/_/g, " ") }))
-        ))
-        wrapper.appendChild(this.createTextField("Variable Name", "step-variable-name", step.variable_name || ""))
-        break
-      case "action":
-        wrapper.appendChild(this.createSelectField("Action Type", "step-action-type", step.action_type || "Instruction",
-          ["Instruction", "API Call", "Email", "Notification", "Custom"].map(at => ({ value: at, label: at }))
-        ))
-        wrapper.appendChild(this.createTextareaField("Instructions", "step-instructions", step.instructions || "", 3))
-        wrapper.appendChild(this.createCheckboxField("This step may resolve the issue", "step-can-resolve", step.can_resolve))
-        break
-      case "message":
-        wrapper.appendChild(this.createTextareaField("Message Content", "step-content", step.content || "", 4))
-        wrapper.appendChild(this.createCheckboxField("This step may resolve the issue", "step-can-resolve", step.can_resolve))
-        break
-      case "escalate":
-        wrapper.appendChild(this.createTextField("Target Type", "step-target-type", step.target_type || ""))
-        wrapper.appendChild(this.createTextField("Target Value", "step-target-value", step.target_value || ""))
-        wrapper.appendChild(this.createSelectField("Priority", "step-priority", step.priority || "normal",
-          ["low", "normal", "high", "urgent"].map(p => ({ value: p, label: p.charAt(0).toUpperCase() + p.slice(1) }))
-        ))
-        wrapper.appendChild(this.createTextareaField("Notes", "step-notes", step.notes || "", 2))
-        break
-      case "resolve":
-        wrapper.appendChild(this.createSelectField("Resolution Type", "step-resolution-type", step.resolution_type || "success",
-          ["success", "failure", "partial", "cancelled"].map(rt => ({ value: rt, label: rt.charAt(0).toUpperCase() + rt.slice(1) }))
-        ))
-        wrapper.appendChild(this.createTextField("Resolution Code", "step-resolution-code", step.resolution_code || ""))
-        break
-      case "sub_flow":
-        wrapper.appendChild(this.createTextField("Target Workflow ID", "step-target-workflow-id", step.target_workflow_id || ""))
-        break
-    }
-
-    container.appendChild(wrapper)
-  }
-
-  createTextField(label, name, value) {
-    const div = document.createElement("div")
-    div.className = "form-group"
-    const lbl = document.createElement("label")
-    lbl.className = "form-label"
-    lbl.textContent = label
-    div.appendChild(lbl)
-
-    const input = document.createElement("input")
-    input.type = "text"
-    input.name = name
-    input.value = value
-    input.className = "form-input"
-    div.appendChild(input)
-    return div
-  }
-
-  createTextareaField(label, name, value, rows) {
-    const div = document.createElement("div")
-    div.className = "form-group"
-    const lbl = document.createElement("label")
-    lbl.className = "form-label"
-    lbl.textContent = label
-    div.appendChild(lbl)
-
-    const textarea = document.createElement("textarea")
-    textarea.name = name
-    textarea.rows = rows
-    textarea.value = value
-    textarea.textContent = value
-    textarea.className = "form-textarea"
-    div.appendChild(textarea)
-    return div
-  }
-
-  createSelectField(label, name, selectedValue, options) {
-    const div = document.createElement("div")
-    div.className = "form-group"
-    const lbl = document.createElement("label")
-    lbl.className = "form-label"
-    lbl.textContent = label
-    div.appendChild(lbl)
-
-    const select = document.createElement("select")
-    select.name = name
-    select.className = "form-select"
-
-    options.forEach(opt => {
-      const option = document.createElement("option")
-      option.value = opt.value
-      option.textContent = opt.label
-      if (opt.value === selectedValue) option.selected = true
-      select.appendChild(option)
-    })
-
-    div.appendChild(select)
-    return div
-  }
-
-  createCheckboxField(label, name, checked) {
-    const div = document.createElement("div")
-    const lbl = document.createElement("label")
-    lbl.className = "form-checkbox-label"
-
-    const input = document.createElement("input")
-    input.type = "checkbox"
-    input.name = name
-    input.checked = !!checked
-    input.className = "form-checkbox"
-    lbl.appendChild(input)
-
-    const span = document.createElement("span")
-    span.className = "form-checkbox-text"
-    span.textContent = label
-    lbl.appendChild(span)
-
-    div.appendChild(lbl)
-    return div
+  handleAddStep(e) {
+    const { type } = e.detail
+    const step = this.service.addStep(type)
+    this.element.dispatchEvent(new CustomEvent("visual-editor:open-modal", {
+      bubbles: false,
+      detail: { step: { ...step } }
+    }))
   }
 
   // --- Mode Switching Helpers ---
 
   loadFromListForm() {
-    // Guard: if the visual editor has unsaved changes from a prior session,
-    // warn the user before overwriting them with (potentially stale) DOM data.
     if (this.service && this.service.dirty) {
       const overwrite = confirm(
         "The visual editor has unsaved changes. Loading from the list view will discard them. Continue?"
@@ -915,8 +420,6 @@ export default class extends Controller {
     const stepItems = container.querySelectorAll(".step-item")
     const steps = []
 
-    // Build a lookup of existing transitions and options by step ID
-    // so we can preserve them when syncing from the list form
     const existingStepMap = {}
     if (this.service && this.service.steps) {
       this.service.steps.forEach(s => {
@@ -938,7 +441,6 @@ export default class extends Controller {
       step.content = this.readInputValue(item, "[name*='[content]']") || ""
       step.target_workflow_id = this.readInputValue(item, "[name*='[target_workflow_id]']") || ""
 
-      // Read transitions from list form's transitions_json hidden field
       const transitionsJson = this.readInputValue(item, "[name*='[transitions_json]']")
       if (transitionsJson) {
         try {
@@ -947,12 +449,10 @@ export default class extends Controller {
           step.transitions = []
         }
       } else {
-        // Preserve existing transitions from the visual editor service
         const existing = existingStepMap[step.id]
         step.transitions = existing ? (existing.transitions || []) : []
       }
 
-      // Read options from list form (multiple_choice / dropdown steps)
       const optionLabels = item.querySelectorAll("[name*='[options][][label]']")
       const optionValues = item.querySelectorAll("[name*='[options][][value]']")
       if (optionLabels.length > 0) {
@@ -965,7 +465,6 @@ export default class extends Controller {
           }
         })
       } else {
-        // Preserve existing options from the visual editor service
         const existing = existingStepMap[step.id]
         if (existing && existing.options) {
           step.options = existing.options
@@ -998,14 +497,9 @@ export default class extends Controller {
 
   // --- Utilities ---
 
-  escapeAttr(text) {
-    if (!text) return ''
-    return String(text)
-      .replace(/&/g, '&amp;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
+  // Expose service.findStep for connection controller's popover presets
+  findStep(stepId) {
+    return this.service ? this.service.findStep(stepId) : null
   }
 
   capitalize(str) {

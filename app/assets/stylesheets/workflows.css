@@ -1072,6 +1072,49 @@
   gap: 0.5rem;
 }
 
+/* ============================================================================
+   Split-Pane Layout (list editor + flow preview side-by-side)
+   ============================================================================ */
+
+.wf-editor-layout {
+  display: block;
+}
+
+.wf-editor-layout__main {
+  min-width: 0;
+}
+
+.wf-editor-layout__preview {
+  margin-top: var(--space-6);
+}
+
+.wf-editor-layout--split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.wf-editor-layout--split .wf-editor-layout__preview {
+  margin-top: 0;
+  position: sticky;
+  top: 6rem;
+  max-height: calc(100vh - 8rem);
+  overflow: auto;
+}
+
+@media (max-width: 1024px) {
+  .wf-editor-layout--split {
+    grid-template-columns: 1fr;
+  }
+
+  .wf-editor-layout--split .wf-editor-layout__preview {
+    position: static;
+    max-height: none;
+    margin-top: var(--space-6);
+  }
+}
+
 /* Graph mode card */
 .wf-graph-mode-row {
   display: flex;

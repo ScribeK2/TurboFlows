@@ -1,6 +1,6 @@
 <div id="visual-editor-container"
      class="is-hidden"
-     data-controller="visual-editor"
+     data-controller="visual-editor ve-step-modal ve-connection"
      data-visual-editor-workflow-id-value="<%= workflow.id %>"
      data-visual-editor-lock-version-value="<%= workflow.respond_to?(:lock_version) ? workflow.lock_version : 0 %>"
      <% if local_assigns[:wizard_next_url] %>data-visual-editor-wizard-next-url-value="<%= wizard_next_url %>"<% end %>
@@ -15,30 +15,30 @@
   <input type="hidden" name="workflow[visual_editor_steps_json]" data-visual-editor-target="stepsInput" value="">
   <input type="hidden" name="workflow[start_node_uuid]" data-visual-editor-target="startNodeInput" value="<%= workflow.start_step&.uuid || workflow.steps.first&.uuid %>">
 
-  <%# Toolbar %>
-  <div class="editor-toolbar">
+  <%# Toolbar — canvas-zoom controller handles zoom/pan %>
+  <div class="editor-toolbar" data-controller="canvas-zoom">
     <div class="flex items-center gap-3">
       <span class="text-sm" data-visual-editor-target="stepCount">0 steps</span>
     </div>
     <div class="editor-zoom">
-      <button type="button" data-action="click->visual-editor#zoomOut"
+      <button type="button" data-action="click->canvas-zoom#zoomOut"
               class="editor-zoom__btn"
               title="Zoom out">
         <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
       </button>
-      <span class="editor-zoom__level" data-visual-editor-target="zoomLevel">100%</span>
-      <button type="button" data-action="click->visual-editor#zoomIn"
+      <span class="editor-zoom__level" data-canvas-zoom-target="zoomLevel">100%</span>
+      <button type="button" data-action="click->canvas-zoom#zoomIn"
               class="editor-zoom__btn"
               title="Zoom in">
         <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
       </button>
-      <button type="button" data-action="click->visual-editor#fitToScreen"
+      <button type="button" data-action="click->canvas-zoom#fitToScreen"
               class="editor-zoom__btn"
               title="Fit to screen">
         <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
       </button>
       <div class="w-px h-5 mx-1" style="background: var(--color-border);"></div>
-      <button type="button" data-action="click->visual-editor#autoArrange"
+      <button type="button" data-action="click->canvas-zoom#autoArrange"
               class="btn btn--plain btn--sm"
               title="Auto-arrange">
         Auto-arrange
@@ -49,17 +49,19 @@
   <%# Editor body: palette + canvas %>
   <div class="flex" style="border: 1px solid var(--color-border); border-top: none; border-radius: 0 0 var(--radius-lg) var(--radius-lg); overflow: hidden; min-height: 500px; max-height: 70vh;">
 
-    <%# Step palette sidebar %>
+    <%# Step palette sidebar — drag events handled by ve-connection %>
     <%= render partial: "step_palette" %>
 
-    <%# Canvas %>
+    <%# Canvas — zoom/pan via canvas-zoom, connections via ve-connection, click/keydown via visual-editor %>
     <div class="editor-canvas flex-1 relative overflow-auto"
          data-visual-editor-target="canvas"
-         data-action="dragover->visual-editor#handleCanvasDragOver drop->visual-editor#handleCanvasDrop mousedown->visual-editor#handleCanvasMouseDown mousemove->visual-editor#handleCanvasMouseMove mouseup->visual-editor#handleCanvasMouseUp click->visual-editor#handleCanvasClick keydown@document->visual-editor#handleKeyDown wheel->visual-editor#handleCanvasWheel"
+         data-canvas-zoom-target="canvas"
+         data-ve-connection-target="canvas"
+         data-action="dragover->ve-connection#handleCanvasDragOver drop->ve-connection#handleCanvasDrop mousedown->canvas-zoom#handleCanvasMouseDown mousemove->canvas-zoom#handleCanvasMouseMove mousemove->ve-connection#handleCanvasMouseMove mouseup->canvas-zoom#handleCanvasMouseUp mouseup->ve-connection#handleCanvasMouseUp click->visual-editor#handleCanvasClick keydown@document->visual-editor#handleKeyDown wheel->canvas-zoom#handleCanvasWheel"
          style="background-image: radial-gradient(circle, rgba(0,0,0,0.07) 1px, transparent 1px); background-size: 20px 20px;">
 
       <%# Rendered flowchart content %>
-      <div data-visual-editor-target="canvasContent" class="relative"></div>
+      <div data-visual-editor-target="canvasContent" data-canvas-zoom-target="canvasContent" class="relative"></div>
 
       <%# Empty state %>
       <div data-visual-editor-target="emptyState" class="absolute inset-0 flex items-center justify-center">
@@ -72,43 +74,43 @@
       </div>
 
       <%# Temporary SVG for connection drawing %>
-      <svg data-visual-editor-target="tempSvg" class="absolute inset-0 pointer-events-none" style="z-index: 30; width: 100%; height: 100%;"></svg>
+      <svg data-ve-connection-target="tempSvg" class="absolute inset-0 pointer-events-none" style="z-index: 30; width: 100%; height: 100%;"></svg>
     </div>
   </div>
 
-  <%# Condition popover (for connection presets) %>
-  <div data-visual-editor-target="conditionPopover"
+  <%# Condition popover (for connection presets) — owned by ve-connection %>
+  <div data-ve-connection-target="conditionPopover"
        class="is-hidden editor-popover" style="position: fixed; z-index: 50; min-width: 200px;">
     <p class="text-xs font-semibold mb-2" style="text-transform: uppercase; letter-spacing: 0.05em;">Connection Condition</p>
-    <div data-visual-editor-target="conditionOptions" style="display: flex; flex-direction: column; gap: 0.25rem;"></div>
+    <div data-ve-connection-target="conditionOptions" style="display: flex; flex-direction: column; gap: 0.25rem;"></div>
   </div>
 
-  <%# Step config modal %>
-  <div data-visual-editor-target="stepModal"
+  <%# Step config modal — owned by ve-step-modal %>
+  <div data-ve-step-modal-target="modal"
        class="is-hidden dialog-overlay" style="position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.5);">
     <div class="dialog dialog--md" style="max-height: 80vh; display: flex; flex-direction: column;">
       <%# Modal header %>
       <div class="dialog__header">
-        <h3 class="dialog__title" data-visual-editor-target="modalTitle">Edit Step</h3>
-        <button type="button" data-action="click->visual-editor#closeModal"
+        <h3 class="dialog__title" data-ve-step-modal-target="title">Edit Step</h3>
+        <button type="button" data-action="click->ve-step-modal#close"
                 class="dialog__close">
           <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
       <%# Modal body %>
-      <div class="dialog__body overflow-y-auto flex-1" data-visual-editor-target="modalBody"></div>
+      <div class="dialog__body overflow-y-auto flex-1" data-ve-step-modal-target="body"></div>
       <%# Modal footer %>
       <div class="dialog__footer flex items-center justify-between">
-        <button type="button" data-action="click->visual-editor#deleteStepFromModal"
+        <button type="button" data-action="click->ve-step-modal#deleteStep"
                 class="btn btn--negative btn--sm">
           Delete Step
         </button>
         <div class="flex items-center gap-2">
-          <button type="button" data-action="click->visual-editor#closeModal"
+          <button type="button" data-action="click->ve-step-modal#close"
                   class="btn btn--plain">
             Cancel
           </button>
-          <button type="button" data-action="click->visual-editor#saveModal"
+          <button type="button" data-action="click->ve-step-modal#save"
                   class="btn btn--primary">
             Save
           </button>

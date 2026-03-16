@@ -127,107 +127,119 @@
                     class="wf-mode-toggle__btn">
               Visual
             </button>
+            <button type="button"
+                    data-action="click->view-mode-toggle#switchToSplit"
+                    data-view-mode-toggle-target="splitBtn"
+                    class="wf-mode-toggle__btn">
+              Split
+            </button>
           </div>
         </div>
       <% end %>
 
       <%# List Editor Container %>
       <div id="list-editor-container">
-
-      <%# Two-Column Layout: Sidebar + Main Content %>
-      <% ar_steps = @workflow.steps.order(:position) %>
-      <% has_sidebar = ar_steps.any? && ar_steps.size > 3 %>
-      <div class="wf-editor-grid <%= has_sidebar ? 'wf-editor-grid--with-sidebar' : 'wf-editor-grid--single' %>">
-        <%# Step Outline Sidebar %>
-        <% if has_sidebar %>
-          <div class="wf-sidebar-sticky">
-            <%= render partial: "step_outline", locals: { workflow: @workflow } %>
-          </div>
-        <% end %>
-
-        <%# Main Steps Section %>
-        <div class="min-w-0">
-            <div data-controller="workflow-builder variable-autocomplete"
-               data-workflow-builder-workflow-id-value="<%= @workflow.id %>"
-               data-workflow-builder-debug-value="<%= Rails.env.development? %>"
-               data-variable-autocomplete-workflow-id-value="<%= @workflow.id %>"
-               id="workflow-builder-container">
-
-            <%# Header with Add Step Buttons %>
-            <div class="wf-steps-header">
-              <label class="form-label mb-0">
-                Workflow Steps
-                <% if ar_steps.any? %>
-                  <span class="text-xs ml-2">(<%= ar_steps.size %> step<%= ar_steps.size != 1 ? 's' : '' %>)</span>
-                <% end %>
-              </label>
-              <div class="wf-btn-group">
-                <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="question" class="btn btn--secondary btn--sm">Question</button>
-
-                <% if @workflow.graph_mode? %>
-                  <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="message" class="btn btn--sm" style="background: var(--step-message-color, #06b6d4); color: #fff;">Message</button>
-                  <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="action" class="btn btn--positive btn--sm">Action</button>
-                  <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="escalate" class="btn btn--sm" style="background: var(--step-escalate-color, #f97316); color: #fff;">Escalate</button>
-                  <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="resolve" class="btn btn--sm" style="background: var(--step-resolve-color, #22c55e); color: #fff;">Resolve</button>
-                  <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="sub_flow" class="btn btn--sm" style="background: var(--step-sub-flow-color, #6366f1); color: #fff;">Sub-flow</button>
-                <% else %>
-                  <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="message" class="btn btn--sm" style="background: var(--step-message-color, #06b6d4); color: #fff;">Message</button>
-                  <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="action" class="btn btn--positive btn--sm">Action</button>
-                  <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="sub_flow" class="btn btn--sm" style="background: var(--step-sub-flow-color, #6366f1); color: #fff;">Sub-flow</button>
-                <% end %>
-              </div>
-            </div>
-
-            <%# Expand/Collapse All Controls %>
-            <% if ar_steps.any? && ar_steps.size > 3 %>
-              <div class="wf-step-controls" data-controller="step-controls">
-                <button type="button" data-action="click->step-controls#expandAll" class="btn btn--plain btn--sm">Expand all</button>
-                <span>|</span>
-                <button type="button" data-action="click->step-controls#collapseAll" class="btn btn--plain btn--sm">Collapse all</button>
-              </div>
-            <% end %>
-
-            <%# Steps Container %>
-            <div data-workflow-builder-target="container" class="wf-steps-container">
-              <% if ar_steps.any? %>
-                <%= render partial: "inline_step_creator", locals: { after_index: -1 } %>
-                <% ar_steps.each_with_index do |step, index| %>
-                  <%= render partial: "step_item", locals: {
-                    step: step,
-                    index: index,
-                    workflow: @workflow,
-                    expanded: ar_steps.size <= 5 || index == ar_steps.size - 1
-                  } %>
-                  <%= render partial: "inline_step_creator", locals: { after_index: index } %>
-                <% end %>
-              <% else %>
-                <div class="text-center py-10" data-empty-state>
-                  <svg class="icon icon--xl mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
-                  </svg>
-                  <h3 class="font-medium mb-1">No steps yet</h3>
-                  <p class="text-sm mb-4">Get started by adding your first step using the buttons above.</p>
-                  <div class="flex justify-center gap-3" style="flex-wrap: wrap;">
-                    <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="question" class="btn btn--secondary btn--sm">Start with a Question</button>
-                    <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="action" class="btn btn--positive btn--sm">Start with an Action</button>
-                  </div>
+        <div class="wf-editor-layout">
+          <%# Left: list editor content %>
+          <div class="wf-editor-layout__main">
+            <%# Two-Column Layout: Sidebar + Main Content %>
+            <% ar_steps = @workflow.steps.order(:position) %>
+            <% has_sidebar = ar_steps.any? && ar_steps.size > 3 %>
+            <div class="wf-editor-grid <%= has_sidebar ? 'wf-editor-grid--with-sidebar' : 'wf-editor-grid--single' %>">
+              <%# Step Outline Sidebar %>
+              <% if has_sidebar %>
+                <div class="wf-sidebar-sticky">
+                  <%= render partial: "step_outline", locals: { workflow: @workflow } %>
                 </div>
               <% end %>
+
+              <%# Main Steps Section %>
+              <div class="min-w-0">
+                <div data-controller="workflow-builder variable-autocomplete"
+                     data-workflow-builder-workflow-id-value="<%= @workflow.id %>"
+                     data-workflow-builder-debug-value="<%= Rails.env.development? %>"
+                     data-variable-autocomplete-workflow-id-value="<%= @workflow.id %>"
+                     id="workflow-builder-container">
+
+                  <%# Header with Add Step Buttons %>
+                  <div class="wf-steps-header">
+                    <label class="form-label mb-0">
+                      Workflow Steps
+                      <% if ar_steps.any? %>
+                        <span class="text-xs ml-2">(<%= ar_steps.size %> step<%= ar_steps.size != 1 ? 's' : '' %>)</span>
+                      <% end %>
+                    </label>
+                    <div class="wf-btn-group">
+                      <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="question" class="btn btn--secondary btn--sm">Question</button>
+
+                      <% if @workflow.graph_mode? %>
+                        <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="message" class="btn btn--sm" style="background: var(--step-message-color, #06b6d4); color: #fff;">Message</button>
+                        <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="action" class="btn btn--positive btn--sm">Action</button>
+                        <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="escalate" class="btn btn--sm" style="background: var(--step-escalate-color, #f97316); color: #fff;">Escalate</button>
+                        <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="resolve" class="btn btn--sm" style="background: var(--step-resolve-color, #22c55e); color: #fff;">Resolve</button>
+                        <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="sub_flow" class="btn btn--sm" style="background: var(--step-sub-flow-color, #6366f1); color: #fff;">Sub-flow</button>
+                      <% else %>
+                        <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="message" class="btn btn--sm" style="background: var(--step-message-color, #06b6d4); color: #fff;">Message</button>
+                        <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="action" class="btn btn--positive btn--sm">Action</button>
+                        <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="sub_flow" class="btn btn--sm" style="background: var(--step-sub-flow-color, #6366f1); color: #fff;">Sub-flow</button>
+                      <% end %>
+                    </div>
+                  </div>
+
+                  <%# Expand/Collapse All Controls %>
+                  <% if ar_steps.any? && ar_steps.size > 3 %>
+                    <div class="wf-step-controls" data-controller="step-controls">
+                      <button type="button" data-action="click->step-controls#expandAll" class="btn btn--plain btn--sm">Expand all</button>
+                      <span>|</span>
+                      <button type="button" data-action="click->step-controls#collapseAll" class="btn btn--plain btn--sm">Collapse all</button>
+                    </div>
+                  <% end %>
+
+                  <%# Steps Container %>
+                  <div data-workflow-builder-target="container" class="wf-steps-container">
+                    <% if ar_steps.any? %>
+                      <%= render partial: "inline_step_creator", locals: { after_index: -1 } %>
+                      <% ar_steps.each_with_index do |step, index| %>
+                        <%= render partial: "step_item", locals: {
+                          step: step,
+                          index: index,
+                          workflow: @workflow,
+                          expanded: ar_steps.size <= 5 || index == ar_steps.size - 1
+                        } %>
+                        <%= render partial: "inline_step_creator", locals: { after_index: index } %>
+                      <% end %>
+                    <% else %>
+                      <div class="text-center py-10" data-empty-state>
+                        <svg class="icon icon--xl mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                        </svg>
+                        <h3 class="font-medium mb-1">No steps yet</h3>
+                        <p class="text-sm mb-4">Get started by adding your first step using the buttons above.</p>
+                        <div class="flex justify-center gap-3" style="flex-wrap: wrap;">
+                          <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="question" class="btn btn--secondary btn--sm">Start with a Question</button>
+                          <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="action" class="btn btn--positive btn--sm">Start with an Action</button>
+                        </div>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <%# Right: flow preview (moves to side column in split mode) %>
+          <div class="wf-editor-layout__preview">
+            <div data-controller="flow-preview">
+              <%= render partial: "flow_preview" %>
             </div>
           </div>
         </div>
-      </div>
-
       </div><%# End list-editor-container %>
 
       <%# Visual Editor (graph mode only) %>
       <% if @workflow.graph_mode? %>
         <%= render partial: "visual_editor", locals: { workflow: @workflow } %>
       <% end %>
-
-      <div data-controller="flow-preview" class="mt-6">
-        <%= render partial: "flow_preview" %>
-      </div>
 
       <div class="wf-sticky-footer">
         <div class="wf-sticky-footer__inner">
