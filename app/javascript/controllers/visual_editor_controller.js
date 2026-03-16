@@ -900,6 +900,15 @@ export default class extends Controller {
   // --- Mode Switching Helpers ---
 
   loadFromListForm() {
+    // Guard: if the visual editor has unsaved changes from a prior session,
+    // warn the user before overwriting them with (potentially stale) DOM data.
+    if (this.service && this.service.dirty) {
+      const overwrite = confirm(
+        "The visual editor has unsaved changes. Loading from the list view will discard them. Continue?"
+      )
+      if (!overwrite) return
+    }
+
     const container = document.querySelector("#list-editor-container [data-workflow-builder-target='container']")
     if (!container) return
 

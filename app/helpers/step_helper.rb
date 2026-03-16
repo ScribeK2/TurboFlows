@@ -25,10 +25,15 @@ module StepHelper
 
   # Render rich text content with optional variable interpolation.
   # Used in scenario player and workflow show views.
+  #
+  # Variables are HTML-escaped before interpolation to prevent XSS when
+  # the result is marked html_safe (the surrounding Action Text HTML is trusted,
+  # but user-supplied variable values are not).
   def render_step_content(step, field, variables = {})
     rt = step.try(field)
     if rt.present? && variables.present?
-      VariableInterpolator.interpolate_rich_text(rt, variables).html_safe
+      sanitized_vars = variables.transform_values { |v| ERB::Util.html_escape(v.to_s) }
+      VariableInterpolator.interpolate_rich_text(rt, sanitized_vars).html_safe
     elsif rt.present?
       rt.to_s.html_safe
     else
@@ -46,14 +51,19 @@ module StepHelper
   def serialize_steps_for_editor(workflow)
     steps = workflow.steps
     steps = steps.includes(:transitions) if steps.respond_to?(:includes)
-    steps.map do |s|
+
+    # Pre-build lookup hash to avoid N+1 queries when resolving transition targets
+    all_steps = steps.to_a
+    steps_by_id = all_steps.index_by(&:id)
+
+    all_steps.map do |s|
       data = {
         "id" => s.uuid,
         "type" => s.type.demodulize.underscore,
         "title" => s.title,
         "description" => s.try(:description).to_s,
         "transitions" => s.transitions.map { |t|
-          target = Step.find_by(id: t.target_step_id)
+          target = steps_by_id[t.target_step_id]
           {
             "target_uuid" => target&.uuid,
             "condition" => t.condition,

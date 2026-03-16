@@ -1,15 +1,10 @@
 // VisualEditorService: In-memory step state management for the visual workflow editor.
 // Manages step CRUD, transitions, start node, serialization, and orphan detection.
 
+import { STEP_DEFAULTS } from "services/step_defaults"
+
 export class VisualEditorService {
-  static STEP_DEFAULTS = {
-    question:  { question: "", answer_type: "yes_no", variable_name: "" },
-    action:    { action_type: "Instruction", instructions: "", can_resolve: false },
-    sub_flow:  { target_workflow_id: "", variable_mapping: {} },
-    message:   { content: "", can_resolve: false },
-    escalate:  { target_type: "", target_value: "", priority: "normal", reason_required: false, notes: "" },
-    resolve:   { resolution_type: "success", resolution_code: "", notes_required: false, survey_trigger: false }
-  }
+  static STEP_DEFAULTS = STEP_DEFAULTS
 
   constructor(steps = [], options = {}) {
     this.steps = structuredClone(steps)
