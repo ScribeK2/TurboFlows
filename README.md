@@ -71,7 +71,7 @@
 | Layer | Technology |
 |-------|-----------|
 | **Framework** | Ruby on Rails 8.1 (#nobuild — no Node.js required) |
-| **Frontend** | Hotwire (Turbo + Stimulus), 60+ Stimulus controllers |
+| **Frontend** | Hotwire (Turbo + Stimulus), 66 Stimulus controllers |
 | **Styling** | Vanilla CSS (@layer cascade, OKLCH design tokens, Propshaft) |
 | **Database** | SQLite (dev/test), PostgreSQL (production) |
 | **Real-time** | Action Cable (Redis in production, in-memory in dev) |
