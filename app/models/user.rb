@@ -14,6 +14,32 @@ class User < ApplicationRecord
   # :regular maps to DB value "user" to avoid User.user naming collision.
   enum :role, { admin: "admin", editor: "editor", regular: "user" }, default: "user"
 
+  # -- Scopes for admin filtering --
+  scope :search_by, ->(query) {
+    return all if query.blank?
+    search_term = "%#{sanitize_sql_like(query)}%"
+    case_insensitive_like("email", search_term)
+      .or(case_insensitive_like("display_name", search_term))
+  }
+
+  scope :by_role, ->(role) {
+    where(role: role)
+  }
+
+  scope :by_group, ->(group_id) {
+    joins(:user_groups).where(user_groups: { group_id: group_id }).distinct
+  }
+
+  scope :sorted_by, ->(field) {
+    case field
+    when "email_asc"      then order(email: :asc)
+    when "email_desc"     then order(email: :desc)
+    when "role_asc"       then order(role: :asc)
+    when "created_at_asc" then order(created_at: :asc)
+    else                       order(created_at: :desc)
+    end
+  }
+
   # Keep ROLES for backward compatibility with any code referencing it
   ROLES = %w[admin editor user].freeze
 

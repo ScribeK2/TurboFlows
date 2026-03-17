@@ -398,4 +398,79 @@ class UserTest < ActiveSupport::TestCase
     assert_match(/\A[a-zA-Z0-9]+\z/, temp)
     assert user.valid_password?(temp), "User should be able to authenticate with the temporary password"
   end
+
+  # Search scope tests
+  test "search_by matches email" do
+    user = User.create!(email: "findme@example.com", password: "password123!", password_confirmation: "password123!")
+    results = User.search_by("findme")
+    assert_includes results.map(&:id), user.id
+  end
+
+  test "search_by matches display_name" do
+    user = User.create!(email: "x@example.com", password: "password123!", password_confirmation: "password123!", display_name: "John Smith")
+    results = User.search_by("john")
+    assert_includes results.map(&:id), user.id
+  end
+
+  test "search_by is case-insensitive" do
+    user = User.create!(email: "CaseMix@Example.com", password: "password123!", password_confirmation: "password123!")
+    results = User.search_by("casemix")
+    assert_includes results.map(&:id), user.id
+  end
+
+  test "search_by returns empty when no match" do
+    User.create!(email: "nope@example.com", password: "password123!", password_confirmation: "password123!")
+    results = User.search_by("zzzznotfound")
+    assert_empty results
+  end
+
+  test "by_role filters by role" do
+    admin = User.create!(email: "a-role@test.com", password: "password123!", password_confirmation: "password123!", role: "admin")
+    editor = User.create!(email: "e-role@test.com", password: "password123!", password_confirmation: "password123!", role: "editor")
+
+    results = User.by_role("admin")
+    assert_includes results.map(&:id), admin.id
+    assert_not_includes results.map(&:id), editor.id
+  end
+
+  test "by_group returns users in the specified group" do
+    user1 = User.create!(email: "g1@test.com", password: "password123!", password_confirmation: "password123!")
+    user2 = User.create!(email: "g2@test.com", password: "password123!", password_confirmation: "password123!")
+    group = Group.create!(name: "Filter Group")
+    UserGroup.create!(user: user1, group: group)
+
+    results = User.by_group(group.id)
+    assert_includes results.map(&:id), user1.id
+    assert_not_includes results.map(&:id), user2.id
+  end
+
+  test "by_group does not return duplicate users" do
+    user = User.create!(email: "dup@test.com", password: "password123!", password_confirmation: "password123!")
+    group1 = Group.create!(name: "G1")
+    group2 = Group.create!(name: "G2")
+    UserGroup.create!(user: user, group: group1)
+    UserGroup.create!(user: user, group: group2)
+
+    results = User.by_group(group1.id)
+    assert_equal 1, results.where(id: user.id).count
+  end
+
+  test "sorted_by email_asc sorts by email ascending" do
+    User.where(email: ["aaa@test.com", "zzz@test.com"]).destroy_all
+    u1 = User.create!(email: "zzz@test.com", password: "password123!", password_confirmation: "password123!")
+    u2 = User.create!(email: "aaa@test.com", password: "password123!", password_confirmation: "password123!")
+
+    results = User.sorted_by("email_asc")
+    ids = results.map(&:id)
+    assert ids.index(u2.id) < ids.index(u1.id), "aaa@ should come before zzz@"
+  end
+
+  test "sorted_by defaults to created_at desc" do
+    u1 = User.create!(email: "old-sort@test.com", password: "password123!", password_confirmation: "password123!")
+    u2 = User.create!(email: "new-sort@test.com", password: "password123!", password_confirmation: "password123!")
+
+    results = User.sorted_by(nil)
+    ids = results.map(&:id)
+    assert ids.index(u2.id) < ids.index(u1.id), "newer user should come first"
+  end
 end
