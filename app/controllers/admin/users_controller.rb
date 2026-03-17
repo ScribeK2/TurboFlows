@@ -1,5 +1,4 @@
 class Admin::UsersController < Admin::BaseController
-
   def index
     filter = Admin::UsersFilter.new(params: filter_params).call
     @users = filter.users

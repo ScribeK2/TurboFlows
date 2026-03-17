@@ -15,22 +15,23 @@ class User < ApplicationRecord
   enum :role, { admin: "admin", editor: "editor", regular: "user" }, default: "user"
 
   # -- Scopes for admin filtering --
-  scope :search_by, ->(query) {
+  scope :search_by, lambda { |query|
     return all if query.blank?
+
     search_term = "%#{sanitize_sql_like(query)}%"
     case_insensitive_like("email", search_term)
       .or(case_insensitive_like("display_name", search_term))
   }
 
-  scope :by_role, ->(role) {
+  scope :by_role, lambda { |role|
     where(role: role)
   }
 
-  scope :by_group, ->(group_id) {
+  scope :by_group, lambda { |group_id|
     joins(:user_groups).where(user_groups: { group_id: group_id }).distinct
   }
 
-  scope :sorted_by, ->(field) {
+  scope :sorted_by, lambda { |field|
     case field
     when "email_asc"      then order(email: :asc)
     when "email_desc"     then order(email: :desc)

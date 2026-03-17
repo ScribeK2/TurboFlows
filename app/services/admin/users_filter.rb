@@ -1,6 +1,6 @@
 module Admin
   class UsersFilter
-    attr_reader :params
+    attr_reader :params, :total_count
 
     def initialize(params:, scope: User.all)
       @params = params.respond_to?(:to_h) ? params.to_h.symbolize_keys : params.symbolize_keys
@@ -16,8 +16,8 @@ module Admin
       self
     end
 
-    def users        = @scope
-    def total_count  = @total_count
+    def users = @scope
+
     def current_page = @page_clamped || page
     def total_pages  = [(@total_count.to_f / per_page).ceil, 1].max
     def per_page_size = per_page
@@ -49,7 +49,7 @@ module Admin
     end
 
     def page
-      [(params[:page].to_i), 1].max
+      [params[:page].to_i, 1].max
     end
 
     def per_page
