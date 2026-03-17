@@ -322,4 +322,49 @@
   </div>
 </div>
 
+<%# Bulk Action Bar (sticky bottom) %>
+<div class="admin-bulk-bar is-hidden" data-admin-users-target="bulkBar">
+  <span data-admin-users-target="bulkCount">0 users selected</span>
+  <div class="admin-bulk-bar__actions">
+    <button type="button" class="admin-bulk-bar__btn" data-action="click->admin-users#openBulkModal">
+      Assign Groups
+    </button>
+    <button type="button" class="admin-bulk-bar__btn" data-action="click->admin-users#openRoleModal">
+      Change Role
+    </button>
+    <button type="button" class="admin-bulk-bar__btn admin-bulk-bar__btn--danger" data-action="click->admin-users#bulkDeactivate">
+      Deactivate
+    </button>
+  </div>
+</div>
+
+<%# Bulk Role Change Modal %>
+<div data-admin-users-target="roleModal" class="dialog-overlay is-hidden" data-controller="modal">
+  <div class="dialog" data-modal-target="content" data-action="click->modal#stop">
+    <%= form_with url: bulk_update_role_admin_users_path, method: :patch, local: true, data: { admin_users_target: "roleForm" } do |form| %>
+      <div class="dialog__header">
+        <h3 class="dialog__title">Change Role</h3>
+        <button type="button" class="dialog__close" data-action="click->admin-users#closeRoleModal">
+          <span class="sr-only">Close</span>
+          <svg class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="dialog__body">
+        <p class="text-sm mb-3">Select the new role for the selected users:</p>
+        <%= form.select :role, options_for_select([["Admin", "admin"], ["Editor", "editor"], ["Regular", "user"]]), {}, { class: "form-select" } %>
+      </div>
+      <div class="dialog__footer">
+        <button type="button" class="btn btn--plain" data-action="click->admin-users#closeRoleModal">Cancel</button>
+        <%= form.submit "Update Role", class: "btn btn--primary" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<%# Bulk Deactivate Form (hidden) %>
+<%= form_with url: bulk_deactivate_admin_users_path, method: :patch, local: true, data: { admin_users_target: "deactivateForm" }, style: "display:none" do |form| %>
+<% end %>
+
 </div>
