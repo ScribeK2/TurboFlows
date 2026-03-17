@@ -13,52 +13,59 @@
     <% end %>
   </div>
 
-  <% if @workflows.any? %>
-    <div class="card">
-      <% @workflows.each do |workflow| %>
-        <div class="wf-list-item">
-          <div class="flex items-center flex-1 min-w-0">
-            <div class="flex-shrink-0 mr-4">
-              <div class="admin-wf-icon">
-                <svg class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+  <%= turbo_frame_tag "admin-workflows-list" do %>
+    <% if @workflows.any? %>
+      <div class="card">
+        <% @workflows.each do |workflow| %>
+          <div class="wf-list-item" id="<%= dom_id(workflow) %>">
+            <div class="flex items-center flex-1 min-w-0">
+              <div class="flex-shrink-0 mr-4">
+                <%= workflow_list_icon(workflow) %>
+              </div>
+              <div class="wf-list-item__info flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                  <%= link_to workflow.title, admin_workflow_path(workflow), class: "wf-list-item__title" %>
+                  <% if workflow.is_public? %>
+                    <span class="badge badge--published" title="Public workflow">Public</span>
+                  <% end %>
+                  <span class="text-xs">by <%= workflow.user.email %></span>
+                </div>
+                <div class="text-sm mb-1">
+                  <%= truncate(workflow.description_text.presence || "No description", length: 100) %>
+                </div>
+                <div class="wf-list-item__meta">
+                  <%= pluralize(workflow.steps.size, "step") %> &bull; Created <%= time_ago_in_words(workflow.created_at) %> ago
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 ml-4">
+              <%= link_to admin_workflow_path(workflow), class: "btn btn--secondary btn--sm" do %>
+                View
+              <% end %>
+              <%= link_to workflow_path(workflow), class: "btn btn--plain btn--sm" do %>
+                Open
+              <% end %>
+              <%= link_to admin_workflow_path(workflow), data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete '#{workflow.title}'? This cannot be undone." }, class: "btn btn--plain btn--sm wf-list-item__delete", title: "Delete workflow" do %>
+                <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
-              </div>
-            </div>
-            <div class="wf-list-item__info flex-1 min-w-0">
-              <div class="flex items-center gap-2 mb-1">
-                <%= link_to workflow.title, admin_workflow_path(workflow), class: "wf-list-item__title" %>
-                <% if workflow.is_public? %>
-                  <span class="badge badge--published" title="Public workflow">Public</span>
-                <% end %>
-                <span class="text-xs">by <%= workflow.user.email %></span>
-              </div>
-              <div class="text-sm mb-1">
-                <%= truncate(workflow.description_text.presence || "No description", length: 100) %>
-              </div>
-              <div class="wf-list-item__meta">
-                <%= pluralize(workflow.steps.size, "step") %> &bull; Created <%= time_ago_in_words(workflow.created_at) %> ago
-              </div>
+              <% end %>
             </div>
           </div>
-          <div class="flex items-center gap-2 ml-4">
-            <%= link_to admin_workflow_path(workflow), class: "btn btn--secondary btn--sm" do %>
-              View
-            <% end %>
-            <%= link_to workflow_path(workflow), class: "btn btn--plain btn--sm" do %>
-              Open
-            <% end %>
-          </div>
-        </div>
+        <% end %>
+      </div>
+
+      <% if @total_pages > 1 %>
+        <%= render "admin/workflows/pagination" %>
       <% end %>
-    </div>
-  <% else %>
-    <div class="empty-state">
-      <svg class="empty-state__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-      </svg>
-      <h3 class="empty-state__title">No workflows</h3>
-      <p class="empty-state__text">No workflows found in the system.</p>
-    </div>
+    <% else %>
+      <div class="empty-state">
+        <svg class="empty-state__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        <h3 class="empty-state__title">No workflows</h3>
+        <p class="empty-state__text">No workflows found in the system.</p>
+      </div>
+    <% end %>
   <% end %>
 </div>

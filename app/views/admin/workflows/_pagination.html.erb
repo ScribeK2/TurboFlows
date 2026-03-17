@@ -1,0 +1,49 @@
+<div class="admin-pagination">
+  <div class="admin-pagination__info">
+    <% start_item = ((@current_page - 1) * @per_page) + 1 %>
+    <% end_item = [@current_page * @per_page, @total_count].min %>
+    Showing <%= start_item %>-<%= end_item %> of <%= @total_count %> workflow<%= @total_count == 1 ? "" : "s" %>
+  </div>
+
+  <div class="admin-pagination__controls">
+    <form action="<%= admin_workflows_path %>" method="get" data-turbo-frame="admin-workflows-list" data-turbo-action="advance" class="admin-pagination__per-page">
+      <% filter_params.to_h.except("per_page", "page").each do |key, value| %>
+        <input type="hidden" name="<%= key %>" value="<%= value %>">
+      <% end %>
+      <label for="per_page" class="text-xs">Per page:</label>
+      <select name="per_page" id="per_page" class="form-select form-select--sm" onchange="this.form.requestSubmit()">
+        <% [10, 25, 50].each do |size| %>
+          <option value="<%= size %>" <%= "selected" if @per_page == size %>><%= size %></option>
+        <% end %>
+      </select>
+    </form>
+
+    <nav class="admin-pagination__pages" aria-label="Pagination">
+      <% if @current_page > 1 %>
+        <%= link_to admin_workflows_path(filter_params.to_h.merge(page: @current_page - 1)),
+          class: "admin-pagination__page", data: { turbo_frame: "admin-workflows-list", turbo_action: "advance" } do %>
+          &lsaquo;
+        <% end %>
+      <% end %>
+
+      <% pagination_range(@current_page, @total_pages).each do |page_num| %>
+        <% if page_num == :gap %>
+          <span class="admin-pagination__gap">&hellip;</span>
+        <% else %>
+          <%= link_to admin_workflows_path(filter_params.to_h.merge(page: page_num)),
+            class: "admin-pagination__page #{"admin-pagination__page--active" if page_num == @current_page}",
+            data: { turbo_frame: "admin-workflows-list", turbo_action: "advance" } do %>
+            <%= page_num %>
+          <% end %>
+        <% end %>
+      <% end %>
+
+      <% if @current_page < @total_pages %>
+        <%= link_to admin_workflows_path(filter_params.to_h.merge(page: @current_page + 1)),
+          class: "admin-pagination__page", data: { turbo_frame: "admin-workflows-list", turbo_action: "advance" } do %>
+          &rsaquo;
+        <% end %>
+      <% end %>
+    </nav>
+  </div>
+</div>

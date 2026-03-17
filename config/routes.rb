@@ -82,7 +82,7 @@ Rails.application.routes.draw do
       end
     end
     resources :templates, except: [:show]
-    resources :workflows, only: %i[index show]
+    resources :workflows, only: %i[index show destroy]
     resources :groups do
       patch 'folders/reorder', to: 'folders#reorder', as: :reorder_folders
       resources :folders, except: [:show]
