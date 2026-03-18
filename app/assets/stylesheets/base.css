@@ -6,16 +6,22 @@ body {
   font-size: var(--text-base);
   color: var(--color-ink);
   background-color: var(--color-canvas);
-  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* ============================================================================
    Turbo View Transitions (smooth cross-fade between page navigations)
    ============================================================================ */
 
+/* Ensure the view-transition backdrop uses the app background,
+   preventing a black flash during cross-document navigations
+   (e.g. wizard forms that use data-turbo="false"). */
+::view-transition {
+  background-color: var(--color-canvas);
+}
+
 /* Turbo Drive cross-fade: old page fades out, new page fades in */
 ::view-transition-old(root) {
-  animation: turbo-fade-out 0.15s ease-out forwards;
+  animation: turbo-fade-out 0.2s ease-out forwards;
 }
 
 ::view-transition-new(root) {

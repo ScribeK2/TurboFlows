@@ -38,11 +38,11 @@ export default class extends Controller {
       }
     }
 
-    // Reload the page in list mode so the list editor has fresh server data.
-    // The visual editor saves steps via a separate API (sync_steps), so the
-    // list editor DOM is always stale — a reload is the reliable way to sync.
+    // Navigate via Turbo Drive so the list editor gets fresh server data
+    // without triggering a raw browser reload (which causes a black flash
+    // during cross-document view transitions).
     localStorage.setItem("turboflows:editor-mode", "list")
-    window.location.reload()
+    Turbo.visit(window.location.href, { action: "replace" })
   }
 
   switchToVisual() {

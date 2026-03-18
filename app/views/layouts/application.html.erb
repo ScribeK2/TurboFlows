@@ -8,14 +8,13 @@
     <%= csp_meta_tag %>
     <%= action_cable_meta_tag %>
 
-    <!-- Initialize dark mode before page renders to prevent flash -->
+    <!-- Initialize theme before page renders to prevent flash -->
     <script nonce="<%= content_security_policy_nonce %>">
       (function() {
         const savedTheme = localStorage.getItem("theme");
         const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
-          document.documentElement.dataset.theme = "dark";
-        }
+        document.documentElement.dataset.theme =
+          (savedTheme === "dark" || (!savedTheme && prefersDark)) ? "dark" : "light";
       })();
     </script>
 
