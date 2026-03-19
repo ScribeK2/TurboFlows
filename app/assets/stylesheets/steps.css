@@ -137,6 +137,16 @@
   opacity: 1;
 }
 
+.input-port:hover,
+.output-port:hover {
+  transform: translateX(-50%) scale(1.4);
+  box-shadow: 0 0 6px oklch(0.60 0.15 var(--step-hue, 250) / 0.6);
+}
+
+.input-port:hover {
+  transform: translateY(-50%) scale(1.4);
+}
+
 .input-port.is-visible,
 .output-port.is-visible {
   opacity: 1;
@@ -145,5 +155,127 @@
 .output-port.is-visible {
   background: oklch(0.60 0.19 145);
   transform: translateX(-50%) scale(1.25);
+}
+
+/* Connection target pulse during connection drawing */
+.input-port.is-connection-target {
+  opacity: 1;
+  animation: portPulse 1s ease-in-out infinite;
+}
+
+@keyframes portPulse {
+  0%, 100% { transform: translateY(-50%) scale(1); box-shadow: 0 0 0 0 oklch(0.60 0.19 145 / 0.4); }
+  50% { transform: translateY(-50%) scale(1.3); box-shadow: 0 0 8px 2px oklch(0.60 0.19 145 / 0.3); }
+}
+
+/* ─── Orphan Node Warning Enhancement ─── */
+.step-card__inner.is-orphan {
+  outline: 2px dashed var(--color-warning);
+  outline-offset: 2px;
+  animation: orphanPulse 2s ease-in-out infinite;
+}
+
+@keyframes orphanPulse {
+  0%, 100% { outline-color: var(--color-warning); }
+  50% { outline-color: oklch(0.70 0.16 70 / 0.5); }
+}
+
+/* ─── Fade-In on New Nodes ─── */
+.step-card--fade-in {
+  animation: stepFadeIn 200ms ease-out;
+}
+
+@keyframes stepFadeIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ─── Node Dragging State ─── */
+.workflow-node.is-dragging-node {
+  z-index: 50;
+  opacity: 0.85;
+  cursor: grabbing;
+}
+
+.workflow-node.is-dragging-node .step-card__inner {
+  box-shadow: var(--shadow-lg);
+}
+
+/* ─── Variable Tags ─── */
+.variable-tag {
+  display: inline;
+  padding: 0.0625rem var(--space-1);
+  background: oklch(0.93 0.06 250);
+  color: oklch(0.40 0.15 250);
+  font-family: var(--font-mono);
+  font-size: 0.8125em;
+  border-radius: var(--radius);
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .variable-tag {
+  background: oklch(0.25 0.06 250);
+  color: oklch(0.75 0.12 250);
+}
+
+/* ─── Status Pills ─── */
+.step-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.0625rem var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.step-pill--start {
+  background: oklch(0.93 0.06 145);
+  color: oklch(0.40 0.15 145);
+  border: 1px solid oklch(0.85 0.08 145);
+}
+
+.step-pill--terminal {
+  background: oklch(0.93 0.06 250);
+  color: oklch(0.40 0.15 250);
+  border: 1px solid oklch(0.85 0.08 250);
+}
+
+.step-pill--warning {
+  background: oklch(0.95 0.06 80);
+  color: oklch(0.45 0.12 80);
+  border: 1px solid oklch(0.85 0.08 80);
+}
+
+[data-theme="dark"] .step-pill--start {
+  background: oklch(0.20 0.05 145);
+  color: oklch(0.75 0.12 145);
+  border-color: oklch(0.30 0.06 145);
+}
+
+[data-theme="dark"] .step-pill--terminal {
+  background: oklch(0.20 0.05 250);
+  color: oklch(0.75 0.12 250);
+  border-color: oklch(0.30 0.06 250);
+}
+
+[data-theme="dark"] .step-pill--warning {
+  background: oklch(0.25 0.05 80);
+  color: oklch(0.75 0.10 80);
+  border-color: oklch(0.35 0.06 80);
+}
+
+/* ─── Sync Highlight ─── */
+.step-card.is-highlighted .step-card__inner,
+.is-sync-highlighted .step-card__inner {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+  animation: syncPulse 0.6s ease-out;
+}
+
+@keyframes syncPulse {
+  0% { outline-color: oklch(0.55 0.20 250 / 0.8); }
+  100% { outline-color: oklch(0.55 0.20 250 / 0.3); }
 }
 }
