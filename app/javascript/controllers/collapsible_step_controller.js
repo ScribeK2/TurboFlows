@@ -51,6 +51,15 @@ export default class extends Controller {
   expand() {
     this.expandedValue = true
     this.updateVisibility()
+
+    // Dispatch step:selected for split-view sync
+    const stepItem = this.element.closest(".step-item")
+    const idInput = stepItem?.querySelector("input[name*='[id]']")
+    if (idInput?.value) {
+      document.dispatchEvent(new CustomEvent("step:selected", {
+        detail: { stepId: idInput.value }
+      }))
+    }
   }
 
   /**

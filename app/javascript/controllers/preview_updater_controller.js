@@ -25,9 +25,17 @@ export default class extends Controller {
         this.updatePreview()
       })
 
-      // Rich text editors (Trix/Lexxy) fire trix-change instead of input
+      // Rich text editors (Trix) fire trix-change instead of input
       stepForm.addEventListener("trix-change", () => {
         this.updatePreview()
+      })
+
+      // Lexxy (Lexical) swallows input events — keyup is the only
+      // reliable event that bubbles from its contenteditable
+      stepForm.addEventListener("keyup", (e) => {
+        if (e.target.closest("lexxy-editor")) {
+          this.updatePreview()
+        }
       })
 
       // Also listen for custom workflow-steps-changed event
@@ -196,7 +204,11 @@ export default class extends Controller {
    * while plain fields use a textarea element.
    */
   getRichTextOrPlain(container, fieldName) {
-    // Try trix/Lexxy: hidden input set by the rich text editor
+    // Try Lexxy custom element (stores value in element.value property)
+    const lexxyEditor = container.querySelector(`lexxy-editor[name*='[${fieldName}]']`)
+    if (lexxyEditor && lexxyEditor.value) return lexxyEditor.value
+
+    // Try trix/legacy: hidden input set by the rich text editor
     const hiddenInput = container.querySelector(`input[type="hidden"][name*='[${fieldName}]']`)
     if (hiddenInput && hiddenInput.value) return hiddenInput.value
 

@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { FlowchartRenderer } from "services/flowchart_renderer"
 import { VisualEditorService } from "services/visual_editor_service"
+import { EditorHistoryService } from "services/editor_history_service"
 
 // Main orchestrator for the visual workflow editor.
 // Owns FlowchartRenderer, VisualEditorService, persistence, rendering,
@@ -15,7 +16,7 @@ import { VisualEditorService } from "services/visual_editor_service"
 export default class extends Controller {
   static targets = [
     "root", "canvas", "canvasContent", "emptyState", "stepsData",
-    "stepsInput", "startNodeInput", "stepCount"
+    "stepsInput", "startNodeInput", "stepCount", "undoBtn", "redoBtn"
   ]
 
   static values = {
@@ -35,6 +36,8 @@ export default class extends Controller {
 
     this.isConnecting = false
     this.selectedStepId = null
+    this.lastAddedStepId = null
+    this.history = new EditorHistoryService()
 
     // Parse steps from embedded JSON
     let steps = []
@@ -82,11 +85,12 @@ export default class extends Controller {
     }
 
     // Listen for child controller events
-    this.element.addEventListener("visual-editor:auto-arrange", () => this.render())
+    this.element.addEventListener("visual-editor:auto-arrange", () => this.autoArrange())
     this.element.addEventListener("visual-editor:step-saved", (e) => this.handleStepSaved(e))
     this.element.addEventListener("visual-editor:step-deleted", (e) => this.handleStepDeleted(e))
     this.element.addEventListener("visual-editor:add-transition", (e) => this.handleAddTransition(e))
     this.element.addEventListener("visual-editor:add-step", (e) => this.handleAddStep(e))
+    this.element.addEventListener("visual-editor:node-moved", (e) => this.handleNodeMoved(e))
 
     this.render()
   }
@@ -128,6 +132,7 @@ export default class extends Controller {
     this.updateStepCount(steps.length)
     this.highlightOrphans()
     this.highlightSelected()
+    this.applyFadeIn()
     this.attachNodeEventListeners()
 
     // Notify child controllers (canvas-zoom applies zoom, etc.)
@@ -247,7 +252,7 @@ export default class extends Controller {
         e.stopPropagation()
         const step = this.service.findStep(stepId)
         if (step) {
-          this.element.dispatchEvent(new CustomEvent("visual-editor:open-modal", {
+          this.element.dispatchEvent(new CustomEvent("visual-editor:open-inspector", {
             bubbles: false,
             detail: { step: { ...step } }
           }))
@@ -342,6 +347,15 @@ export default class extends Controller {
     })
   }
 
+  applyFadeIn() {
+    if (!this.lastAddedStepId || !this.hasCanvasContentTarget) return
+    const node = this.canvasContentTarget.querySelector(
+      `.workflow-node[data-step-id="${this.lastAddedStepId}"]`
+    )
+    if (node) node.classList.add("step-card--fade-in")
+    this.lastAddedStepId = null
+  }
+
   // --- Canvas Click (deselect) ---
 
   handleCanvasClick(e) {
@@ -359,8 +373,23 @@ export default class extends Controller {
         this.element.dispatchEvent(new CustomEvent("visual-editor:cancel-connection", { bubbles: false }))
       } else {
         this.element.dispatchEvent(new CustomEvent("visual-editor:close-modal", { bubbles: false }))
+        this.element.dispatchEvent(new CustomEvent("visual-editor:close-inspector", { bubbles: false }))
         this.element.dispatchEvent(new CustomEvent("visual-editor:hide-popover", { bubbles: false }))
       }
+      return
+    }
+
+    // Undo: Cmd/Ctrl+Z
+    if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
+      e.preventDefault()
+      this.undo()
+      return
+    }
+
+    // Redo: Cmd/Ctrl+Shift+Z
+    if ((e.metaKey || e.ctrlKey) && e.key === "z" && e.shiftKey) {
+      e.preventDefault()
+      this.redo()
       return
     }
 
@@ -370,15 +399,65 @@ export default class extends Controller {
       const step = this.service.findStep(this.selectedStepId)
       const title = step ? step.title : "this step"
       if (confirm(`Delete "${title}"?`)) {
+        this.pushUndoSnapshot()
         this.service.removeStep(this.selectedStepId)
         this.selectedStepId = null
       }
     }
   }
 
+  // --- Undo/Redo ---
+
+  pushUndoSnapshot() {
+    this.history.push(this.service.takeSnapshot())
+    this.updateUndoRedoButtons()
+  }
+
+  undo() {
+    if (!this.history.canUndo) return
+    const snapshot = this.history.undoWithCurrent(this.service.takeSnapshot())
+    if (snapshot) {
+      this.service.restoreSnapshot(snapshot)
+      this.updateUndoRedoButtons()
+    }
+  }
+
+  redo() {
+    if (!this.history.canRedo) return
+    const snapshot = this.history.redoWithCurrent(this.service.takeSnapshot())
+    if (snapshot) {
+      this.service.restoreSnapshot(snapshot)
+      this.updateUndoRedoButtons()
+    }
+  }
+
+  updateUndoRedoButtons() {
+    if (this.hasUndoBtnTarget) this.undoBtnTarget.disabled = !this.history.canUndo
+    if (this.hasRedoBtnTarget) this.redoBtnTarget.disabled = !this.history.canRedo
+  }
+
+  // --- Auto-Arrange ---
+
+  autoArrange() {
+    this.pushUndoSnapshot()
+    this.service.clearAllPositions()
+  }
+
+  // --- Node Moved ---
+
+  handleNodeMoved(e) {
+    this.pushUndoSnapshot()
+    const { stepId, x, y } = e.detail
+    this.service.moveStep(stepId, x, y)
+    // No re-render needed — node is already positioned from drag.
+    // Just sync hidden inputs for persistence.
+    this.syncHiddenInputs()
+  }
+
   // --- Child Controller Event Handlers ---
 
   handleStepSaved(e) {
+    this.pushUndoSnapshot()
     const { stepId, data } = e.detail
     this.service.updateStep(stepId, data)
     this.render()
@@ -386,19 +465,23 @@ export default class extends Controller {
   }
 
   handleStepDeleted(e) {
+    this.pushUndoSnapshot()
     const { stepId } = e.detail
     this.service.removeStep(stepId)
   }
 
   handleAddTransition(e) {
+    this.pushUndoSnapshot()
     const { fromId, toId, condition, label } = e.detail
     this.service.addTransition(fromId, toId, condition, label)
   }
 
   handleAddStep(e) {
+    this.pushUndoSnapshot()
     const { type } = e.detail
     const step = this.service.addStep(type)
-    this.element.dispatchEvent(new CustomEvent("visual-editor:open-modal", {
+    this.lastAddedStepId = step.id
+    this.element.dispatchEvent(new CustomEvent("visual-editor:open-inspector", {
       bubbles: false,
       detail: { step: { ...step } }
     }))

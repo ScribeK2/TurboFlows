@@ -98,12 +98,21 @@ export default class extends Controller {
     const endX = (e.clientX - canvasRect.left + this.canvasTarget.scrollLeft) / this.zoomLevel
     const endY = (e.clientY - canvasRect.top + this.canvasTarget.scrollTop) / this.zoomLevel
 
+    // Check if hovering over a valid target for color feedback
+    const target = document.elementFromPoint(e.clientX, e.clientY)
+    const inputPort = target?.closest(".input-port")
+    const nodeEl = target?.closest(".workflow-node")
+    const overValidTarget = inputPort
+      ? inputPort.dataset.stepId !== this.connectionFromId
+      : (nodeEl ? nodeEl.dataset.stepId !== this.connectionFromId : false)
+    const strokeColor = overValidTarget ? "#22c55e" : "#ef4444"
+
     const line = document.createElementNS("http://www.w3.org/2000/svg", "line")
     line.setAttribute("x1", this.connectionStartX)
     line.setAttribute("y1", this.connectionStartY)
     line.setAttribute("x2", endX)
     line.setAttribute("y2", endY)
-    line.setAttribute("stroke", "#6366f1")
+    line.setAttribute("stroke", strokeColor)
     line.setAttribute("stroke-width", "2")
     line.setAttribute("stroke-dasharray", "6,3")
     this.tempSvgTarget.replaceChildren(line)

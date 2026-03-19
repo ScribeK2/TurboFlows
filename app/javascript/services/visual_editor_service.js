@@ -138,6 +138,37 @@ export class VisualEditorService {
     }
   }
 
+  // --- Position Management ---
+
+  moveStep(stepId, x, y) {
+    const step = this.findStep(stepId)
+    if (!step) return null
+    step.position_x = x
+    step.position_y = y
+    this.markDirty()
+    return step
+  }
+
+  clearAllPositions() {
+    this.steps.forEach(step => {
+      step.position_x = null
+      step.position_y = null
+    })
+    this.markDirty()
+  }
+
+  // --- Snapshot (for undo/redo) ---
+
+  takeSnapshot() {
+    return { steps: structuredClone(this.steps), startNodeUuid: this.startNodeUuid }
+  }
+
+  restoreSnapshot(snapshot) {
+    this.steps = structuredClone(snapshot.steps)
+    this.startNodeUuid = snapshot.startNodeUuid
+    this.markDirty()
+  }
+
   // --- Orphan Detection ---
 
   getOrphanStepIds() {

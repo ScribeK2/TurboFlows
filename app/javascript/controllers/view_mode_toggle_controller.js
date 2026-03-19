@@ -64,6 +64,12 @@ export default class extends Controller {
   }
 
   applyMode() {
+    // Add transitioning class for smooth cross-view transitions
+    if (this.listContainer) {
+      this.listContainer.classList.add("wf-editor-transitioning")
+      setTimeout(() => this.listContainer.classList.remove("wf-editor-transitioning"), 200)
+    }
+
     const mode = this.modeValue
     const isList = mode === "list"
     const isVisual = mode === "visual"

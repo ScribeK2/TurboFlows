@@ -15,6 +15,14 @@ export default class extends Controller {
     // Listen for updates from workflow builder
     this.setupUpdateListener()
     this.setupPanZoom()
+    this.setupNodeClickListener()
+
+    // Listen for step:selected events to highlight matching preview node
+    this.boundStepSelected = (event) => {
+      const stepId = event.detail?.stepId
+      if (stepId) this.highlightNode(stepId)
+    }
+    document.addEventListener("step:selected", this.boundStepSelected)
   }
 
   disconnect() {
@@ -34,6 +42,32 @@ export default class extends Controller {
       clearTimeout(this.renderTimeout)
     }
     this.teardownPanZoom()
+    if (this.boundStepSelected) {
+      document.removeEventListener("step:selected", this.boundStepSelected)
+    }
+  }
+
+  setupNodeClickListener() {
+    if (!this.hasCanvasTarget) return
+    this.canvasTarget.addEventListener("click", (event) => {
+      const node = event.target.closest(".workflow-node[data-step-id]")
+      if (!node) return
+      const stepId = node.dataset.stepId
+      if (stepId) {
+        document.dispatchEvent(new CustomEvent("flow-preview:node-clicked", {
+          detail: { stepId }
+        }))
+      }
+    })
+  }
+
+  highlightNode(stepId) {
+    if (!this.hasCanvasTarget) return
+    const node = this.canvasTarget.querySelector(`.workflow-node[data-step-id='${CSS.escape(stepId)}']`)
+    if (!node) return
+    node.classList.add("is-sync-highlighted")
+    node.scrollIntoView({ behavior: "smooth", block: "center" })
+    setTimeout(() => node.classList.remove("is-sync-highlighted"), 2000)
   }
 
   setupUpdateListener() {

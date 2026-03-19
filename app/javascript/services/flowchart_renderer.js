@@ -91,11 +91,28 @@ export class FlowchartRenderer {
     return connections
   }
 
-  // Calculate node positions using Dagre for proper DAG layout
+  // Calculate node positions using Dagre for proper DAG layout.
+  // Steps with saved position_x/position_y use those values;
+  // steps without saved positions get dagre-computed layout.
   calculatePositions(steps, connections) {
     if (!steps || steps.length === 0) return {}
 
-    // Create a new directed graph
+    // Check which steps have saved positions
+    const savedPositions = {}
+    const unsavedSteps = []
+
+    steps.forEach((step) => {
+      if (step.position_x != null && step.position_y != null) {
+        savedPositions[step.index] = { x: step.position_x, y: step.position_y }
+      } else {
+        unsavedSteps.push(step)
+      }
+    })
+
+    // If all steps have saved positions, return them directly
+    if (unsavedSteps.length === 0) return savedPositions
+
+    // Run dagre for steps without saved positions
     const g = new dagre.graphlib.Graph()
     g.setGraph({
       rankdir: "TB",
@@ -106,7 +123,7 @@ export class FlowchartRenderer {
     })
     g.setDefaultEdgeLabel(() => ({}))
 
-    // Add nodes
+    // Add all nodes (dagre needs the full graph for correct layout)
     steps.forEach((step) => {
       g.setNode(String(step.index), {
         width: this.nodeWidth,
@@ -122,14 +139,18 @@ export class FlowchartRenderer {
     // Run the layout algorithm
     dagre.layout(g)
 
-    // Extract positions (Dagre gives center coords, convert to top-left)
+    // Merge: saved positions override dagre-computed ones
     const positions = {}
     steps.forEach((step) => {
-      const node = g.node(String(step.index))
-      if (node) {
-        positions[step.index] = {
-          x: node.x - this.nodeWidth / 2,
-          y: node.y - this.nodeHeight / 2
+      if (savedPositions[step.index]) {
+        positions[step.index] = savedPositions[step.index]
+      } else {
+        const node = g.node(String(step.index))
+        if (node) {
+          positions[step.index] = {
+            x: node.x - this.nodeWidth / 2,
+            y: node.y - this.nodeHeight / 2
+          }
         }
       }
     })
@@ -365,19 +386,20 @@ export class FlowchartRenderer {
           </div>
           <!-- Input port (top center) -->
           <div class="input-port"
-               data-port="input" data-step-id="${escapedStepId}"></div>
+               data-port="input" data-step-id="${escapedStepId}" title="Drop connection here"></div>
           <!-- Output port (bottom center) -->
           <div class="output-port"
-               data-port="output" data-step-id="${escapedStepId}"></div>
+               data-port="output" data-step-id="${escapedStepId}" title="Drag to connect"></div>
         </div>
       `
     }
 
     // Non-interactive (preview) mode: original behavior
     return `
-      <div class="absolute workflow-node step-card step-card--${escapedStepType}${this.clickable ? ' is-clickable' : ''}"
+      <div class="absolute workflow-node step-card step-card--${escapedStepType}${this.clickable ? ' is-clickable' : ''} workflow-node--clickable"
            style="left: ${pos.x}px; top: ${pos.y}px; width: ${this.nodeWidth}px;"
            data-step-index="${step.index}"
+           data-step-id="${escapedStepId}"
            ${this.clickable ? 'data-action="click->wizard-flow-preview#editStep"' : ''}>
         <div class="step-card__inner" style="min-height: ${this.nodeHeight}px;">
           <!-- Colored header bar -->

@@ -96,8 +96,54 @@ export default class extends Controller {
       </button>`
     }).join("")
     
+    // Apply tree indentation for graph-mode workflows
+    this.applyOutlineDepths()
+
     // Update step count
     this.updateStepCount(steps.length)
+  }
+
+  /**
+   * Apply depth-based indentation to outline items for graph-mode workflows
+   */
+  applyOutlineDepths() {
+    const startUuidInput = document.querySelector("input[name='workflow[start_node_uuid]']")
+    if (!startUuidInput) return
+
+    const startUuid = startUuidInput.value
+    if (!startUuid) return
+
+    // Build steps data from DOM for depth computation
+    const stepItems = document.querySelectorAll(".step-item")
+    const steps = []
+    stepItems.forEach(item => {
+      const idInput = item.querySelector("input[name*='[id]']")
+      const transitionsInput = item.querySelector("input[name*='transitions_json']")
+      let transitions = []
+      if (transitionsInput?.value) {
+        try { transitions = JSON.parse(transitionsInput.value) } catch (e) { /* ignore */ }
+      }
+      steps.push({ id: idInput?.value || '', transitions })
+    })
+
+    // Import and use buildDepthMap dynamically
+    import("services/graph_utils").then(({ buildDepthMap }) => {
+      const depthMap = buildDepthMap(steps, startUuid)
+      const outlineItems = this.stepListTarget.querySelectorAll(".step-outline-item")
+
+      outlineItems.forEach(item => {
+        const stepId = item.dataset.stepId
+        if (stepId && depthMap.has(stepId)) {
+          const depth = Math.min(depthMap.get(stepId), 5)
+          if (depth > 0) {
+            item.style.paddingLeft = `${0.5 + depth * 1.25}rem`
+            item.style.borderLeft = `2px solid var(--color-border)`
+          }
+        }
+      })
+    }).catch(() => {
+      // graph_utils not available, skip indentation
+    })
   }
 
   /**
