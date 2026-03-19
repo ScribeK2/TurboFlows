@@ -124,11 +124,11 @@
 
       <%# List Editor Container %>
       <div id="list-editor-container">
-        <div class="wf-editor-layout">
+        <div class="wf-editor-layout" data-controller="split-sync split-resizer">
           <%# Left: list editor content %>
-          <div class="wf-editor-layout__main">
+          <div class="wf-editor-layout__main" data-split-resizer-target="left">
             <%# Two-Column Layout: Sidebar + Main Content %>
-            <% ar_steps = @workflow.steps.order(:position) %>
+            <% ar_steps = @workflow.steps.includes(:transitions, :incoming_transitions).order(:position) %>
             <% has_sidebar = ar_steps.any? && ar_steps.size > 3 %>
             <div class="wf-editor-grid <%= has_sidebar ? 'wf-editor-grid--with-sidebar' : 'wf-editor-grid--single' %>">
               <%# Step Outline Sidebar %>
@@ -181,7 +181,13 @@
                   <% end %>
 
                   <%# Steps Container %>
-                  <div data-workflow-builder-target="container" class="wf-steps-container">
+                  <div data-workflow-builder-target="container"
+                       class="wf-steps-container"
+                       role="list"
+                       data-controller="step-tree step-keyboard-nav"
+                       data-step-tree-start-uuid-value="<%= (@workflow.start_step || ar_steps.first)&.uuid %>"
+                       data-step-tree-graph-mode-value="<%= @workflow.graph_mode? %>"
+                       data-action="keydown->step-keyboard-nav#handleKeydown">
                     <% if ar_steps.any? %>
                       <%= render partial: "inline_step_creator", locals: { after_index: -1 } %>
                       <% ar_steps.each_with_index do |step, index| %>
@@ -194,13 +200,13 @@
                         <%= render partial: "inline_step_creator", locals: { after_index: index } %>
                       <% end %>
                     <% else %>
-                      <div class="text-center py-10" data-empty-state>
-                        <svg class="icon icon--xl mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div class="wf-empty-state" data-empty-state>
+                        <svg class="icon icon--xl wf-empty-state__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
                         </svg>
-                        <h3 class="font-medium mb-1">No steps yet</h3>
-                        <p class="text-sm mb-4">Get started by adding your first step using the buttons above.</p>
-                        <div class="flex justify-center gap-3" style="flex-wrap: wrap;">
+                        <h3 class="wf-empty-state__title">No steps yet</h3>
+                        <p class="wf-empty-state__text">Get started by adding your first step using the buttons above.</p>
+                        <div class="wf-empty-state__actions">
                           <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="question" class="btn btn--secondary btn--sm">Start with a Question</button>
                           <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="action" class="btn btn--positive btn--sm">Start with an Action</button>
                         </div>
@@ -212,8 +218,11 @@
             </div>
           </div>
 
+          <%# Split divider (visible in split mode only) %>
+          <div class="wf-split-divider" data-split-resizer-target="divider" data-action="mousedown->split-resizer#startDrag"></div>
+
           <%# Right: flow preview (moves to side column in split mode) %>
-          <div class="wf-editor-layout__preview">
+          <div class="wf-editor-layout__preview" data-split-resizer-target="right">
             <div data-controller="flow-preview">
               <%= render partial: "flow_preview" %>
             </div>
@@ -224,6 +233,14 @@
       <%# Visual Editor (graph mode only) %>
       <% if @workflow.graph_mode? %>
         <%= render partial: "visual_editor", locals: { workflow: @workflow } %>
+      <% end %>
+
+      <% if @workflow.graph_mode? %>
+        <div class="wf-status-bar"
+             data-controller="workflow-status-bar"
+             data-workflow-status-bar-start-uuid-value="<%= (@workflow.start_step || @workflow.steps.order(:position).first)&.uuid %>">
+          <div data-workflow-status-bar-target="content" class="wf-status-bar__content"></div>
+        </div>
       <% end %>
 
       <div class="wf-sticky-footer">

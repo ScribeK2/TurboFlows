@@ -38,9 +38,9 @@
 
     <%# List Editor Container %>
     <div id="list-editor-container">
-      <div class="wf-editor-layout">
+      <div class="wf-editor-layout" data-controller="split-sync split-resizer">
         <%# Left: list editor content (sidebar + step cards) %>
-        <div class="wf-editor-layout__main">
+        <div class="wf-editor-layout__main" data-split-resizer-target="left">
           <%# Two-Column Layout: Sidebar + Main Content %>
           <div class="flex gap-6">
             <%# Step Outline Sidebar (shown for workflows with >3 steps) %>
@@ -130,8 +130,11 @@
           </div>
         </div>
 
+        <%# Split divider (visible in split mode only) %>
+        <div class="wf-split-divider" data-split-resizer-target="divider" data-action="mousedown->split-resizer#startDrag"></div>
+
         <%# Right: flow preview (moves to side column in split mode) %>
-        <div class="wf-editor-layout__preview">
+        <div class="wf-editor-layout__preview" data-split-resizer-target="right">
           <div data-controller="flow-preview">
             <%= render partial: "flow_preview" %>
           </div>
