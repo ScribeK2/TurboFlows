@@ -3,6 +3,14 @@ class Steps::Question < Step
 
   before_validation :generate_variable_name, if: -> { variable_name.blank? && title.present? }
 
+  def outcome_summary
+    parts = []
+    parts << answer_type&.titleize if answer_type.present?
+    parts << question.truncate(80) if question.present?
+    parts << "{{#{variable_name}}}" if variable_name.present?
+    parts.join(": ")
+  end
+
   private
 
   def generate_variable_name

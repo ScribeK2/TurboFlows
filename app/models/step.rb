@@ -21,6 +21,29 @@ class Step < ApplicationRecord
     transitions.empty?
   end
 
+  # Summary of outgoing transitions for display in collapsed cards
+  def condition_summary
+    return "Terminal" if terminal? && is_a?(Steps::Resolve)
+
+    trans = transitions.includes(:target_step)
+    return nil if trans.empty?
+    return "-> #{trans.first.target_step&.title || 'Next Step'}" if trans.size == 1 && trans.first.condition.blank?
+
+    labels = trans.first(3).map do |t|
+      label = t.label.presence || t.condition.presence || "Default"
+      target = t.target_step&.title&.truncate(20) || "?"
+      "#{label} -> #{target}"
+    end
+    summary = "#{trans.size} branch#{'es' if trans.size != 1}: #{labels.join(', ')}"
+    summary += ", ..." if trans.size > 3
+    summary
+  end
+
+  # Override in subclasses to provide type-specific summary
+  def outcome_summary
+    nil
+  end
+
   private
 
   def generate_uuid

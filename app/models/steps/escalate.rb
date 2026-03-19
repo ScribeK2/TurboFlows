@@ -6,4 +6,11 @@ class Steps::Escalate < Step
 
   validates :target_type, inclusion: { in: VALID_TARGET_TYPES }, allow_blank: true
   validates :priority, inclusion: { in: VALID_PRIORITIES }, allow_blank: true
+
+  def outcome_summary
+    parts = []
+    parts << priority&.capitalize if priority.present?
+    parts << "-> #{target_type}: #{target_value}" if target_type.present?
+    parts.join(" ")
+  end
 end
