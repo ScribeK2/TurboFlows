@@ -41,6 +41,29 @@ module StepHelper
     end
   end
 
+  # Combines outcome_summary + condition_summary for collapsed card display
+  def step_summary_text(step)
+    parts = [step.outcome_summary, step.condition_summary].compact.reject(&:blank?)
+    parts.join(" | ")
+  end
+
+  # Wraps {{variable}} patterns in highlighted spans, HTML-escapes surrounding text
+  def highlight_variables(text)
+    return "".html_safe if text.blank?
+
+    # Split on {{...}} patterns, escape non-variable parts, wrap variables
+    result = text.gsub(/\{\{(\w+)\}\}/) do
+      variable = Regexp.last_match(1)
+      "<span class=\"variable-tag\">{{#{ERB::Util.html_escape(variable)}}}</span>"
+    end
+
+    # Escape everything that's NOT already in a variable-tag span
+    # Strategy: split on our spans, escape the rest, rejoin
+    parts = result.split(/(<span class="variable-tag">.*?<\/span>)/)
+    parts.map! { |part| part.start_with?("<span") ? part : ERB::Util.html_escape(part) }
+    parts.join.html_safe
+  end
+
   # Get steps from a workflow for display purposes
   def workflow_display_steps(workflow)
     workflow.steps.includes(:transitions)
@@ -62,6 +85,8 @@ module StepHelper
         "type" => s.type.demodulize.underscore,
         "title" => s.title,
         "description" => s.try(:description).to_s,
+        "position_x" => s.position_x,
+        "position_y" => s.position_y,
         "transitions" => s.transitions.map { |t|
           target = steps_by_id[t.target_step_id]
           {

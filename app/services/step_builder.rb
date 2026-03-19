@@ -24,6 +24,8 @@ class StepBuilder
 
   def self.build_attrs(step_data, position)
     attrs = { title: step_data["title"], position: position }
+    attrs[:position_x] = step_data["position_x"]&.to_i if step_data.key?("position_x")
+    attrs[:position_y] = step_data["position_y"]&.to_i if step_data.key?("position_y")
 
     case step_data["type"].to_s
     when "question"
