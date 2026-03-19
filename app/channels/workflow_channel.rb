@@ -86,7 +86,18 @@ class WorkflowChannel < ApplicationCable::Channel
           apply_ar_step_updates(workflow, data["step_updates"])
         end
 
+        # Also handle steps sent from list-editor autosave (different format)
+        if data["steps"].present? && data["steps"].is_a?(Array)
+          apply_list_editor_step_updates(workflow, data["steps"])
+        end
+
         workflow.title = title if title.present?
+
+        # Auto-assign start_step if not set (needed for tree indentation + status bar)
+        if workflow.graph_mode? && workflow.start_step_id.nil? && workflow.steps.any?
+          workflow.start_step = workflow.steps.order(:position).first
+        end
+
         workflow.save!(validate: false)
 
         broadcast_autosave_success(workflow)
@@ -156,6 +167,104 @@ class WorkflowChannel < ApplicationCable::Channel
         step.save!
       end
     end
+  end
+
+  # Apply step updates from list-editor autosave format.
+  # The payload is the full list of steps currently in the DOM — it is the
+  # source of truth.  Steps missing from the payload have been deleted by the
+  # user; the position in the array is the intended display order.
+  #
+  # Each step has { id: uuid, type: "...", title: "...", transitions_json: "[...]", ... }
+  def apply_list_editor_step_updates(workflow, steps_data)
+    # Build a uuid->step lookup for all persisted steps
+    all_steps = workflow.steps.unscoped.where(workflow_id: workflow.id).index_by(&:uuid)
+
+    # Collect UUIDs present in the payload so we can detect deletions
+    payload_uuids = Set.new
+
+    steps_data.each_with_index do |raw, position|
+      step_data = raw.respond_to?(:to_unsafe_h) ? raw.to_unsafe_h : raw.to_h
+      uuid = step_data["id"]
+      next unless uuid.present?
+
+      payload_uuids << uuid
+      step = all_steps[uuid]
+      next unless step
+
+      # Update scalar attributes (description is on Workflow, not Step — skip it here)
+      attrs = step_data.slice(
+        "title", "question", "answer_type", "variable_name", "can_resolve",
+        "action_type", "target_type", "target_value", "priority", "reason_required",
+        "resolution_type", "resolution_code", "notes_required", "survey_trigger",
+        "sub_flow_workflow_id"
+      )
+      attrs.select! { |_, v| !v.nil? }
+
+      # Always sync position to match DOM order
+      attrs["position"] = position
+
+      # Rich text fields need Action Text assignment
+      rich_text_updated = false
+      %w[instructions content notes].each do |rt_field|
+        next unless step_data.key?(rt_field) && step_data[rt_field].present?
+        next unless step.respond_to?(:"#{rt_field}=")
+
+        step.send(:"#{rt_field}=", step_data[rt_field])
+        rich_text_updated = true
+      end
+
+      if attrs.present?
+        step.update!(attrs)
+      elsif rich_text_updated
+        step.save!
+      end
+
+      # Sync transitions from transitions_json
+      sync_step_transitions(step, step_data["transitions_json"], all_steps) if step_data.key?("transitions_json")
+    end
+
+    # Delete steps that are no longer in the DOM (user removed them).
+    # Only do this if the payload had at least one step — an empty payload
+    # likely means a JS extraction error, not "delete everything".
+    if payload_uuids.any?
+      removed_uuids = all_steps.keys - payload_uuids.to_a
+      if removed_uuids.any?
+        workflow.steps.unscoped.where(workflow_id: workflow.id, uuid: removed_uuids).destroy_all
+
+        # If the start_step was deleted, reassign to the first remaining step
+        if workflow.start_step_id.present? && removed_uuids.include?(workflow.start_step&.uuid)
+          workflow.start_step = workflow.steps.order(:position).first
+        end
+      end
+    end
+  end
+
+  # Replace a step's transitions with those from a JSON string.
+  # An empty array "[]" means remove all transitions for this step.
+  def sync_step_transitions(step, transitions_json, steps_by_uuid)
+    parsed = JSON.parse(transitions_json.presence || "[]")
+    return unless parsed.is_a?(Array)
+
+    # Delete existing transitions and recreate
+    step.transitions.destroy_all
+
+    parsed.each_with_index do |t, pos|
+      target_uuid = t["target_uuid"]
+      next unless target_uuid.present?
+
+      target = steps_by_uuid[target_uuid]
+      next unless target
+
+      Transition.create!(
+        step: step,
+        target_step: target,
+        condition: t["condition"].presence,
+        label: t["label"].presence,
+        position: pos
+      )
+    end
+  rescue JSON::ParserError
+    # Skip invalid JSON
   end
 
   def broadcast_autosave_success(workflow)
