@@ -1,9 +1,9 @@
 class WorkflowsController < ApplicationController
   before_action :set_workflow,
-                only: %i[show edit update destroy export export_pdf preview variables save_as_template start begin_execution step1 update_step1 step2 update_step2 step3 create_from_draft render_step publish versions sync_steps]
+                only: %i[show edit update destroy export export_pdf preview variables save_as_template start begin_execution step1 update_step1 step2 update_step2 step3 create_from_draft render_step publish versions sync_steps flow_diagram settings]
   before_action :ensure_draft_workflow!, only: %i[step1 update_step1 step2 update_step2 step3 create_from_draft]
   before_action :ensure_editor_or_admin!, only: %i[new create import import_file start_wizard]
-  before_action :ensure_can_view_workflow!, only: %i[show export export_pdf start begin_execution preview variables versions]
+  before_action :ensure_can_view_workflow!, only: %i[show export export_pdf start begin_execution preview variables versions flow_diagram settings]
   before_action :ensure_can_edit_workflow!, only: %i[edit update save_as_template publish render_step sync_steps]
   before_action :ensure_can_delete_workflow!, only: [:destroy]
   before_action :parse_transitions_json, only: %i[create update update_step2]
@@ -50,6 +50,13 @@ class WorkflowsController < ApplicationController
   def show
     eager_load_steps
     preload_subflow_targets
+
+    @steps = @workflow.steps.includes(:transitions, :incoming_transitions).order(:position)
+    @mode = if params[:edit].present? && @workflow.can_be_edited_by?(current_user)
+              "edit"
+            else
+              "view"
+            end
   end
 
   def new
@@ -62,7 +69,7 @@ class WorkflowsController < ApplicationController
     # step rendering. This mirrors start_wizard and ensures addStepFromModal never
     # falls back to client-side rendering on a truly unsaved record.
     if @workflow.save
-      redirect_to step1_workflow_path(@workflow)
+      redirect_to workflow_path(@workflow, edit: true)
     else
       @accessible_groups = Group.visible_to(current_user).includes(:children).order(:name)
       render :new, status: :unprocessable_content
@@ -375,6 +382,24 @@ class WorkflowsController < ApplicationController
 
   def versions
     @versions = @workflow.versions.newest_first.includes(:published_by)
+  end
+
+  # GET /workflows/:id/flow_diagram
+  def flow_diagram
+    eager_load_steps
+    levels = FlowDiagramService.call(@workflow)
+    render partial: "workflows/flow_diagram_panel",
+           locals: { workflow: @workflow, levels: levels },
+           layout: false
+  end
+
+  # GET /workflows/:id/settings
+  def settings
+    @accessible_groups = Group.visible_to(current_user).includes(:children).order(:name)
+    readonly = !@workflow.can_be_edited_by?(current_user)
+    render partial: "workflows/settings_panel",
+           locals: { workflow: @workflow, readonly: readonly, accessible_groups: @accessible_groups },
+           layout: false
   end
 
   def import

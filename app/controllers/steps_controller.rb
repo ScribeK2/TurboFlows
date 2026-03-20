@@ -3,7 +3,7 @@ class StepsController < ApplicationController
 
   before_action :set_workflow
   before_action :ensure_can_edit!
-  before_action :set_step, only: %i[show edit update destroy reorder]
+  before_action :set_step, only: %i[show edit update destroy reorder panel_edit]
 
   # GET /workflows/:workflow_id/steps/:id
   def show
@@ -36,6 +36,14 @@ class StepsController < ApplicationController
   # GET /workflows/:workflow_id/steps/:id/edit
   def edit
     render partial: "steps/edit_form", locals: { step: @step, workflow: @workflow },
+           layout: false
+  end
+
+  # GET /workflows/:workflow_id/steps/:id/panel_edit
+  def panel_edit
+    readonly = !@workflow.can_be_edited_by?(current_user)
+    render partial: "steps/panel_edit",
+           locals: { step: @step, workflow: @workflow, readonly: readonly },
            layout: false
   end
 
