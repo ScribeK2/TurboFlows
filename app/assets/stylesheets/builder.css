@@ -1,0 +1,426 @@
+@layer components {
+  /* ===== Builder Shell ===== */
+  .builder {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - 5rem);
+  }
+
+  .builder__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-canvas-raised);
+    gap: var(--space-3);
+  }
+
+  .builder__header-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex: 1;
+    min-width: 0;
+  }
+
+  .builder__title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-ink);
+    border: none;
+    background: transparent;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius);
+    width: 100%;
+    max-width: 32rem;
+  }
+
+  .builder__title:hover {
+    background: var(--color-canvas-alt);
+  }
+
+  .builder__title:focus {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+    background: var(--color-canvas);
+  }
+
+  .builder__title[readonly] {
+    pointer-events: none;
+    background: transparent;
+  }
+
+  .builder__status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: 0.75rem;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-full);
+    white-space: nowrap;
+  }
+
+  .builder__status--draft {
+    background: oklch(0.92 0.04 80);
+    color: oklch(0.45 0.12 80);
+  }
+
+  .builder__status--published {
+    background: oklch(0.92 0.04 145);
+    color: oklch(0.40 0.12 145);
+  }
+
+  .builder__autosave {
+    font-size: 0.75rem;
+    color: var(--color-ink-muted);
+    white-space: nowrap;
+  }
+
+  .builder__autosave--saving {
+    color: var(--color-primary);
+  }
+
+  .builder__autosave--error {
+    color: var(--color-negative);
+  }
+
+  /* ===== Toolbar ===== */
+  .builder__toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-2) var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-canvas);
+    font-size: 0.8125rem;
+  }
+
+  .builder__toolbar-left {
+    color: var(--color-ink-muted);
+  }
+
+  .builder__toolbar-right {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .builder__toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius);
+    border: 1px solid var(--color-border);
+    background: var(--color-canvas);
+    color: var(--color-ink-subtle);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    transition: background var(--duration-fast) var(--ease-out);
+  }
+
+  .builder__toolbar-btn:hover {
+    background: var(--color-canvas-alt);
+    color: var(--color-ink);
+  }
+
+  .builder__toolbar-btn--active {
+    background: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary);
+  }
+
+  /* ===== Main Area ===== */
+  .builder__main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ===== Step List ===== */
+  .builder__list {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-3) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    transition: flex-basis var(--duration-normal) var(--ease-out);
+  }
+
+  .builder--panel-open .builder__list {
+    flex: 0 0 38%;
+    max-width: 38%;
+  }
+
+  /* ===== Step Row ===== */
+  .builder__list-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-canvas-raised);
+    cursor: pointer;
+    transition: border-color var(--duration-fast) var(--ease-out),
+                background var(--duration-fast) var(--ease-out);
+  }
+
+  .builder__list-row:hover {
+    border-color: var(--color-ink-muted);
+  }
+
+  .builder__list-row--selected {
+    border-color: var(--color-primary);
+    background: oklch(0.97 0.02 250);
+  }
+
+  .builder__list-row .drag-handle {
+    cursor: grab;
+    color: var(--color-ink-muted);
+    flex-shrink: 0;
+  }
+
+  .builder__step-badge {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .builder__step-title {
+    flex: 1;
+    font-weight: 500;
+    color: var(--color-ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .builder__step-type {
+    font-size: 0.75rem;
+    color: var(--color-ink-muted);
+    flex-shrink: 0;
+  }
+
+  .builder__step-connections {
+    font-size: 0.6875rem;
+    color: var(--color-ink-muted);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  /* Hide type label and connections when panel is open */
+  .builder--panel-open .builder__step-type,
+  .builder--panel-open .builder__step-connections {
+    display: none;
+  }
+
+  .builder__step-delete {
+    opacity: 0;
+    transition: opacity var(--duration-fast) var(--ease-out);
+  }
+
+  .builder__list-row:hover .builder__step-delete {
+    opacity: 1;
+  }
+
+  /* ===== Add Step ===== */
+  .builder__list-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-2) var(--space-3);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius);
+    color: var(--color-primary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: border-color var(--duration-fast) var(--ease-out),
+                background var(--duration-fast) var(--ease-out);
+    position: relative;
+  }
+
+  .builder__list-add:hover {
+    border-color: var(--color-primary);
+    background: oklch(0.97 0.02 250);
+  }
+
+  /* ===== Type Picker Popover ===== */
+  .builder__type-picker {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    margin-bottom: var(--space-2);
+    background: var(--color-canvas-raised);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: var(--space-2);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    z-index: var(--z-dropdown);
+  }
+
+  .builder__type-picker[hidden] {
+    display: none;
+  }
+
+  .builder__type-option {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius);
+    border: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--duration-fast) var(--ease-out);
+  }
+
+  .builder__type-option:hover {
+    background: var(--color-canvas-alt);
+  }
+
+  .builder__type-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: var(--radius-full);
+    flex-shrink: 0;
+  }
+
+  .builder__type-name {
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: var(--color-ink);
+  }
+
+  .builder__type-desc {
+    font-size: 0.75rem;
+    color: var(--color-ink-muted);
+    margin-left: auto;
+  }
+
+  /* ===== Panel ===== */
+  .builder__panel {
+    flex: 0 0 0%;
+    overflow: hidden;
+    border-left: 1px solid var(--color-border);
+    background: var(--color-canvas);
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: flex-basis var(--duration-normal) var(--ease-out),
+                transform var(--duration-normal) var(--ease-out);
+  }
+
+  .builder--panel-open .builder__panel {
+    flex: 0 0 62%;
+    transform: translateX(0);
+  }
+
+  .builder__panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-canvas-raised);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  .builder__panel-header-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .builder__panel-close {
+    border: none;
+    background: transparent;
+    color: var(--color-ink-muted);
+    cursor: pointer;
+    padding: var(--space-1);
+    border-radius: var(--radius);
+    font-size: 1.25rem;
+    line-height: 1;
+  }
+
+  .builder__panel-close:hover {
+    background: var(--color-canvas-alt);
+    color: var(--color-ink);
+  }
+
+  .builder__panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  /* ===== Empty State ===== */
+  .builder__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: var(--space-8) var(--space-4);
+    gap: var(--space-4);
+  }
+
+  .builder__empty-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+
+  .builder__empty-text {
+    color: var(--color-ink-muted);
+    max-width: 28rem;
+  }
+
+  .builder__quick-starts {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* ===== View Mode ===== */
+  .builder[data-builder-mode-value="view"] .drag-handle,
+  .builder[data-builder-mode-value="view"] .builder__list-add,
+  .builder[data-builder-mode-value="view"] .builder__step-delete,
+  .builder[data-builder-mode-value="view"] .builder__edit-only {
+    display: none;
+  }
+
+  /* ===== Step Type Hue Badges ===== */
+  .builder__step-badge--question { background: oklch(0.50 0.14 250); }
+  .builder__step-badge--action { background: oklch(0.50 0.14 145); }
+  .builder__step-badge--message { background: oklch(0.50 0.14 290); }
+  .builder__step-badge--escalate { background: oklch(0.50 0.14 25); }
+  .builder__step-badge--resolve { background: oklch(0.50 0.14 160); }
+  .builder__step-badge--sub_flow { background: oklch(0.50 0.14 310); }
+
+  .builder__type-dot--question { background: oklch(0.55 0.18 250); }
+  .builder__type-dot--action { background: oklch(0.55 0.18 145); }
+  .builder__type-dot--message { background: oklch(0.55 0.18 290); }
+  .builder__type-dot--escalate { background: oklch(0.55 0.18 25); }
+  .builder__type-dot--resolve { background: oklch(0.55 0.18 160); }
+  .builder__type-dot--sub_flow { background: oklch(0.55 0.18 310); }
+}
