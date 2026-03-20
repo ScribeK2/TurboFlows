@@ -11,15 +11,10 @@ module ScenariosHelper
   # Returns "Step X of Y" for linear workflows, "Step X" for branching/graph workflows.
   # Uses execution_path length to determine the user's position, since current_step_index
   # tracks array position (unreliable in graph mode where navigation uses current_node_uuid).
+  # All workflows are graph mode — step count is based on execution path position
   def scenario_step_counter(scenario, workflow)
     current = (scenario.execution_path&.length || 0) + 1
-
-    if workflow.graph_mode?
-      "Step #{current}"
-    else
-      total = workflow.steps.size
-      "Step #{current} of #{total}"
-    end
+    "Step #{current}"
   end
 
   # Returns the inner content for a stepper pill: green checkmark for completed,

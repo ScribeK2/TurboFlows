@@ -30,7 +30,7 @@ class WorkflowGraphConverter
 
     steps = workflow.steps.order(:position).to_a
     return false if steps.empty?
-    return true if workflow.graph_mode?
+    return true if workflow.start_step_id.present? && workflow.steps.joins(:transitions).exists?
 
     Workflow.transaction do
       # Remove existing transitions
@@ -60,7 +60,7 @@ class WorkflowGraphConverter
 
     steps = workflow.steps.order(:position).to_a
     return false if steps.empty?
-    return true if workflow.graph_mode?
+    return true if workflow.start_step_id.present? && workflow.steps.joins(:transitions).exists?
 
     # Simulate conversion without saving
     validate_simulated_conversion(steps)

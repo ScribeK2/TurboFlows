@@ -19,7 +19,7 @@ class WorkflowPublisher
     return Result.new(version: nil, error: "Workflow has no steps") unless @workflow.steps.any?
 
     # Validate graph structure before publishing
-    validate_ar_graph! if @workflow.graph_mode?
+    validate_ar_graph!
 
     version = nil
 

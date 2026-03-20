@@ -7,14 +7,14 @@ class WorkflowGraphTest < ActiveSupport::TestCase
     @user = users(:one)
   end
 
-  test "graph_mode? returns correct value" do
-    linear_workflow = Workflow.create!(title: "Linear", user: @user, graph_mode: false)
-    graph_workflow = Workflow.create!(title: "Graph", user: @user, graph_mode: true)
+  test "graph_mode? always returns true (all workflows are graphs)" do
+    workflow_a = Workflow.create!(title: "Workflow A", user: @user, graph_mode: false)
+    workflow_b = Workflow.create!(title: "Workflow B", user: @user, graph_mode: true)
 
-    assert_not linear_workflow.graph_mode?
-    assert_predicate graph_workflow, :graph_mode?
-    assert_predicate linear_workflow, :linear_mode?
-    assert_not graph_workflow.linear_mode?
+    assert_predicate workflow_a, :graph_mode?
+    assert_predicate workflow_b, :graph_mode?
+    assert_not workflow_a.linear_mode?
+    assert_not workflow_b.linear_mode?
   end
 
   test "graph_steps returns hash keyed by UUID" do

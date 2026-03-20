@@ -11,7 +11,7 @@ class WorkflowSizeLimitsTest < ActiveSupport::TestCase
   end
 
   test "workflow with valid step count is accepted" do
-    workflow = Workflow.create!(title: "Normal Workflow", user: @user)
+    workflow = Workflow.create!(title: "Normal Workflow", user: @user, status: :draft)
 
     10.times do |i|
       Steps::Question.create!(

@@ -12,14 +12,14 @@ class ScenariosHelperTest < ActionView::TestCase
     )
   end
 
-  test "scenario_step_counter shows Step X of Y for linear workflow" do
-    wf = Workflow.create!(title: "Linear WF", user: @user, graph_mode: false)
+  test "scenario_step_counter shows Step X for any workflow" do
+    wf = Workflow.create!(title: "Graph WF", user: @user)
     Steps::Action.create!(workflow: wf, position: 0, title: "S1")
     Steps::Action.create!(workflow: wf, position: 1, title: "S2")
     Steps::Action.create!(workflow: wf, position: 2, title: "S3")
     scenario = Scenario.create!(workflow: wf, user: @user, execution_path: [{ "step_title" => "S1" }], inputs: {}, purpose: "simulation")
     result = scenario_step_counter(scenario, wf)
-    assert_equal "Step 2 of 3", result
+    assert_equal "Step 2", result
   end
 
   test "scenario_step_counter shows Step X for graph mode workflow" do

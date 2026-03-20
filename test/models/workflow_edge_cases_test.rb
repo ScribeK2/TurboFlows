@@ -15,17 +15,21 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
 
   test "duplicate variable_name overwrites previous value in scenario" do
     workflow = Workflow.create!(title: "Duplicate Variable Workflow", user: @user)
-    Steps::Question.create!(workflow: workflow, position: 0, uuid: "step-1", title: "First Question", question: "First answer?", variable_name: "shared_var")
-    Steps::Question.create!(workflow: workflow, position: 1, uuid: "step-2", title: "Second Question", question: "Second answer?", variable_name: "shared_var")
-    Steps::Action.create!(workflow: workflow, position: 2, uuid: "step-3", title: "Result")
+    q1 = Steps::Question.create!(workflow: workflow, position: 0, uuid: "step-1", title: "First Question", question: "First answer?", variable_name: "shared_var")
+    q2 = Steps::Question.create!(workflow: workflow, position: 1, uuid: "step-2", title: "Second Question", question: "Second answer?", variable_name: "shared_var")
+    a1 = Steps::Action.create!(workflow: workflow, position: 2, uuid: "step-3", title: "Result")
+    Transition.create!(step: q1, target_step: q2, position: 0)
+    Transition.create!(step: q2, target_step: a1, position: 0)
+    workflow.update_column(:start_step_id, q1.id)
 
     scenario = Scenario.create!(
       workflow: workflow,
       user: @user,
       status: "active",
-      current_step_index: 0,
+      current_node_uuid: "step-1",
       results: {},
-      inputs: {}
+      inputs: {},
+      purpose: "simulation"
     )
 
     # Answer first question
@@ -69,7 +73,7 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
   # ==========================================================================
 
   test "workflow accepts max steps (200)" do
-    workflow = Workflow.create!(title: "Max Steps Workflow", user: @user)
+    workflow = Workflow.create!(title: "Max Steps Workflow", user: @user, status: :draft)
 
     200.times do |i|
       Steps::Action.create!(workflow: workflow, position: i, title: "Step #{i + 1}")
@@ -194,11 +198,13 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
   # AR Step Validation Tests
   # ==========================================================================
 
-  test "question step requires question text" do
+  test "question step requires question text on publish" do
     workflow = Workflow.create!(title: "Missing Question Workflow", user: @user)
 
     step = Steps::Question.new(workflow: workflow, position: 0, title: "Question Step")
-    assert_not step.valid?
+    # Question validation only runs on :publish context
+    assert_predicate step, :valid?
+    assert_not step.valid?(:publish)
     assert_includes step.errors[:question], "can't be blank"
   end
 

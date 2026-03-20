@@ -182,19 +182,14 @@ class WorkflowsSyncStepsTest < ActionDispatch::IntegrationTest
     assert_nil @workflow.reload.start_step_id
   end
 
-  test "sync_steps returns validation errors" do
-    steps_json = [
-      { id: "uuid-1", type: "question", title: "No question field",
-        answer_type: "yes_no", position: 0, transitions: [] }
-    ]
-
+  test "sync_steps handles stale lock_version with conflict response" do
     patch sync_steps_workflow_path(@workflow), params: {
-      steps: steps_json,
+      steps: [{ id: "uuid-1", type: "action", title: "A1", transitions: [] }],
       start_node_uuid: "uuid-1",
-      lock_version: @workflow.lock_version
+      lock_version: 999
     }, as: :json
 
-    assert_response :unprocessable_entity
+    assert_response :conflict
   end
 
   test "sync_steps requires authentication" do

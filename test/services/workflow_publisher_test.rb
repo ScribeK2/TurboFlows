@@ -93,9 +93,9 @@ class WorkflowPublisherTest < ActiveSupport::TestCase
   test "published_version points to latest version" do
     WorkflowPublisher.publish(@workflow, @user)
 
-    # Add a new step and publish v2
-    Steps::Action.create!(workflow: @workflow, position: 1, title: "New Step")
-    @workflow.update!(graph_mode: false)
+    # Add a new step connected to start, and publish v2
+    new_step = Steps::Action.create!(workflow: @workflow, position: 1, title: "New Step")
+    Transition.create!(step: @q_step, target_step: new_step, position: 0)
     result = WorkflowPublisher.publish(@workflow, @user, changelog: "v2")
 
     @workflow.reload

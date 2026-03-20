@@ -195,7 +195,7 @@ class Workflow < ApplicationRecord
   # This allows incremental workflow building without requiring all steps
   # to be connected before saving.
   def should_validate_graph_structure?
-    graph_mode? && (published? || @validate_graph_now)
+    published? || @validate_graph_now
   end
 
   # Force graph validation on next save (for explicit validation requests)
@@ -296,14 +296,14 @@ class Workflow < ApplicationRecord
   # Graph Mode Support
   # ============================================================================
 
-  # Check if workflow is in graph mode
+  # All workflows are now graph mode — column kept for backward compatibility
   def graph_mode?
-    graph_mode == true
+    true
   end
 
-  # Check if workflow is in linear (array-based) mode
+  # Linear mode is no longer supported
   def linear_mode?
-    !graph_mode?
+    false
   end
 
   # Get steps as a hash keyed by UUID for graph-based operations
@@ -409,7 +409,7 @@ class Workflow < ApplicationRecord
   # Validate graph structure (only in graph mode)
   # Uses GraphValidator service for comprehensive checks via AR steps
   def validate_graph_structure
-    return unless graph_mode? && steps.any?
+    return unless steps.any?
 
     graph_steps_hash = {}
     steps.includes(:transitions).each do |step|

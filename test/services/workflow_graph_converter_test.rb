@@ -43,11 +43,13 @@ class WorkflowGraphConverterTest < ActiveSupport::TestCase
     assert_empty converter.errors
   end
 
-  test "returns true for already graph mode workflow" do
-    workflow = Workflow.create!(title: "Already Graph", user: @user, graph_mode: true)
+  test "returns true for already converted workflow with transitions" do
+    workflow = Workflow.create!(title: "Already Graph", user: @user)
 
-    step = Steps::Action.create!(workflow: workflow, position: 0, uuid: "a", title: "Only Step")
-    workflow.update_column(:start_step_id, step.id)
+    step1 = Steps::Action.create!(workflow: workflow, position: 0, uuid: "a", title: "Start")
+    step2 = Steps::Action.create!(workflow: workflow, position: 1, uuid: "b", title: "End")
+    Transition.create!(step: step1, target_step: step2, position: 0)
+    workflow.update_column(:start_step_id, step1.id)
 
     converter = WorkflowGraphConverter.new(workflow)
     assert converter.convert
