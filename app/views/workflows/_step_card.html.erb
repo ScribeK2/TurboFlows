@@ -6,17 +6,16 @@
   - step: AR Step object
   - workflow: Workflow object
 %>
-<%= turbo_frame_tag dom_id(step),
-      class: "step-card step-item step-card--#{step.step_type}",
-      data: {
-        step_id: step.id,
-        step_index: step.position,
-        controller: "collapsible-step",
-        collapsible_step_expanded_value: local_assigns.fetch(:expanded, false),
-        collapsible_step_step_type_value: step.step_type
-      },
-      tabindex: "0",
-      role: "listitem" do %>
+<div class="step-card step-item step-card--<%= step.step_type %>"
+     data-step-id="<%= step.id %>"
+     data-step-index="<%= step.position %>"
+     data-controller="collapsible-step"
+     data-collapsible-step-expanded-value="<%= local_assigns.fetch(:expanded, false) %>"
+     data-collapsible-step-step-type-value="<%= step.step_type %>"
+     tabindex="0"
+     role="listitem"
+     id="<%= dom_id(step) %>">
+<%= turbo_frame_tag dom_id(step, :frame) do %>
 
   <%# Hidden fields for step discovery by JS controllers (transitions, tree, condition presets, etc.) %>
   <input type="hidden" name="step_uuid" value="<%= step.uuid %>" data-step-field="id">
@@ -102,3 +101,4 @@
     </turbo-frame>
   </div>
 <% end %>
+</div>
