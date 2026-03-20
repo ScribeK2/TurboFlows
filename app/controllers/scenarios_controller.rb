@@ -20,6 +20,7 @@ class ScenariosController < ApplicationController
     @scenario.workflow = @workflow
     @scenario.user = current_user
     @scenario.current_step_index = 0
+    @scenario.current_node_uuid = @workflow.start_node&.uuid
     @scenario.execution_path = []
     @scenario.results = {}
     @scenario.inputs = {}
