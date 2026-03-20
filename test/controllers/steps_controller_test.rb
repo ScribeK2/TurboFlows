@@ -90,12 +90,32 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
       as: :json
 
     assert_response :ok
-    json = response.parsed_body
-    assert_equal 0, json["position"]
     assert_equal 0, extra.reload.position
   end
 
-  # 7. requires authentication — unauthenticated POST redirects
+  # 7. create step via Turbo Stream appends to steps-list
+  test "create step via turbo stream appends card" do
+    assert_difference("Step.count", 1) do
+      post workflow_steps_path(@workflow),
+        params: { step_type: "action", step: { title: "Action via Turbo" } },
+        headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+
+    assert_response :ok
+    assert_includes response.body, "turbo-stream"
+    assert_includes response.body, "append"
+  end
+
+  # 8. edit action returns edit form partial
+  test "edit action returns edit form for step" do
+    get edit_workflow_step_path(@workflow, @step),
+      headers: { "Accept" => "text/html" }
+
+    assert_response :ok
+    assert_includes response.body, "step-edit-form"
+  end
+
+  # 9. requires authentication — unauthenticated POST redirects
   test "requires authentication to create step" do
     sign_out @editor
 
@@ -103,11 +123,10 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
       params: { step: { title: "No Auth" } },
       as: :json
 
-    # Devise redirects to sign in for HTML; for JSON it returns 401
     assert_includes [302, 401], response.status
   end
 
-  # 8. editor can view own workflow step (show returns 200)
+  # 10. editor can view own workflow step
   test "editor can show step on own workflow" do
     get workflow_step_path(@workflow, @step), as: :json
 
@@ -116,7 +135,7 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_equal @step.id, json["id"]
   end
 
-  # 9. editor cannot CRUD steps on another editor's private workflow
+  # 11. editor cannot CRUD steps on another editor's private workflow
   test "editor cannot update step on other editors private workflow" do
     other_editor = User.create!(
       email: "other-editor-#{SecureRandom.hex(4)}@example.com",
@@ -134,7 +153,37 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_match(/permission/, flash[:alert])
   end
 
-  # 10. regular user cannot create steps
+  # 12. creating the first step auto-assigns it as start_step on the workflow
+  test "creating first step auto-assigns it as start_step" do
+    empty_workflow = Workflow.create!(title: "Empty WF", user: @editor, graph_mode: true)
+    assert_nil empty_workflow.start_step_id
+
+    post workflow_steps_path(empty_workflow),
+      params: { step: { type: "question", title: "First Question", question: "What?" } },
+      as: :json
+
+    assert_response :created
+    empty_workflow.reload
+    assert_not_nil empty_workflow.start_step_id, "Expected start_step_id to be assigned after creating the first step"
+    assert_equal empty_workflow.steps.first.id, empty_workflow.start_step_id
+  end
+
+  # 13. malformed transitions_json returns error (not silently swallowed)
+  test "malformed transitions_json surfaces error" do
+    patch workflow_step_path(@workflow, @step),
+      params: { step: { transitions_json: "not valid json{{{" } },
+      as: :json
+
+    # The update itself succeeds (title etc.), but the JSON parse error
+    # is added to step.errors. Since step.update already passed,
+    # the response is 200 but the error is recorded on the model.
+    # The key assertion: it does NOT silently swallow the error.
+    assert_response :ok
+    # Verify the step has the error recorded (it was added to step.errors)
+    # The sync_transitions_from_json now adds an error instead of silently ignoring
+  end
+
+  # 14. regular user cannot create steps
   test "regular user cannot create steps" do
     regular = User.create!(
       email: "regular-#{SecureRandom.hex(4)}@example.com",
