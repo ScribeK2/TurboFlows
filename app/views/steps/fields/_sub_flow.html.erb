@@ -1,0 +1,58 @@
+<%#
+  Sub-flow step fields.
+  Local variables: form (FormBuilder), step (Steps::SubFlow), workflow
+%>
+<div class="form-group"
+     data-controller="subflow-selector"
+     data-subflow-selector-current-workflow-id-value="<%= workflow.id %>">
+  <%= form.label :sub_flow_workflow_id, "Target Workflow", class: "form-label" %>
+
+  <select data-subflow-selector-target="select"
+          data-action="change->subflow-selector#selectWorkflow"
+          class="form-select w-full"
+          name="step[sub_flow_workflow_id]">
+    <option value="">-- Select a workflow --</option>
+  </select>
+  <%= form.hidden_field :sub_flow_workflow_id, data: { subflow_selector_target: "hiddenInput" } %>
+
+  <p class="form-hint">
+    Select a published workflow to execute as a sub-routine.
+  </p>
+</div>
+
+<% if step.sub_flow_workflow_id.present? %>
+  <% target_workflow = step.target_workflow %>
+  <% if target_workflow %>
+    <div class="subflow-preview card card--sub-flow">
+      <div class="flex items-center justify-between">
+        <div>
+          <h4 class="text-sm font-medium"><%= target_workflow.title %></h4>
+          <p class="form-hint mt-0.5 mb-0">
+            <%= target_workflow.steps.size %> steps
+            <% if target_workflow.graph_mode? %>
+              <span class="ml-1 badge">Graph</span>
+            <% end %>
+          </p>
+        </div>
+        <%= link_to workflow_path(target_workflow), target: "_blank", class: "btn btn--plain btn--sm" do %>
+          View
+          <svg class="icon icon--xs ml-0.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+<% end %>
+
+<div class="form-group mt-4">
+  <label class="form-label">Variable Mapping <span class="font-normal">(optional)</span></label>
+  <div class="variable-mapping-box card card--muted">
+    <p class="form-hint mb-2">
+      By default, all parent workflow variables are passed to the sub-flow.
+    </p>
+    <div class="form-hint italic mb-0">
+      Advanced variable mapping editor coming soon.
+    </div>
+  </div>
+</div>

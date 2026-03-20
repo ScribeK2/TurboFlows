@@ -1,0 +1,32 @@
+<%#
+  Step Edit Form — loaded lazily inside a Turbo Frame when a step card is expanded.
+
+  Local variables:
+  - step: AR Step object
+  - workflow: Workflow object
+%>
+<%= turbo_frame_tag dom_id(step, :form) do %>
+  <%= form_with model: step, scope: :step, url: workflow_step_path(workflow, step), method: :patch,
+      class: "step-edit-form",
+      data: { controller: "inline-autosave", "inline-autosave-delay-value": 2000 } do |f| %>
+
+    <div class="form-group">
+      <%= f.label :title, class: "form-label" %>
+      <%= f.text_field :title, class: "form-input", required: true,
+          placeholder: "Enter a descriptive title...",
+          data: { action: "input->inline-autosave#schedule" } %>
+    </div>
+
+    <%# Type-specific fields %>
+    <%= render "steps/fields/#{step.step_type}", form: f, step: step, workflow: workflow %>
+
+    <%# Transitions editor (graph mode, non-resolve steps) %>
+    <% if workflow.graph_mode? && !step.is_a?(Steps::Resolve) %>
+      <%= render "steps/transitions_editor", step: step, workflow: workflow %>
+    <% end %>
+
+    <div class="flex justify-end gap-2 mt-4">
+      <%= f.submit "Save", class: "btn btn--primary btn--sm" %>
+    </div>
+  <% end %>
+<% end %>

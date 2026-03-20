@@ -10,7 +10,8 @@ class WorkflowConcurrencyTest < ActiveSupport::TestCase
     )
     @workflow = Workflow.create!(
       title: "Concurrent Test",
-      user: @user
+      user: @user,
+      status: "draft"
     )
     Steps::Question.create!(workflow: @workflow, position: 0, title: "Step 1", question: "Initial?")
   end

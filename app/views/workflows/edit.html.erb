@@ -1,326 +1,116 @@
+<%= turbo_stream_from "workflow_#{@workflow.id}" %>
+
 <div class="page-content"
      data-controller="workflow-collaboration"
      data-workflow-collaboration-workflow-id-value="<%= @workflow.id %>"
-     data-workflow-collaboration-current-user-id-value="<%= current_user.id %>"
-     data-workflow-collaboration-container-target="container"
-     data-workflow-collaboration-container-value="[data-workflow-builder-target='container']">
+     data-workflow-collaboration-current-user-id-value="<%= current_user.id %>">
+
+  <%# Header + Presence %>
   <div class="wf-page-header mb-6">
     <div>
       <h1 class="page-title">Edit Workflow</h1>
       <p class="text-sm mt-1">Modify your workflow steps below.</p>
     </div>
-    <div data-workflow-collaboration-target="presence" class="flex items-center gap-2">
-      <!-- Presence indicators will be inserted here -->
-    </div>
+    <div data-workflow-collaboration-target="presence" class="flex items-center gap-2"></div>
   </div>
 
-  <%= form_with model: @workflow, local: true, class: "card",
-                data: { controller: "autosave", autosave_workflow_id_value: @workflow.id, autosave_lock_version_value: @workflow.lock_version } do |form| %>
-    <%= form.hidden_field :lock_version %>
+  <%# Workflow Metadata Form %>
+  <turbo-frame id="workflow_metadata">
+    <%= form_with model: @workflow, local: true, class: "card" do |form| %>
+      <%= form.hidden_field :lock_version %>
 
-    <% if @conflict_detected %>
-      <div class="card__body">
-        <div class="alert alert--warning">
-          <div class="wf-alert__inner">
-            <svg class="icon icon--sm flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <div>
-              <h3 class="font-medium">Workflow Conflict Detected</h3>
-              <p class="text-sm mt-1">
-                This workflow was modified by another user while you were editing. The current version is now displayed below.
-                Please review the changes and try your edit again.
-              </p>
+      <% if @conflict_detected %>
+        <div class="card__body">
+          <div class="alert alert--warning">
+            <div class="wf-alert__inner">
+              <svg class="icon icon--sm flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div>
+                <h3 class="font-medium">Workflow Conflict Detected</h3>
+                <p class="text-sm mt-1">This workflow was modified by another user. Please review and try again.</p>
+              </div>
             </div>
           </div>
+        </div>
+      <% end %>
+
+      <%= render partial: "shared/error_messages", locals: { object: @workflow, container_class: "card__body" } %>
+
+      <div class="card__body wf-form-stack">
+        <div class="form-group">
+          <%= form.label :title, class: "form-label" %>
+          <%= form.text_field :title, class: "form-input" %>
+        </div>
+
+        <div class="form-group">
+          <%= form.label :description, class: "form-label" %>
+          <%= form.rich_text_area :description %>
+        </div>
+
+        <% if @accessible_groups&.any? %>
+          <%= render partial: "workflows/group_selector", locals: { selected_group_ids: @selected_group_ids || [] } %>
+        <% end %>
+
+        <% if current_user&.can_edit_workflows? %>
+          <div class="wf-checkbox-row">
+            <%= form.check_box :is_public, class: "form-checkbox" %>
+            <%= form.label :is_public, "Make this workflow public (visible to all users)", class: "form-label mb-0" %>
+          </div>
+          <p class="form-hint">
+            Public workflows can be viewed and simulated by all users, but only you (or admins) can edit them.
+          </p>
+
+          <% if show_graph_mode_toggle? %>
+            <div class="card card--muted p-4 mt-2">
+              <div class="wf-graph-mode-row">
+                <div class="wf-checkbox-row">
+                  <%= form.check_box :graph_mode, class: "form-checkbox" %>
+                  <%= form.label :graph_mode, class: "form-label mb-0" do %>
+                    Enable Graph Mode <span class="badge ml-1">Beta</span>
+                  <% end %>
+                </div>
+                <% if @workflow.graph_mode? %>
+                  <span class="badge badge--published text-xs">Active</span>
+                <% end %>
+              </div>
+              <p class="form-hint mt-2">
+                Graph mode enables advanced DAG-based workflows with complex branching, sub-flows, and visual connection editing.
+              </p>
+            </div>
+          <% else %>
+            <%= form.hidden_field :graph_mode, value: @workflow.graph_mode? %>
+          <% end %>
+        <% end %>
+
+        <div class="flex justify-end gap-2 mt-4">
+          <%= form.submit "Save Metadata", class: "btn btn--primary btn--sm" %>
         </div>
       </div>
     <% end %>
+  </turbo-frame>
 
-    <%= render partial: "shared/error_messages", locals: { object: @workflow, container_class: "card__body" } %>
-
-    <div class="card__body wf-form-stack">
-      <div class="form-group">
-        <%= form.label :title, class: "form-label" %>
-        <%= form.text_field :title, class: "form-input" %>
-      </div>
-
-      <div class="form-group">
-        <%= form.label :description, class: "form-label" %>
-        <%= form.rich_text_area :description %>
-      </div>
-
-      <% if @accessible_groups&.any? %>
-        <%= render partial: "workflows/group_selector", locals: { selected_group_ids: @selected_group_ids || [] } %>
-      <% end %>
-
-      <% if current_user&.can_edit_workflows? %>
-        <div class="wf-checkbox-row">
-          <%= form.check_box :is_public, class: "form-checkbox" %>
-          <%= form.label :is_public, "Make this workflow public (visible to all users)", class: "form-label mb-0" %>
-        </div>
-        <p class="form-hint">
-          Public workflows can be viewed and simulated by all users, but only you (or admins) can edit them.
-        </p>
-
-        <%# Graph Mode Toggle - Hidden when graph mode is the default %>
-        <% if show_graph_mode_toggle? %>
-          <div class="card card--muted p-4 mt-2">
-            <div class="wf-graph-mode-row">
-              <div class="wf-checkbox-row">
-                <%= form.check_box :graph_mode, class: "form-checkbox", data: { action: "change->workflow-builder#toggleGraphMode" } %>
-                <%= form.label :graph_mode, class: "form-label mb-0" do %>
-                  Enable Graph Mode
-                  <span class="badge ml-1">Beta</span>
-                <% end %>
-              </div>
-              <% if @workflow.graph_mode? %>
-                <span class="badge badge--published text-xs">Active</span>
-              <% end %>
-            </div>
-            <p class="form-hint mt-2">
-              Graph mode enables advanced DAG-based workflows with complex branching, sub-flows, and visual connection editing.
-              Steps can connect to any other step, not just the next one in sequence.
-            </p>
-            <% if @workflow.graph_mode? %>
-              <input type="hidden" name="workflow[start_node_uuid]" value="<%= @workflow.start_step&.uuid %>">
-            <% end %>
-          </div>
-        <% else %>
-          <%= form.hidden_field :graph_mode, value: @workflow.graph_mode? %>
-          <% if @workflow.graph_mode? %>
-            <input type="hidden" name="workflow[start_node_uuid]" value="<%= @workflow.start_step&.uuid %>">
-          <% end %>
-        <% end %>
-      <% end %>
-
-
-      <%# Mode Toggle (graph mode only) %>
-      <% if @workflow.graph_mode? %>
-        <div class="mb-4" data-controller="view-mode-toggle">
-          <input type="hidden" name="workflow[editor_mode]" value="list" data-view-mode-toggle-target="modeInput">
-          <div class="wf-mode-toggle">
-            <button type="button"
-                    data-action="click->view-mode-toggle#switchToList"
-                    data-view-mode-toggle-target="listBtn"
-                    class="wf-mode-toggle__btn is-active">
-              List
-            </button>
-            <button type="button"
-                    data-action="click->view-mode-toggle#switchToVisual"
-                    data-view-mode-toggle-target="visualBtn"
-                    class="wf-mode-toggle__btn">
-              Visual
-            </button>
-            <button type="button"
-                    data-action="click->view-mode-toggle#switchToSplit"
-                    data-view-mode-toggle-target="splitBtn"
-                    class="wf-mode-toggle__btn">
-              Split
-            </button>
-          </div>
-        </div>
-      <% end %>
-
-      <%# List Editor Container %>
-      <div id="list-editor-container">
-        <div class="wf-editor-layout" data-controller="split-sync split-resizer">
-          <%# Left: list editor content %>
-          <div class="wf-editor-layout__main" data-split-resizer-target="left">
-            <%# Two-Column Layout: Sidebar + Main Content %>
-            <% ar_steps = @workflow.steps.includes(:transitions, :incoming_transitions).order(:position) %>
-            <% has_sidebar = ar_steps.any? && ar_steps.size > 3 %>
-            <div class="wf-editor-grid <%= has_sidebar ? 'wf-editor-grid--with-sidebar' : 'wf-editor-grid--single' %>">
-              <%# Step Outline Sidebar %>
-              <% if has_sidebar %>
-                <div class="wf-sidebar-sticky">
-                  <%= render partial: "step_outline", locals: { workflow: @workflow } %>
-                </div>
-              <% end %>
-
-              <%# Main Steps Section %>
-              <div class="min-w-0">
-                <div data-controller="workflow-builder variable-autocomplete"
-                     data-workflow-builder-workflow-id-value="<%= @workflow.id %>"
-                     data-workflow-builder-debug-value="<%= Rails.env.development? %>"
-                     data-variable-autocomplete-workflow-id-value="<%= @workflow.id %>"
-                     id="workflow-builder-container">
-
-                  <%# Header with Add Step Buttons %>
-                  <div class="wf-steps-header">
-                    <label class="form-label mb-0">
-                      Workflow Steps
-                      <% if ar_steps.any? %>
-                        <span class="text-xs ml-2">(<%= ar_steps.size %> step<%= ar_steps.size != 1 ? 's' : '' %>)</span>
-                      <% end %>
-                    </label>
-                    <div class="wf-btn-group">
-                      <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="question" class="btn btn--secondary btn--sm">Question</button>
-
-                      <% if @workflow.graph_mode? %>
-                        <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="message" class="btn btn--sm" style="background: var(--step-message-color, #06b6d4); color: #fff;">Message</button>
-                        <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="action" class="btn btn--positive btn--sm">Action</button>
-                        <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="escalate" class="btn btn--sm" style="background: var(--step-escalate-color, #f97316); color: #fff;">Escalate</button>
-                        <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="resolve" class="btn btn--sm" style="background: var(--step-resolve-color, #22c55e); color: #fff;">Resolve</button>
-                        <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="sub_flow" class="btn btn--sm" style="background: var(--step-sub-flow-color, #6366f1); color: #fff;">Sub-flow</button>
-                      <% else %>
-                        <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="message" class="btn btn--sm" style="background: var(--step-message-color, #06b6d4); color: #fff;">Message</button>
-                        <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="action" class="btn btn--positive btn--sm">Action</button>
-                        <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="sub_flow" class="btn btn--sm" style="background: var(--step-sub-flow-color, #6366f1); color: #fff;">Sub-flow</button>
-                      <% end %>
-                    </div>
-                  </div>
-
-                  <%# Expand/Collapse All Controls %>
-                  <% if ar_steps.any? && ar_steps.size > 3 %>
-                    <div class="wf-step-controls" data-controller="step-controls">
-                      <button type="button" data-action="click->step-controls#expandAll" class="btn btn--plain btn--sm">Expand all</button>
-                      <span>|</span>
-                      <button type="button" data-action="click->step-controls#collapseAll" class="btn btn--plain btn--sm">Collapse all</button>
-                    </div>
-                  <% end %>
-
-                  <%# Steps Container %>
-                  <div data-workflow-builder-target="container"
-                       class="wf-steps-container"
-                       role="list"
-                       data-controller="step-tree step-keyboard-nav"
-                       data-step-tree-start-uuid-value="<%= (@workflow.start_step || ar_steps.first)&.uuid %>"
-                       data-step-tree-graph-mode-value="<%= @workflow.graph_mode? %>"
-                       data-action="keydown->step-keyboard-nav#handleKeydown">
-                    <% if ar_steps.any? %>
-                      <%= render partial: "inline_step_creator", locals: { after_index: -1 } %>
-                      <% ar_steps.each_with_index do |step, index| %>
-                        <%= render partial: "step_item", locals: {
-                          step: step,
-                          index: index,
-                          workflow: @workflow,
-                          expanded: ar_steps.size <= 5 || index == ar_steps.size - 1
-                        } %>
-                        <%= render partial: "inline_step_creator", locals: { after_index: index } %>
-                      <% end %>
-                    <% else %>
-                      <div class="wf-empty-state" data-empty-state>
-                        <svg class="icon icon--xl wf-empty-state__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
-                        </svg>
-                        <h3 class="wf-empty-state__title">No steps yet</h3>
-                        <p class="wf-empty-state__text">Get started by adding your first step using the buttons above.</p>
-                        <div class="wf-empty-state__actions">
-                          <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="question" class="btn btn--secondary btn--sm">Start with a Question</button>
-                          <button type="button" data-action="click->workflow-builder#addStepDirect" data-step-type="action" class="btn btn--positive btn--sm">Start with an Action</button>
-                        </div>
-                      </div>
-                    <% end %>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <%# Split divider (visible in split mode only) %>
-          <div class="wf-split-divider" data-split-resizer-target="divider" data-action="mousedown->split-resizer#startDrag"></div>
-
-          <%# Right: flow preview (moves to side column in split mode) %>
-          <div class="wf-editor-layout__preview" data-split-resizer-target="right">
-            <div data-controller="flow-preview">
-              <%= render partial: "flow_preview" %>
-            </div>
-          </div>
-        </div>
-      </div><%# End list-editor-container %>
-
-      <%# Visual Editor (graph mode only) %>
-      <% if @workflow.graph_mode? %>
-        <%= render partial: "visual_editor", locals: { workflow: @workflow } %>
-      <% end %>
-
-      <% if @workflow.graph_mode? %>
-        <div class="wf-status-bar"
-             data-controller="workflow-status-bar"
-             data-workflow-status-bar-start-uuid-value="<%= (@workflow.start_step || @workflow.steps.order(:position).first)&.uuid %>">
-          <div data-workflow-status-bar-target="content" class="wf-status-bar__content"></div>
-        </div>
-      <% end %>
-
-      <div class="wf-sticky-footer">
-        <div class="wf-sticky-footer__inner">
-          <div data-autosave-target="status" class="text-sm font-medium">
-            Ready to save
-          </div>
-          <div class="wf-btn-group">
-            <%= link_to "Cancel", workflow_path(@workflow), class: "btn btn--plain" %>
-            <button type="button"
-                    data-controller="modal-trigger"
-                    data-modal-trigger-modal-id-value="save-template-modal"
-                    data-action="click->modal-trigger#open"
-                    class="btn btn--plain">
-              Save as Template
-            </button>
-            <%= form.submit "Update Workflow", class: "btn btn--primary" %>
-          </div>
-        </div>
-      </div>
-    </div>
-  <% end %>
-</div>
-
-<%# Conflict Resolution Modal %>
-<div id="conflict-modal"
-     class="is-hidden wf-modal-overlay"
-     data-autosave-target="conflictModal">
-  <div class="dialog-overlay wf-modal-center">
-    <div class="dialog" style="border-color: oklch(0.85 0.1 75);">
-      <div class="dialog__header" style="background: oklch(0.97 0.04 75);">
-        <div class="wf-dialog-header-row">
-          <svg class="icon icon--lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <div>
-            <h3 class="dialog__title">Editing Conflict Detected</h3>
-            <p class="text-sm mt-1" data-conflict-message>Another user has modified this workflow while you were editing.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="dialog__body">
-        <p class="text-sm mb-4">
-          <strong data-conflict-user>Another user</strong>
-          saved changes to this workflow. Your local changes may conflict with their updates.
-        </p>
-
-        <div class="card card--muted p-4 mb-4">
-          <h4 class="font-medium text-sm mb-2">Your options:</h4>
-          <ul class="text-sm wf-conflict-options">
-            <li class="wf-conflict-option">
-              <span>-</span>
-              <span><strong>Refresh</strong> - Load the latest version (your unsaved changes will be lost)</span>
-            </li>
-            <li class="wf-conflict-option">
-              <span>-</span>
-              <span><strong>Force Save</strong> - Overwrite with your changes (other user's changes will be lost)</span>
-            </li>
-            <li class="wf-conflict-option">
-              <span>-</span>
-              <span><strong>Dismiss</strong> - Continue editing (your next save will include current server version)</span>
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="dialog__footer">
-        <button type="button" data-action="click->autosave#dismissConflict" class="btn btn--plain">Dismiss</button>
-        <button type="button" data-action="click->autosave#forceSave" class="btn btn--warning">Force Save</button>
-        <button type="button" data-action="click->autosave#refreshPage" class="btn btn--primary">Refresh Page</button>
-      </div>
-    </div>
+  <%# View Toggle %>
+  <div class="wf-mode-toggle mb-4 mt-6">
+    <%= link_to "List", edit_workflow_path(@workflow, view: "list"),
+        class: class_names("wf-mode-toggle__btn", "is-active": params[:view] != "visual"),
+        data: { turbo_action: "replace" } %>
+    <%= link_to "Visual", edit_workflow_path(@workflow, view: "visual"),
+        class: class_names("wf-mode-toggle__btn", "is-active": params[:view] == "visual"),
+        data: { turbo_action: "replace" } %>
   </div>
-</div>
 
-<%# Graph Mode: Transition Editor Modal %>
-<% if @workflow.graph_mode? %>
-  <%= render partial: "transition_modal" %>
-<% end %>
+  <%# Main Editor Area %>
+  <% if params[:view] == "visual" %>
+    <%= render "workflows/visual_preview", workflow: @workflow %>
+  <% else %>
+    <% ar_steps = @workflow.steps.includes(:transitions, :incoming_transitions).order(:position) %>
+    <%= render "workflows/steps_list", workflow: @workflow, steps: ar_steps %>
+  <% end %>
+
+  <%# Footer %>
+  <%= render "workflows/editor_footer", workflow: @workflow %>
+</div>
 
 <%# Save as Template Modal %>
 <div id="save-template-modal"
@@ -347,7 +137,6 @@
             <label for="template_name" class="form-label">Template Name</label>
             <%= text_field_tag "template[name]", @workflow.title, id: "template_name", class: "form-input", required: true %>
           </div>
-
           <div class="form-group">
             <label for="template_category" class="form-label">Category</label>
             <%= select_tag "template[category]",
@@ -360,12 +149,10 @@
                 ], "custom"),
                 { id: "template_category", class: "form-select", required: true } %>
           </div>
-
           <div class="form-group">
             <label for="template_description" class="form-label">Description</label>
             <%= text_area_tag "template[description]", @workflow.description_text, id: "template_description", rows: 3, class: "form-textarea" %>
           </div>
-
           <div class="wf-checkbox-row">
             <%= hidden_field_tag "template[is_public]", "false" %>
             <%= check_box_tag "template[is_public]", "true", true, id: "template_is_public", class: "form-checkbox" %>

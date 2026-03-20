@@ -13,7 +13,8 @@ export default class extends Controller {
     "content",
     "toggleIcon",
     "stepSummary",
-    "expandAllButton"
+    "expandAllButton",
+    "editFrame"
   ]
 
   static values = {
@@ -25,10 +26,11 @@ export default class extends Controller {
   connect() {
     // Set initial state based on expanded value
     this.updateVisibility()
-    
+    if (this.expandedValue) this.loadEditFrame()
+
     // Generate summary for collapsed state
     this.updateSummary()
-    
+
     // Listen for step form changes to update summary
     this.setupChangeListener()
   }
@@ -43,6 +45,7 @@ export default class extends Controller {
   toggle() {
     this.expandedValue = !this.expandedValue
     this.updateVisibility()
+    if (this.expandedValue) this.loadEditFrame()
   }
 
   /**
@@ -51,14 +54,29 @@ export default class extends Controller {
   expand() {
     this.expandedValue = true
     this.updateVisibility()
+    this.loadEditFrame()
 
     // Dispatch step:selected for split-view sync
     const stepItem = this.element.closest(".step-item")
-    const idInput = stepItem?.querySelector("input[name*='[id]']")
+    const idInput = stepItem?.querySelector("input[data-step-field='id']") || stepItem?.querySelector("input[name*='[id]']")
     if (idInput?.value) {
       document.dispatchEvent(new CustomEvent("step:selected", {
         detail: { stepId: idInput.value }
       }))
+    }
+  }
+
+  /**
+   * Load the edit frame on first expand (deferred loading)
+   */
+  loadEditFrame() {
+    if (!this.hasEditFrameTarget) return
+    const frame = this.editFrameTarget
+    if (frame.src) return // already loaded
+
+    const deferredSrc = frame.dataset.src
+    if (deferredSrc) {
+      frame.src = deferredSrc
     }
   }
 

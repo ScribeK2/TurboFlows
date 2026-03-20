@@ -42,7 +42,7 @@ class RenderStepTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_includes response.body, 'step-card'
-    assert_includes response.body, 'data-controller="step-form collapsible-step"'
+    assert_includes response.body, 'data-controller="collapsible-step"'
   end
 
   test "render_step returns valid step HTML for message type" do

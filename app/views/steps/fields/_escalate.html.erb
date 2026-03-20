@@ -1,0 +1,57 @@
+<%#
+  Escalate step fields.
+  Local variables: form (FormBuilder), step (Steps::Escalate), workflow
+%>
+<div class="alert alert--warning flex items-start gap-3 mb-4">
+  <svg class="icon icon--sm flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12" />
+  </svg>
+  <p class="text-sm">
+    <strong>Escalate Step:</strong> Transfer the interaction to another department, supervisor, channel, or ticket.
+  </p>
+</div>
+
+<div class="form-group">
+  <%= form.label :target_type, "Escalation Target Type", class: "form-label" %>
+  <div class="flex flex-wrap gap-2 mb-2"
+       data-controller="selection-group"
+       data-selection-group-active-class="is-active">
+    <% %w[department supervisor channel ticket].each do |target_type| %>
+      <button type="button"
+              data-selection-group-target="button"
+              data-action="click->selection-group#select"
+              data-selection-group-value-param="<%= target_type %>"
+              class="btn btn--sm <%= step.target_type == target_type ? 'btn--secondary' : 'btn--plain' %>">
+        <%= target_type.titleize %>
+      </button>
+    <% end %>
+    <%= form.hidden_field :target_type, data: { selection_group_target: "input", action: "change->inline-autosave#schedule" } %>
+  </div>
+</div>
+
+<div class="form-group">
+  <%= form.label :target_value, "Target Name/ID", class: "form-label" %>
+  <%= form.text_field :target_value, class: "form-input",
+      placeholder: "e.g., Billing Department, Supervisor, #escalations-channel",
+      data: { action: "input->inline-autosave#schedule" } %>
+</div>
+
+<div class="form-group">
+  <%= form.label :priority, class: "form-label" %>
+  <%= form.select :priority, [["Low", "low"], ["Medium", "medium"], ["High", "high"], ["Critical", "critical"]],
+      {}, class: "form-select", data: { action: "change->inline-autosave#schedule" } %>
+</div>
+
+<div class="form-group">
+  <label class="flex items-center gap-2 cursor-pointer">
+    <%= form.check_box :reason_required, class: "form-checkbox",
+        data: { action: "change->inline-autosave#schedule" } %>
+    <span class="text-sm">Require CSR to provide a reason for escalation</span>
+  </label>
+</div>
+
+<div class="form-group">
+  <%= form.label :notes, "Notes/Instructions", class: "form-label" %>
+  <%= form.rich_text_area :notes,
+      data: { action: "input->inline-autosave#schedule", variable_autocomplete_target: "input" } %>
+</div>

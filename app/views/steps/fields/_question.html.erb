@@ -1,0 +1,70 @@
+<%#
+  Question step fields.
+  Local variables: form (FormBuilder), step (Steps::Question), workflow
+%>
+<div class="form-group">
+  <%= form.label :question, "Question Text", class: "form-label" %>
+  <%= form.text_field :question, class: "form-input", required: true,
+      placeholder: "Question text (type {{ to see available variables)",
+      data: { action: "input->inline-autosave#schedule", variable_autocomplete_target: "input" } %>
+</div>
+
+<div class="form-group" data-controller="question-form">
+  <%= form.label :answer_type, class: "form-label" %>
+  <div class="answer-type-grid" data-question-form-target="answerTypeContainer">
+    <% [
+      { value: 'text', label: 'Text' },
+      { value: 'yes_no', label: 'Yes/No' },
+      { value: 'multiple_choice', label: 'Multiple Choice' },
+      { value: 'dropdown', label: 'Dropdown' },
+      { value: 'date', label: 'Date' },
+      { value: 'number', label: 'Number' },
+      { value: 'file', label: 'File Upload' }
+    ].each do |at| %>
+      <label class="answer-type-option <%= 'is-selected' if step.answer_type == at[:value] %>">
+        <input type="radio"
+               name="answer_type_radio_<%= step.id %>"
+               value="<%= at[:value] %>"
+               <%= 'checked' if step.answer_type == at[:value] %>
+               data-question-form-target="answerType"
+               data-action="change->question-form#handleAnswerTypeChange"
+               class="sr-only">
+        <span class="text-sm"><%= at[:label] %></span>
+      </label>
+    <% end %>
+  </div>
+  <%= form.hidden_field :answer_type, data: { question_form_target: "hiddenAnswerType" } %>
+
+  <%# Options container for multiple_choice/dropdown %>
+  <div class="mt-4 <%= 'is-hidden' unless %w[multiple_choice dropdown].include?(step.answer_type) %>"
+       data-question-form-target="optionsContainer">
+    <label class="form-label">Options</label>
+    <div data-question-form-target="optionsList" style="display: flex; flex-direction: column; gap: 0.5rem;">
+      <% if step.options.present? && step.options.is_a?(Array) %>
+        <% step.options.each do |option| %>
+          <div class="flex gap-2 items-center option-item">
+            <span class="drag-handle" title="Drag to reorder">&#9776;</span>
+            <input type="text" name="step[options][][label]"
+                   value="<%= option.is_a?(Hash) ? option['label'] : option %>"
+                   placeholder="Option label" class="form-input flex-1">
+            <input type="text" name="step[options][][value]"
+                   value="<%= option.is_a?(Hash) ? option['value'] : option %>"
+                   placeholder="Option value" class="form-input flex-1">
+            <button type="button" class="btn btn--negative btn--sm flex-shrink-0"
+                    data-action="click->question-form#removeOption">Remove</button>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+    <button type="button" class="btn btn--plain btn--sm mt-2"
+            data-action="click->question-form#addOption">+ Add Option</button>
+  </div>
+</div>
+
+<div class="form-group">
+  <%= form.label :variable_name, class: "form-label" %>
+  <%= form.text_field :variable_name, class: "form-input",
+      placeholder: "e.g., user_name, age, etc.",
+      data: { action: "input->inline-autosave#schedule" } %>
+  <p class="form-hint">Optional: Name this answer for use in transition conditions</p>
+</div>

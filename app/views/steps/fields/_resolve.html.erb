@@ -1,0 +1,59 @@
+<%#
+  Resolve step fields.
+  Local variables: form (FormBuilder), step (Steps::Resolve), workflow
+%>
+<div class="alert alert--success flex items-start gap-3 mb-4">
+  <svg class="icon icon--sm flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+  <p class="text-sm">
+    <strong>Resolve Step:</strong> Terminal step that completes the workflow with resolution metadata.
+  </p>
+</div>
+
+<div class="form-group">
+  <%= form.label :resolution_type, class: "form-label" %>
+  <div class="flex flex-wrap gap-2 mb-2"
+       data-controller="selection-group"
+       data-selection-group-active-class="is-active">
+    <% [
+      { value: 'success', label: 'Success' },
+      { value: 'transfer', label: 'Transfer' },
+      { value: 'ticket', label: 'Ticket' },
+      { value: 'manager_escalation', label: 'Manager Escalation' }
+    ].each do |resolution| %>
+      <% is_selected = step.resolution_type == resolution[:value] || (step.resolution_type.blank? && resolution[:value] == 'success') %>
+      <button type="button"
+              data-selection-group-target="button"
+              data-action="click->selection-group#select"
+              data-selection-group-value-param="<%= resolution[:value] %>"
+              class="btn btn--sm <%= is_selected ? 'btn--positive' : 'btn--plain' %>">
+        <%= resolution[:label] %>
+      </button>
+    <% end %>
+    <%= form.hidden_field :resolution_type, data: { selection_group_target: "input", action: "change->inline-autosave#schedule" } %>
+  </div>
+</div>
+
+<div class="form-group">
+  <%= form.label :resolution_code, class: "form-label" %>
+  <%= form.text_field :resolution_code, class: "form-input",
+      placeholder: "Optional resolution code",
+      data: { action: "input->inline-autosave#schedule" } %>
+</div>
+
+<div class="form-group">
+  <label class="flex items-center gap-2 cursor-pointer">
+    <%= form.check_box :notes_required, class: "form-checkbox",
+        data: { action: "change->inline-autosave#schedule" } %>
+    <span class="text-sm">Require CSR to add notes before resolving</span>
+  </label>
+</div>
+
+<div class="form-group">
+  <label class="flex items-center gap-2 cursor-pointer">
+    <%= form.check_box :survey_trigger, class: "form-checkbox",
+        data: { action: "change->inline-autosave#schedule" } %>
+    <span class="text-sm">Trigger customer satisfaction survey</span>
+  </label>
+</div>

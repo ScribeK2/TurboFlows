@@ -14,7 +14,9 @@ class WorkflowVersionsController < ApplicationController
     end
 
     Workflow.transaction do
-      @workflow.update!(graph_mode: @version.metadata_snapshot["graph_mode"] || false)
+      # Use update_column to skip validation during restore — steps are about to be
+      # replaced from the snapshot, so validating the intermediate state would fail.
+      @workflow.update_column(:graph_mode, @version.metadata_snapshot["graph_mode"] || false)
       restore_ar_steps_from_snapshot(@version.steps_snapshot, @version.metadata_snapshot["start_node_uuid"])
     end
 

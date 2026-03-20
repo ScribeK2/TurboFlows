@@ -1,0 +1,23 @@
+<%#
+  Action step fields.
+  Local variables: form (FormBuilder), step (Steps::Action), workflow
+%>
+<div class="form-group">
+  <div class="flex items-center justify-between mb-2">
+    <label class="form-label mb-0">Instructions</label>
+  </div>
+  <%= form.rich_text_area :instructions,
+      data: { action: "input->inline-autosave#schedule", variable_autocomplete_target: "input" } %>
+</div>
+
+<%# Can Resolve Checkbox %>
+<div class="form-group">
+  <label class="flex items-center gap-2 cursor-pointer">
+    <%= form.check_box :can_resolve, class: "form-checkbox",
+        data: { action: "change->inline-autosave#schedule" } %>
+    <span class="text-sm">This step may resolve the issue</span>
+  </label>
+  <p class="form-hint mt-1 ml-6">
+    When enabled, the scenario player shows a "This resolved the issue" button alongside Continue.
+  </p>
+</div>

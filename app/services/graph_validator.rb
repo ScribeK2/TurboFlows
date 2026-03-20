@@ -94,17 +94,25 @@ class GraphValidator
     end
   end
 
-  # Validate at least one terminal node exists
+  # Validate at least one terminal node exists and all terminals are Resolve steps
   def validate_terminals
     return if @steps.empty?
 
-    terminals = @steps.select do |_uuid, step|
+    terminal_uuids = @steps.select do |_uuid, step|
       transitions = step['transitions'] || []
       transitions.empty?
+    end.keys
+
+    if terminal_uuids.empty?
+      @errors << "No terminal nodes found. At least one Resolve step is required."
+      return
     end
 
-    if terminals.empty?
-      @errors << "No terminal nodes found - workflow has no ending point"
+    terminal_uuids.each do |uuid|
+      node = @steps[uuid]
+      unless node && node["type"] == "resolve"
+        @errors << "Terminal node '#{node&.dig("title") || uuid}' is not a Resolve step. All terminal nodes must be Resolve steps."
+      end
     end
   end
 

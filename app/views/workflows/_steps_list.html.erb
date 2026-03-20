@@ -1,0 +1,29 @@
+<%#
+  Steps List — main list editor container with SortableJS drag-and-drop.
+
+  Local variables:
+  - workflow: Workflow object
+  - steps: ordered step collection
+%>
+
+<%# Add Step Buttons %>
+<%= render "workflows/step_type_buttons", workflow: workflow %>
+
+<div id="steps-list"
+     data-controller="sortable-list"
+     data-sortable-list-url-value="<%= reorder_workflow_step_path(workflow, ':id') %>"
+     role="list">
+  <% steps.each do |step| %>
+    <%= render "workflows/step_card", step: step, workflow: workflow %>
+  <% end %>
+</div>
+
+<% if steps.empty? %>
+  <div class="wf-empty-state" id="steps-empty-state">
+    <svg class="icon icon--xl wf-empty-state__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+    </svg>
+    <h3 class="wf-empty-state__title">No steps yet</h3>
+    <p class="wf-empty-state__text">Get started by adding your first step using the buttons above.</p>
+  </div>
+<% end %>

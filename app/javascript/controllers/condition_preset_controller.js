@@ -57,21 +57,23 @@ export default class extends Controller {
       return { stepType: null, answerType: null, variableName: null, options: [] }
     }
 
-    // Get step type from hidden input
-    const typeInput = stepItem.querySelector('input[name*="[type]"]')
+    // Get step type from hidden input (support both old and new markup)
+    const typeInput = stepItem.querySelector('input[data-step-field="type"]') || stepItem.querySelector('input[name*="[type]"]')
     const stepType = typeInput?.value || null
 
-    // Get answer type (for question steps)
+    // Get answer type (for question steps) — check new data-step-field, form fields, and old markup
+    const answerTypeDataField = stepItem.querySelector('input[data-step-field="answer_type"]')
     const answerTypeInput = stepItem.querySelector('input[name*="[answer_type]"]:checked')
     const hiddenAnswerType = stepItem.querySelector('input[name*="[answer_type]"][type="hidden"]')
-    const answerType = answerTypeInput?.value || hiddenAnswerType?.value || null
+    const answerType = answerTypeDataField?.value || answerTypeInput?.value || hiddenAnswerType?.value || null
 
     // Get variable name
+    const variableNameDataField = stepItem.querySelector('input[data-step-field="variable_name"]')
     const variableNameInput = stepItem.querySelector('input[name*="[variable_name]"]')
-    const variableName = variableNameInput?.value || null
+    const variableName = variableNameDataField?.value || variableNameInput?.value || null
 
     // Get step title (fallback for variable name)
-    const titleInput = stepItem.querySelector('input[name*="[title]"]')
+    const titleInput = stepItem.querySelector('input[data-step-field="title"]') || stepItem.querySelector('input[name*="[title]"]')
     const stepTitle = titleInput?.value || null
 
     // Get options (for multiple_choice and dropdown)

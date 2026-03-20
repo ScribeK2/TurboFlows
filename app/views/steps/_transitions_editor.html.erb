@@ -1,0 +1,117 @@
+<%#
+  Transitions Editor — server-rendered transition management for graph mode.
+
+  Local variables:
+  - step: AR Step object
+  - workflow: Workflow object
+%>
+<% transitions = step.transitions.includes(:target_step) %>
+<% other_steps = workflow.steps.reject { |s| s.id == step.id } %>
+
+<div class="mt-4 pt-4" style="border-top: 1px solid var(--color-border);"
+     data-controller="step-transitions"
+     data-step-transitions-step-id-value="<%= step.uuid %>"
+     data-step-transitions-step-index-value="<%= step.position %>">
+
+  <div class="flex items-center justify-between mb-3">
+    <label class="form-label mb-0">
+      <svg class="icon icon--sm inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+      </svg>
+      Connections
+      <span class="text-xs font-normal ml-1">(Graph Mode)</span>
+    </label>
+    <button type="button"
+            data-action="click->step-transitions#addTransition"
+            class="btn btn--sm" style="color: var(--color-indigo-600);">
+      <svg class="icon icon--xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      Add Connection
+    </button>
+  </div>
+
+  <%# Hidden field to store transitions JSON for form submission %>
+  <% transitions_data = transitions.map { |t| { 'target_uuid' => t.target_step&.uuid, 'condition' => t.condition, 'label' => t.label } } %>
+  <input type="hidden"
+         name="step[transitions_json]"
+         value="<%= transitions_data.to_json %>"
+         data-step-transitions-target="hiddenInput"
+         data-step-id="<%= step.uuid %>">
+
+  <div data-step-transitions-target="transitionsList" style="display: flex; flex-direction: column; gap: 0.5rem;">
+    <% if transitions.empty? %>
+      <p class="text-sm italic py-2">
+        No connections yet. Add a connection to link this step to another.
+      </p>
+    <% else %>
+      <% transitions.each_with_index do |transition, t_index| %>
+        <div class="transition-item card card--muted"
+             style="flex-wrap: wrap;"
+             data-transition-index="<%= t_index %>">
+          <svg class="icon icon--sm flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+          </svg>
+          <select data-action="change->step-transitions#updateTransition"
+                  data-transition-field="target_uuid"
+                  class="form-select flex-1" style="min-width: 120px;">
+            <option value="">-- Select target step --</option>
+            <% other_steps.each do |other_step| %>
+              <option value="<%= other_step.uuid %>" <%= 'selected' if transition.target_step&.uuid == other_step.uuid %>>
+                <%= other_step.title.presence || "Step" %>
+              </option>
+            <% end %>
+          </select>
+          <div class="flex items-center gap-1 flex-1" style="min-width: 180px;"
+               data-controller="condition-preset"
+               data-condition-preset-condition-value="<%= h(transition.condition) %>"
+               data-condition-preset-label-value="<%= h(transition.label) %>">
+            <select data-condition-preset-target="presetDropdown"
+                    data-action="change->condition-preset#handlePresetChange"
+                    class="form-select flex-1"
+                    title="Select a condition preset or choose Custom">
+            </select>
+            <div data-condition-preset-target="numericContainer" class="is-hidden flex items-center gap-1">
+              <input type="number"
+                     data-condition-preset-target="numericValueInput"
+                     data-action="input->condition-preset#handleNumericChange"
+                     placeholder="Value" class="form-input" style="width: 5rem;">
+            </div>
+            <div data-condition-preset-target="customContainer" class="is-hidden flex items-center gap-1">
+              <input type="text"
+                     data-condition-preset-target="customInput"
+                     data-action="input->condition-preset#handleCustomInput"
+                     placeholder='e.g., answer == "yes"'
+                     class="form-input w-full">
+            </div>
+            <input type="hidden"
+                   data-condition-preset-target="conditionHidden"
+                   data-transition-field="condition"
+                   data-action="input->step-transitions#updateTransition"
+                   value="<%= h(transition.condition) %>">
+          </div>
+          <input type="text"
+                 data-action="input->step-transitions#updateTransition input->condition-preset#handleLabelInput"
+                 data-transition-field="label"
+                 data-condition-preset-target="labelInput"
+                 value="<%= h(transition.label) %>"
+                 placeholder="Label"
+                 title="Display label for this connection"
+                 class="form-input" style="width: 5rem;">
+          <button type="button"
+                  data-action="click->step-transitions#removeTransition"
+                  class="btn btn--negative btn--sm"
+                  title="Remove connection">
+            <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+
+  <p class="form-hint mt-2">
+    <strong>Tip:</strong> Select a preset from the dropdown, or choose "Custom..." to write your own condition.
+  </p>
+</div>

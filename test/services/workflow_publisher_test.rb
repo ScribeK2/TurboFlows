@@ -16,6 +16,10 @@ class WorkflowPublisherTest < ActiveSupport::TestCase
     @q_step = Steps::Question.create!(
       workflow: @workflow, position: 0, title: "Q1", question: "What?", variable_name: "q1"
     )
+    @r_step = Steps::Resolve.create!(
+      workflow: @workflow, position: 1, title: "Done", resolution_type: "success"
+    )
+    Transition.create!(step: @q_step, target_step: @r_step, position: 0)
     @workflow.update_column(:start_step_id, @q_step.id)
   end
 
@@ -93,13 +97,17 @@ class WorkflowPublisherTest < ActiveSupport::TestCase
   test "published_version points to latest version" do
     WorkflowPublisher.publish(@workflow, @user)
 
-    # Add a new step connected to start, and publish v2
+    # Add a new step between Q1 and Done, rewire transitions for v2
     new_step = Steps::Action.create!(workflow: @workflow, position: 1, title: "New Step")
+    @r_step.update!(position: 2)
+    # Remove old Q1->Done transition and add Q1->New->Done
+    @q_step.transitions.destroy_all
     Transition.create!(step: @q_step, target_step: new_step, position: 0)
+    Transition.create!(step: new_step, target_step: @r_step, position: 0)
     result = WorkflowPublisher.publish(@workflow, @user, changelog: "v2")
 
     @workflow.reload
     assert_equal 2, @workflow.published_version.version_number
-    assert_equal "New Step", @workflow.published_version.steps_snapshot.last["title"]
+    assert_equal "New Step", @workflow.published_version.steps_snapshot[1]["title"]
   end
 end

@@ -26,14 +26,20 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
       description: "A test workflow",
       user: @editor
     )
-    Steps::Question.create!(workflow: @workflow, position: 0, title: "Question 1", question: "What is your name?")
+    q1 = Steps::Question.create!(workflow: @workflow, position: 0, title: "Question 1", question: "What is your name?")
+    r1 = Steps::Resolve.create!(workflow: @workflow, position: 1, title: "Done", resolution_type: "success")
+    Transition.create!(step: q1, target_step: r1, position: 0)
+    @workflow.update_column(:start_step_id, q1.id)
     @public_workflow = Workflow.create!(
       title: "Public Workflow",
       description: "A public workflow",
       user: @editor,
       is_public: true
     )
-    Steps::Question.create!(workflow: @public_workflow, position: 0, title: "Question 1", question: "What is your name?")
+    q2 = Steps::Question.create!(workflow: @public_workflow, position: 0, title: "Question 1", question: "What is your name?")
+    r2 = Steps::Resolve.create!(workflow: @public_workflow, position: 1, title: "Done", resolution_type: "success")
+    Transition.create!(step: q2, target_step: r2, position: 0)
+    @public_workflow.update_column(:start_step_id, q2.id)
     sign_in @editor
   end
 
@@ -102,7 +108,7 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
     @workflow.reload
 
     assert_equal "Updated Title", @workflow.title
-    assert_equal 1, @workflow.steps.count
+    assert_equal 2, @workflow.steps.count
   end
 
   test "should update workflow with is_public flag" do

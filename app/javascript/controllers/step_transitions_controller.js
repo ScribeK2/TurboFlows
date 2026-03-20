@@ -237,8 +237,9 @@ export default class extends Controller {
     const stepItems = document.querySelectorAll('.step-item')
 
     stepItems.forEach((item, index) => {
-      const idInput = item.querySelector('input[name*="[id]"]')
-      const titleInput = item.querySelector('input[name*="[title]"]')
+      // Support both old (name*="[id]") and new (data-step-field="id") markup
+      const idInput = item.querySelector('input[data-step-field="id"]') || item.querySelector('input[name*="[id]"]')
+      const titleInput = item.querySelector('input[data-step-field="title"]') || item.querySelector('input[name*="[title]"]')
 
       if (idInput && idInput.value !== this.stepIdValue) {
         steps.push({

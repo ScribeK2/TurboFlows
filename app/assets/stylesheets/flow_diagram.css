@@ -1,0 +1,120 @@
+/* ==========================================================================
+   Flow Diagram — Server-rendered visual preview
+   Uses @layer components for cascade ordering with OKLCH tokens.
+   ========================================================================== */
+
+@layer components {
+  .flow-diagram {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    overflow-x: auto;
+    min-height: 200px;
+  }
+
+  .flow-diagram__level {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .flow-diagram__connector {
+    display: flex;
+    justify-content: center;
+    padding: 0.25rem 0;
+  }
+
+  .flow-diagram__arrow {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: var(--color-border);
+  }
+
+  /* Node base */
+  .flow-diagram__node {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-md, 0.5rem);
+    border: 2px solid;
+    background: var(--color-surface, #fff);
+    min-width: 8rem;
+    max-width: 14rem;
+    font-size: 0.8125rem;
+    position: relative;
+  }
+
+  .flow-diagram__node-icon {
+    flex-shrink: 0;
+  }
+
+  .flow-diagram__node-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+
+  .flow-diagram__node-badge {
+    font-size: 0.625rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.125rem 0.375rem;
+    border-radius: var(--radius-full, 9999px);
+    background: oklch(0.55 0.15 250);
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .flow-diagram__node-badge--resolve {
+    background: oklch(0.55 0.15 160);
+  }
+
+  /* Step type colors — using OKLCH with step hues from _global.css */
+  .flow-diagram__node--question {
+    --step-hue: var(--hue-question, 250);
+    border-color: oklch(0.65 0.12 var(--step-hue));
+    color: oklch(0.35 0.10 var(--step-hue));
+  }
+
+  .flow-diagram__node--action {
+    --step-hue: var(--hue-action, 145);
+    border-color: oklch(0.65 0.12 var(--step-hue));
+    color: oklch(0.35 0.10 var(--step-hue));
+  }
+
+  .flow-diagram__node--message {
+    --step-hue: var(--hue-message, 290);
+    border-color: oklch(0.65 0.12 var(--step-hue));
+    color: oklch(0.35 0.10 var(--step-hue));
+  }
+
+  .flow-diagram__node--escalate {
+    --step-hue: var(--hue-escalate, 25);
+    border-color: oklch(0.65 0.12 var(--step-hue));
+    color: oklch(0.35 0.10 var(--step-hue));
+  }
+
+  .flow-diagram__node--resolve {
+    --step-hue: var(--hue-resolve, 160);
+    border-color: oklch(0.65 0.12 var(--step-hue));
+    color: oklch(0.35 0.10 var(--step-hue));
+  }
+
+  .flow-diagram__node--sub_flow {
+    --step-hue: var(--hue-subflow, 310);
+    border-color: oklch(0.65 0.12 var(--step-hue));
+    color: oklch(0.35 0.10 var(--step-hue));
+  }
+
+  /* Ghost class for SortableJS drag */
+  .step-card--ghost {
+    opacity: 0.4;
+    background: oklch(0.95 0.02 250);
+  }
+}

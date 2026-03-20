@@ -1,5 +1,5 @@
 class Steps::Question < Step
-  validates :question, presence: true
+  validates :question, presence: true, on: :publish
 
   before_validation :generate_variable_name, if: -> { variable_name.blank? && title.present? }
 

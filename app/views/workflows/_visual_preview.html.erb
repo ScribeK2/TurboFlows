@@ -1,0 +1,55 @@
+<%#
+  Visual Preview — server-rendered flow diagram using CSS for connectors.
+
+  Local variables:
+  - workflow: Workflow object
+%>
+<turbo-frame id="visual_preview">
+  <div class="card">
+    <div class="card__header flex justify-between items-center">
+      <h2 class="font-bold">Flow Preview</h2>
+      <%= link_to "Refresh", edit_workflow_path(workflow, view: "visual"),
+          class: "btn btn--plain btn--sm",
+          data: { turbo_frame: "visual_preview" } %>
+    </div>
+
+    <div class="flow-diagram p-4">
+      <% levels = FlowDiagramService.call(workflow) %>
+      <% if levels.empty? %>
+        <div class="wf-empty-state">
+          <svg class="icon icon--xl wf-empty-state__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+          <p class="wf-empty-state__text">Add steps to see the flow preview</p>
+        </div>
+      <% else %>
+        <% levels.each_with_index do |nodes, level_index| %>
+          <div class="flow-diagram__level">
+            <% nodes.each do |node| %>
+              <div class="flow-diagram__node flow-diagram__node--<%= node.step_type %>"
+                   title="<%= node.title %>">
+                <div class="flow-diagram__node-icon">
+                  <%= step_type_svg_icon(node.step_type, css_classes: "icon icon--sm") %>
+                </div>
+                <span class="flow-diagram__node-title"><%= node.title.to_s.truncate(30) %></span>
+                <% if node == workflow.start_step %>
+                  <span class="flow-diagram__node-badge">Start</span>
+                <% end %>
+                <% if node.terminal? && node.is_a?(Steps::Resolve) %>
+                  <span class="flow-diagram__node-badge flow-diagram__node-badge--resolve">End</span>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+          <% if level_index < levels.size - 1 %>
+            <div class="flow-diagram__connector">
+              <svg class="flow-diagram__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14m-7-7l7 7 7-7"/>
+              </svg>
+            </div>
+          <% end %>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</turbo-frame>

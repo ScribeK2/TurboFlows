@@ -37,6 +37,16 @@ class StepSyncer
 
   private
 
+  def validate_has_resolve_step!(incoming_steps)
+    return if @workflow.draft? # Allow drafts to save without Resolve steps
+
+    has_resolve = incoming_steps.any? { |s| s["type"]&.downcase == "resolve" }
+    unless has_resolve
+      @workflow.errors.add(:base, "Workflow must contain at least one Resolve step")
+      raise ActiveRecord::RecordInvalid, @workflow
+    end
+  end
+
   def update_workflow_fields
     @workflow.title = @title if @title.present?
     @workflow.description = @description if @description

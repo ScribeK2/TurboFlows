@@ -10,7 +10,8 @@ class StepSyncerTest < ActiveSupport::TestCase
     @workflow = Workflow.create!(
       title: "Syncer Test Workflow",
       user: @user,
-      graph_mode: true
+      graph_mode: true,
+      status: "draft"
     )
   end
 

@@ -31,6 +31,8 @@ class WorkflowPublishingIntegrationTest < ActionDispatch::IntegrationTest
     @workflow.update_column(:start_step_id, nil)
     @workflow.steps.destroy_all
     new_action = Steps::Action.create!(workflow: @workflow, position: 0, title: "New Action")
+    new_resolve = Steps::Resolve.create!(workflow: @workflow, position: 1, title: "End", resolution_type: "success")
+    Transition.create!(step: new_action, target_step: new_resolve, position: 0)
     @workflow.update_column(:start_step_id, new_action.id)
 
     # 3. Published version is still v1 with old steps

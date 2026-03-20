@@ -312,8 +312,8 @@ class WorkflowsController < ApplicationController
     end
 
     begin
-      render partial: "workflows/step_item",
-             locals: { step: step, index: step.position, workflow: @workflow, expanded: true },
+      render partial: "workflows/step_card",
+             locals: { step: step, workflow: @workflow, expanded: true },
              formats: [:html]
     rescue StandardError => e
       Rails.logger.error "[render_step] Error rendering step: #{e.message}"
@@ -346,10 +346,13 @@ class WorkflowsController < ApplicationController
 
   def begin_execution
     # Create scenario and start workflow execution
+    start_uuid = @workflow.graph_mode? ? @workflow.start_node&.uuid : nil
+
     @scenario = Scenario.new(
       workflow: @workflow,
       user: current_user,
       current_step_index: 0,
+      current_node_uuid: start_uuid,
       execution_path: [],
       results: {},
       inputs: {},

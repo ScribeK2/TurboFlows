@@ -80,8 +80,17 @@ class StepResolver
         return target
       end
 
-      if ConditionEvaluator.evaluate(transition.condition, results)
-        return target
+      # Try full condition expression first (e.g., "variable == 'value'" or "variable == value")
+      if transition.condition.match?(/[=!<>]/)
+        return target if ConditionEvaluator.evaluate(transition.condition, results)
+        next
+      end
+
+      # Simple value match: compare condition directly against the step's answer
+      # This handles Yes/No and other answer-based transitions (e.g., condition "yes" matches answer "yes")
+      if step.is_a?(Steps::Question)
+        answer = results[step.variable_name] || results[step.title]
+        return target if answer.to_s.downcase == transition.condition.to_s.downcase
       end
     end
 

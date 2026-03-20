@@ -5,7 +5,7 @@ class GraphValidatorTest < ActiveSupport::TestCase
     steps = {
       'a' => { 'id' => 'a', 'title' => 'Start', 'type' => 'question', 'transitions' => [{ 'target_uuid' => 'b' }] },
       'b' => { 'id' => 'b', 'title' => 'Middle', 'type' => 'action', 'transitions' => [{ 'target_uuid' => 'c' }] },
-      'c' => { 'id' => 'c', 'title' => 'End', 'type' => 'action', 'transitions' => [] }
+      'c' => { 'id' => 'c', 'title' => 'End', 'type' => 'resolve', 'transitions' => [] }
     }
 
     validator = GraphValidator.new(steps, 'a')
@@ -22,7 +22,7 @@ class GraphValidatorTest < ActiveSupport::TestCase
       ] },
       'b' => { 'id' => 'b', 'title' => 'Yes Path', 'type' => 'action', 'transitions' => [{ 'target_uuid' => 'd' }] },
       'c' => { 'id' => 'c', 'title' => 'No Path', 'type' => 'action', 'transitions' => [{ 'target_uuid' => 'd' }] },
-      'd' => { 'id' => 'd', 'title' => 'End', 'type' => 'action', 'transitions' => [] }
+      'd' => { 'id' => 'd', 'title' => 'End', 'type' => 'resolve', 'transitions' => [] }
     }
 
     validator = GraphValidator.new(steps, 'a')
@@ -70,8 +70,8 @@ class GraphValidatorTest < ActiveSupport::TestCase
   test "detects unreachable nodes" do
     steps = {
       'a' => { 'id' => 'a', 'title' => 'Start', 'type' => 'question', 'transitions' => [{ 'target_uuid' => 'b' }] },
-      'b' => { 'id' => 'b', 'title' => 'Middle', 'type' => 'action', 'transitions' => [] },
-      'c' => { 'id' => 'c', 'title' => 'Unreachable', 'type' => 'action', 'transitions' => [] }
+      'b' => { 'id' => 'b', 'title' => 'Middle', 'type' => 'resolve', 'transitions' => [] },
+      'c' => { 'id' => 'c', 'title' => 'Unreachable', 'type' => 'resolve', 'transitions' => [] }
     }
 
     validator = GraphValidator.new(steps, 'a')
@@ -116,13 +116,53 @@ class GraphValidatorTest < ActiveSupport::TestCase
         { 'target_uuid' => 'b' },
         { 'target_uuid' => 'c' }
       ] },
-      'b' => { 'id' => 'b', 'title' => 'End 1', 'type' => 'action', 'transitions' => [] },
-      'c' => { 'id' => 'c', 'title' => 'End 2', 'type' => 'action', 'transitions' => [] }
+      'b' => { 'id' => 'b', 'title' => 'End 1', 'type' => 'resolve', 'transitions' => [] },
+      'c' => { 'id' => 'c', 'title' => 'End 2', 'type' => 'resolve', 'transitions' => [] }
     }
 
     validator = GraphValidator.new(steps, 'a')
 
     assert_predicate validator, :valid?, "Expected valid graph with multiple terminals, got errors: #{validator.errors.join(', ')}"
+  end
+
+  test "rejects graph where terminal node is not a Resolve step" do
+    steps = {
+      'a' => { 'id' => 'a', 'title' => 'Start', 'type' => 'question', 'transitions' => [{ 'target_uuid' => 'b' }] },
+      'b' => { 'id' => 'b', 'title' => 'End Action', 'type' => 'action', 'transitions' => [] }
+    }
+
+    validator = GraphValidator.new(steps, 'a')
+
+    assert_not validator.valid?
+    assert(validator.errors.any? { |e| e.include?('not a Resolve step') || e.include?('Resolve') },
+           "Expected Resolve terminal error, got: #{validator.errors.join(', ')}")
+  end
+
+  test "accepts graph where terminal node is a Resolve step" do
+    steps = {
+      'a' => { 'id' => 'a', 'title' => 'Start', 'type' => 'question', 'transitions' => [{ 'target_uuid' => 'b' }] },
+      'b' => { 'id' => 'b', 'title' => 'Done', 'type' => 'resolve', 'transitions' => [] }
+    }
+
+    validator = GraphValidator.new(steps, 'a')
+
+    assert_predicate validator, :valid?, "Expected valid graph with Resolve terminal, got errors: #{validator.errors.join(', ')}"
+  end
+
+  test "rejects graph with mixed terminal types when one is not Resolve" do
+    steps = {
+      'a' => { 'id' => 'a', 'title' => 'Start', 'type' => 'question', 'transitions' => [
+        { 'target_uuid' => 'b' },
+        { 'target_uuid' => 'c' }
+      ] },
+      'b' => { 'id' => 'b', 'title' => 'Resolved', 'type' => 'resolve', 'transitions' => [] },
+      'c' => { 'id' => 'c', 'title' => 'Not Resolved', 'type' => 'action', 'transitions' => [] }
+    }
+
+    validator = GraphValidator.new(steps, 'a')
+
+    assert_not validator.valid?
+    assert(validator.errors.any? { |e| e.include?('Not Resolved') })
   end
 
   test "validates conditional transitions" do
@@ -131,8 +171,8 @@ class GraphValidatorTest < ActiveSupport::TestCase
         { 'target_uuid' => 'b', 'condition' => "answer == 'yes'" },
         { 'target_uuid' => 'c' } # Default transition
       ] },
-      'b' => { 'id' => 'b', 'title' => 'Yes Path', 'type' => 'action', 'transitions' => [] },
-      'c' => { 'id' => 'c', 'title' => 'Default Path', 'type' => 'action', 'transitions' => [] }
+      'b' => { 'id' => 'b', 'title' => 'Yes Path', 'type' => 'resolve', 'transitions' => [] },
+      'c' => { 'id' => 'c', 'title' => 'Default Path', 'type' => 'resolve', 'transitions' => [] }
     }
 
     validator = GraphValidator.new(steps, 'a')

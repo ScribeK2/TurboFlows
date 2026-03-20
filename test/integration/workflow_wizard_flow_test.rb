@@ -171,7 +171,10 @@ class WorkflowWizardFlowTest < ActionDispatch::IntegrationTest
 
   test "published workflow has no expiration date" do
     draft = Workflow.create!(title: "Publish Test", user: @user, status: 'draft')
-    Steps::Action.create!(workflow: draft, position: 0, uuid: "step-1", title: "Action")
+    a = Steps::Action.create!(workflow: draft, position: 0, uuid: "step-1", title: "Action")
+    r = Steps::Resolve.create!(workflow: draft, position: 1, uuid: "step-2", title: "Done", resolution_type: "success")
+    Transition.create!(step: a, target_step: r, position: 0)
+    draft.update_column(:start_step_id, a.id)
 
     patch create_from_draft_workflow_path(draft)
 
@@ -289,8 +292,10 @@ class WorkflowWizardFlowTest < ActionDispatch::IntegrationTest
     q1 = Steps::Question.create!(workflow: draft, position: 0, uuid: "step-1", title: "Get Customer Name", question: "What is your name?", variable_name: "customer_name", answer_type: "text")
     q2 = Steps::Question.create!(workflow: draft, position: 1, uuid: "step-2", title: "Get Issue", question: "Hello {{customer_name}}, what is your issue?", variable_name: "issue", answer_type: "text")
     a1 = Steps::Action.create!(workflow: draft, position: 2, uuid: "step-3", title: "Summary")
+    r1 = Steps::Resolve.create!(workflow: draft, position: 3, uuid: "step-4", title: "Done", resolution_type: "success")
     Transition.create!(step: q1, target_step: q2, position: 0)
     Transition.create!(step: q2, target_step: a1, position: 0)
+    Transition.create!(step: a1, target_step: r1, position: 0)
     draft.update_column(:start_step_id, q1.id)
 
     # Publish
@@ -315,7 +320,8 @@ class WorkflowWizardFlowTest < ActionDispatch::IntegrationTest
     scenario.process_step("Login problem")
     assert_equal "Login problem", scenario.results["issue"]
 
-    scenario.process_step
+    scenario.process_step  # Process Action step
+    scenario.process_step  # Process Resolve step
     assert_equal "completed", scenario.status
 
     assert_equal "Alice", scenario.results["customer_name"]

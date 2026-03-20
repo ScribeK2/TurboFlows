@@ -3,7 +3,7 @@ require "test_helper"
 class StepResolverTest < ActiveSupport::TestCase
   setup do
     @user = User.create!(email: "test-resolver@example.com", password: "password123456")
-    @workflow = Workflow.create!(title: "Resolver Test", user: @user)
+    @workflow = Workflow.create!(title: "Resolver Test", user: @user, status: "draft")
   end
 
   def create_step(type_class, title, position, **attrs)
