@@ -1,19 +1,36 @@
 require "test_helper"
 
 class Steps::SubFlowTest < ActiveSupport::TestCase
-  def setup
-    @user = User.create!(email: "sf-test@example.com", password: "password123!", password_confirmation: "password123!")
-    @workflow = Workflow.create!(title: "Parent", user: @user)
-    @target = Workflow.create!(title: "Child", user: @user, status: "published")
+  setup do
+    @user = User.create!(email: "test-subflow@example.com", password: "password123456")
+    @workflow = Workflow.create!(title: "SubFlow Test", user: @user)
+    @target_workflow = Workflow.create!(title: "Target Flow", user: @user, status: "published")
   end
 
-  test "sub_flow step references target workflow" do
-    step = Steps::SubFlow.create!(workflow: @workflow, position: 0, title: "SF1", sub_flow_workflow_id: @target.id)
-    assert_equal @target, step.target_workflow
+  test "valid with title only (draft mode)" do
+    step = Steps::SubFlow.new(workflow: @workflow, title: "Run sub", position: 0)
+    assert step.valid?
   end
 
-  test "sub_flow step requires target_workflow" do
-    step = Steps::SubFlow.new(workflow: @workflow, position: 0, title: "SF1")
-    assert_not step.valid?
+  test "belongs to target_workflow" do
+    step = Steps::SubFlow.create!(workflow: @workflow, title: "Sub", position: 0, sub_flow_workflow_id: @target_workflow.id)
+    assert_equal @target_workflow, step.target_workflow
+  end
+
+  test "outcome_summary includes target workflow title" do
+    step = Steps::SubFlow.create!(workflow: @workflow, title: "Sub", position: 0, sub_flow_workflow_id: @target_workflow.id)
+    summary = step.outcome_summary
+    assert_includes summary, "Target Flow"
+  end
+
+  test "outcome_summary without target workflow" do
+    step = Steps::SubFlow.create!(workflow: @workflow, title: "Sub", position: 0)
+    summary = step.outcome_summary
+    assert summary.is_a?(String)
+  end
+
+  test "step_type returns sub_flow" do
+    step = Steps::SubFlow.create!(workflow: @workflow, title: "Sub", position: 0)
+    assert_equal "sub_flow", step.step_type
   end
 end
