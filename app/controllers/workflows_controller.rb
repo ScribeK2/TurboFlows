@@ -1,12 +1,11 @@
 class WorkflowsController < ApplicationController
   before_action :set_workflow,
-                only: %i[show edit update destroy export export_pdf preview variables save_as_template start begin_execution step1 update_step1 step2 update_step2 step3 create_from_draft render_step publish versions sync_steps flow_diagram settings]
-  before_action :ensure_draft_workflow!, only: %i[step1 update_step1 step2 update_step2 step3 create_from_draft]
-  before_action :ensure_editor_or_admin!, only: %i[new create import import_file start_wizard]
+                only: %i[show edit update destroy export export_pdf preview variables save_as_template start begin_execution publish versions sync_steps flow_diagram settings]
+  before_action :ensure_editor_or_admin!, only: %i[new create import import_file]
   before_action :ensure_can_view_workflow!, only: %i[show export export_pdf start begin_execution preview variables versions flow_diagram settings]
-  before_action :ensure_can_edit_workflow!, only: %i[edit update save_as_template publish render_step sync_steps]
+  before_action :ensure_can_edit_workflow!, only: %i[edit update save_as_template publish sync_steps]
   before_action :ensure_can_delete_workflow!, only: [:destroy]
-  before_action :parse_transitions_json, only: %i[create update update_step2]
+  before_action :parse_transitions_json, only: %i[create update]
 
   def index
     filter = WorkflowsFilter.new(user: current_user, params: params).call
@@ -66,26 +65,12 @@ class WorkflowsController < ApplicationController
       graph_mode: true
     )
     # Save the draft immediately so the builder has a workflow ID for server-side
-    # step rendering. This mirrors start_wizard and ensures addStepFromModal never
-    # falls back to client-side rendering on a truly unsaved record.
+    # step rendering. Ensures the builder always has a persisted workflow to work with.
     if @workflow.save
       redirect_to workflow_path(@workflow, edit: true)
     else
       @accessible_groups = Group.visible_to(current_user).includes(:children).order(:name)
       render :new, status: :unprocessable_content
-    end
-  end
-
-  def start_wizard
-    @workflow = current_user.workflows.build(
-      status: 'draft',
-      title: 'Untitled Workflow',
-      graph_mode: true
-    )
-    if @workflow.save
-      redirect_to step1_workflow_path(@workflow), notice: "Let's create your workflow step by step."
-    else
-      redirect_to workflows_path, alert: "Could not start wizard. Please try again."
     end
   end
 
@@ -289,67 +274,6 @@ class WorkflowsController < ApplicationController
     render json: { variables: variables }
   end
 
-  # Sprint 3: Render step HTML for dynamic step creation
-  # Supports both legacy JSONB mode and new ActiveRecord Step mode.
-  # When workflow has AR steps (steps.any?), creates an AR Step record.
-  # Otherwise falls back to building a JSONB hash for backward compatibility.
-  def render_step
-    Rails.logger.debug { "[render_step] Params: #{params.inspect}" }
-
-    step_type = params[:step_type]
-    step_index = params[:step_index].to_i
-
-    # Convert step_data to hash with indifferent access
-    raw_step_data = params[:step_data]
-    step_data = if raw_step_data.is_a?(ActionController::Parameters)
-                  raw_step_data.to_unsafe_h.with_indifferent_access
-                elsif raw_step_data.is_a?(Hash)
-                  raw_step_data.with_indifferent_access
-                else
-                  {}.with_indifferent_access
-                end
-
-    Rails.logger.debug { "[render_step] step_type=#{step_type}, step_index=#{step_index}, step_data=#{step_data.inspect}" }
-
-    step_class = StepBuilder.sti_class_for(step_type)
-    position = @workflow.steps.maximum(:position).to_i + 1
-    attrs = { workflow: @workflow, position: position, title: step_data[:title] || "" }
-
-    case step_type
-    when "question"
-      attrs[:question] = step_data[:question] || ""
-      attrs[:answer_type] = step_data[:answer_type] || "yes_no"
-      attrs[:variable_name] = step_data[:variable_name] || ""
-    when "action"
-      attrs[:action_type] = step_data[:action_type] || "Instruction"
-    when "sub_flow"
-      attrs[:sub_flow_workflow_id] = step_data[:target_workflow_id] if step_data[:target_workflow_id].present?
-    end
-
-    step = step_class.new(attrs)
-    step.uuid ||= SecureRandom.uuid # Ensure UUID is set (before_validation is skipped below)
-    step.save!(validate: false) # Skip validations — placeholder step, user fills in details via form
-
-    # Set rich text after save
-    case step_type
-    when "action"
-      step.update(instructions: step_data[:instructions]) if step_data[:instructions].present?
-    when "message"
-      step.update(content: step_data[:content]) if step_data[:content].present?
-    when "escalate"
-      step.update(notes: step_data[:notes]) if step_data[:notes].present?
-    end
-
-    begin
-      render partial: "workflows/step_card",
-             locals: { step: step, workflow: @workflow, expanded: true },
-             formats: [:html]
-    rescue StandardError => e
-      Rails.logger.error "[render_step] Error rendering step: #{e.message}"
-      render plain: "Error rendering step: #{e.message}", status: :internal_server_error
-    end
-  end
-
   def save_as_template
     template_params = params.require(:template).permit(:name, :category, :description, :is_public)
 
@@ -471,145 +395,6 @@ class WorkflowsController < ApplicationController
     end
   end
 
-  # Wizard step actions
-  def step1
-    # Load draft workflow and accessible groups
-    @accessible_groups = Group.visible_to(current_user).includes(:children).order(:name)
-    @selected_group_ids = @workflow.group_ids
-  end
-
-  def update_step1
-    if @workflow.update(workflow_step1_params)
-      # Update group assignments
-      if params[:workflow][:group_ids].present?
-        @workflow.group_workflows.destroy_all
-        # Deduplicate group_ids to prevent duplicate entries
-        group_ids = Array(params[:workflow][:group_ids]).reject(&:blank?).uniq
-        group_ids.each_with_index do |group_id, index|
-          @workflow.group_workflows.create!(
-            group_id: group_id,
-            is_primary: index == 0
-          )
-        end
-      elsif params[:workflow].key?(:group_ids)
-        # Explicitly clear groups if group_ids is present but empty
-        @workflow.group_workflows.destroy_all
-      end
-
-      # Assign folder if provided
-      if params[:workflow][:folder_id].present? && params[:workflow][:group_ids].present?
-        primary_group_id = Array(params[:workflow][:group_ids]).reject(&:blank?).first
-        primary_gw = @workflow.group_workflows.find_by(group_id: primary_group_id)
-        if primary_gw
-          folder = Folder.find_by(id: params[:workflow][:folder_id], group_id: primary_group_id)
-          primary_gw.update!(folder: folder) if folder
-        end
-      end
-
-      redirect_to step2_workflow_path(@workflow), notice: "Step 1 completed. Now let's add some steps."
-    else
-      @accessible_groups = Group.visible_to(current_user).includes(:children).order(:name)
-      @selected_group_ids = @workflow.group_ids
-      render :step1, status: :unprocessable_content
-    end
-  end
-
-  def step2
-    # Load draft workflow for step 2 (add steps)
-    # Steps will be managed via the existing workflow-builder controller
-    eager_load_steps
-  end
-
-  def update_step2
-    # Parse incoming steps from visual editor or list editor
-    incoming_steps = nil
-    start_uuid = nil
-
-    if params[:workflow][:editor_mode] == 'visual' && params[:workflow][:visual_editor_steps_json].present?
-      begin
-        incoming_steps = JSON.parse(params[:workflow][:visual_editor_steps_json])
-        start_uuid = params[:workflow][:start_node_uuid]
-      rescue JSON::ParserError => e
-        Rails.logger.error "[update_step2] Failed to parse visual editor steps: #{e.message}"
-        flash[:alert] = "Failed to save visual editor changes."
-        redirect_to step2_workflow_path(@workflow) and return
-      end
-    else
-      permitted_params = workflow_step2_params
-      incoming_steps = permitted_params[:steps]&.map { |s| s.respond_to?(:to_h) ? s.to_h : s }
-    end
-
-    if incoming_steps.present?
-      begin
-        create_ar_steps_from_params(incoming_steps, start_uuid)
-        redirect_to step3_workflow_path(@workflow), notice: "Steps added. Let's review your workflow."
-      rescue ActiveRecord::RecordInvalid => e
-        @workflow.errors.add(:base, e.message)
-        render :step2, status: :unprocessable_content
-      end
-    else
-      redirect_to step3_workflow_path(@workflow), notice: "Steps added. Let's review your workflow."
-    end
-  end
-
-  def step3
-    # Load draft workflow for step 3 (review and launch)
-    # Preview will be shown here
-    eager_load_steps
-  end
-
-  def create_from_draft
-    # Save as Draft: skip publish logic, redirect with confirmation
-    if params[:save_draft].present?
-      flash[:notice] = "Draft saved."
-      redirect_to step3_workflow_path(@workflow)
-      return
-    end
-
-    # Validate draft before converting to published
-    unless @workflow.valid?
-      render :step3, status: :unprocessable_content
-      return
-    end
-
-    # Validate that workflow has at least one step
-    unless @workflow.steps.any?
-      @workflow.errors.add(:base, "Workflow must have at least one step")
-      render :step3, status: :unprocessable_content
-      return
-    end
-
-    # Validate all steps have required fields
-    @workflow.steps.order(:position).each do |step|
-      unless step.title.present?
-        @workflow.errors.add(:steps, "Step #{step.position + 1}: Step title is required")
-      end
-
-      if step.is_a?(Steps::Question) && !step.question.present?
-        @workflow.errors.add(:steps, "Step #{step.position + 1}: Question text is required for question steps")
-      end
-    end
-
-    if @workflow.errors.any?
-      render :step3, status: :unprocessable_content
-      return
-    end
-
-    # Convert draft to published workflow
-    @workflow.status = 'published'
-    @workflow.draft_expires_at = nil
-
-    # Assign to Uncategorized group if no groups assigned (triggered by status change)
-    if @workflow.save
-      # Ensure groups are assigned (after_create callback handles this for published workflows)
-      @workflow.assign_to_uncategorized_if_needed if @workflow.groups.empty?
-
-      redirect_to @workflow, notice: "Workflow was successfully created!"
-    else
-      render :step3, status: :unprocessable_content
-    end
-  end
-
   private
 
   # Generate sample variable values for preview interpolation
@@ -685,15 +470,6 @@ class WorkflowsController < ApplicationController
     @subflow_targets = Workflow.where(id: subflow_ids).index_by(&:id) if subflow_ids.any?
   end
 
-  # Create AR steps from incoming params (used by update_step2 wizard flow)
-  def create_ar_steps_from_params(incoming_steps, start_uuid = nil)
-    normalized = incoming_steps.map do |s|
-      s = s.to_h if s.respond_to?(:to_h) && !s.is_a?(Hash)
-      s.stringify_keys
-    end
-    StepBuilder.call(@workflow, normalized, start_node_uuid: start_uuid, replace: true)
-  end
-
   # Serialize AR steps to JSONB-compatible format for export
   def serialize_ar_steps_for_export(workflow)
     StepSerializer.call(workflow)
@@ -757,12 +533,6 @@ class WorkflowsController < ApplicationController
     end
   end
 
-  def ensure_draft_workflow!
-    unless @workflow.status == 'draft' && @workflow.user == current_user
-      redirect_to workflows_path, alert: "This workflow is not a draft or you don't have permission to edit it."
-    end
-  end
-
   def workflow_params
     # lock_version is used for optimistic locking to prevent race conditions
     # graph_mode is for DAG-based workflows
@@ -770,34 +540,6 @@ class WorkflowsController < ApplicationController
     params.require(:workflow).permit(:title, :description, :is_public, :lock_version,
                                      :graph_mode,
                                      :visual_editor_steps_json, :editor_mode)
-  end
-
-  def workflow_step1_params
-    # Permit title, description, and graph_mode for step 1
-    params.require(:workflow).permit(:title, :description, :graph_mode)
-  end
-
-  def workflow_step2_params
-    # Permit steps for step 2
-    # NOTE: Must match workflow_params to ensure all nested structures are permitted
-    # Missing fields identified in Phase 1 diagnosis: :id, :checkpoint_message, :jumps, output_fields
-    # Added: target_workflow_id for sub-flow steps, transitions for graph mode
-    # Added: visual_editor_steps_json, editor_mode, start_node_uuid for visual editor
-    params.require(:workflow).permit(:visual_editor_steps_json, :editor_mode, :start_node_uuid,
-                                     steps: [
-                                       :index, :id, :type, :title, :description, :question, :answer_type, :variable_name,
-                                       :else_path, :action_type, :instructions,
-                                       :target_workflow_id,
-                                       :content, :can_resolve,
-                                       :target_type, :target_value, :priority, :reason_required, :notes,
-                                       :resolution_type, :resolution_code, :notes_required, :survey_trigger,
-                                       { options: %i[label value],
-                                         branches: %i[condition path],
-                                         jumps: %i[condition next_step_id],
-                                         transitions: %i[target_uuid condition label],
-                                         attachments: [],
-                                         output_fields: %i[name value] }
-                                     ])
   end
 
   def parse_step_from_params

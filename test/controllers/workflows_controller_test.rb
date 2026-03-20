@@ -491,18 +491,6 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
     assert_match "Group 2", response.body
   end
 
-  # start_wizard and idempotent new tests
-  test "should create draft via POST start_wizard and redirect to step1" do
-    sign_in @editor
-    assert_difference("Workflow.count", 1) do
-      post start_wizard_workflows_path
-    end
-    workflow = Workflow.last
-    assert_equal "draft", workflow.status
-    assert_equal "Untitled Workflow", workflow.title
-    assert_redirected_to step1_workflow_path(workflow)
-  end
-
   test "GET new creates a draft workflow and redirects to builder" do
     sign_in @editor
     assert_difference("Workflow.count", 1) do
@@ -589,12 +577,4 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
     assert json["variables"].is_a?(Array)
   end
 
-  test "user should not be able to start wizard" do
-    sign_in @user
-    assert_no_difference("Workflow.count") do
-      post start_wizard_workflows_path
-    end
-    assert_redirected_to root_path
-    assert_equal "You don't have permission to perform this action.", flash[:alert]
-  end
 end

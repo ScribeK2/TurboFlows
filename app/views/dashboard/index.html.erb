@@ -10,7 +10,7 @@
   <%# -- B. Quick Actions Row (editors/admins only) -- %>
   <% if current_user&.can_create_workflows? %>
     <div class="dashboard-actions animate-fade-in">
-      <%= button_to start_wizard_workflows_path, method: :post, class: "btn btn--primary", form_class: "inline", aria: { label: "Create a new workflow" } do %>
+      <%= link_to new_workflow_path, class: "btn btn--primary", aria: { label: "Create a new workflow" } do %>
         <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
@@ -156,7 +156,7 @@
             <% if current_user&.can_create_workflows? %>
               <p class="empty-state__message">Get started by creating your first workflow or browsing templates.</p>
               <div class="empty-state__actions">
-                <%= button_to start_wizard_workflows_path, method: :post, class: "btn btn--primary btn--sm", form_class: "inline", aria: { label: "Create your first workflow" } do %>
+                <%= link_to new_workflow_path, class: "btn btn--primary btn--sm", aria: { label: "Create your first workflow" } do %>
                   <svg class="icon icon--xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                   </svg>
