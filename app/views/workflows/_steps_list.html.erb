@@ -10,6 +10,7 @@
 <%= render "workflows/step_type_buttons", workflow: workflow %>
 
 <div id="steps-list"
+     class="wf-steps-container"
      data-controller="sortable-list"
      data-sortable-list-url-value="<%= reorder_workflow_step_path(workflow, ':id') %>"
      role="list">
