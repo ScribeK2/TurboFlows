@@ -1,0 +1,98 @@
+<%#
+  Builder — unified workflow creation and editing interface.
+
+  Local variables:
+  - workflow: Workflow object
+  - steps: ordered step collection (preloaded with transitions)
+  - mode: "view" or "edit" (default "view")
+%>
+<% mode = local_assigns.fetch(:mode, "view") %>
+
+<%= turbo_stream_from "workflow_#{workflow.id}" %>
+
+<div class="builder"
+     data-controller="builder"
+     data-builder-mode-value="<%= mode %>"
+     data-builder-workflow-id-value="<%= workflow.id %>">
+
+  <%# === Header === %>
+  <div class="builder__header">
+    <div class="builder__header-left">
+      <input type="text"
+             class="builder__title"
+             value="<%= workflow.title %>"
+             data-builder-target="titleInput"
+             data-action="blur->builder#saveTitle change->builder#saveTitle"
+             data-url="<%= workflow_path(workflow) %>"
+             <%= "readonly" if mode == "view" %>
+             placeholder="Workflow title...">
+
+      <span class="builder__status builder__status--<%= workflow.status %>">
+        <%= workflow.status.titleize %>
+      </span>
+
+      <%= render "workflows/autosave_status", status: :saved %>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <% if mode == "view" && workflow.can_be_edited_by?(current_user) %>
+        <%= link_to workflow_path(workflow, edit: true), class: "btn btn--secondary btn--sm" do %>
+          Edit
+        <% end %>
+      <% end %>
+
+      <% if mode == "view" %>
+        <%= link_to new_workflow_scenario_path(workflow), class: "btn btn--positive btn--sm" do %>
+          Run Scenario
+        <% end %>
+      <% end %>
+
+      <% if mode == "edit" %>
+        <%= button_to publish_workflow_path(workflow), method: :post,
+            class: "btn btn--positive btn--sm builder__edit-only",
+            data: { turbo_stream: true } do %>
+          Publish
+        <% end %>
+      <% end %>
+
+      <% if workflow.can_be_viewed_by?(current_user) %>
+        <%= link_to export_workflow_path(workflow), class: "btn btn--plain btn--sm" do %>
+          Export
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <%# === Toolbar === %>
+  <div class="builder__toolbar">
+    <span class="builder__toolbar-left">
+      <%= pluralize(steps.size, "step") %>
+    </span>
+    <div class="builder__toolbar-right">
+      <button class="builder__toolbar-btn"
+              data-action="click->builder#openFlowDiagram"
+              data-builder-flow-url-value="<%= flow_diagram_workflow_path(workflow) %>">
+        &#9724; View Flow
+      </button>
+      <button class="builder__toolbar-btn"
+              data-action="click->builder#openSettings"
+              data-builder-settings-url-value="<%= settings_workflow_path(workflow) %>">
+        &#9881; Settings
+      </button>
+    </div>
+  </div>
+
+  <%# === Main Area === %>
+  <div class="builder__main">
+    <%# Step List %>
+    <%= render "workflows/step_list", workflow: workflow, steps: steps %>
+
+    <%# Slide-In Panel (empty frame, loaded on demand) %>
+    <div class="builder__panel">
+      <turbo-frame id="builder-panel"
+                   data-builder-target="panel"
+                   data-action="turbo:frame-load->builder#panelLoaded">
+      </turbo-frame>
+    </div>
+  </div>
+</div>

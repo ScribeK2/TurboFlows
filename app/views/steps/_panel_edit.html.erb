@@ -1,0 +1,70 @@
+<%#
+  Panel Edit — step editor loaded inside the builder panel Turbo Frame.
+
+  Local variables:
+  - step: AR Step object
+  - workflow: Workflow object
+  - readonly: boolean (default false)
+%>
+<% readonly = local_assigns.fetch(:readonly, false) %>
+<turbo-frame id="builder-panel">
+  <div class="builder__panel-header">
+    <div class="builder__panel-header-left">
+      <span class="step-pill step-pill--<%= step.step_type %>"><%= step_type_label(step.step_type) %></span>
+      <strong><%= step.title.presence || "Untitled" %></strong>
+    </div>
+    <button class="builder__panel-close"
+            data-action="click->builder#closePanel"
+            title="Close panel">&times;</button>
+  </div>
+
+  <div class="builder__panel-body">
+    <% if readonly %>
+      <div class="form-group">
+        <label class="form-label">Title</label>
+        <p><%= step.title %></p>
+      </div>
+      <%# Readonly: render step-specific details as plain text instead of form fields %>
+      <% if step.is_a?(Steps::Question) && step.question.present? %>
+        <div class="form-group"><label class="form-label">Question</label><p><%= step.question %></p></div>
+        <div class="form-group"><label class="form-label">Answer Type</label><p><%= answer_type_label(step.answer_type) %></p></div>
+      <% elsif step.respond_to?(:instructions) && step.instructions.present? %>
+        <div class="form-group"><label class="form-label">Instructions</label><div><%= step.instructions %></div></div>
+      <% elsif step.respond_to?(:content) && step.content.present? %>
+        <div class="form-group"><label class="form-label">Content</label><div><%= step.content %></div></div>
+      <% end %>
+      <%# Show connections read-only %>
+      <% if step.transitions.any? %>
+        <div class="mt-4 pt-4" style="border-top: 1px solid var(--color-border);">
+          <label class="form-label">Connections</label>
+          <% step.transitions.includes(:target_step).each do |t| %>
+            <div class="flex items-center gap-2 py-1">
+              <span class="text-sm"><%= t.condition.presence || "Default" %></span>
+              <span>&rarr;</span>
+              <span class="text-sm" style="color: var(--color-primary);"><%= t.target_step&.title %></span>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    <% else %>
+      <%= form_with model: step, scope: :step, url: workflow_step_path(workflow, step), method: :patch,
+          data: { controller: "inline-autosave", "inline-autosave-delay-value": 2000 } do |f| %>
+
+        <div class="form-group">
+          <%= f.label :title, class: "form-label" %>
+          <%= f.text_field :title, class: "form-input", required: true,
+              placeholder: "Enter a descriptive title...",
+              data: { action: "input->inline-autosave#schedule" } %>
+        </div>
+
+        <%# Type-specific fields %>
+        <%= render "steps/fields/#{step.step_type}", form: f, step: step, workflow: workflow %>
+
+        <%# Connections section %>
+        <% unless step.is_a?(Steps::Resolve) %>
+          <%= render "steps/transitions_editor", step: step, workflow: workflow %>
+        <% end %>
+      <% end %>
+    <% end %>
+  </div>
+</turbo-frame>

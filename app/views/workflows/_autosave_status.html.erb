@@ -1,0 +1,21 @@
+<%#
+  Autosave Status — small indicator for save state.
+
+  Local variables:
+  - status: :saved, :saving, :error (default :saved)
+  - errors: ActiveModel::Errors (optional)
+%>
+<% status ||= :saved %>
+<span id="autosave-status" class="builder__autosave builder__autosave--<%= status %>">
+  <% case status %>
+  <% when :saving %>
+    Saving...
+  <% when :error %>
+    Save failed
+    <% if defined?(errors) && errors&.any? %>
+      — <%= errors.full_messages.first %>
+    <% end %>
+  <% when :saved %>
+    Saved
+  <% end %>
+</span>

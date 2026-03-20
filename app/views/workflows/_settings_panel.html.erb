@@ -1,0 +1,69 @@
+<%#
+  Settings Panel — workflow metadata/settings in the builder panel.
+
+  Local variables:
+  - workflow: Workflow object
+  - readonly: boolean (default false)
+  - accessible_groups: Group collection
+%>
+<% readonly = local_assigns.fetch(:readonly, false) %>
+<turbo-frame id="builder-panel">
+  <div class="builder__panel-header">
+    <div class="builder__panel-header-left">
+      <strong>Settings</strong>
+    </div>
+    <button class="builder__panel-close"
+            data-action="click->builder#closePanel"
+            title="Close panel">&times;</button>
+  </div>
+
+  <div class="builder__panel-body">
+    <% if readonly %>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <div><%= workflow.description %></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Groups</label>
+        <p><%= workflow.groups.map(&:name).join(", ").presence || "None" %></p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Public</label>
+        <p><%= workflow.is_public? ? "Yes" : "No" %></p>
+      </div>
+    <% else %>
+      <%= form_with model: workflow, url: workflow_path(workflow), method: :patch,
+          data: { controller: "inline-autosave", "inline-autosave-delay-value": 2000 } do |f| %>
+
+        <div class="form-group">
+          <%= f.label :description, class: "form-label" %>
+          <%= f.rich_text_area :description, class: "form-textarea",
+              data: { action: "input->inline-autosave#schedule" } %>
+        </div>
+
+        <div class="form-group">
+          <%= render "workflows/group_selector",
+              workflow: workflow,
+              accessible_groups: accessible_groups,
+              selected_group_ids: workflow.group_ids %>
+        </div>
+
+        <div class="form-group">
+          <label class="form-check">
+            <%= f.check_box :is_public, class: "form-checkbox",
+                data: { action: "change->inline-autosave#schedule" } %>
+            <span class="form-label mb-0">Public workflow</span>
+          </label>
+          <p class="form-hint">Public workflows are visible to all users.</p>
+        </div>
+
+        <% if workflow.published_version.present? %>
+          <div class="form-group mt-6 pt-4" style="border-top: 1px solid var(--color-border);">
+            <label class="form-label">Version</label>
+            <p>v<%= workflow.published_version.version_number %> — published <%= workflow.published_version.published_at.strftime('%b %d, %Y') %></p>
+          </div>
+        <% end %>
+      <% end %>
+    <% end %>
+  </div>
+</turbo-frame>

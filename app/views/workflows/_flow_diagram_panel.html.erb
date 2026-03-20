@@ -1,0 +1,61 @@
+<%#
+  Flow Diagram Panel — server-rendered flow diagram in the builder panel.
+
+  Local variables:
+  - workflow: Workflow object
+  - levels: array of arrays from FlowDiagramService (optional, computed if missing)
+%>
+<% levels ||= FlowDiagramService.call(workflow) %>
+<turbo-frame id="builder-panel">
+  <div class="builder__panel-header">
+    <div class="builder__panel-header-left">
+      <strong>Flow Diagram</strong>
+    </div>
+    <div class="flex items-center gap-2">
+      <button class="builder__panel-close"
+              data-action="click->builder#closePanel"
+              title="Close panel">&times;</button>
+    </div>
+  </div>
+
+  <div class="builder__panel-body">
+    <% if levels.empty? %>
+      <p style="color: var(--color-ink-muted); text-align: center; padding: var(--space-8);">
+        No steps yet. Add steps to see the flow diagram.
+      </p>
+    <% else %>
+      <div class="flow-diagram">
+        <% levels.each_with_index do |level_steps, depth| %>
+          <div class="flow-diagram__level">
+            <% level_steps.each do |step| %>
+              <div class="flow-diagram__node flow-diagram__node--<%= step.step_type %>"
+                   data-action="click->builder#openStep"
+                   data-builder-url-param="<%= panel_edit_workflow_step_path(workflow, step) %>"
+                   title="<%= step.title %>">
+                <span class="flow-diagram__node-number"><%= step.position + 1 %></span>
+                <span class="flow-diagram__node-title"><%= truncate(step.title.presence || "Untitled", length: 20) %></span>
+                <% if step == workflow.start_step %>
+                  <span class="step-pill step-pill--start" style="font-size: 0.625rem;">Start</span>
+                <% end %>
+                <% if step.terminal? %>
+                  <span class="step-pill step-pill--terminal" style="font-size: 0.625rem;">End</span>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+          <% unless depth == levels.length - 1 %>
+            <div class="flow-diagram__connector">
+              <% level_steps.each do |step| %>
+                <% step.transitions.each do |t| %>
+                  <span class="flow-diagram__edge-label" title="<%= t.condition %>">
+                    <%= t.label.presence || t.condition.to_s.truncate(15) %>
+                  </span>
+                <% end %>
+              <% end %>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</turbo-frame>
