@@ -1,10 +1,14 @@
 class Step < ApplicationRecord
+  include Step::Positionable
+
   belongs_to :workflow, counter_cache: :steps_count
   has_many :transitions, dependent: :destroy
   has_many :incoming_transitions, class_name: "Transition", foreign_key: :target_step_id, dependent: :destroy
 
   validates :uuid, presence: true, uniqueness: { scope: :workflow_id }
   validates :position, presence: true
+
+  attr_readonly :uuid
 
   before_validation :generate_uuid, if: -> { uuid.blank? }
 
