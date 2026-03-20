@@ -38,7 +38,7 @@ class WorkflowsController < ApplicationController
             title: w.title,
             description: w.description_text&.truncate(100),
             status: w.status,
-            graph_mode: w.graph_mode?,
+            graph_mode: true,
             step_count: w.steps.size
           }
         end
@@ -56,7 +56,7 @@ class WorkflowsController < ApplicationController
     @workflow = current_user.workflows.build(
       status: 'draft',
       title: 'Untitled Workflow',
-      graph_mode: determine_graph_mode_for_new
+      graph_mode: true
     )
     # Save the draft immediately so the builder has a workflow ID for server-side
     # step rendering. This mirrors start_wizard and ensures addStepFromModal never
@@ -73,7 +73,7 @@ class WorkflowsController < ApplicationController
     @workflow = current_user.workflows.build(
       status: 'draft',
       title: 'Untitled Workflow',
-      graph_mode: determine_graph_mode_for_new
+      graph_mode: true
     )
     if @workflow.save
       redirect_to step1_workflow_path(@workflow), notice: "Let's create your workflow step by step."
@@ -208,7 +208,7 @@ class WorkflowsController < ApplicationController
     export_data = {
       title: @workflow.title,
       description: @workflow.description_text || "",
-      graph_mode: @workflow.graph_mode?,
+      graph_mode: true,
       start_node_uuid: start_uuid,
       steps: steps_data,
       exported_at: Time.current.iso8601,
@@ -229,8 +229,7 @@ class WorkflowsController < ApplicationController
     pdf.text @workflow.description_text, size: 12 if @workflow.description_text.present?
     pdf.move_down 10
 
-    mode_text = @workflow.graph_mode? ? "Graph Mode" : "Linear Mode"
-    pdf.text "Mode: #{mode_text}", size: 10, style: :italic
+    pdf.text "Mode: Graph Mode", size: 10, style: :italic
     pdf.move_down 20
 
     export_pdf_ar_steps(pdf) if @workflow.steps.any?
@@ -346,13 +345,11 @@ class WorkflowsController < ApplicationController
 
   def begin_execution
     # Create scenario and start workflow execution
-    start_uuid = @workflow.graph_mode? ? @workflow.start_node&.uuid : nil
-
     @scenario = Scenario.new(
       workflow: @workflow,
       user: current_user,
       current_step_index: 0,
-      current_node_uuid: start_uuid,
+      current_node_uuid: @workflow.start_node&.uuid,
       execution_path: [],
       results: {},
       inputs: {},
@@ -675,7 +672,7 @@ class WorkflowsController < ApplicationController
         pdf.text "Resolution: #{step.resolution_type}", size: 10 if step.resolution_type.present?
       end
 
-      if @workflow.graph_mode? && step.transitions.any?
+      if step.transitions.any?
         pdf.text "Transitions:", size: 10, style: :bold
         step.transitions.each do |transition|
           target_name = transition.target_step&.title || transition.target_step_id.to_s
@@ -688,14 +685,9 @@ class WorkflowsController < ApplicationController
     end
   end
 
-  # Determine graph_mode for new workflows
-  # Graph mode is the default; use ?force_linear_mode=1 to create linear workflow
+  # All workflows are graph mode — linear mode is no longer supported
   def determine_graph_mode_for_new
-    if params[:force_linear_mode].present? && FeatureFlags.allow_linear_mode_override?
-      false
-    else
-      FeatureFlags.graph_mode_default?
-    end
+    true
   end
 
   # Override parent methods to use @workflow instance variable
@@ -902,6 +894,7 @@ class WorkflowsController < ApplicationController
           Rails.logger.info "[parse_transitions_json] Step #{index}: parsed #{parsed.length} transitions"
         rescue JSON::ParserError => e
           Rails.logger.error "[parse_transitions_json] Step #{index}: JSON parse error: #{e.message}"
+          flash[:alert] = "Invalid transitions JSON in step #{index + 1}: #{e.message}"
           step[:transitions] = []
         end
         step.delete(:transitions_json)
