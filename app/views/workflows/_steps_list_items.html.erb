@@ -1,4 +1,4 @@
 <%# Rendered inside the #steps-list container after reorder broadcast %>
 <% steps.each do |step| %>
-  <%= render "workflows/step_card", step: step, workflow: workflow %>
+  <%= render "workflows/step_row", step: step, workflow: workflow %>
 <% end %>

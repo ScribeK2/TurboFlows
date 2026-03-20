@@ -25,11 +25,11 @@ class StepsController < ApplicationController
       format.turbo_stream do
         render turbo_stream: turbo_stream.append(
           "steps-list",
-          partial: "workflows/step_card",
-          locals: { step: @step, workflow: @workflow, expanded: true }
+          partial: "workflows/step_row",
+          locals: { step: @step, workflow: @workflow }
         )
       end
-      format.html { render partial: "workflows/step_card", locals: { step: @step, workflow: @workflow, expanded: true } }
+      format.html { render partial: "workflows/step_row", locals: { step: @step, workflow: @workflow } }
     end
   end
 
