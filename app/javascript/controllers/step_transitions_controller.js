@@ -234,19 +234,26 @@ export default class extends Controller {
    */
   getOtherSteps() {
     const steps = []
-    const stepItems = document.querySelectorAll('.step-item')
+    // Support both builder step rows (data-step-uuid) and legacy step cards (.step-item)
+    const stepRows = document.querySelectorAll('.builder__list-row[data-step-uuid], .step-item')
 
-    stepItems.forEach((item, index) => {
-      // Support both old (name*="[id]") and new (data-step-field="id") markup
-      const idInput = item.querySelector('input[data-step-field="id"]') || item.querySelector('input[name*="[id]"]')
-      const titleInput = item.querySelector('input[data-step-field="title"]') || item.querySelector('input[name*="[title]"]')
+    stepRows.forEach((item, index) => {
+      let id, title
 
-      if (idInput && idInput.value !== this.stepIdValue) {
-        steps.push({
-          id: idInput.value,
-          title: titleInput?.value || '',
-          index: index
-        })
+      if (item.dataset.stepUuid) {
+        // Builder step row: data attributes on the row element
+        id = item.dataset.stepUuid
+        title = item.querySelector('.builder__step-title')?.textContent?.trim() || ''
+      } else {
+        // Legacy step card: hidden inputs
+        const idInput = item.querySelector('input[data-step-field="id"]') || item.querySelector('input[name*="[id]"]')
+        const titleInput = item.querySelector('input[data-step-field="title"]') || item.querySelector('input[name*="[title]"]')
+        id = idInput?.value
+        title = titleInput?.value || ''
+      }
+
+      if (id && id !== this.stepIdValue) {
+        steps.push({ id, title, index })
       }
     })
 
