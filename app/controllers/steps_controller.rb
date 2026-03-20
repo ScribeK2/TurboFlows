@@ -134,8 +134,8 @@ class StepsController < ApplicationController
   def reorder
     StepReorderer.call(@workflow, @step, params[:position])
 
-    # Broadcast updated list to all collaborators
-    Turbo::StreamsChannel.broadcast_replace_to(
+    # Broadcast updated list to all collaborators (update = replace inner HTML, preserving container attributes)
+    Turbo::StreamsChannel.broadcast_update_to(
       "workflow_#{@workflow.id}",
       target: "steps-list",
       partial: "workflows/steps_list_items",
