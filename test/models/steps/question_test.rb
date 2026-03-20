@@ -1,30 +1,41 @@
 require "test_helper"
 
 class Steps::QuestionTest < ActiveSupport::TestCase
-  def setup
-    @user = User.create!(email: "q-test@example.com", password: "password123!", password_confirmation: "password123!")
-    @workflow = Workflow.create!(title: "Test", user: @user)
+  setup do
+    @user = User.create!(email: "test-question@example.com", password: "password123456")
+    @workflow = Workflow.create!(title: "Question Test", user: @user)
   end
 
-  test "question step requires question text" do
-    step = Steps::Question.new(workflow: @workflow, position: 0, title: "Q1")
-    assert_not step.valid?
-    assert_includes step.errors[:question], "can't be blank"
+  test "valid with title only (draft mode)" do
+    step = Steps::Question.new(workflow: @workflow, title: "Ask name", position: 0)
+    assert step.valid?
   end
 
-  test "valid question step" do
-    step = Steps::Question.new(workflow: @workflow, position: 0, title: "Q1", question: "What is your name?", answer_type: "text")
-    assert step.valid?, step.errors.full_messages.join(", ")
-  end
-
-  test "question step auto-generates variable_name from title" do
-    step = Steps::Question.create!(workflow: @workflow, position: 0, title: "Customer Name", question: "What is your name?")
+  test "auto-generates variable_name from title" do
+    step = Steps::Question.create!(workflow: @workflow, title: "Customer Name", position: 0)
     assert_equal "customer_name", step.variable_name
   end
 
-  test "STI type is correct" do
-    step = Steps::Question.create!(workflow: @workflow, position: 0, title: "Q1", question: "What?")
-    assert_equal "Steps::Question", step.type
-    assert_instance_of Steps::Question, Step.find(step.id)
+  test "does not overwrite manually set variable_name" do
+    step = Steps::Question.create!(workflow: @workflow, title: "Customer Name", position: 0, variable_name: "cust_name")
+    assert_equal "cust_name", step.variable_name
+  end
+
+  test "outcome_summary includes question and variable" do
+    step = Steps::Question.create!(workflow: @workflow, title: "Q1", question: "What is your name?", variable_name: "name", answer_type: "free_text", position: 0)
+    summary = step.outcome_summary
+    assert_includes summary, "What is your name?"
+    assert_includes summary, "name"
+  end
+
+  test "outcome_summary with answer_type" do
+    step = Steps::Question.create!(workflow: @workflow, title: "Q1", question: "Pick one", answer_type: "multiple_choice", position: 0)
+    summary = step.outcome_summary
+    assert_includes summary, "Multiple Choice"
+  end
+
+  test "step_type returns question" do
+    step = Steps::Question.create!(workflow: @workflow, title: "Q1", position: 0)
+    assert_equal "question", step.step_type
   end
 end
