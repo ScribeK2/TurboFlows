@@ -10,12 +10,16 @@
 <turbo-frame id="builder-panel">
   <div class="builder__panel-header">
     <div class="builder__panel-header-left">
-      <span class="step-pill step-pill--<%= step.step_type %>"><%= step_type_label(step.step_type) %></span>
+      <span class="builder__panel-type-badge builder__panel-type-badge--<%= step.step_type %>"><%= step_type_label(step.step_type) %></span>
       <strong><%= step.title.presence || "Untitled" %></strong>
     </div>
     <button class="builder__panel-close"
             data-action="click->builder#closePanel"
-            title="Close panel">&times;</button>
+            title="Close panel">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+      </svg>
+    </button>
   </div>
 
   <div class="builder__panel-body">

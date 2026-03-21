@@ -53,11 +53,11 @@ class BuilderFlowTest < ActionDispatch::IntegrationTest
     assert_match "Flow Diagram", response.body
   end
 
-  test "settings renders settings panel" do
+  test "settings renders details panel" do
     workflow = workflows(:graph_mode_workflow)
     get settings_workflow_path(workflow)
 
     assert_response :success
-    assert_match "Settings", response.body
+    assert_match "Details", response.body
   end
 end

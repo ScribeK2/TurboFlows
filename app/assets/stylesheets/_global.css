@@ -140,6 +140,7 @@
   --shadow-xl: 0 16px 48px oklch(0.05 0.02 245 / 0.50);
 }
 
+
 /* ─── System Preference Fallback ─── */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -172,8 +173,8 @@
 }
 }
 
-/* ─── Lexxy Rich Text Editor Dark Mode (unlayered to override Lexxy's unlayered :root) ─── */
-[data-theme="dark"] {
+/* ─── Lexxy Rich Text Editor Dark Mode (html[] beats Lexxy's :root specificity) ─── */
+html[data-theme="dark"] {
   --lexxy-color-ink:          oklch(0.92 0.01 245);
   --lexxy-color-ink-medium:   oklch(0.65 0.01 245);
   --lexxy-color-ink-light:    oklch(0.50 0.01 245);
@@ -198,7 +199,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  html:not([data-theme="light"]) {
     --lexxy-color-ink:          oklch(0.92 0.01 245);
     --lexxy-color-ink-medium:   oklch(0.65 0.01 245);
     --lexxy-color-ink-light:    oklch(0.50 0.01 245);
