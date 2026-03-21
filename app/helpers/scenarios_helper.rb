@@ -83,7 +83,7 @@ module ScenariosHelper
   # E.g. "Completed 8 steps in 2m 14s -- 4 questions answered, 2 routing decisions -- resolved as Success"
   def scenario_summary_sentence(scenario)
     parts = []
-    path = scenario.execution_path || []
+    path = flattened_execution_path(scenario)
     step_count = path.length
 
     # Duration

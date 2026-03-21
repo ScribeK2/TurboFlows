@@ -7,7 +7,7 @@
         <h1 class="page-header-section__title">Scenario Results</h1>
         <% if @scenario.complete? && !@scenario.stopped? %>
           <%
-            path = @scenario.execution_path || []
+            path = flattened_execution_path(@scenario)
             duration_seconds = (@scenario.updated_at - @scenario.created_at).to_i
             duration_text = duration_seconds < 60 ? "#{duration_seconds}s" : "#{duration_seconds / 60}m #{duration_seconds % 60}s"
             questions_count = path.count { |p| p['step_type'] == 'question' || p['type'] == 'question' }
@@ -177,7 +177,8 @@
       <div class="card mb-4" data-controller="scenario-results">
         <div class="card__header scenario-card-header">
           <h2>Execution Path</h2>
-          <% if @scenario.execution_path.present? && @scenario.execution_path.length > 1 %>
+          <% flat_path = flattened_execution_path(@scenario) %>
+          <% if flat_path.present? && flat_path.length > 1 %>
             <div class="scenario-card-header__actions">
               <button type="button"
                       class="btn btn--plain btn--sm"
@@ -193,9 +194,9 @@
             </div>
           <% end %>
         </div>
-        <% if @scenario.execution_path.present? && @scenario.execution_path.any? %>
+        <% if flat_path.present? && flat_path.any? %>
           <div class="card__body" role="list">
-            <% @scenario.execution_path.each_with_index do |path_item, index| %>
+            <% flat_path.each_with_index do |path_item, index| %>
               <% step_type = path_item['step_type'] || path_item['type'] %>
               <div class="exec-step exec-step--<%= step_type %> mb-2"
                    role="listitem"
@@ -258,9 +259,6 @@
                   <% end %>
                   <% if path_item['resolved'] == true %>
                     <p class="text-sm mt-1">Issue resolved</p>
-                  <% end %>
-                  <% if path_item['subflow_started'].present? %>
-                    <p class="text-sm mt-1">Sub-flow started: <%= path_item['target_workflow_title'] %></p>
                   <% end %>
                 </div>
               </div>
