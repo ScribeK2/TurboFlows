@@ -118,6 +118,14 @@ module ScenariosHelper
     parts.join(" — ")
   end
 
+  # Merges child scenario execution paths into the parent's path at display time.
+  # Replaces subflow_started entries with the child's steps (excluding terminal Resolve/Escalate).
+  # Handles nested sub-flows recursively. Returns a flat array for seamless display.
+  def flattened_execution_path(scenario)
+    path = scenario.execution_path || []
+    flatten_path_entries(path)
+  end
+
   # Humanizes raw result keys: strips step_ prefix, replaces underscores, titleizes.
   # E.g. "step_6_outlook_success_check" -> "Outlook Success Check"
   def format_result_key(key)
@@ -142,5 +150,30 @@ module ScenariosHelper
     groups << { label: "User Inputs", results: user_inputs } if user_inputs.any?
     groups << { label: "Outcomes", results: outcomes } if outcomes.any?
     groups
+  end
+
+  private
+
+  def flatten_path_entries(path)
+    flat = []
+
+    path.each do |entry|
+      if entry["subflow_started"].present? && entry["child_scenario_id"].present?
+        child = Scenario.find_by(id: entry["child_scenario_id"])
+        if child
+          child_path = child.execution_path || []
+          if child_path.any?
+            last_entry = child_path.last
+            last_type = last_entry["step_type"] || last_entry["type"]
+            child_path = child_path[0..-2] if %w[resolve escalate].include?(last_type)
+          end
+          flat.concat(flatten_path_entries(child_path))
+        end
+      else
+        flat << entry
+      end
+    end
+
+    flat
   end
 end

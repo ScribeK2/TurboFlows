@@ -166,4 +166,125 @@ class ScenariosHelperTest < ActionView::TestCase
     result = scenario_step_counter(scenario, wf)
     assert_equal "Step 2", result
   end
+
+  test "flattened_execution_path merges child steps into parent path" do
+    parent_wf = Workflow.create!(title: "Parent WF", user: @user)
+    child_wf = Workflow.create!(title: "Child WF", user: @user)
+
+    child = Scenario.create!(
+      workflow: child_wf, user: @user, purpose: "simulation", status: "completed",
+      execution_path: [
+        { "step_title" => "C1", "step_type" => "question", "answer" => "yes" },
+        { "step_title" => "C2", "step_type" => "resolve", "resolved" => true }
+      ],
+      inputs: {}
+    )
+
+    parent = Scenario.create!(
+      workflow: parent_wf, user: @user, purpose: "simulation", status: "completed",
+      execution_path: [
+        { "step_title" => "P1", "step_type" => "question", "answer" => "hello" },
+        { "step_title" => "Run Child", "step_type" => "sub_flow", "subflow_started" => true, "child_scenario_id" => child.id },
+        { "step_title" => "P2", "step_type" => "resolve", "resolved" => true }
+      ],
+      inputs: {}
+    )
+    child.update!(parent_scenario: parent)
+
+    flat = flattened_execution_path(parent)
+    assert_equal 3, flat.length
+    assert_equal "P1", flat[0]["step_title"]
+    assert_equal "C1", flat[1]["step_title"]
+    assert_equal "P2", flat[2]["step_title"]
+  end
+
+  test "flattened_execution_path handles nested sub-flows recursively" do
+    grandchild_wf = Workflow.create!(title: "Grandchild WF", user: @user)
+    child_wf = Workflow.create!(title: "Child WF", user: @user)
+    parent_wf = Workflow.create!(title: "Parent WF", user: @user)
+
+    grandchild = Scenario.create!(
+      workflow: grandchild_wf, user: @user, purpose: "simulation", status: "completed",
+      execution_path: [
+        { "step_title" => "GC1", "step_type" => "action" },
+        { "step_title" => "GC2", "step_type" => "resolve", "resolved" => true }
+      ],
+      inputs: {}
+    )
+
+    child = Scenario.create!(
+      workflow: child_wf, user: @user, purpose: "simulation", status: "completed",
+      execution_path: [
+        { "step_title" => "C1", "step_type" => "question", "answer" => "yes" },
+        { "step_title" => "Run GC", "step_type" => "sub_flow", "subflow_started" => true, "child_scenario_id" => grandchild.id },
+        { "step_title" => "C2", "step_type" => "resolve", "resolved" => true }
+      ],
+      inputs: {}
+    )
+    grandchild.update!(parent_scenario: child)
+
+    parent = Scenario.create!(
+      workflow: parent_wf, user: @user, purpose: "simulation", status: "completed",
+      execution_path: [
+        { "step_title" => "P1", "step_type" => "action" },
+        { "step_title" => "Run Child", "step_type" => "sub_flow", "subflow_started" => true, "child_scenario_id" => child.id },
+        { "step_title" => "P2", "step_type" => "resolve", "resolved" => true }
+      ],
+      inputs: {}
+    )
+    child.update!(parent_scenario: parent)
+
+    flat = flattened_execution_path(parent)
+    assert_equal 4, flat.length
+    assert_equal "P1", flat[0]["step_title"]
+    assert_equal "C1", flat[1]["step_title"]
+    assert_equal "GC1", flat[2]["step_title"]
+    assert_equal "P2", flat[3]["step_title"]
+  end
+
+  test "flattened_execution_path excludes child escalate terminal steps" do
+    parent_wf = Workflow.create!(title: "Parent WF", user: @user)
+    child_wf = Workflow.create!(title: "Child WF", user: @user)
+
+    child = Scenario.create!(
+      workflow: child_wf, user: @user, purpose: "simulation", status: "completed",
+      execution_path: [
+        { "step_title" => "C1", "step_type" => "question", "answer" => "yes" },
+        { "step_title" => "C2", "step_type" => "escalate", "escalated" => true }
+      ],
+      inputs: {}
+    )
+
+    parent = Scenario.create!(
+      workflow: parent_wf, user: @user, purpose: "simulation", status: "completed",
+      execution_path: [
+        { "step_title" => "P1", "step_type" => "action" },
+        { "step_title" => "Run Child", "step_type" => "sub_flow", "subflow_started" => true, "child_scenario_id" => child.id },
+        { "step_title" => "P2", "step_type" => "resolve", "resolved" => true }
+      ],
+      inputs: {}
+    )
+    child.update!(parent_scenario: parent)
+
+    flat = flattened_execution_path(parent)
+    assert_equal 3, flat.length
+    assert_equal "C1", flat[1]["step_title"]
+  end
+
+  test "flattened_execution_path returns normal path when no sub-flows" do
+    wf = Workflow.create!(title: "Normal WF", user: @user)
+    scenario = Scenario.create!(
+      workflow: wf, user: @user, purpose: "simulation", status: "completed",
+      execution_path: [
+        { "step_title" => "S1", "step_type" => "question", "answer" => "yes" },
+        { "step_title" => "S2", "step_type" => "resolve", "resolved" => true }
+      ],
+      inputs: {}
+    )
+
+    flat = flattened_execution_path(scenario)
+    assert_equal 2, flat.length
+    assert_equal "S1", flat[0]["step_title"]
+    assert_equal "S2", flat[1]["step_title"]
+  end
 end
