@@ -220,4 +220,126 @@ class ScenariosControllerTest < ActionDispatch::IntegrationTest
     post stop_scenario_path(other_scenario)
     assert_response :not_found
   end
+
+  # Sub-flow seamless transition tests
+  test "step action renders root parent workflow title for child scenario" do
+    child_wf = Workflow.create!(title: "Child WF", user: @user)
+    q = Steps::Question.create!(workflow: child_wf, position: 0, uuid: SecureRandom.uuid, title: "CQ1", question: "Child question?")
+    Steps::Resolve.create!(workflow: child_wf, position: 1, uuid: SecureRandom.uuid, title: "CDone")
+
+    parent_scenario = Scenario.create!(
+      workflow: @workflow, user: @user, inputs: {}, purpose: "simulation",
+      status: "awaiting_subflow", resume_node_uuid: SecureRandom.uuid,
+      execution_path: [{ "step_title" => "Sub", "step_type" => "sub_flow", "subflow_started" => true }]
+    )
+    child_scenario = Scenario.create!(
+      workflow: child_wf, user: @user, parent_scenario: parent_scenario,
+      inputs: {}, purpose: "simulation", status: "active",
+      current_node_uuid: q.uuid, execution_path: []
+    )
+
+    get step_scenario_path(child_scenario)
+
+    assert_response :success
+    assert_match @workflow.title, response.body
+    assert_no_match(/Child WF/, response.body)
+  end
+
+  test "step action does not show sub-flow banner for child scenario" do
+    child_wf = Workflow.create!(title: "Child WF", user: @user)
+    q = Steps::Question.create!(workflow: child_wf, position: 0, uuid: SecureRandom.uuid, title: "CQ1", question: "Child question?")
+    Steps::Resolve.create!(workflow: child_wf, position: 1, uuid: SecureRandom.uuid, title: "CDone")
+
+    parent_scenario = Scenario.create!(
+      workflow: @workflow, user: @user, inputs: {}, purpose: "simulation",
+      status: "awaiting_subflow", resume_node_uuid: SecureRandom.uuid,
+      execution_path: [{ "step_title" => "Sub", "step_type" => "sub_flow", "subflow_started" => true }]
+    )
+    child_scenario = Scenario.create!(
+      workflow: child_wf, user: @user, parent_scenario: parent_scenario,
+      inputs: {}, purpose: "simulation", status: "active",
+      current_node_uuid: q.uuid, execution_path: []
+    )
+
+    get step_scenario_path(child_scenario)
+
+    assert_response :success
+    assert_no_match(/Sub-workflow of/, response.body)
+    assert_no_match(/completing will return you to the main workflow/, response.body)
+  end
+
+  test "next_step auto-returns to parent when child completes" do
+    child_wf = Workflow.create!(title: "Child WF", user: @user)
+    resolve_step = Steps::Resolve.create!(workflow: child_wf, position: 0, uuid: SecureRandom.uuid, title: "CDone")
+
+    # Create a real SubFlow step in the parent workflow so process_subflow_completion
+    # can find resume_node_uuid and advance to the next parent step
+    sf_step = Steps::SubFlow.create!(workflow: @workflow, position: 1, uuid: SecureRandom.uuid, title: "SubStep")
+    parent_resolve = Steps::Resolve.create!(workflow: @workflow, position: 2, uuid: SecureRandom.uuid, title: "Done")
+    Transition.create!(step: sf_step, target_step: parent_resolve, position: 0)
+
+    parent_scenario = Scenario.create!(
+      workflow: @workflow, user: @user, inputs: {}, purpose: "simulation",
+      status: "awaiting_subflow", resume_node_uuid: sf_step.uuid,
+      execution_path: [{ "step_title" => "Sub", "step_type" => "sub_flow", "subflow_started" => true }],
+      current_node_uuid: sf_step.uuid
+    )
+    child_scenario = Scenario.create!(
+      workflow: child_wf, user: @user, parent_scenario: parent_scenario,
+      inputs: {}, purpose: "simulation", status: "active",
+      current_node_uuid: resolve_step.uuid, execution_path: []
+    )
+
+    post next_step_scenario_path(child_scenario), params: { answer: "" }
+
+    assert_redirected_to step_scenario_path(parent_scenario)
+  end
+
+  test "empty sub-flow auto-progresses silently back to parent" do
+    child_wf = Workflow.create!(title: "Empty Child WF", user: @user)
+    resolve_step = Steps::Resolve.create!(workflow: child_wf, position: 0, uuid: SecureRandom.uuid, title: "CDone")
+
+    # Create a real SubFlow step in the parent workflow so process_subflow_completion
+    # can find resume_node_uuid and advance to the next parent step
+    sf_step = Steps::SubFlow.create!(workflow: @workflow, position: 1, uuid: SecureRandom.uuid, title: "SubStep")
+    parent_resolve = Steps::Resolve.create!(workflow: @workflow, position: 2, uuid: SecureRandom.uuid, title: "Done")
+    Transition.create!(step: sf_step, target_step: parent_resolve, position: 0)
+
+    parent_scenario = Scenario.create!(
+      workflow: @workflow, user: @user, inputs: {}, purpose: "simulation",
+      status: "awaiting_subflow", resume_node_uuid: sf_step.uuid,
+      execution_path: [{ "step_title" => "Sub", "step_type" => "sub_flow", "subflow_started" => true }],
+      current_node_uuid: sf_step.uuid
+    )
+    child_scenario = Scenario.create!(
+      workflow: child_wf, user: @user, parent_scenario: parent_scenario,
+      inputs: {}, purpose: "simulation", status: "active",
+      current_node_uuid: resolve_step.uuid, execution_path: []
+    )
+
+    get step_scenario_path(child_scenario)
+    assert_response :redirect
+  end
+
+  test "step view disables back button on first child step" do
+    child_wf = Workflow.create!(title: "Child WF", user: @user)
+    q = Steps::Question.create!(workflow: child_wf, position: 0, uuid: SecureRandom.uuid, title: "CQ1", question: "Child question?")
+    Steps::Resolve.create!(workflow: child_wf, position: 1, uuid: SecureRandom.uuid, title: "CDone")
+
+    parent_scenario = Scenario.create!(
+      workflow: @workflow, user: @user, inputs: {}, purpose: "simulation",
+      status: "awaiting_subflow", resume_node_uuid: SecureRandom.uuid,
+      execution_path: [{ "step_title" => "P1", "step_type" => "question" }]
+    )
+    child_scenario = Scenario.create!(
+      workflow: child_wf, user: @user, parent_scenario: parent_scenario,
+      inputs: {}, purpose: "simulation", status: "active",
+      current_node_uuid: q.uuid, execution_path: []
+    )
+
+    get step_scenario_path(child_scenario)
+
+    assert_response :success
+    assert_no_match(/back=true/, response.body)
+  end
 end

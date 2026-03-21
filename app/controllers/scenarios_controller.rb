@@ -35,7 +35,7 @@ class ScenariosController < ApplicationController
 
   def step
     @scenario = current_user.scenarios.find(params[:id])
-    @workflow = @scenario.workflow
+    @workflow = @scenario.root_workflow
 
     # Guard clauses for terminal/waiting states
     return if handle_step_guard_redirects
@@ -89,9 +89,14 @@ class ScenariosController < ApplicationController
       end
 
       if @scenario.complete?
-        # If this is a child scenario, redirect to parent's step view to resume it
         if @scenario.parent_scenario.present?
-          redirect_to step_scenario_path(@scenario.parent_scenario)
+          parent = @scenario.parent_scenario
+          parent.process_subflow_completion
+          if parent.complete?
+            redirect_to_completion(parent)
+          else
+            redirect_to step_scenario_path(parent)
+          end
         else
           redirect_to scenario_path(@scenario), notice: "Scenario completed successfully!"
         end
@@ -114,7 +119,13 @@ class ScenariosController < ApplicationController
 
     if @scenario.complete?
       if @scenario.parent_scenario.present?
-        redirect_to step_scenario_path(@scenario.parent_scenario)
+        parent = @scenario.parent_scenario
+        parent.process_subflow_completion
+        if parent.complete?
+          redirect_to_completion(parent)
+        else
+          redirect_to step_scenario_path(parent)
+        end
       else
         redirect_to scenario_path(@scenario), notice: "Scenario completed!"
       end
@@ -240,7 +251,13 @@ class ScenariosController < ApplicationController
   # Returns true if a redirect was issued (caller should return), false otherwise.
   def auto_advance_non_interactive_step
     current_step = @scenario.current_step
-    return false unless current_step && current_step['type'] == 'sub_flow'
+    return false unless current_step
+
+    is_subflow_step = current_step.step_type == 'sub_flow'
+    # Auto-process resolve steps in child scenarios so sub-flows complete seamlessly
+    is_child_resolve = @scenario.parent_scenario.present? && current_step.step_type == 'resolve'
+
+    return false unless is_subflow_step || is_child_resolve
 
     @scenario.process_step(nil)
 
@@ -251,7 +268,17 @@ class ScenariosController < ApplicationController
     end
 
     if @scenario.complete?
-      redirect_to_completion(@scenario)
+      if @scenario.parent_scenario.present?
+        parent = @scenario.parent_scenario
+        parent.process_subflow_completion
+        if parent.complete?
+          redirect_to_completion(parent)
+        else
+          redirect_to step_scenario_path(parent)
+        end
+      else
+        redirect_to_completion(@scenario)
+      end
     else
       redirect_to step_scenario_path(@scenario)
     end
