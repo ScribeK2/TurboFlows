@@ -59,9 +59,18 @@
             <% end %>
           </div>
         </div>
-        <% total_steps = @workflow.steps.count %>
-        <% completed_steps = @scenario.execution_path&.length || 0 %>
-        <% progress_pct = total_steps > 0 ? ((completed_steps.to_f / total_steps) * 100).round : 0 %>
+        <%
+          # Walk the full ancestor chain for cumulative progress (supports deeply nested sub-flows)
+          total_steps = @scenario.workflow.steps.count
+          completed_steps = @scenario.execution_path&.length || 0
+          ancestor = @scenario.parent_scenario
+          while ancestor.present?
+            total_steps += ancestor.workflow.steps.count
+            completed_steps += (ancestor.execution_path&.length || 0)
+            ancestor = ancestor.parent_scenario
+          end
+          progress_pct = total_steps > 0 ? ((completed_steps.to_f / total_steps) * 100).round : 0
+        %>
         <div class="scenario-progress-bar-wrap">
           <div class="scenario-progress-bar" style="width: <%= progress_pct %>%"></div>
         </div>
