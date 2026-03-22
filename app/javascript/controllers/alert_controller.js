@@ -8,6 +8,12 @@ export default class extends Controller {
   static targets = ["progress"]
 
   connect() {
+    this.element.animate([
+      { transform: "translateX(120%)", opacity: 0 },
+      { transform: "translateX(-4%)", opacity: 1 },
+      { transform: "translateX(0)", opacity: 1 }
+    ], { duration: 300, easing: "cubic-bezier(0.16, 1, 0.3, 1)" })
+
     this.dismissTimer = setTimeout(() => {
       this.fadeOut()
     }, this.durationValue)

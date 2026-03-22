@@ -28,6 +28,14 @@
   background: var(--color-negative);
 }
 
+.flash--notice {
+  border-left: 4px solid var(--color-positive);
+}
+
+.flash--alert {
+  border-left: 4px solid var(--color-negative);
+}
+
 [data-theme="dark"] .flash--notice .flash__body {
   background: oklch(0.5 0.16 145);
 }
@@ -46,7 +54,7 @@
   bottom: 0;
   left: 0;
   height: 2px;
-  background: oklch(1 0 0 / 0.4);
+  background: var(--color-primary);
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
   animation: shrinkWidth 5s linear forwards;
 }

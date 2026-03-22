@@ -21,6 +21,20 @@
   max-width: 32rem;
   max-height: 90vh;
   overflow: hidden;
+  transition: opacity var(--duration-normal) var(--ease-out),
+              transform var(--duration-normal) var(--ease-out);
+}
+
+@starting-style {
+  .dialog__panel {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+
+  .dialog[open] {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
 }
 
 /* Use flex layout only when dialog is open — preserves native

@@ -63,6 +63,12 @@ export default class extends Controller {
         this.sunIconTarget.classList.add("is-hidden")
         this.moonIconTarget.classList.remove("is-hidden")
       }
+
+      const activeIcon = isDark ? this.sunIconTarget : this.moonIconTarget
+      activeIcon.animate([
+        { transform: "rotate(-90deg)", opacity: 0 },
+        { transform: "rotate(0deg)", opacity: 1 }
+      ], { duration: 250, easing: "cubic-bezier(0.16, 1, 0.3, 1)" })
     }
   }
 

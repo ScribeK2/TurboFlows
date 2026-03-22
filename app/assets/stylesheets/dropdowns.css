@@ -16,6 +16,16 @@
   box-shadow: var(--shadow-lg);
   z-index: var(--z-dropdown);
   overflow: hidden;
+  transform-origin: top right;
+  transition: opacity var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
+}
+
+@starting-style {
+  .dropdown__menu {
+    opacity: 0;
+    transform: scale(0.97);
+  }
 }
 
 .dropdown__menu.is-hidden {
