@@ -82,6 +82,32 @@
               data-builder-flow-url-value="<%= flow_diagram_workflow_path(workflow) %>">
         &#9724; View Flow
       </button>
+      <div class="builder__toolbar-item builder__edit-only"
+           data-controller="template-picker"
+           data-template-picker-workflow-id-value="<%= workflow.id %>">
+        <button class="builder__toolbar-btn"
+                data-action="click->template-picker#toggle"
+                type="button">
+          Templates
+        </button>
+        <div class="builder__template-popover"
+             data-template-picker-target="popover"
+             hidden>
+          <div class="builder__template-popover-header">Start from template</div>
+          <% WorkflowTemplate.all.each do |key, template| %>
+            <button class="builder__template-popover-item"
+                    data-action="click->template-picker#apply"
+                    data-template-key="<%= key %>"
+                    data-template-name="<%= template['name'] %>"
+                    type="button"
+                    style="--template-hue: <%= template['hue'] %>">
+              <span class="builder__template-dot"></span>
+              <%= template["name"] %>
+            </button>
+          <% end %>
+          <div class="builder__template-popover-footer">Replaces current steps</div>
+        </div>
+      </div>
       <button class="builder__toolbar-btn"
               data-action="click->builder#openSettings"
               data-builder-settings-url-value="<%= settings_workflow_path(workflow) %>">
