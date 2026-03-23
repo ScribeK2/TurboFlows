@@ -126,7 +126,11 @@ class StepsController < ApplicationController
 
   # DELETE /workflows/:workflow_id/steps/:id
   def destroy
+    if @workflow.start_step_id == @step.id
+      @workflow.update_column(:start_step_id, nil)
+    end
     @step.destroy
+    ensure_start_step_assigned
     Step.rebalance_positions(@workflow)
     remaining_steps = @workflow.steps.reload.count
 
@@ -137,6 +141,7 @@ class StepsController < ApplicationController
           streams << turbo_stream.append("steps-list",
             partial: "workflows/empty_state",
             locals: { workflow: @workflow })
+          streams << turbo_stream.update("builder-panel", "")
         end
         render turbo_stream: streams
       end

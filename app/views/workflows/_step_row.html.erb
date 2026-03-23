@@ -54,14 +54,14 @@
   </span>
 
   <%# Delete Button (edit mode only) %>
-  <form method="post" action="<%= workflow_step_path(workflow, step) %>"
-        data-turbo-method="delete" data-turbo-confirm="Remove this step?"
-        class="builder__step-delete builder__edit-only">
-    <button type="submit" title="Remove step" onclick="event.stopPropagation()"
-            class="btn btn--plain btn--sm" style="color: var(--color-negative);">
-      <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-      </svg>
-    </button>
-  </form>
+  <%= button_to workflow_step_path(workflow, step),
+        method: :delete,
+        data: { turbo_confirm: "Remove this step?", turbo_stream: true, action: "click->step-list#stopPropagation" },
+        class: "builder__step-delete builder__edit-only btn btn--plain btn--sm",
+        style: "color: var(--color-negative);",
+        title: "Remove step" do %>
+    <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+    </svg>
+  <% end %>
 </div>

@@ -56,6 +56,10 @@ export default class extends Controller {
     })
   }
 
+  stopPropagation(event) {
+    event.stopPropagation()
+  }
+
   closeOnOutsideClick(event) {
     if (this.hasTypePickerTarget && !this.typePickerTarget.hidden) {
       if (!event.target.closest(".builder__list-add-wrapper")) {

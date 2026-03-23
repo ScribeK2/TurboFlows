@@ -16,11 +16,10 @@
       <% steps.each do |step| %>
         <%= render "workflows/step_row", step: step, workflow: workflow %>
       <% end %>
+      <% if steps.empty? %>
+        <%= render "workflows/empty_state", workflow: workflow %>
+      <% end %>
     </div>
-
-    <% if steps.empty? %>
-      <%= render "workflows/empty_state", workflow: workflow %>
-    <% end %>
   </div>
 
   <%# Add Step Button (edit mode only) — outside scroll area so popover isn't clipped %>
