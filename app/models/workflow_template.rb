@@ -1,7 +1,7 @@
 class WorkflowTemplate
   TEMPLATES = begin
     raw = YAML.safe_load_file(Rails.root.join("config/templates.yml"), permitted_classes: [])
-    deep_freeze = ->(obj) do
+    deep_freeze = lambda do |obj|
       case obj
       when Hash
         obj.each_value { |v| deep_freeze.call(v) }
