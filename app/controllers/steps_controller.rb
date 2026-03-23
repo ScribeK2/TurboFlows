@@ -155,6 +155,37 @@ class StepsController < ApplicationController
     )
   end
 
+  # POST /workflows/:workflow_id/steps/apply_template
+  def apply_template
+    template = begin
+      WorkflowTemplate.find(params[:template_key])
+    rescue KeyError
+      return head(:unprocessable_entity)
+    end
+
+    steps_data, first_uuid = build_steps_data_from_template(template)
+
+    Workflow.transaction do
+      StepBuilder.call(@workflow, steps_data, start_node_uuid: first_uuid, replace: true)
+      @workflow.update!(graph_mode: true)
+    end
+
+    @workflow.reload
+    steps = @workflow.steps.order(:position).includes(:transitions, :incoming_transitions)
+
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: [
+          turbo_stream.update("steps-list",
+            partial: "workflows/steps_list_items",
+            locals: { workflow: @workflow, steps: steps }),
+          turbo_stream.update("builder-panel", "")
+        ]
+      end
+      format.html { redirect_to workflow_path(@workflow, edit: true), notice: "Template applied." }
+    end
+  end
+
   # PATCH /workflows/:workflow_id/steps/:id/reorder
   def reorder
     StepReorderer.call(@workflow, @step, params[:position])
@@ -276,5 +307,31 @@ class StepsController < ApplicationController
       title: step.title,
       position: step.position
     }
+  end
+
+  def build_steps_data_from_template(template)
+    uuid_map = {}
+    template["steps"].each { |s| uuid_map[s["uuid"]] = SecureRandom.uuid }
+
+    steps_data = template["steps"].map do |s|
+      step_hash = {
+        "id"       => uuid_map[s["uuid"]],
+        "type"     => s["type"],
+        "title"    => s["title"],
+        "position" => s["position"]
+      }
+
+      step_transitions = template["transitions"].select { |t| t["from"] == s["uuid"] }
+      if step_transitions.any?
+        step_hash["transitions"] = step_transitions.map.with_index do |t, i|
+          { "target_uuid" => uuid_map[t["to"]], "label" => t["label"], "position" => i }.compact
+        end
+      end
+
+      step_hash
+    end
+
+    first_uuid = uuid_map[template["steps"].first["uuid"]]
+    [steps_data, first_uuid]
   end
 end

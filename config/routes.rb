@@ -36,6 +36,9 @@ Rails.application.routes.draw do
     end
     resources :scenarios, only: %i[new create]
     resources :steps, except: [:index] do
+      collection do
+        post :apply_template
+      end
       member do
         patch :reorder
         get :panel_edit
