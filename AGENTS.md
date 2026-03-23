@@ -11,7 +11,8 @@ A straightforward workflow creator for call/chat centers to build, simulate, and
 - Scenario Mode: interactive step-by-step graph traversal with variable interpolation {{var}}, sub-flow recursion, safety limits
 - Real-time collaboration via Action Cable (WorkflowChannel presence)
 - Hierarchical Groups (up to 5 levels) + Folders + drag-and-drop organization
-- Template library + import/export (JSON/CSV/YAML/MD → JSON/PDF via Prawn)
+- Workflow templates: YAML-driven archetypes (`WorkflowTemplate`) loaded from `config/templates.yml` (5 presets: Guided Decision, Verification Checklist, Triage & Escalate, Diagnosis Flow, Simple Handoff)
+- Import/export (JSON/CSV/YAML/MD → JSON/PDF via Prawn)
 - No Node.js: pure Hotwire (Turbo + Stimulus), importmap + Propshaft, vanilla CSS (@layer + OKLCH tokens)
 - Rails 8.1, Devise auth (roles: Administrator / Editor / User), optimistic locking (lock_version)
 
@@ -62,13 +63,13 @@ Kamal: `kamal deploy` (see `config/deploy.yml`). Required env: `RAILS_MASTER_KEY
 - `Scenario` — simulation runner. Always uses graph traversal via `StepResolver` and `current_node_uuid` tracking. Spawns child scenarios for sub-flows, enforces iteration limits on circular graphs.
 - `Group` / `Folder` — hierarchical org (recursive membership, cascade permissions)
 - `User` — Devise model with roles (Administrator / Editor / User)
-- `Template` / `StepTemplate` — reusable patterns
+- `WorkflowTemplate` — YAML-driven workflow archetypes loaded from `config/templates.yml`; `StepTemplate` — step-level template definitions
 
 ## Builder UI
 
 The unified builder lives at `workflows/:id` — one URL for both viewing and editing. No separate wizard or editor views.
 
-**Layout:** Header (inline-editable title, status, publish) → Toolbar (step count, View Flow, Settings) → Main area (step list + slide-in panel).
+**Layout:** Header (three-zone grid: left = inline-editable title + status, right = Edit/Run Scenario/Publish/Export buttons) → Toolbar (step count, View Flow, Templates popover, Settings) → Main area (step list + slide-in panel). Empty state shows template archetype cards for quick-start.
 
 **Key views:**
 - `_builder.html.erb` — main layout, renders step list + empty Turbo Frame panel
@@ -76,11 +77,13 @@ The unified builder lives at `workflows/:id` — one URL for both viewing and ed
 - `steps/_panel_edit.html.erb` — step editor loaded via Turbo Frame into the panel
 - `_flow_diagram_panel.html.erb` — read-only BFS flow diagram in the panel
 - `_settings_panel.html.erb` — workflow metadata (description, groups, public toggle)
+- `_empty_state.html.erb` — shown when no steps; includes template archetype cards
 
 **Key Stimulus controllers:**
 - `builder_controller.js` — panel open/close, step selection, title autosave, Escape to close
 - `step_list_controller.js` — SortableJS reorder + type picker popover
 - `inline_autosave_controller.js` — debounced autosave (2s), listens for `lexxy:change` events, flushes pending saves on disconnect via `FormData` + `fetch`
+- `template_picker_controller.js` — template popover in toolbar, applies workflow archetypes
 
 **Autosave pattern:** Every field change triggers `inline-autosave#schedule` (via `data-action` on inputs or `lexxy:change` listener on the form). On disconnect (e.g., switching steps), pending saves are flushed by snapshotting `FormData` and sending via `fetch()` POST with `_method=patch`.
 
@@ -112,10 +115,18 @@ All workflows are graphs. There is no separate "linear mode" — a sequential fl
 - Step UUIDs are immutable after creation
 - Optimistic locking on both Workflow and Step (`lock_version`)
 
+## Navigation & Search
+
+- `NavController` (Rails) — `menu` and `search_data` endpoints for the global navigation UI
+- `nav_search_controller.js` — Cmd+K fuzzy search (Fuse.js) across workflows, respects user permissions
+- `nav_menu_controller.js` — navigation menu dropdown
+- `dialog_manager_controller.js` — single-open dialog enforcement
+- Three-zone header: logo center, search left, actions right
+
 ## Other Highlights
 
 - Rich text: Action Text + Lexxy (Lexical editor)
-- Client-side search: Fuse.js
+- Global search: Fuse.js (Cmd+K via `nav_search_controller.js`)
 - Drag-and-drop: SortableJS
 - No multi-tenancy (single install/org), but strong group-based access
 - Background jobs: Active Job (expandable to Solid Queue)
