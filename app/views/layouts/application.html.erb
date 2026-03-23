@@ -40,26 +40,95 @@
 
   <body class="page-body">
     <!-- Navigation Bar -->
-    <nav class="page-header">
+    <nav class="page-header"
+         data-controller="dialog-manager"
+         data-dialog-manager-nav-menu-outlet="[data-controller='nav-menu']"
+         data-dialog-manager-nav-search-outlet="[data-controller='nav-search']"
+         data-action="dialog:show->dialog-manager#closeOthers">
       <div class="page-header__inner">
         <div class="page-header__row">
-          <div class="nav__brand">
-            <%= link_to root_path, class: "nav__brand-link" do %>
-              <svg class="nav__brand-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <circle cx="5" cy="6" r="2" fill="#10b981" />
-                <circle cx="12" cy="18" r="2" fill="#3b82f6" />
-                <circle cx="19" cy="6" r="2" fill="#f59e0b" />
-                <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 8v2a4 4 0 004 4h2" />
-                <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M19 8v2a4 4 0 01-4 4h-2" />
-              </svg>
-              <span class="nav__brand-text">TurboFlows</span>
+          <%# === Left zone: Search pill === %>
+          <div class="nav__zone nav__zone--start">
+            <% if user_signed_in? %>
+              <div data-controller="nav-search" data-nav-search-url-value="<%= nav_search_data_path(format: :json) %>">
+                <button type="button"
+                        data-action="click->nav-search#open"
+                        class="nav__search-pill"
+                        aria-label="Search workflows">
+                  <svg class="icon icon--sm" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8" />
+                    <path stroke-linecap="round" d="m21 21-4.35-4.35" />
+                  </svg>
+                  <span class="nav__search-pill-text">Search...</span>
+                  <kbd class="nav__search-pill-kbd">&#8984;K</kbd>
+                </button>
+
+                <dialog data-nav-search-target="dialog"
+                        data-action="click->nav-search#backdropClose"
+                        class="nav__search popup popup--animated">
+                  <div class="nav__search-input-wrapper">
+                    <svg class="icon icon--sm" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                      <circle cx="11" cy="11" r="8" />
+                      <path stroke-linecap="round" d="m21 21-4.35-4.35" />
+                    </svg>
+                    <input data-nav-search-target="input"
+                           data-action="input->nav-search#search keydown->nav-search#navigate"
+                           type="text"
+                           class="nav__search-input"
+                           placeholder="Search workflows..."
+                           autocomplete="off">
+                    <kbd class="nav__search-esc">Esc</kbd>
+                  </div>
+                  <div data-nav-search-target="results" class="nav__search-results"></div>
+                  <div class="nav__search-footer">
+                    <span><kbd>&#8593;&#8595;</kbd> navigate</span>
+                    <span><kbd>&#8629;</kbd> open</span>
+                    <span><kbd>esc</kbd> close</span>
+                  </div>
+                </dialog>
+              </div>
             <% end %>
-            <div class="nav__links">
-              <%= link_to "Dashboard", root_path, class: "nav-item #{current_page?(root_path) ? 'is-active' : ''}" %>
-              <%= link_to "Workflows", workflows_path, class: "nav-item #{current_page?(workflows_path) ? 'is-active' : ''}" %>
+          </div>
+
+          <%# === Center zone: Logo + menu trigger === %>
+          <div class="nav__zone nav__zone--center">
+            <div class="nav__brand">
+              <%= link_to root_path, class: "nav__brand-link" do %>
+                <svg class="nav__brand-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle cx="5" cy="6" r="2" fill="#10b981" />
+                  <circle cx="12" cy="18" r="2" fill="#3b82f6" />
+                  <circle cx="19" cy="6" r="2" fill="#f59e0b" />
+                  <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 8v2a4 4 0 004 4h2" />
+                  <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M19 8v2a4 4 0 01-4 4h-2" />
+                </svg>
+                <span class="nav__brand-text">TurboFlows</span>
+              <% end %>
+
+              <% if user_signed_in? %>
+                <div data-controller="nav-menu" data-nav-menu-src-value="<%= nav_menu_path %>">
+                  <button type="button"
+                          data-action="click->nav-menu#toggle"
+                          class="nav__menu-trigger"
+                          aria-label="Open menu">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                      <path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </button>
+
+                  <dialog data-nav-menu-target="dialog"
+                          data-action="click->nav-menu#backdropClose"
+                          class="nav__menu popup popup--animated">
+                    <turbo-frame id="nav_menu" data-nav-menu-target="frame">
+                      <div class="nav__menu-loading">Loading...</div>
+                    </turbo-frame>
+                  </dialog>
+                </div>
+              <% end %>
             </div>
           </div>
-          <div class="nav__actions">
+
+          <%# === Right zone: Dark mode + avatar === %>
+          <div class="nav__zone nav__zone--end">
             <!-- Dark Mode Toggle -->
             <button
               type="button"
@@ -67,18 +136,16 @@
               class="dark-mode-toggle"
               aria-label="Toggle dark mode"
             >
-              <!-- Sun Icon (shown in dark mode to switch to light) -->
-              <svg data-dark-mode-target="sunIcon" class="icon icon--sm is-hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <svg data-dark-mode-target="sunIcon" class="icon icon--sm is-hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
               </svg>
-              <!-- Moon Icon (shown in light mode to switch to dark) -->
-              <svg data-dark-mode-target="moonIcon" class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <svg data-dark-mode-target="moonIcon" class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
               </svg>
             </button>
 
             <% if user_signed_in? %>
-              <!-- Avatar Dropdown -->
+              <!-- Avatar Dropdown (slimmed) -->
               <div class="relative" data-controller="dropdown">
                 <button
                   type="button"
@@ -91,45 +158,23 @@
                   <%= current_user.avatar_initial %>
                 </button>
 
-                <!-- Dropdown Menu -->
-                <div
-                  data-dropdown-target="menu"
-                  class="dropdown__menu is-hidden"
-                  role="menu"
-                >
-                  <!-- User Info Header -->
+                <div data-dropdown-target="menu" class="dropdown__menu is-hidden" role="menu">
                   <div class="dropdown__header">
                     <p class="dropdown__user-name"><%= current_user.display_label %></p>
-                    <span class="badge <%= current_user.avatar_role_badge_classes %>">
-                      <%= current_user.role.capitalize %>
-                    </span>
+                    <p class="dropdown__user-email"><%= current_user.email %></p>
                   </div>
-
-                  <!-- Menu Links -->
-                  <div class="py-1">
-                    <% if current_user.can_access_admin? %>
-                      <%= link_to admin_root_path, class: "dropdown__item", role: "menuitem" do %>
-                        <svg class="icon icon--sm" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                        </svg>
-                        Admin
-                      <% end %>
-                    <% end %>
-
+                  <div class="dropdown__body">
                     <%= link_to edit_user_registration_path, class: "dropdown__item", role: "menuitem" do %>
                       <svg class="icon icon--sm" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
                       Account
                     <% end %>
-                  </div>
-
-                  <!-- Sign Out -->
-                  <div class="dropdown__divider">
+                    <div class="dropdown__divider"></div>
                     <%= link_to destroy_user_session_path, data: { turbo_method: :delete }, class: "dropdown__item", role: "menuitem" do %>
                       <svg class="icon icon--sm" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
                       </svg>
                       Sign out
                     <% end %>
