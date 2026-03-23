@@ -27,4 +27,22 @@
       <% end %>
     <% end %>
   </div>
+
+  <div class="builder__template-divider">
+    <span>or start from a template</span>
+  </div>
+
+  <div class="builder__template-grid">
+    <% WorkflowTemplate.all.each do |key, template| %>
+      <%= button_to apply_template_workflow_steps_path(workflow),
+          method: :post,
+          params: { template_key: key },
+          data: { turbo_stream: true },
+          class: "builder__template-card",
+          style: "--template-hue: #{template['hue']}" do %>
+        <span class="builder__template-card-name"><%= template["name"] %></span>
+        <span class="builder__template-card-desc"><%= template["description"] %></span>
+      <% end %>
+    <% end %>
+  </div>
 </div>

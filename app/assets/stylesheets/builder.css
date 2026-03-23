@@ -537,6 +537,74 @@
   .empty-state__ghost-row:nth-child(2) { transform: rotate(1deg); border-left-color: oklch(0.55 0.18 var(--hue-action)); }
   .empty-state__ghost-row:nth-child(3) { transform: rotate(-1deg); border-left-color: oklch(0.55 0.18 var(--hue-resolve)); }
 
+  /* Template section in empty state */
+  .builder__template-divider {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    max-width: 20rem;
+    margin: 0 auto;
+  }
+
+  .builder__template-divider::before,
+  .builder__template-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--color-border);
+  }
+
+  .builder__template-divider span {
+    font-size: var(--text-xs);
+    color: var(--color-ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .builder__template-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+    max-width: 26rem;
+    margin: 0 auto;
+  }
+
+  .builder__template-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-1);
+    background: var(--color-canvas-raised);
+    border: 1px solid var(--color-border);
+    border-left: 3px solid oklch(0.55 0.20 var(--template-hue, 250));
+    border-radius: var(--radius);
+    padding: var(--space-2) var(--space-3);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color var(--duration-fast) var(--ease-out),
+                background var(--duration-fast) var(--ease-out);
+    font-family: inherit;
+    width: 100%;
+  }
+
+  .builder__template-card:hover {
+    border-color: oklch(0.55 0.20 var(--template-hue, 250));
+    background: oklch(0.96 0.01 var(--template-hue, 250));
+  }
+
+  .builder__template-card-name {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+
+  .builder__template-card-desc {
+    font-size: 0.6875rem;
+    color: var(--color-ink-muted);
+  }
+
   /* ===== View Mode ===== */
   .builder[data-builder-mode-value="view"] .drag-handle,
   .builder[data-builder-mode-value="view"] .builder__list-add,
