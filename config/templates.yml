@@ -1,0 +1,200 @@
+guided_decision:
+  name: Guided Decision
+  description: "Questions → branches → outcomes"
+  hue: 250
+  steps:
+    - uuid: gd-q1
+      type: question
+      title: "Initial question"
+      position: 1
+    - uuid: gd-q2a
+      type: question
+      title: "Follow-up (Path A)"
+      position: 2
+    - uuid: gd-q2b
+      type: question
+      title: "Follow-up (Path B)"
+      position: 3
+    - uuid: gd-r1
+      type: resolve
+      title: "Outcome A"
+      position: 4
+    - uuid: gd-r2
+      type: resolve
+      title: "Outcome B"
+      position: 5
+  transitions:
+    - from: gd-q1
+      to: gd-q2a
+      label: "Path A"
+    - from: gd-q1
+      to: gd-q2b
+      label: "Path B"
+    - from: gd-q2a
+      to: gd-r1
+    - from: gd-q2b
+      to: gd-r2
+
+verification_checklist:
+  name: Verification Checklist
+  description: "Actions → gate → resolve or escalate"
+  hue: 145
+  steps:
+    - uuid: vc-a1
+      type: action
+      title: "Verify step 1"
+      position: 1
+    - uuid: vc-a2
+      type: action
+      title: "Verify step 2"
+      position: 2
+    - uuid: vc-q1
+      type: question
+      title: "All checks passed?"
+      position: 3
+    - uuid: vc-r1
+      type: resolve
+      title: "Verified — proceed"
+      position: 4
+    - uuid: vc-e1
+      type: escalate
+      title: "Escalate for review"
+      position: 5
+  transitions:
+    - from: vc-a1
+      to: vc-a2
+    - from: vc-a2
+      to: vc-q1
+    - from: vc-q1
+      to: vc-r1
+      label: "Yes"
+    - from: vc-q1
+      to: vc-e1
+      label: "No"
+
+triage_and_escalate:
+  name: Triage & Escalate
+  description: "Sort → branch → resolve or escalate"
+  hue: 25
+  steps:
+    - uuid: te-q1
+      type: question
+      title: "What type of issue?"
+      position: 1
+    - uuid: te-a1
+      type: action
+      title: "Handle category A"
+      position: 2
+    - uuid: te-a2
+      type: action
+      title: "Handle category B"
+      position: 3
+    - uuid: te-r1
+      type: resolve
+      title: "Issue resolved"
+      position: 4
+    - uuid: te-e1
+      type: escalate
+      title: "Escalate to specialist"
+      position: 5
+  transitions:
+    - from: te-q1
+      to: te-a1
+      label: "Category A"
+    - from: te-q1
+      to: te-a2
+      label: "Category B"
+    - from: te-a1
+      to: te-r1
+    - from: te-a2
+      to: te-e1
+
+diagnosis_flow:
+  name: Diagnosis Flow
+  description: "Narrow down iteratively → resolve"
+  hue: 290
+  steps:
+    - uuid: df-q1
+      type: question
+      title: "Describe the symptom"
+      position: 1
+    - uuid: df-a1
+      type: action
+      title: "Initial diagnostic check"
+      position: 2
+    - uuid: df-q2
+      type: question
+      title: "Did that help?"
+      position: 3
+    - uuid: df-a2
+      type: action
+      title: "Try advanced fix"
+      position: 4
+    - uuid: df-q3
+      type: question
+      title: "Issue resolved now?"
+      position: 5
+    - uuid: df-r1
+      type: resolve
+      title: "Resolved"
+      position: 6
+    - uuid: df-e1
+      type: escalate
+      title: "Escalate — needs deeper investigation"
+      position: 7
+  transitions:
+    - from: df-q1
+      to: df-a1
+    - from: df-a1
+      to: df-q2
+    - from: df-q2
+      to: df-r1
+      label: "Yes"
+    - from: df-q2
+      to: df-a2
+      label: "No"
+    - from: df-a2
+      to: df-q3
+    - from: df-q3
+      to: df-r1
+      label: "Yes"
+    - from: df-q3
+      to: df-e1
+      label: "No"
+
+simple_handoff:
+  name: Simple Handoff
+  description: "Gather info → escalate or resolve"
+  hue: 160
+  steps:
+    - uuid: sh-q1
+      type: question
+      title: "Gather initial details"
+      position: 1
+    - uuid: sh-a1
+      type: action
+      title: "Document the request"
+      position: 2
+    - uuid: sh-q2
+      type: question
+      title: "Can you handle this directly?"
+      position: 3
+    - uuid: sh-r1
+      type: resolve
+      title: "Handled — resolved"
+      position: 4
+    - uuid: sh-e1
+      type: escalate
+      title: "Hand off to specialist"
+      position: 5
+  transitions:
+    - from: sh-q1
+      to: sh-a1
+    - from: sh-a1
+      to: sh-q2
+    - from: sh-q2
+      to: sh-r1
+      label: "Yes"
+    - from: sh-q2
+      to: sh-e1
+      label: "No"
