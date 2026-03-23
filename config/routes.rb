@@ -17,7 +17,6 @@ Rails.application.routes.draw do
       get :export_pdf
       get :preview
       get :variables
-      post :save_as_template
       get :start
       post :begin_execution
       # Publishing & versioning
@@ -49,12 +48,6 @@ Rails.application.routes.draw do
   # Folder management (accessible to editors/admins)
   patch 'folders/move_workflow', to: 'folders#move_workflow', as: :move_workflow_folder
 
-  resources :templates do
-    member do
-      post :use
-    end
-  end
-
   resources :scenarios, only: [:show] do
     member do
       post :next_step
@@ -78,7 +71,6 @@ Rails.application.routes.draw do
         post :reset_password
       end
     end
-    resources :templates, except: [:show]
     resources :workflows, only: %i[index show destroy]
     resources :groups do
       patch 'folders/reorder', to: 'folders#reorder', as: :reorder_folders

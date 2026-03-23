@@ -57,9 +57,6 @@
             <div class="nav__links">
               <%= link_to "Dashboard", root_path, class: "nav-item #{current_page?(root_path) ? 'is-active' : ''}" %>
               <%= link_to "Workflows", workflows_path, class: "nav-item #{current_page?(workflows_path) ? 'is-active' : ''}" %>
-              <% if current_user&.can_create_workflows? %>
-                <%= link_to "Templates", templates_path, class: "nav-item #{current_page?(templates_path) ? 'is-active' : ''}" %>
-              <% end %>
             </div>
           </div>
           <div class="nav__actions">

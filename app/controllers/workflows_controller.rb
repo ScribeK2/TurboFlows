@@ -1,9 +1,9 @@
 class WorkflowsController < ApplicationController
   before_action :set_workflow,
-                only: %i[show edit update destroy export export_pdf preview variables save_as_template start begin_execution publish versions sync_steps flow_diagram settings]
+                only: %i[show edit update destroy export export_pdf preview variables start begin_execution publish versions sync_steps flow_diagram settings]
   before_action :ensure_editor_or_admin!, only: %i[new create import import_file]
   before_action :ensure_can_view_workflow!, only: %i[show export export_pdf start begin_execution preview variables versions flow_diagram settings]
-  before_action :ensure_can_edit_workflow!, only: %i[edit update save_as_template publish sync_steps]
+  before_action :ensure_can_edit_workflow!, only: %i[edit update publish sync_steps]
   before_action :ensure_can_delete_workflow!, only: [:destroy]
   before_action :parse_transitions_json, only: %i[create update]
 
@@ -275,25 +275,6 @@ class WorkflowsController < ApplicationController
     variables = @workflow.variables
 
     render json: { variables: variables }
-  end
-
-  def save_as_template
-    template_params = params.require(:template).permit(:name, :category, :description, :is_public)
-
-    template_data = @workflow.convert_to_template(
-      name: template_params[:name],
-      category: template_params[:category],
-      description: template_params[:description],
-      is_public: template_params[:is_public] == "true"
-    )
-
-    @template = Template.new(template_data)
-
-    if @template.save
-      redirect_to templates_path, notice: "Template '#{@template.name}' was successfully created."
-    else
-      redirect_to edit_workflow_path(@workflow), alert: "Failed to save template: #{@template.errors.full_messages.join(', ')}"
-    end
   end
 
   def start

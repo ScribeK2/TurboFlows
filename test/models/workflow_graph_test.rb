@@ -117,13 +117,13 @@ class WorkflowGraphTest < ActiveSupport::TestCase
   test "validates graph structure in graph mode with AR steps" do
     workflow = Workflow.create!(title: "Invalid Graph", user: @user, graph_mode: true, status: "published")
     step_a = Steps::Action.create!(workflow: workflow, position: 0, uuid: "a", title: "A")
-    step_b = Steps::Action.create!(workflow: workflow, position: 1, uuid: "b", title: "B")
+    Steps::Action.create!(workflow: workflow, position: 1, uuid: "b", title: "B")
     workflow.update_column(:start_step_id, step_a.id)
 
     workflow.reload
     assert_not workflow.valid?
     assert(workflow.errors[:steps].any? { |e| e.include?("dead end") || e.include?("unreachable") || e.include?("reachable") },
-      "Expected graph validation error, got: #{workflow.errors[:steps].inspect}")
+           "Expected graph validation error, got: #{workflow.errors[:steps].inspect}")
   end
 
   test "validates subflow references with AR steps" do
@@ -185,23 +185,5 @@ class WorkflowGraphTest < ActiveSupport::TestCase
     assert_equal 1, vars.length
     assert_equal "name", vars[0][:name]
     assert_equal "text", vars[0][:answer_type]
-  end
-
-  test "serialize_steps_for_template captures all step data" do
-    workflow = Workflow.create!(title: "Template Test", user: @user, graph_mode: true)
-    q = Steps::Question.create!(workflow: workflow, position: 0, uuid: "q1", title: "Ask", question: "What?", variable_name: "answer", answer_type: "text")
-    a = Steps::Action.create!(workflow: workflow, position: 1, uuid: "a1", title: "Do")
-    Transition.create!(step: q, target_step: a, position: 0, condition: "answer == 'yes'")
-
-    data = workflow.serialize_steps_for_template
-
-    assert_equal 2, data.length
-    assert_equal "question", data[0]["type"]
-    assert_equal "Ask", data[0]["title"]
-    assert_equal "What?", data[0]["question"]
-    assert_equal "answer", data[0]["variable_name"]
-    assert_equal 1, data[0]["transitions"].length
-    assert_equal "a1", data[0]["transitions"][0]["target_uuid"]
-    assert_equal "answer == 'yes'", data[0]["transitions"][0]["condition"]
   end
 end

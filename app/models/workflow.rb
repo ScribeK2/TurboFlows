@@ -13,6 +13,10 @@ class Workflow < ApplicationRecord
   # Scenario associations
   has_many :scenarios, dependent: :destroy
 
+  # Set draft expiration before save (7 days from creation or update)
+  before_save :set_draft_expiration, if: :draft?
+  # Assign to Uncategorized group if no groups assigned (only for published workflows)
+  after_create :assign_to_uncategorized_if_needed, if: :published?
   # ActiveRecord step associations (parallel to JSONB during migration)
   # IMPORTANT: nullify_start_step must run BEFORE dependent :destroy on steps
   # to avoid circular FK constraint (workflows.start_step_id → steps.id)
@@ -49,11 +53,6 @@ class Workflow < ApplicationRecord
   MAX_STEP_TITLE_LENGTH = 500
   MAX_STEP_CONTENT_LENGTH = 50_000  # 50KB per step field
   MAX_TOTAL_STEPS_SIZE = 5_000_000  # 5MB total for steps JSON
-
-  # Set draft expiration before save (7 days from creation or update)
-  before_save :set_draft_expiration, if: :draft?
-  # Assign to Uncategorized group if no groups assigned (only for published workflows)
-  after_create :assign_to_uncategorized_if_needed, if: :published?
 
   enum :status, { draft: "draft", published: "published" }, default: "published"
 
@@ -153,9 +152,9 @@ class Workflow < ApplicationRecord
 
     # Search Action Text description via rich text join
     desc_ids = ActionText::RichText
-      .where(record_type: "Workflow", name: "description")
-      .where("body LIKE ?", search_term)
-      .select(:record_id)
+               .where(record_type: "Workflow", name: "description")
+               .where("body LIKE ?", search_term)
+               .select(:record_id)
 
     where(id: title_matches.select(:id))
       .or(where(id: desc_ids))
@@ -318,7 +317,7 @@ class Workflow < ApplicationRecord
 
   # Get all terminal steps (no outgoing transitions)
   def terminal_nodes
-    steps.left_joins(:transitions).where(transitions: { id: nil })
+    steps.where.missing(:transitions)
   end
 
   # Get sub-flow steps
@@ -334,59 +333,6 @@ class Workflow < ApplicationRecord
   # Check if this workflow has any sub-flow steps
   def has_subflow_steps?
     steps.where(type: "Steps::SubFlow").exists?
-  end
-
-  # Convert workflow to template format
-  def convert_to_template(name: nil, category: nil, description: nil, is_public: true)
-    {
-      name: name || title,
-      description: description || description_text,
-      category: category || "custom",
-      workflow_data: serialize_steps_for_template,
-      is_public:
-    }
-  end
-
-  # Serialize AR steps for template export
-  def serialize_steps_for_template
-    steps.includes(:transitions).order(:position).map do |step|
-      data = {
-        "type" => step.step_type,
-        "title" => step.title,
-        "position" => step.position,
-        "uuid" => step.uuid
-      }
-
-      case step
-      when Steps::Question
-        data["question"] = step.question
-        data["variable_name"] = step.variable_name
-        data["answer_type"] = step.answer_type
-        data["options"] = step.options if step.options.present?
-      when Steps::Action
-        data["action_type"] = step.action_type
-        data["instructions"] = step.instructions&.to_plain_text
-        data["output_fields"] = step.output_fields if step.output_fields.present?
-      when Steps::Message
-        data["content"] = step.content&.to_plain_text
-      when Steps::Escalate
-        data["target_type"] = step.target_type
-        data["priority"] = step.priority
-      when Steps::Resolve
-        data["resolution_type"] = step.resolution_type
-      when Steps::SubFlow
-        data["sub_flow_workflow_id"] = step.sub_flow_workflow_id
-        data["variable_mapping"] = step.variable_mapping if step.variable_mapping.present?
-      end
-
-      if step.transitions.any?
-        data["transitions"] = step.transitions.order(:position).map do |t|
-          { "target_uuid" => t.target_step&.uuid, "condition" => t.condition, "label" => t.label }.compact
-        end
-      end
-
-      data
-    end
   end
 
   private

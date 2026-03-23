@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_20_113337) do
+ActiveRecord::Schema[8.1].define(version: 20_260_323_134_024) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -154,20 +154,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_20_113337) do
     t.index ["workflow_id", "position"], name: "index_steps_on_workflow_id_and_position"
     t.index ["workflow_id", "uuid"], name: "index_steps_on_workflow_id_and_uuid", unique: true
     t.index ["workflow_id"], name: "index_steps_on_workflow_id"
-  end
-
-  create_table "templates", force: :cascade do |t|
-    t.string "category"
-    t.datetime "created_at", null: false
-    t.text "description"
-    t.boolean "graph_mode", default: true
-    t.boolean "is_public", default: true
-    t.string "name", null: false
-    t.string "start_node_uuid"
-    t.datetime "updated_at", null: false
-    t.json "workflow_data"
-    t.index ["category"], name: "index_templates_on_category"
-    t.index ["is_public"], name: "index_templates_on_is_public"
   end
 
   create_table "transitions", force: :cascade do |t|

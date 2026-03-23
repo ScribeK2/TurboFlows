@@ -95,7 +95,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "a[aria-label='Create a new workflow']"
-    assert_select "a[aria-label='Browse workflow templates']"
+    assert_select "a[aria-label='Create workflow from template']"
   end
 
   test "should not show quick actions for regular users" do

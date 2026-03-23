@@ -25,19 +25,6 @@ class PostgresqlCompatibilityTest < ActiveSupport::TestCase
     assert_includes Workflow.search_by("TroubleShoot").pluck(:id), workflow.id
   end
 
-  test "template search is case-insensitive" do
-    template = Template.create!(
-      name: "Customer Support Template",
-      category: "support",
-      is_public: true
-    )
-
-    # All these searches should find the template
-    assert_includes Template.search("customer").pluck(:id), template.id
-    assert_includes Template.search("CUSTOMER").pluck(:id), template.id
-    assert_includes Template.search("SUPPORT").pluck(:id), template.id
-  end
-
   # ===========================================
   # Foreign Key Cascade Tests
   # ===========================================
