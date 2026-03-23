@@ -35,8 +35,12 @@ export default class extends Controller {
       },
       body: new URLSearchParams({ template_key: key })
     })
-    .then(response => response.text())
+    .then(response => {
+      if (!response.ok) throw new Error(`Template failed: ${response.status}`)
+      return response.text()
+    })
     .then(html => Turbo.renderStreamMessage(html))
+    .catch(() => alert("Something went wrong applying the template. Please try again."))
   }
 
   closeOnOutsideClick = (event) => {
