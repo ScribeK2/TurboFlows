@@ -48,6 +48,10 @@ Rails.application.routes.draw do
   # Folder management (accessible to editors/admins)
   patch 'folders/move_workflow', to: 'folders#move_workflow', as: :move_workflow_folder
 
+  # Nav menu and search
+  get "nav/menu", to: "nav#menu", as: :nav_menu
+  get "nav/search_data", to: "nav#search_data", as: :nav_search_data
+
   resources :scenarios, only: [:show] do
     member do
       post :next_step
