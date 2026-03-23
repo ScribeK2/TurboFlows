@@ -17,13 +17,14 @@ class NavController < ApplicationController
       workflows = Workflow.where(id: visible_ids).or(Workflow.where(id: own_ids))
     end
 
+    can_edit = current_user.can_edit_workflows?
     data = workflows.with_rich_text_description.order(updated_at: :desc).map do |w|
       {
         id: w.id,
         title: w.title,
         description: w.description_text.to_s.truncate(120),
         status: w.status,
-        path: workflow_path(w)
+        path: can_edit ? workflow_path(w) : start_workflow_path(w)
       }
     end
     render json: data
