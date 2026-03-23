@@ -622,12 +622,12 @@
     padding: var(--space-2);
     width: 14rem;
     z-index: var(--z-dropdown, 10);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
   }
 
   .builder__template-popover:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
     animation: template-popover-in var(--duration-fast) var(--ease-spring);
   }
 
