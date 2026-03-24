@@ -349,7 +349,7 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to admin_users_path
     @user.reload
-    assert @user.access_locked?, "User should be locked"
+    assert_predicate @user, :access_locked?, "User should be locked"
   end
 
   test "non-admin cannot access bulk_deactivate" do

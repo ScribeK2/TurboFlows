@@ -127,7 +127,7 @@ class StepsController < ApplicationController
   # DELETE /workflows/:workflow_id/steps/:id
   def destroy
     if @workflow.start_step_id == @step.id
-      @workflow.update_column(:start_step_id, nil)
+      @workflow.update_columns(start_step_id: nil)
     end
     @step.destroy
     ensure_start_step_assigned
@@ -139,8 +139,8 @@ class StepsController < ApplicationController
         streams = [turbo_stream.remove(dom_id(@step))]
         if remaining_steps.zero?
           streams << turbo_stream.append("steps-list",
-            partial: "workflows/empty_state",
-            locals: { workflow: @workflow })
+                                         partial: "workflows/empty_state",
+                                         locals: { workflow: @workflow })
           streams << turbo_stream.update("builder-panel", "")
         end
         render turbo_stream: streams
@@ -157,12 +157,10 @@ class StepsController < ApplicationController
 
   # POST /workflows/:workflow_id/steps/apply_template
   def apply_template
-    template = begin
-      WorkflowTemplate.find(params[:template_key])
-    rescue KeyError
-      return head(:unprocessable_entity)
-    end
-
+    template = WorkflowTemplate.find(params[:template_key])
+  rescue KeyError
+    head(:unprocessable_content)
+  else
     steps_data, first_uuid = build_steps_data_from_template(template)
 
     Workflow.transaction do
@@ -177,8 +175,8 @@ class StepsController < ApplicationController
       format.turbo_stream do
         render turbo_stream: [
           turbo_stream.update("steps-list",
-            partial: "workflows/steps_list_items",
-            locals: { workflow: @workflow, steps: steps }),
+                              partial: "workflows/steps_list_items",
+                              locals: { workflow: @workflow, steps: steps }),
           turbo_stream.update("builder-panel", "")
         ]
       end
@@ -208,7 +206,7 @@ class StepsController < ApplicationController
   end
 
   def set_step
-    @step = @workflow.steps.unscoped.find(params[:id])
+    @step = @workflow.steps.find(params[:id])
   end
 
   def ensure_can_edit!
@@ -243,7 +241,7 @@ class StepsController < ApplicationController
     when "escalate"  then Steps::Escalate
     when "resolve"   then Steps::Resolve
     when "sub_flow"  then Steps::SubFlow
-    else Steps::Action
+    else                  Steps::Action
     end
   end
 
@@ -259,15 +257,15 @@ class StepsController < ApplicationController
   def ensure_start_step_assigned
     return if @workflow.start_step_id.present?
 
-    first_step = @workflow.steps.unscoped.where(workflow_id: @workflow.id).order(:position).first
-    @workflow.update_column(:start_step_id, first_step.id) if first_step
+    first_step = @workflow.steps.first
+    @workflow.update_columns(start_step_id: first_step.id) if first_step
   end
 
   def sync_transitions_from_json
     parsed = JSON.parse(step_params[:transitions_json])
     return unless parsed.is_a?(Array)
 
-    steps_by_uuid = @workflow.steps.unscoped.where(workflow_id: @workflow.id).index_by(&:uuid)
+    steps_by_uuid = @workflow.steps.index_by(&:uuid)
 
     @step.transitions.destroy_all
 
@@ -315,9 +313,9 @@ class StepsController < ApplicationController
 
     steps_data = template["steps"].map do |s|
       step_hash = {
-        "id"       => uuid_map[s["uuid"]],
-        "type"     => s["type"],
-        "title"    => s["title"],
+        "id" => uuid_map[s["uuid"]],
+        "type" => s["type"],
+        "title" => s["title"],
         "position" => s["position"]
       }
 

@@ -72,9 +72,9 @@ class NavControllerTest < ActionDispatch::IntegrationTest
     get nav_search_data_path(format: :json)
     assert_response :success
 
-    data = JSON.parse(response.body)
+    data = response.parsed_body
     assert_kind_of Array, data
-    assert data.length >= 2, "Expected at least 2 workflows"
+    assert_operator data.length, :>=, 2, "Expected at least 2 workflows"
 
     first = data.first
     assert first.key?("id")
@@ -93,10 +93,10 @@ class NavControllerTest < ActionDispatch::IntegrationTest
     sign_in @regular
     get nav_search_data_path(format: :json)
 
-    data = JSON.parse(response.body)
-    titles = data.map { |w| w["title"] }
+    data = response.parsed_body
+    titles = data.pluck("title")
     assert_includes titles, "Public Flow"
     assert_includes titles, "My Flow"
-    refute_includes titles, "Private Flow"
+    assert_not_includes titles, "Private Flow"
   end
 end

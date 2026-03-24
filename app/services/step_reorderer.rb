@@ -23,13 +23,13 @@ class StepReorderer
                       .update_all("position = position + 1")
       end
 
-      @step.update_column(:position, @new_position)
+      @step.update_columns(position: @new_position)
     end
   end
 
   private
 
   def siblings_scope
-    Step.unscoped.where(workflow_id: @workflow.id).where.not(id: @step.id)
+    @workflow.steps.where.not(id: @step.id)
   end
 end

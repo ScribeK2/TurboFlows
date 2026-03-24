@@ -33,14 +33,14 @@ class TransitionTest < ActiveSupport::TestCase
   test "allows same step pair with different conditions" do
     Transition.create!(step: @step1, target_step: @step2, condition: "yes")
     t2 = Transition.new(step: @step1, target_step: @step2, condition: "no")
-    assert t2.valid?
+    assert_predicate t2, :valid?
   end
 
   test "allows same step with different targets" do
     step3 = Steps::Message.create!(workflow: @workflow, title: "M1", position: 2)
     Transition.create!(step: @step1, target_step: @step2)
     t2 = Transition.new(step: @step1, target_step: step3)
-    assert t2.valid?
+    assert_predicate t2, :valid?
   end
 
   test "rejects transition between steps in different workflows" do
@@ -53,7 +53,7 @@ class TransitionTest < ActiveSupport::TestCase
 
   test "allows transition between steps in same workflow" do
     t = Transition.new(step: @step1, target_step: @step2)
-    assert t.valid?
+    assert_predicate t, :valid?
   end
 
   test "default scope orders by position" do

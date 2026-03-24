@@ -183,7 +183,7 @@ class ScenarioTest < ActiveSupport::TestCase
     scenario.execute
 
     assert_not_nil scenario.duration_seconds
-    assert scenario.duration_seconds >= 59, "Duration should be at least 59 seconds"
+    assert_operator scenario.duration_seconds, :>=, 59, "Duration should be at least 59 seconds"
   end
 
   test "process_subflow_step does not crash when results is nil" do
@@ -213,7 +213,7 @@ class ScenarioTest < ActiveSupport::TestCase
     assert_equal "resolved", scenario.outcome
     assert_equal "success", scenario.results["_resolution"]["type"]
     assert_equal "step-1", scenario.results["_resolution"]["resolved_at_step"]
-    assert_equal true, scenario.execution_path.last["resolved"]
+    assert scenario.execution_path.last["resolved"]
   end
 
   test "action step with can_resolve continues normally when resolved_here is false" do

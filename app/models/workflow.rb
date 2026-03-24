@@ -22,7 +22,7 @@ class Workflow < ApplicationRecord
   # to avoid circular FK constraint (workflows.start_step_id → steps.id)
   before_destroy :nullify_published_version, prepend: true
   before_destroy :nullify_start_step, prepend: true
-  has_many :steps, class_name: "Step", dependent: :destroy
+  has_many :steps, -> { order(:position) }, class_name: "Step", dependent: :destroy
   belongs_to :start_step, class_name: "Step", optional: true
   has_rich_text :description
 
@@ -146,7 +146,7 @@ class Workflow < ApplicationRecord
   scope :search_by, lambda { |query|
     return all if query.blank?
 
-    search_term = "%#{query.strip}%"
+    search_term = "%#{sanitize_sql_like(query.strip)}%"
 
     title_matches = case_insensitive_like('title', search_term)
 
@@ -332,20 +332,20 @@ class Workflow < ApplicationRecord
 
   # Check if this workflow has any sub-flow steps
   def has_subflow_steps?
-    steps.where(type: "Steps::SubFlow").exists?
+    steps.exists?(type: "Steps::SubFlow")
   end
 
   private
 
   def nullify_published_version
-    update_column(:published_version_id, nil) if published_version_id.present?
+    update_columns(published_version_id: nil) if published_version_id.present?
   end
 
   def nullify_start_step
-    update_column(:start_step_id, nil) if start_step_id.present?
+    update_columns(start_step_id: nil) if start_step_id.present?
     # Delete all transitions and Action Text records referencing this workflow's steps
     # to avoid FK constraint violations during cascading step deletion
-    step_ids = steps.unscoped.where(workflow_id: id).pluck(:id)
+    step_ids = steps.pluck(:id)
     if step_ids.any?
       Transition.where(step_id: step_ids).or(Transition.where(target_step_id: step_ids)).delete_all
       ActionText::RichText.where(record_type: "Step", record_id: step_ids).delete_all
@@ -358,7 +358,7 @@ class Workflow < ApplicationRecord
     return unless steps.any?
 
     graph_steps_hash = {}
-    steps.includes(:transitions).each do |step|
+    steps.includes(:transitions).find_each do |step|
       graph_steps_hash[step.uuid] = {
         "id" => step.uuid,
         "type" => step.type.demodulize.underscore,

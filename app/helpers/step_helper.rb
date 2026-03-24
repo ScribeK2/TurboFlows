@@ -43,7 +43,7 @@ module StepHelper
 
   # Combines outcome_summary + condition_summary for collapsed card display
   def step_summary_text(step)
-    parts = [step.outcome_summary, step.condition_summary].compact.reject(&:blank?)
+    parts = [step.outcome_summary, step.condition_summary].compact.compact_blank
     parts.join(" | ")
   end
 
@@ -59,7 +59,7 @@ module StepHelper
 
     # Escape everything that's NOT already in a variable-tag span
     # Strategy: split on our spans, escape the rest, rejoin
-    parts = result.split(/(<span class="variable-tag">.*?<\/span>)/)
+    parts = result.split(%r{(<span class="variable-tag">.*?</span>)})
     parts.map! { |part| part.start_with?("<span") ? part : ERB::Util.html_escape(part) }
     parts.join.html_safe
   end
@@ -87,37 +87,39 @@ module StepHelper
         "description" => s.try(:description).to_s,
         "position_x" => s.position_x,
         "position_y" => s.position_y,
-        "transitions" => s.transitions.map { |t|
+        "transitions" => s.transitions.filter_map do |t|
           target = steps_by_id[t.target_step_id]
+          next if target&.uuid.blank?
+
           {
-            "target_uuid" => target&.uuid,
+            "target_uuid" => target.uuid,
             "condition" => t.condition,
             "label" => t.label
           }
-        }.select { |t| t["target_uuid"].present? }
+        end
       }
 
       case s
       when Steps::Question
         data.merge!("question" => s.question, "answer_type" => s.answer_type,
-                     "variable_name" => s.variable_name, "options" => s.options)
+                    "variable_name" => s.variable_name, "options" => s.options)
       when Steps::Action
         data.merge!("action_type" => s.action_type, "can_resolve" => s.can_resolve,
-                     "instructions" => s.instructions&.body&.to_s || "",
-                     "output_fields" => s.output_fields, "jumps" => s.jumps)
+                    "instructions" => s.instructions&.body.to_s,
+                    "output_fields" => s.output_fields, "jumps" => s.jumps)
       when Steps::Message
-        data.merge!("content" => s.content&.body&.to_s || "", "can_resolve" => s.can_resolve,
-                     "jumps" => s.jumps)
+        data.merge!("content" => s.content&.body.to_s, "can_resolve" => s.can_resolve,
+                    "jumps" => s.jumps)
       when Steps::Escalate
         data.merge!("target_type" => s.target_type, "target_value" => s.target_value,
-                     "priority" => s.priority, "reason_required" => s.reason_required,
-                     "notes" => s.notes&.body&.to_s || "")
+                    "priority" => s.priority, "reason_required" => s.reason_required,
+                    "notes" => s.notes&.body.to_s)
       when Steps::Resolve
         data.merge!("resolution_type" => s.resolution_type, "resolution_code" => s.resolution_code,
-                     "notes_required" => s.notes_required, "survey_trigger" => s.survey_trigger)
+                    "notes_required" => s.notes_required, "survey_trigger" => s.survey_trigger)
       when Steps::SubFlow
-        data.merge!("target_workflow_id" => s.sub_flow_workflow_id,
-                     "variable_mapping" => s.variable_mapping)
+        data["target_workflow_id"] = s.sub_flow_workflow_id
+        data["variable_mapping"] = s.variable_mapping
       end
 
       data

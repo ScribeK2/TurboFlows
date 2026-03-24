@@ -10,7 +10,7 @@ class StepTest < ActiveSupport::TestCase
 
   test "auto-generates UUID on create" do
     step = Steps::Question.create!(workflow: @workflow, title: "Q1", position: 0)
-    assert step.uuid.present?
+    assert_predicate step.uuid, :present?
     assert_match(/\A[0-9a-f-]{36}\z/, step.uuid)
   end
 
@@ -25,7 +25,7 @@ class StepTest < ActiveSupport::TestCase
     workflow2 = Workflow.create!(title: "Other Workflow", user: @user)
     step1 = Steps::Question.create!(workflow: @workflow, title: "Q1", position: 0)
     step2 = Steps::Question.new(workflow: workflow2, title: "Q2", position: 0, uuid: step1.uuid)
-    assert step2.valid?
+    assert_predicate step2, :valid?
   end
 
   test "does not overwrite manually set UUID" do
@@ -100,7 +100,7 @@ class StepTest < ActiveSupport::TestCase
 
   test "step with no transitions is terminal" do
     step = Steps::Question.create!(workflow: @workflow, title: "Q", position: 0)
-    assert step.terminal?
+    assert_predicate step, :terminal?
   end
 
   test "step with transitions is not terminal" do

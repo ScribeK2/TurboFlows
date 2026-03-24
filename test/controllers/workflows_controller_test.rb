@@ -522,7 +522,7 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     json = response.parsed_body
     assert json["success"]
-    assert json["lock_version"].is_a?(Integer)
+    assert_kind_of Integer, json["lock_version"]
   end
 
   test "sync_steps with stale lock_version returns 409" do
@@ -537,7 +537,7 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :conflict
     json = response.parsed_body
-    assert json["error"].present?
+    assert_predicate json["error"], :present?
   end
 
   test "publish with valid graph succeeds" do
@@ -574,7 +574,6 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     json = response.parsed_body
-    assert json["variables"].is_a?(Array)
+    assert_kind_of Array, json["variables"]
   end
-
 end

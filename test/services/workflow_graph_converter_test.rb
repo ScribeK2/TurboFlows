@@ -70,7 +70,7 @@ class WorkflowGraphConverterTest < ActiveSupport::TestCase
 
     # First step should have jump transition to skip_target
     q_transitions = q_step.transitions.reload
-    assert q_transitions.any? { |t| t.target_step == skip_target }
+    assert(q_transitions.any? { |t| t.target_step == skip_target })
   end
 
   test "preserves step data during conversion" do
@@ -83,7 +83,7 @@ class WorkflowGraphConverterTest < ActiveSupport::TestCase
     a_step = Steps::Action.create!(
       workflow: workflow, position: 1, uuid: "b", title: "A1", action_type: "Email"
     )
-    r_step = Steps::Resolve.create!(
+    Steps::Resolve.create!(
       workflow: workflow, position: 2, uuid: "c", title: "Done", resolution_type: "success"
     )
 

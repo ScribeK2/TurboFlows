@@ -160,7 +160,7 @@ class WorkflowImporter
     # Set start_step_id
     effective_start_uuid = start_node_uuid || steps_data.first&.dig("id")
     if effective_start_uuid && uuid_to_step[effective_start_uuid]
-      workflow.update_column(:start_step_id, uuid_to_step[effective_start_uuid].id)
+      workflow.update_columns(start_step_id: uuid_to_step[effective_start_uuid].id)
     end
   end
 
@@ -181,7 +181,7 @@ class WorkflowImporter
     when "escalate"  then Steps::Escalate
     when "resolve"   then Steps::Resolve
     when "sub_flow"  then Steps::SubFlow
-    else Steps::Action
+    else                  Steps::Action
     end
   end
 

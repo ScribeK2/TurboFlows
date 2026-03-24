@@ -90,7 +90,7 @@ class WorkflowGraphTest < ActiveSupport::TestCase
     subflows = workflow.subflow_steps
 
     assert_equal 2, subflows.length
-    assert(subflows.all? { |s| s.is_a?(Steps::SubFlow) })
+    assert(subflows.all?(Steps::SubFlow))
   end
 
   test "referenced_workflow_ids returns unique workflow IDs" do

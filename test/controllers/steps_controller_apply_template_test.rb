@@ -15,22 +15,22 @@ class StepsControllerApplyTemplateTest < ActionDispatch::IntegrationTest
   test "apply_template creates steps from template on empty workflow" do
     assert_difference("Step.count", 5) do
       post apply_template_workflow_steps_path(@workflow),
-        params: { template_key: "guided_decision" },
-        as: :turbo_stream
+           params: { template_key: "guided_decision" },
+           as: :turbo_stream
     end
     assert_response :success
 
     @workflow.reload
     assert_equal 5, @workflow.steps.count
-    assert @workflow.steps.any? { |s| s.is_a?(Steps::Question) }
-    assert @workflow.steps.any? { |s| s.is_a?(Steps::Resolve) }
-    assert @workflow.start_step_id.present?
+    assert(@workflow.steps.any?(Steps::Question))
+    assert(@workflow.steps.any?(Steps::Resolve))
+    assert_predicate @workflow.start_step_id, :present?
   end
 
   test "apply_template creates transitions between steps" do
     post apply_template_workflow_steps_path(@workflow),
-      params: { template_key: "guided_decision" },
-      as: :turbo_stream
+         params: { template_key: "guided_decision" },
+         as: :turbo_stream
 
     @workflow.reload
     transitions = Transition.where(step: @workflow.steps)
@@ -48,21 +48,21 @@ class StepsControllerApplyTemplateTest < ActionDispatch::IntegrationTest
     # Net change is +4: 1 old step destroyed, 5 new steps created
     assert_difference("Step.count", 4) do
       post apply_template_workflow_steps_path(@workflow),
-        params: { template_key: "guided_decision" },
-        as: :turbo_stream
+           params: { template_key: "guided_decision" },
+           as: :turbo_stream
     end
     assert_response :success
 
     @workflow.reload
     assert_equal 5, @workflow.steps.count
-    refute @workflow.steps.any? { |s| s.title == "Old step" }
+    assert_not(@workflow.steps.any? { |s| s.title == "Old step" })
   end
 
   test "apply_template with invalid key returns unprocessable entity" do
     assert_no_difference("Step.count") do
       post apply_template_workflow_steps_path(@workflow),
-        params: { template_key: "nonexistent" },
-        as: :turbo_stream
+           params: { template_key: "nonexistent" },
+           as: :turbo_stream
     end
     assert_response :unprocessable_entity
   end
@@ -77,26 +77,26 @@ class StepsControllerApplyTemplateTest < ActionDispatch::IntegrationTest
     sign_in other_user
 
     post apply_template_workflow_steps_path(@workflow),
-      params: { template_key: "guided_decision" },
-      as: :turbo_stream
+         params: { template_key: "guided_decision" },
+         as: :turbo_stream
     assert_response :redirect
   end
 
   test "apply_template returns turbo stream updating step list" do
     post apply_template_workflow_steps_path(@workflow),
-      params: { template_key: "guided_decision" },
-      as: :turbo_stream
+         params: { template_key: "guided_decision" },
+         as: :turbo_stream
     assert_response :success
     assert_includes response.body, "turbo-stream"
   end
 
   test "apply_template sets graph_mode to true on the workflow" do
     @workflow.update_column(:graph_mode, false)
-    refute @workflow.reload.graph_mode
+    assert_not @workflow.reload.graph_mode
 
     post apply_template_workflow_steps_path(@workflow),
-      params: { template_key: "guided_decision" },
-      as: :turbo_stream
+         params: { template_key: "guided_decision" },
+         as: :turbo_stream
     assert_response :success
 
     @workflow.reload

@@ -59,7 +59,7 @@ class WorkflowValidationTest < ActiveSupport::TestCase
   test "title length max 255" do
     wf = Workflow.new(title: "x" * 256, user: @user, status: "published")
     assert_not wf.valid?
-    assert wf.errors[:title].any? { |e| e.include?("too long") }
+    assert(wf.errors[:title].any? { |e| e.include?("too long") })
   end
 
   # ---------------------------------------------------------------------------
@@ -68,7 +68,7 @@ class WorkflowValidationTest < ActiveSupport::TestCase
 
   test "draft with no steps is valid" do
     wf = Workflow.new(title: "Empty Draft", user: @user, status: "draft")
-    assert wf.valid?, "Draft with no steps should be valid: #{wf.errors.full_messages.join(', ')}"
+    assert_predicate wf, :valid?, "Draft with no steps should be valid: #{wf.errors.full_messages.join(', ')}"
   end
 
   test "draft skips graph structure validation" do
@@ -78,7 +78,7 @@ class WorkflowValidationTest < ActiveSupport::TestCase
 
     # Re-save — should not error because draft skips graph validation
     wf.reload
-    assert wf.valid?, "Draft should skip graph validation: #{wf.errors.full_messages.join(', ')}"
+    assert_predicate wf, :valid?, "Draft should skip graph validation: #{wf.errors.full_messages.join(', ')}"
   end
 
   # ---------------------------------------------------------------------------
@@ -104,14 +104,14 @@ class WorkflowValidationTest < ActiveSupport::TestCase
   test "published workflow with disconnected steps is invalid" do
     wf = create_workflow("Graph Validation", status: "draft")
     q = add_question(wf, "Start", position: 0)
-    r = add_resolve(wf, "End", position: 1)
+    add_resolve(wf, "End", position: 1)
     # No transition linking q -> r — they are disconnected
     wf.update!(start_step: q)
 
     # Force graph validation via validate_graph_now!
     wf.validate_graph_now!
     assert_not wf.valid?, "Disconnected graph should be invalid"
-    assert wf.errors[:steps].any?, "Should have step errors for disconnected graph"
+    assert_predicate wf.errors[:steps], :any?, "Should have step errors for disconnected graph"
   end
 
   test "published workflow with connected graph is valid" do
@@ -122,13 +122,13 @@ class WorkflowValidationTest < ActiveSupport::TestCase
     wf.update!(start_step: q)
 
     wf.reload
-    assert wf.valid?, "Connected graph should be valid: #{wf.errors.full_messages.join(', ')}"
+    assert_predicate wf, :valid?, "Connected graph should be valid: #{wf.errors.full_messages.join(', ')}"
   end
 
   test "validate_graph_now! forces validation on draft" do
     wf = create_workflow("Force Validate Draft", status: "draft")
     q = add_question(wf, "Orphan", position: 0)
-    r = add_resolve(wf, "End", position: 1)
+    add_resolve(wf, "End", position: 1)
     wf.update_column(:start_step_id, q.id)
 
     wf.reload
@@ -142,7 +142,7 @@ class WorkflowValidationTest < ActiveSupport::TestCase
 
   test "subflow step pointing to nonexistent workflow is invalid" do
     wf = create_workflow("SubFlow Missing Target")
-    sf = Steps::SubFlow.create!(
+    Steps::SubFlow.create!(
       workflow: wf,
       title: "Bad SubFlow",
       position: 0,
@@ -157,7 +157,7 @@ class WorkflowValidationTest < ActiveSupport::TestCase
 
   test "subflow step cannot reference itself" do
     wf = create_workflow("Self-referencing")
-    sf = Steps::SubFlow.create!(
+    Steps::SubFlow.create!(
       workflow: wf,
       title: "Self Ref",
       position: 0,
@@ -202,6 +202,6 @@ class WorkflowValidationTest < ActiveSupport::TestCase
   test "draft sets expiration" do
     wf = create_workflow("Expiring Draft", status: "draft")
     assert_not_nil wf.draft_expires_at
-    assert wf.draft_expires_at > Time.current
+    assert_operator wf.draft_expires_at, :>, Time.current
   end
 end

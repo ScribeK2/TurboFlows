@@ -18,13 +18,14 @@ class VariableInterpolationIntegrationTest < ActionDispatch::IntegrationTest
       is_public: false
     )
     @q1 = Steps::Question.create!(workflow: @workflow, position: 0, uuid: "q1", title: "Name Question", question: "What is your name?", variable_name: "customer_name", answer_type: "text")
-    @q2 = Steps::Question.create!(workflow: @workflow, position: 1, uuid: "q2", title: "Interpolated Question", question: "Hello {{customer_name}}, what is your issue?", variable_name: "issue", answer_type: "text")
+    @q2 = Steps::Question.create!(workflow: @workflow, position: 1, uuid: "q2", title: "Interpolated Question", question: "Hello {{customer_name}}, what is your issue?", variable_name: "issue",
+                                  answer_type: "text")
     @a1 = Steps::Action.create!(workflow: @workflow, position: 2, uuid: "a1", title: "Interpolated Action", action_type: "Notification")
     @a1.update!(instructions: "Send email to {{customer_name}} about {{issue}}")
     @a2 = Steps::Action.create!(workflow: @workflow, position: 3, uuid: "a2", title: "Action with Output Fields", action_type: "Status Update", output_fields: [
-      { "name" => "status", "value" => "resolved" },
-      { "name" => "assigned_to", "value" => "{{customer_name}}" }
-    ])
+                                  { "name" => "status", "value" => "resolved" },
+                                  { "name" => "assigned_to", "value" => "{{customer_name}}" }
+                                ])
     Transition.create!(step: @q1, target_step: @q2, position: 0)
     Transition.create!(step: @q2, target_step: @a1, position: 0)
     Transition.create!(step: @a1, target_step: @a2, position: 0)
@@ -153,9 +154,9 @@ class VariableInterpolationIntegrationTest < ActionDispatch::IntegrationTest
   test "action step output fields with static values" do
     workflow = Workflow.create!(title: "Static Output Test", user: @user)
     step = Steps::Action.create!(workflow: workflow, position: 0, uuid: "a-1", title: "Set Status", action_type: "Update", output_fields: [
-      { "name" => "ticket_status", "value" => "open" },
-      { "name" => "priority", "value" => "high" }
-    ])
+                                   { "name" => "ticket_status", "value" => "open" },
+                                   { "name" => "priority", "value" => "high" }
+                                 ])
     workflow.update_column(:start_step_id, step.id)
 
     scenario = Scenario.create!(
@@ -179,8 +180,8 @@ class VariableInterpolationIntegrationTest < ActionDispatch::IntegrationTest
     workflow = Workflow.create!(title: "Interpolated Output Test", user: @user)
     q = Steps::Question.create!(workflow: workflow, position: 0, uuid: "q-1", title: "Get Name", question: "What is your name?", variable_name: "user_name", answer_type: "text")
     a = Steps::Action.create!(workflow: workflow, position: 1, uuid: "a-1", title: "Set Email", action_type: "Update", output_fields: [
-      { "name" => "email", "value" => "{{user_name}}@example.com" }
-    ])
+                                { "name" => "email", "value" => "{{user_name}}@example.com" }
+                              ])
     Transition.create!(step: q, target_step: a, position: 0)
     workflow.update_column(:start_step_id, q.id)
 
@@ -210,10 +211,10 @@ class VariableInterpolationIntegrationTest < ActionDispatch::IntegrationTest
     workflow = Workflow.create!(title: "Mixed Output Test", user: @user)
     q = Steps::Question.create!(workflow: workflow, position: 0, uuid: "q-1", title: "Get Name", question: "Name?", variable_name: "name", answer_type: "text")
     a = Steps::Action.create!(workflow: workflow, position: 1, uuid: "a-1", title: "Complex Output", action_type: "Update", output_fields: [
-      { "name" => "static_var", "value" => "static_value" },
-      { "name" => "interpolated_var", "value" => "Hello {{name}}" },
-      { "name" => "mixed_var", "value" => "{{name}}_123" }
-    ])
+                                { "name" => "static_var", "value" => "static_value" },
+                                { "name" => "interpolated_var", "value" => "Hello {{name}}" },
+                                { "name" => "mixed_var", "value" => "{{name}}_123" }
+                              ])
     Transition.create!(step: q, target_step: a, position: 0)
     workflow.update_column(:start_step_id, q.id)
 
@@ -241,8 +242,8 @@ class VariableInterpolationIntegrationTest < ActionDispatch::IntegrationTest
   test "missing variables in output fields are left as-is" do
     workflow = Workflow.create!(title: "Missing Var Test", user: @user)
     step = Steps::Action.create!(workflow: workflow, position: 0, uuid: "a-1", title: "Test Missing", action_type: "Update", output_fields: [
-      { "name" => "result", "value" => "{{missing_var}}" }
-    ])
+                                   { "name" => "result", "value" => "{{missing_var}}" }
+                                 ])
     workflow.update_column(:start_step_id, step.id)
 
     scenario = Scenario.create!(
@@ -268,9 +269,9 @@ class VariableInterpolationIntegrationTest < ActionDispatch::IntegrationTest
     Steps::Question.create!(workflow: ar_workflow, position: 0, title: "Name Question", question: "What is your name?", variable_name: "customer_name")
     Steps::Question.create!(workflow: ar_workflow, position: 1, title: "Issue Question", question: "What is your issue?", variable_name: "issue")
     Steps::Action.create!(workflow: ar_workflow, position: 2, title: "Notification", output_fields: [
-      { "name" => "status", "value" => "resolved" },
-      { "name" => "assigned_to", "value" => "agent1" }
-    ])
+                            { "name" => "status", "value" => "resolved" },
+                            { "name" => "assigned_to", "value" => "agent1" }
+                          ])
 
     variables = ar_workflow.variables
 

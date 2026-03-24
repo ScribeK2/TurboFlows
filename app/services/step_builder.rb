@@ -14,6 +14,16 @@ class StepBuilder
     "notes" => Steps::Escalate
   }.freeze
 
+  PERMITTED_STEP_PARAMS = %i[
+    id type title position position_x position_y
+    question answer_type variable_name can_resolve action_type
+    target_type target_value priority reason_required
+    resolution_type resolution_code notes_required survey_trigger
+    sub_flow_workflow_id target_workflow_id instructions content notes
+  ].freeze
+
+  PERMITTED_TRANSITION_PARAMS = %i[target_uuid condition label position].freeze
+
   def self.call(workflow, steps_data, start_node_uuid: nil, replace: false)
     new(workflow, steps_data, start_node_uuid:, replace:).call
   end
@@ -75,7 +85,7 @@ class StepBuilder
   private
 
   def destroy_existing_steps
-    @workflow.update_column(:start_step_id, nil)
+    @workflow.update_columns(start_step_id: nil)
     @workflow.steps.destroy_all
   end
 
@@ -124,7 +134,7 @@ class StepBuilder
       next unless transitions.is_a?(Array)
 
       transitions.each_with_index do |t, pos|
-        t = normalize(t)
+        t = normalize(t, permitted: PERMITTED_TRANSITION_PARAMS)
         target = step_records[t["target_uuid"]]
         next unless target
 
@@ -161,7 +171,7 @@ class StepBuilder
                    step_records.values.first
                  end
 
-    @workflow.update_column(:start_step_id, start_step.id) if start_step
+    @workflow.update_columns(start_step_id: start_step.id) if start_step
   end
 
   def assign_rich_text_fields(step_record, step_data)
@@ -173,9 +183,10 @@ class StepBuilder
     end
   end
 
-  def normalize(data)
-    if data.respond_to?(:permit!)
-      data.permit!.to_h
+  def normalize(data, permitted: PERMITTED_STEP_PARAMS)
+    if data.respond_to?(:permit)
+      data.permit(*permitted, options: [[:label, :value]], output_fields: [[:name, :value]],
+                              jumps: {}, variable_mapping: {}, transitions: PERMITTED_TRANSITION_PARAMS).to_h
     elsif data.respond_to?(:stringify_keys)
       data.stringify_keys
     else

@@ -22,7 +22,6 @@ class WorkflowTest < ActiveSupport::TestCase
 
   test "should not create workflow without title" do
     workflow = Workflow.new(
-
       user: @user
     )
 
@@ -497,14 +496,14 @@ class WorkflowTest < ActiveSupport::TestCase
     workflow = Workflow.create!(title: "Test can_resolve", user: @user)
     step = Steps::Action.create!(workflow: workflow, position: 0, title: "Fix it", can_resolve: true)
 
-    assert_equal true, step.can_resolve
+    assert step.can_resolve
   end
 
   test "can_resolve defaults to false on AR steps" do
     workflow = Workflow.create!(title: "Test can_resolve default", user: @user)
     step = Steps::Action.create!(workflow: workflow, position: 0, title: "Fix it")
 
-    assert_equal false, step.can_resolve
+    assert_not step.can_resolve
   end
 
   test "can_resolve on AR message step" do
@@ -512,7 +511,7 @@ class WorkflowTest < ActiveSupport::TestCase
     step = Steps::Message.create!(workflow: workflow, position: 0, title: "Info")
     step.update!(can_resolve: true)
 
-    assert_equal true, step.reload.can_resolve
+    assert step.reload.can_resolve
   end
 
   test "can_resolve persists through update on AR step" do
@@ -520,9 +519,9 @@ class WorkflowTest < ActiveSupport::TestCase
     step = Steps::Action.create!(workflow: workflow, position: 0, title: "Act", can_resolve: false)
 
     step.update!(can_resolve: true)
-    assert_equal true, step.reload.can_resolve
+    assert step.reload.can_resolve
 
     step.update!(can_resolve: false)
-    assert_equal false, step.reload.can_resolve
+    assert_not step.reload.can_resolve
   end
 end

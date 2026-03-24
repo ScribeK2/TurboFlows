@@ -42,7 +42,7 @@ class WorkflowGraphConverter
       end
 
       # Set start step
-      workflow.update_column(:start_step_id, steps.first.id) unless workflow.start_step_id.present?
+      workflow.update_columns(start_step_id: steps.first.id) unless workflow.start_step_id.present?
 
       # Validate the converted graph
       unless validate_converted_graph(steps)
@@ -166,9 +166,7 @@ class WorkflowGraphConverter
     steps.each_with_index do |step, index|
       simulated_transitions[step.uuid] = []
 
-      if step.is_a?(Steps::SubFlow) && index < steps.length - 1
-        simulated_transitions[step.uuid] << { "target_uuid" => steps[index + 1].uuid }
-      elsif index < steps.length - 1
+      if index < steps.length - 1
         simulated_transitions[step.uuid] << { "target_uuid" => steps[index + 1].uuid }
       end
     end

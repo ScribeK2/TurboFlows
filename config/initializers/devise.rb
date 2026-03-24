@@ -275,6 +275,6 @@ Devise.setup do |config|
   #
   # config.parent_controller = 'Turbo::Controller' if defined?(Turbo)
 
-  # Note: Registration is controlled by including/excluding :registerable in the User model
+  # NOTE: Registration is controlled by including/excluding :registerable in the User model
   # See app/models/user.rb for registration settings
 end

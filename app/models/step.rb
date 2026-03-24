@@ -2,8 +2,8 @@ class Step < ApplicationRecord
   include Step::Positionable
 
   belongs_to :workflow, counter_cache: :steps_count
-  has_many :transitions, dependent: :destroy
-  has_many :incoming_transitions, class_name: "Transition", foreign_key: :target_step_id, dependent: :destroy
+  has_many :transitions, -> { order(:position) }, dependent: :destroy, inverse_of: :step
+  has_many :incoming_transitions, class_name: "Transition", foreign_key: :target_step_id, dependent: :destroy, inverse_of: :target_step
 
   validates :uuid, presence: true, uniqueness: { scope: :workflow_id }
   validates :position, presence: true
@@ -12,7 +12,7 @@ class Step < ApplicationRecord
 
   before_validation :generate_uuid, if: -> { uuid.blank? }
 
-  default_scope { order(:position) }
+  scope :ordered, -> { order(:position) }
 
   # Short step type name (e.g., "question", "action", "sub_flow")
   # Used by Scenario and other code that dispatches on step type.

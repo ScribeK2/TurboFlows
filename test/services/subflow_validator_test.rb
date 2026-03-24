@@ -14,7 +14,7 @@ class SubflowValidatorTest < ActiveSupport::TestCase
     wf = Workflow.create!(title: "No Subflows", user: @user)
     Steps::Action.create!(workflow: wf, position: 0, title: "Action 1")
     validator = SubflowValidator.new(wf.id)
-    assert validator.valid?
+    assert_predicate validator, :valid?
     assert_empty validator.errors
   end
 
@@ -33,7 +33,7 @@ class SubflowValidatorTest < ActiveSupport::TestCase
     Steps::SubFlow.create!(workflow: wf_b, position: 0, title: "Call A", sub_flow_workflow_id: wf_a.id)
     validator = SubflowValidator.new(wf_a.id)
     assert_not validator.valid?
-    assert validator.errors.any? { |e| e.include?("Circular sub-flow reference") }
+    assert(validator.errors.any? { |e| e.include?("Circular sub-flow reference") })
   end
 
   test "detects chain circular reference A to B to C to A" do
@@ -45,7 +45,7 @@ class SubflowValidatorTest < ActiveSupport::TestCase
     Steps::SubFlow.create!(workflow: wf_c, position: 0, title: "Call A", sub_flow_workflow_id: wf_a.id)
     validator = SubflowValidator.new(wf_a.id)
     assert_not validator.valid?
-    assert validator.errors.any? { |e| e.include?("Circular sub-flow reference") }
+    assert(validator.errors.any? { |e| e.include?("Circular sub-flow reference") })
   end
 
   test "reports non-existent target workflow" do
@@ -53,22 +53,22 @@ class SubflowValidatorTest < ActiveSupport::TestCase
     # Bypass model validations to insert a sub-flow step pointing to a non-existent workflow.
     # Must supply a UUID manually because before_validation is skipped with validate: false.
     step = Steps::SubFlow.new(workflow: wf, position: 0, title: "Call Ghost",
-                              sub_flow_workflow_id: 999999, uuid: SecureRandom.uuid)
+                              sub_flow_workflow_id: 999_999, uuid: SecureRandom.uuid)
     step.save(validate: false)
     validator = SubflowValidator.new(wf.id)
     assert_not validator.valid?
-    assert validator.errors.any? { |e| e.include?("non-existent workflow") }
+    assert(validator.errors.any? { |e| e.include?("non-existent workflow") })
   end
 
   test "detects exceeding MAX_DEPTH" do
-    workflows = 12.times.map { |i| Workflow.create!(title: "Depth #{i}", user: @user) }
+    workflows = Array.new(12) { |i| Workflow.create!(title: "Depth #{i}", user: @user) }
     workflows.each_cons(2) do |parent, child|
       Steps::SubFlow.create!(workflow: parent, position: 0, title: "Call Next", sub_flow_workflow_id: child.id)
     end
     Steps::Action.create!(workflow: workflows.last, position: 0, title: "End")
     validator = SubflowValidator.new(workflows.first.id)
     assert_not validator.valid?
-    assert validator.errors.any? { |e| e.include?("maximum depth") }
+    assert(validator.errors.any? { |e| e.include?("maximum depth") })
   end
 
   test "detects self-reference" do
@@ -78,7 +78,7 @@ class SubflowValidatorTest < ActiveSupport::TestCase
     step.save(validate: false)
     validator = SubflowValidator.new(wf.id)
     assert_not validator.valid?
-    assert validator.errors.any? { |e| e.include?("Circular") }
+    assert(validator.errors.any? { |e| e.include?("Circular") })
   end
 
   test "class methods valid? and errors_for work" do

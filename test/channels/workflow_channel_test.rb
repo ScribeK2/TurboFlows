@@ -18,7 +18,7 @@ class WorkflowChannelLogicTest < ActiveSupport::TestCase
     info = @channel.send(:user_info)
     assert_equal @user.id, info[:id]
     assert_equal @user.email, info[:email]
-    assert info[:name].present?
+    assert_predicate info[:name], :present?
   end
 
   test "presence_redis_key returns expected format" do

@@ -206,12 +206,12 @@ module WorkflowsHelper
     hue_var = "--hue-#{dominant == 'sub_flow' ? 'subflow' : dominant}"
 
     content_tag(:div, class: "wf-list-item__icon", style: "--step-hue: var(#{hue_var});") do
-      content_tag(:svg, nil, class: "wf-list-item__icon-svg", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24", "stroke-width": "1.5") do
+      content_tag(:svg, nil, class: "wf-list-item__icon-svg", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24", 'stroke-width': "1.5") do
         safe_join([
-          tag(:path, d: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2", "stroke-linecap": "round", "stroke-linejoin": "round"),
-          tag(:path, d: "M9 5a2 2 0 012-2h2a2 2 0 012 2", "stroke-linecap": "round", "stroke-linejoin": "round"),
-          tag(:path, d: "M9 14l2 2 4-4", "stroke-linecap": "round", "stroke-linejoin": "round")
-        ])
+                    tag.path(d: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2", 'stroke-linecap': "round", 'stroke-linejoin': "round"),
+                    tag.path(d: "M9 5a2 2 0 012-2h2a2 2 0 012 2", 'stroke-linecap': "round", 'stroke-linejoin': "round"),
+                    tag.path(d: "M9 14l2 2 4-4", 'stroke-linecap': "round", 'stroke-linejoin': "round")
+                  ])
       end
     end
   end

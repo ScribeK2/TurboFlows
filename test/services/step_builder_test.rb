@@ -97,13 +97,13 @@ class StepBuilderTest < ActiveSupport::TestCase
     StepBuilder.call(@workflow, steps_data)
 
     action = @workflow.steps.find_by(uuid: "uuid-1")
-    assert action.instructions.body.to_s.include?("Do this")
+    assert_includes action.instructions.body.to_s, "Do this"
 
     message = @workflow.steps.find_by(uuid: "uuid-2")
-    assert message.content.body.to_s.include?("Hello")
+    assert_includes message.content.body.to_s, "Hello"
 
     escalate = @workflow.steps.find_by(uuid: "uuid-3")
-    assert escalate.notes.body.to_s.include?("Urgent")
+    assert_includes escalate.notes.body.to_s, "Urgent"
   end
 
   test "empty steps array is a no-op" do

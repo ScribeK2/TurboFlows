@@ -4,12 +4,6 @@
 # authentication here
 
 Rails.application.config.to_prepare do
-  ActiveStorage::BaseController.class_eval do
-    # Include Devise helpers if available
-    include Devise::Controllers::Helpers if defined?(Devise)
-
-    # Add authentication for Active Storage requests
-    # This ensures all Active Storage requests require authentication
-    before_action :authenticate_user! if respond_to?(:authenticate_user!)
-  end
+  ActiveStorage::BaseController.include Devise::Controllers::Helpers if defined?(Devise)
+  ActiveStorage::BaseController.before_action :authenticate_user!
 end

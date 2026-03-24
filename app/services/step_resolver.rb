@@ -43,6 +43,7 @@ class StepResolver
   # @return [Step, nil]
   def resolve_next_after_subflow(step, results)
     return nil unless step
+
     resolve_graph_next(step, results)
   end
 
@@ -58,6 +59,7 @@ class StepResolver
   def terminal?(step)
     return false unless step
     return true if step.is_a?(Steps::Resolve)
+
     step.transitions.empty? && !step.is_a?(Steps::SubFlow)
   end
 
@@ -83,6 +85,7 @@ class StepResolver
       # Try full condition expression first (e.g., "variable == 'value'" or "variable == value")
       if transition.condition.match?(/[=!<>]/)
         return target if ConditionEvaluator.evaluate(transition.condition, results)
+
         next
       end
 
@@ -119,7 +122,7 @@ class StepResolver
                          end
 
       if condition_result
-        target = @workflow.steps.unscoped.find_by(uuid: jump_next_step_id)
+        target = @workflow.steps.find_by(uuid: jump_next_step_id)
         return target if target
       end
     end
@@ -129,6 +132,7 @@ class StepResolver
 
   def evaluate_condition(condition, results)
     return false if condition.blank?
+
     ConditionEvaluator.evaluate(condition, results)
   end
 end

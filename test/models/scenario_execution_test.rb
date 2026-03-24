@@ -87,7 +87,7 @@ class ScenarioExecutionTest < ActiveSupport::TestCase
 
     # Process resolve step
     scenario.process_step
-    assert scenario.completed?, "Scenario should be completed after resolve"
+    assert_predicate scenario, :completed?, "Scenario should be completed after resolve"
     assert_nil scenario.current_node_uuid
     assert_equal "resolved", scenario.outcome
   end
@@ -151,7 +151,7 @@ class ScenarioExecutionTest < ActiveSupport::TestCase
     scenario = build_scenario(wf, r)
     scenario.process_step
 
-    assert scenario.completed?, "Scenario should be completed"
+    assert_predicate scenario, :completed?, "Scenario should be completed"
     assert_equal "resolved", scenario.outcome
     assert_nil scenario.current_node_uuid
   end
@@ -235,13 +235,13 @@ class ScenarioExecutionTest < ActiveSupport::TestCase
     result = parent_scenario.process_step
 
     assert result, "process_step should return true for subflow"
-    assert parent_scenario.awaiting_subflow?, "Parent should be awaiting_subflow"
+    assert_predicate parent_scenario, :awaiting_subflow?, "Parent should be awaiting_subflow"
     assert_equal sf.uuid, parent_scenario.resume_node_uuid
 
     # Child scenario should have been created
     child_scenario = parent_scenario.child_scenarios.first
     assert_not_nil child_scenario, "Child scenario should exist"
-    assert child_scenario.active?, "Child scenario should be active"
+    assert_predicate child_scenario, :active?, "Child scenario should be active"
     assert_equal child_wf.id, child_scenario.workflow_id
     assert_equal child_q.uuid, child_scenario.current_node_uuid
   end
@@ -262,16 +262,16 @@ class ScenarioExecutionTest < ActiveSupport::TestCase
     parent_wf.update!(start_step: sf)
 
     parent_scenario = build_scenario(parent_wf, sf)
-    parent_scenario.process_step  # spawns child, parent -> awaiting_subflow
+    parent_scenario.process_step # spawns child, parent -> awaiting_subflow
 
     child_scenario = parent_scenario.child_scenarios.first
-    child_scenario.process_step  # resolve child
+    child_scenario.process_step # resolve child
 
-    assert child_scenario.reload.completed?, "Child should be completed"
+    assert_predicate child_scenario.reload, :completed?, "Child should be completed"
 
     # Now resume parent
     parent_scenario.reload
-    parent_scenario.process_step  # should process_subflow_completion
+    parent_scenario.process_step # should process_subflow_completion
 
     assert parent_scenario.active? || parent_scenario.completed?,
            "Parent should be active or completed after subflow completion"
@@ -302,35 +302,35 @@ class ScenarioExecutionTest < ActiveSupport::TestCase
 
     # Start parent
     parent_scenario = build_scenario(parent_wf, parent_sf)
-    parent_scenario.process_step  # spawns child
-    assert parent_scenario.awaiting_subflow?
+    parent_scenario.process_step # spawns child
+    assert_predicate parent_scenario, :awaiting_subflow?
 
     # Child starts with a subflow step -> spawns grandchild
     child_scenario = parent_scenario.child_scenarios.first
-    child_scenario.process_step  # spawns grandchild
-    assert child_scenario.awaiting_subflow?
+    child_scenario.process_step # spawns grandchild
+    assert_predicate child_scenario, :awaiting_subflow?
 
     # Grandchild resolves immediately
     grandchild_scenario = child_scenario.child_scenarios.first
     assert_not_nil grandchild_scenario
-    grandchild_scenario.process_step  # resolve grandchild
-    assert grandchild_scenario.reload.completed?
+    grandchild_scenario.process_step # resolve grandchild
+    assert_predicate grandchild_scenario.reload, :completed?
 
     # Resume child (subflow completion)
     child_scenario.reload
-    child_scenario.process_step  # process_subflow_completion -> advances to child_r
+    child_scenario.process_step # process_subflow_completion -> advances to child_r
 
     # Now process the resolve step in child
     child_scenario.reload
     if child_scenario.active? && child_scenario.current_node_uuid == child_r.uuid
-      child_scenario.process_step  # resolve child
+      child_scenario.process_step # resolve child
     end
 
-    assert child_scenario.reload.completed?, "Child should be completed"
+    assert_predicate child_scenario.reload, :completed?, "Child should be completed"
 
     # Resume parent
     parent_scenario.reload
-    parent_scenario.process_step  # process_subflow_completion
+    parent_scenario.process_step # process_subflow_completion
 
     # Process parent resolve if needed
     parent_scenario.reload
@@ -338,6 +338,6 @@ class ScenarioExecutionTest < ActiveSupport::TestCase
       parent_scenario.process_step
     end
 
-    assert parent_scenario.reload.completed?, "Parent should be completed after nested subflows"
+    assert_predicate parent_scenario.reload, :completed?, "Parent should be completed after nested subflows"
   end
 end

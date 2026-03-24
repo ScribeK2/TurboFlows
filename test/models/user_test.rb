@@ -462,7 +462,7 @@ class UserTest < ActiveSupport::TestCase
 
     results = User.sorted_by("email_asc")
     ids = results.map(&:id)
-    assert ids.index(u2.id) < ids.index(u1.id), "aaa@ should come before zzz@"
+    assert_operator ids.index(u2.id), :<, ids.index(u1.id), "aaa@ should come before zzz@"
   end
 
   test "sorted_by defaults to created_at desc" do
@@ -471,6 +471,6 @@ class UserTest < ActiveSupport::TestCase
 
     results = User.sorted_by(nil)
     ids = results.map(&:id)
-    assert ids.index(u2.id) < ids.index(u1.id), "newer user should come first"
+    assert_operator ids.index(u2.id), :<, ids.index(u1.id), "newer user should come first"
   end
 end

@@ -53,10 +53,9 @@ class StepSyncer
   end
 
   def load_existing_steps
-    Step.unscoped
-        .where(workflow_id: @workflow.id)
-        .includes(:transitions, :incoming_transitions)
-        .index_by(&:uuid)
+    @workflow.steps
+             .includes(:transitions, :incoming_transitions)
+             .index_by(&:uuid)
   end
 
   def sync_steps(existing_steps)
@@ -114,7 +113,7 @@ class StepSyncer
       end
 
       # Remove stale transitions
-      existing_trans = Transition.unscoped.where(step_id: source_step.id).to_a
+      existing_trans = Transition.where(step_id: source_step.id).to_a
       existing_trans.each do |et|
         match = desired.find { |d| d[:target_step_id] == et.target_step_id && d[:condition] == et.condition }
         et.destroy! unless match
@@ -142,9 +141,9 @@ class StepSyncer
                  end
 
     if start_step
-      @workflow.update_column(:start_step_id, start_step.id)
+      @workflow.update_columns(start_step_id: start_step.id)
     else
-      @workflow.update_column(:start_step_id, nil)
+      @workflow.update_columns(start_step_id: nil)
     end
   end
 
@@ -158,8 +157,11 @@ class StepSyncer
   end
 
   def normalize(data)
-    if data.respond_to?(:permit!)
-      data.permit!.to_h
+    if data.respond_to?(:permit)
+      data.permit(*StepBuilder::PERMITTED_STEP_PARAMS,
+                  options: [[:label, :value]], output_fields: [[:name, :value]],
+                  jumps: {}, variable_mapping: {},
+                  transitions: StepBuilder::PERMITTED_TRANSITION_PARAMS).to_h
     elsif data.respond_to?(:stringify_keys)
       data.stringify_keys
     else

@@ -1,6 +1,6 @@
 require "test_helper"
 
-class Step::PositionableTest < ActiveSupport::TestCase
+class Step::PositionableTest < ActiveSupport::TestCase # rubocop:disable Style/ClassAndModuleChildren
   setup do
     @user = User.create!(email: "test-pos@example.com", password: "password123456")
     @workflow = Workflow.create!(title: "Position Test", user: @user)

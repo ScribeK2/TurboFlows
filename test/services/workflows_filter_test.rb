@@ -61,7 +61,7 @@ class WorkflowsFilterTest < ActiveSupport::TestCase
     @published_wf.reload
     filter = WorkflowsFilter.new(user: @admin, params: { sort: "most_steps" }).call
     counts = filter.workflows_paginated.map(&:steps_count)
-    assert counts.first >= counts.last, "Expected descending step count order"
+    assert_operator counts.first, :>=, counts.last, "Expected descending step count order"
   end
 
   test "sort default recent orders by updated_at desc" do
@@ -90,7 +90,7 @@ class WorkflowsFilterTest < ActiveSupport::TestCase
     12.times { |i| Workflow.create!(title: "Paginated #{i}", user: @admin, status: "published", is_public: true) }
     filter = WorkflowsFilter.new(user: @admin, params: { page: "2" }).call
     assert_equal 2, filter.page
-    assert filter.total_pages >= 2
-    assert filter.workflows_paginated.size <= WorkflowsFilter::PER_PAGE
+    assert_operator filter.total_pages, :>=, 2
+    assert_operator filter.workflows_paginated.size, :<=, WorkflowsFilter::PER_PAGE
   end
 end

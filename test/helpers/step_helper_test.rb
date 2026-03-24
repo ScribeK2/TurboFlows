@@ -40,7 +40,7 @@ class StepHelperTest < ActionView::TestCase
 
     assert_not_includes result, "<script>"
     assert_includes result, "&lt;script&gt;"
-    assert result.html_safe?, "Result should be html_safe"
+    assert_predicate result, :html_safe?, "Result should be html_safe"
   end
 
   test "render_step_content preserves rich text HTML structure" do
@@ -70,7 +70,7 @@ class StepHelperTest < ActionView::TestCase
     result = render_step_content(step, :instructions)
 
     assert_equal "", result
-    assert result.html_safe?
+    assert_predicate result, :html_safe?
   end
 
   test "render_step_content without variables returns raw rich text" do
@@ -81,18 +81,18 @@ class StepHelperTest < ActionView::TestCase
     result = render_step_content(step, :content)
 
     assert_includes result, "Hello world"
-    assert result.html_safe?
+    assert_predicate result, :html_safe?
   end
 
   # ─── serialize_steps_for_editor ─────────────────────────────────────────────
 
   test "serialize_steps_for_editor returns correct shape for each step type" do
-    q = Steps::Question.create!(workflow: @workflow, position: 0, title: "Q1", question: "What?", answer_type: "yes_no", variable_name: "q1_answer")
-    a = Steps::Action.create!(workflow: @workflow, position: 1, title: "A1", action_type: "Instruction")
-    m = Steps::Message.create!(workflow: @workflow, position: 2, title: "M1")
-    e = Steps::Escalate.create!(workflow: @workflow, position: 3, title: "E1", target_type: "supervisor", priority: "high")
-    r = Steps::Resolve.create!(workflow: @workflow, position: 4, title: "R1", resolution_type: "success")
-    sf = Steps::SubFlow.create!(workflow: @workflow, position: 5, title: "SF1", sub_flow_workflow_id: @workflow.id)
+    Steps::Question.create!(workflow: @workflow, position: 0, title: "Q1", question: "What?", answer_type: "yes_no", variable_name: "q1_answer")
+    Steps::Action.create!(workflow: @workflow, position: 1, title: "A1", action_type: "Instruction")
+    Steps::Message.create!(workflow: @workflow, position: 2, title: "M1")
+    Steps::Escalate.create!(workflow: @workflow, position: 3, title: "E1", target_type: "supervisor", priority: "high")
+    Steps::Resolve.create!(workflow: @workflow, position: 4, title: "R1", resolution_type: "success")
+    Steps::SubFlow.create!(workflow: @workflow, position: 5, title: "SF1", sub_flow_workflow_id: @workflow.id)
 
     result = serialize_steps_for_editor(@workflow.reload)
 
@@ -126,7 +126,7 @@ class StepHelperTest < ActionView::TestCase
   end
 
   test "serialize_steps_for_editor uses uuid not AR id" do
-    step = Steps::Action.create!(workflow: @workflow, position: 0, title: "A1", uuid: "my-custom-uuid")
+    Steps::Action.create!(workflow: @workflow, position: 0, title: "A1", uuid: "my-custom-uuid")
 
     result = serialize_steps_for_editor(@workflow.reload)
 
@@ -168,7 +168,7 @@ class StepHelperTest < ActionView::TestCase
   end
 
   test "serialize_steps_for_editor avoids N+1 queries" do
-    steps = 5.times.map do |i|
+    steps = Array.new(5) do |i|
       Steps::Action.create!(workflow: @workflow, position: i, title: "Step #{i}", uuid: "nplus1-#{i}")
     end
 
@@ -182,7 +182,7 @@ class StepHelperTest < ActionView::TestCase
     # Count queries during serialization
     query_count = 0
     counter = lambda { |_name, _start, _finish, _id, payload|
-      query_count += 1 if payload[:sql] =~ /SELECT.*"steps"/i
+      query_count += 1 if /SELECT.*"steps"/i.match?(payload[:sql])
     }
     ActiveSupport::Notifications.subscribed(counter, "sql.active_record") do
       serialize_steps_for_editor(@workflow)
@@ -190,7 +190,7 @@ class StepHelperTest < ActionView::TestCase
 
     # Should be at most 2 queries: one to load steps, one to load transitions (via includes)
     # NOT 2 + N (where N is the number of transitions)
-    assert query_count <= 2, "Expected at most 2 step queries but got #{query_count} — possible N+1"
+    assert_operator query_count, :<=, 2, "Expected at most 2 step queries but got #{query_count} — possible N+1"
   end
 
   test "serialize_steps_for_editor returns empty array for workflow with no steps" do
@@ -256,7 +256,7 @@ class StepHelperTest < ActionView::TestCase
     result = highlight_variables("Hello {{name}}, your ID is {{user_id}}")
     assert_includes result, '<span class="variable-tag">{{name}}</span>'
     assert_includes result, '<span class="variable-tag">{{user_id}}</span>'
-    assert result.html_safe?
+    assert_predicate result, :html_safe?
   end
 
   test "highlight_variables escapes HTML in surrounding text" do

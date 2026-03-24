@@ -43,7 +43,7 @@ module ScenarioExecution
       current_idx = execute_step(step, current_idx, path, results)
     end
 
-    record_completion("completed") unless outcome.present?
+    record_completion("completed") if outcome.blank?
     self.status = 'completed'
     self.current_step_index = current_idx
     self.execution_path = path

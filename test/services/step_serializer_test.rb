@@ -58,7 +58,7 @@ class StepSerializerTest < ActiveSupport::TestCase
     result = StepSerializer.call(@workflow)
 
     assert_equal 6, result.length
-    types = result.map { |s| s["type"] }
+    types = result.pluck("type")
     assert_includes types, "question"
     assert_includes types, "action"
     assert_includes types, "message"

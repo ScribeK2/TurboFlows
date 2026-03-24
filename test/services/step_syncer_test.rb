@@ -22,7 +22,7 @@ class StepSyncerTest < ActiveSupport::TestCase
 
     result = StepSyncer.call(@workflow, incoming)
 
-    assert result.success?
+    assert_predicate result, :success?
     assert_equal 1, @workflow.steps.reload.count
     assert_equal "new-uuid", @workflow.steps.first.uuid
   end
@@ -88,8 +88,8 @@ class StepSyncerTest < ActiveSupport::TestCase
   test "returns success with lock_version" do
     result = StepSyncer.call(@workflow, [{ "id" => "u1", "type" => "action", "title" => "A" }])
 
-    assert result.success?
-    assert result.lock_version.is_a?(Integer)
+    assert_predicate result, :success?
+    assert_kind_of Integer, result.lock_version
   end
 
   test "round-trips position_x and position_y" do
@@ -130,7 +130,7 @@ class StepSyncerTest < ActiveSupport::TestCase
     result = StepSyncer.call(@workflow, incoming)
 
     # Question text validation only runs on :publish context
-    assert result.success?
+    assert_predicate result, :success?
     assert_equal 1, @workflow.steps.reload.count
   end
 end

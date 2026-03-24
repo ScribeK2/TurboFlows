@@ -28,25 +28,22 @@ export default class extends Controller {
     // Subscribe to workflow channel
     this.subscription = subscribeToWorkflow(this.workflowIdValue, {
       connected: () => {
-        console.log("Collaboration: Connected to workflow channel", this.workflowIdValue)
+
         this.updateConnectionStatus(true)
       },
       disconnected: () => {
-        console.log("Collaboration: Disconnected from workflow channel")
+
         this.updateConnectionStatus(false)
       },
       presence: (data) => {
-        console.log("Collaboration: Presence callback received", data)
+
         this.handlePresenceUpdate(data)
       },
       update: (data) => {
-        console.log("Collaboration: Update callback received", data.type, data)
-        // The update callback is called, but we handle events via document listeners
-        // This is just for debugging
+        // Update callback handled via document event listeners
       }
     })
     
-    console.log("Collaboration: Subscription created", this.subscription)
 
     // Set up event listeners for real-time updates
     this.setupEventListeners()
@@ -200,7 +197,7 @@ export default class extends Controller {
       this.stepFieldDebounceTimer = setTimeout(() => {
         if (!this.applyingRemoteChange && this.subscription) {
           const stepData = this.extractStepData(stepElement)
-          console.log("Collaboration: Broadcasting step update", stepIndex, stepData)
+
           this.subscription.broadcastStepUpdate(stepIndex, stepData)
         }
       }, 500)
@@ -220,7 +217,7 @@ export default class extends Controller {
         
         this.titleDebounceTimer = setTimeout(() => {
           if (!this.applyingRemoteChange && this.subscription) {
-            console.log("Collaboration: Broadcasting title update", event.target.value)
+
             this.subscription.broadcastMetadataUpdate("title", event.target.value)
           }
         }, 500)
@@ -242,7 +239,7 @@ export default class extends Controller {
         this.descriptionDebounceTimer = setTimeout(() => {
           if (!this.applyingRemoteChange && this.subscription) {
             const value = descriptionInput.value || ""
-            console.log("Collaboration: Broadcasting description update", value.length, "characters")
+
             this.subscription.broadcastMetadataUpdate("description", value)
           }
         }, 500)
@@ -376,8 +373,6 @@ export default class extends Controller {
     this.applyingRemoteChange = true
     const field = data.field
     const value = data.value
-    
-    console.log("Collaboration: Handling metadata update", field, value)
     
     if (field === "title") {
       const titleInput = this.element.querySelector("input[name='workflow[title]']")
@@ -528,9 +523,8 @@ export default class extends Controller {
   updateConnectionStatus(connected) {
     // Could add a visual indicator for connection status
     if (connected) {
-      console.log("Collaboration: Connected and ready")
     } else {
-      console.warn("Collaboration: Disconnected")
+      // Connection lost — UI could show a reconnecting indicator
     }
   }
 

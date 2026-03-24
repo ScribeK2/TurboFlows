@@ -53,7 +53,7 @@ class WorkflowsHelperTest < ActionView::TestCase
   test "resolve_step_reference resolves title from workflow" do
     user = User.create!(email: "wfh-#{SecureRandom.hex(4)}@example.com", password: "password123!", password_confirmation: "password123!")
     wf = Workflow.create!(title: "Helper WF", user: user)
-    step = Steps::Action.create!(workflow: wf, position: 0, title: "My Step", uuid: "test-uuid")
+    Steps::Action.create!(workflow: wf, position: 0, title: "My Step", uuid: "test-uuid")
     result = resolve_step_reference(wf, "test-uuid")
     assert_equal "My Step", result
   end

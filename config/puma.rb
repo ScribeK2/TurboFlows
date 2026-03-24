@@ -1,6 +1,6 @@
 # Puma Configuration for TurboFlows
 # ================================
-# 
+#
 # Production: Uses workers (processes) + threads for horizontal scaling
 # Development: Uses threads only for simplicity
 #
@@ -25,13 +25,13 @@ pidfile ENV.fetch("PIDFILE", "tmp/pids/server.pid")
 # =============================================================================
 # PRODUCTION CONFIGURATION - Workers (processes) for horizontal scaling
 # =============================================================================
-# 
+#
 # Workers are forked processes that each run their own thread pool.
 # This provides better CPU utilization on multi-core servers.
 #
 # Recommended WEB_CONCURRENCY values:
 # - Render Free/Starter: 2 workers
-# - 512MB RAM: 2 workers  
+# - 512MB RAM: 2 workers
 # - 1GB RAM: 2-3 workers
 # - 2GB+ RAM: 3-4 workers
 #
@@ -41,24 +41,24 @@ if ENV["RAILS_ENV"] == "production"
   # Number of worker processes
   # Default to 2 for most PaaS environments
   workers ENV.fetch("WEB_CONCURRENCY", 2).to_i
-  
+
   # Preload the application before forking workers
   # This reduces memory usage via Copy-on-Write and speeds up worker boot
   preload_app!
-  
+
   # Code to run when a worker boots (after fork)
   on_worker_boot do
     # Re-establish database connection after forking
     # Each worker needs its own connection from the pool
     ActiveRecord::Base.establish_connection if defined?(ActiveRecord)
-    
+
     # Re-establish Redis connection if using ActionCable
     # This ensures each worker has its own Redis connection
     if defined?(ActionCable)
       ActionCable.server.pubsub.send(:redis_connection)
     end
   end
-  
+
   # Optional: Code to run before a worker forks
   before_fork do
     # Close parent database connections before forking
@@ -79,7 +79,7 @@ plugin :tmp_restart
 if ENV["RAILS_ENV"] == "production"
   # Structured logging in production
   log_requests true
-  
+
   # Lower keepalive timeout for load balancers (Render, Heroku, etc.)
   # Most load balancers have 30-60 second timeouts
   persistent_timeout 20

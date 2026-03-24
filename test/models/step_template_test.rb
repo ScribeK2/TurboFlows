@@ -17,10 +17,10 @@ class StepTemplateTest < ActiveSupport::TestCase
   test "all_for_type returns array with key included" do
     result = StepTemplate.all_for_type(:question)
     assert_instance_of Array, result
-    assert result.length >= 3
-    assert result.all? { |t| t[:key].present? }
-    assert result.all? { |t| t[:name].present? }
-    assert result.all? { |t| t[:type] == "question" }
+    assert_operator result.length, :>=, 3
+    assert(result.all? { |t| t[:key].present? })
+    assert(result.all? { |t| t[:name].present? })
+    assert(result.all? { |t| t[:type] == "question" })
   end
 
   test "find returns template with key for valid type and key" do

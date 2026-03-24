@@ -1,3 +1,4 @@
+# rubocop:disable Style/ClassAndModuleChildren -- compact form required because Step is a class, not a module
 module Step::Positionable
   extend ActiveSupport::Concern
 
@@ -7,19 +8,16 @@ module Step::Positionable
 
   class_methods do
     def insert_at(workflow, position)
-      workflow.steps.unscoped
-              .where(workflow_id: workflow.id)
-              .where("position >= ?", position)
+      workflow.steps
+              .where(position: position..)
               .update_all("position = position + 1")
       position
     end
 
     def rebalance_positions(workflow)
-      workflow.steps.unscoped
-              .where(workflow_id: workflow.id)
-              .order(:position)
+      workflow.steps
               .each_with_index do |step, idx|
-                step.update_column(:position, idx) if step.position != idx
+                step.update_columns(position: idx) if step.position != idx
               end
     end
   end
@@ -27,9 +25,8 @@ module Step::Positionable
   private
 
   def assign_next_position
-    max = workflow.steps.unscoped
-                  .where(workflow_id: workflow_id)
-                  .maximum(:position)
+    max = workflow.steps.maximum(:position)
     self.position = max ? max + 1 : 0
   end
 end
+# rubocop:enable Style/ClassAndModuleChildren

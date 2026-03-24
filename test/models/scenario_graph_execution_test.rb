@@ -82,7 +82,7 @@ class ScenarioGraphExecutionTest < ActiveSupport::TestCase
   test "terminal resolve step completes scenario with resolution metadata" do
     wf = Workflow.create!(title: "Resolve Only", user: @user, graph_mode: true, status: "published")
     r  = Steps::Resolve.create!(workflow: wf, position: 0, title: "Issue Resolved",
-                                 resolution_type: "success", resolution_code: "RES-001")
+                                resolution_type: "success", resolution_code: "RES-001")
     wf.update_column(:start_step_id, r.id)
 
     scenario = Scenario.create!(
@@ -114,7 +114,7 @@ class ScenarioGraphExecutionTest < ActiveSupport::TestCase
 
     parent_wf = Workflow.create!(title: "Parent WF", user: @user, graph_mode: true, status: "published")
     sf = Steps::SubFlow.create!(workflow: parent_wf, position: 0, title: "Run Sub-flow",
-                                 sub_flow_workflow_id: child_wf.id)
+                                sub_flow_workflow_id: child_wf.id)
     parent_r = Steps::Resolve.create!(workflow: parent_wf, position: 1, title: "Parent Done", resolution_type: "success")
     Transition.create!(step: sf, target_step: parent_r, position: 0)
     parent_wf.update_column(:start_step_id, sf.id)
@@ -149,7 +149,7 @@ class ScenarioGraphExecutionTest < ActiveSupport::TestCase
 
     parent_wf = Workflow.create!(title: "Parent WF Resume", user: @user, graph_mode: true, status: "published")
     sf       = Steps::SubFlow.create!(workflow: parent_wf, position: 0, title: "Run Sub-flow",
-                                       sub_flow_workflow_id: child_wf.id)
+                                      sub_flow_workflow_id: child_wf.id)
     parent_r = Steps::Resolve.create!(workflow: parent_wf, position: 1, title: "Parent Done", resolution_type: "success")
     Transition.create!(step: sf, target_step: parent_r, position: 0)
     parent_wf.update_column(:start_step_id, sf.id)
@@ -238,7 +238,7 @@ class ScenarioGraphExecutionTest < ActiveSupport::TestCase
     end
 
     result = scenario.execute
-    assert_equal false, result, "execute should return false on timeout"
+    assert_not result, "execute should return false on timeout"
 
     scenario.reload
     assert_equal "timed_out", scenario.status, "Status should be timed_out after timeout"

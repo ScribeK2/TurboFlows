@@ -86,7 +86,7 @@ module PerformanceHelper
 
   private
 
-  STEP_CLASSES = {
+  STEP_CLASSES = { # rubocop:disable Lint/UselessConstantScoping
     "question" => Steps::Question,
     "action" => Steps::Action,
     "sub_flow" => Steps::SubFlow,
