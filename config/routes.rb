@@ -48,6 +48,9 @@ Rails.application.routes.draw do
   # Folder management (accessible to editors/admins)
   patch 'folders/move_workflow', to: 'folders#move_workflow', as: :move_workflow_folder
 
+  # Session heartbeat (for client-side timeout detection)
+  get "session/heartbeat", to: "sessions#heartbeat", as: :session_heartbeat
+
   # Nav menu and search
   get "nav/menu", to: "nav#menu", as: :nav_menu
   get "nav/search_data", to: "nav#search_data", as: :nav_search_data

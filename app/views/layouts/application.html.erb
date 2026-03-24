@@ -28,7 +28,7 @@
           "flash", "dropdowns", "tooltips", "pagination", "icons",
           "layout", "navigation", "dashboard", "workflows", "editor",
           "steps", "transitions", "scenarios", "flow_diagram", "builder", "admin", "auth",
-          "animations", "skeleton", "utilities", "print",
+          "animations", "skeleton", "session_timeout", "utilities", "print",
           "data-turbo-track": "reload", preload_links_header: false %>
     <%= stylesheet_link_tag "lexxy", "data-turbo-track": "reload", preload_links_header: false %>
 
@@ -38,7 +38,13 @@
     <%= yield :head if content_for?(:head) %>
   </head>
 
-  <body class="page-body">
+  <body class="page-body"
+        <% if user_signed_in? %>
+        data-controller="session-monitor"
+        data-session-monitor-url-value="<%= session_heartbeat_path %>"
+        data-session-monitor-sign-in-url-value="<%= new_user_session_path %>"
+        <% end %>
+  >
     <!-- Navigation Bar -->
     <nav class="page-header"
          data-controller="dialog-manager"
