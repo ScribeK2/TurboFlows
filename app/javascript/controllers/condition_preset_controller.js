@@ -45,6 +45,33 @@ export default class extends Controller {
       this.populateDropdown()
       this.restoreExistingCondition()
     }, 0)
+
+    // Re-initialize presets when the source step's answer type changes
+    this.boundRefreshPresets = this.refreshPresets.bind(this)
+    const panelBody = this.element.closest('.builder__panel-body')
+    if (panelBody) {
+      panelBody.addEventListener('answer-type-changed', this.boundRefreshPresets)
+    }
+  }
+
+  disconnect() {
+    const panelBody = this.element.closest('.builder__panel-body')
+    if (panelBody && this.boundRefreshPresets) {
+      panelBody.removeEventListener('answer-type-changed', this.boundRefreshPresets)
+    }
+  }
+
+  /**
+   * Re-detect step info and rebuild presets (e.g. after answer_type change)
+   */
+  refreshPresets() {
+    const currentCondition = this.conditionValue || ''
+    this.stepInfo = this.detectStepInfo()
+    this.presets = this.buildPresets()
+    this.populateDropdown()
+    // Try to restore the current condition against new presets
+    this.conditionValue = currentCondition
+    this.restoreExistingCondition()
   }
 
   /**
@@ -58,11 +85,14 @@ export default class extends Controller {
       return { stepType: null, answerType: null, variableName: null, options: [] }
     }
 
-    // Get step type from hidden input, or from the builder panel header pill
-    const typeInput = stepItem.querySelector('input[data-step-field="type"]') || stepItem.querySelector('input[name*="[type]"]')
-    let stepType = typeInput?.value || null
+    // Get step type: panel body data attribute > hidden input > selected row fallback
+    const panelBody = this.element.closest('.builder__panel-body')
+    let stepType = panelBody?.dataset?.stepType || null
     if (!stepType) {
-      // Builder panel: read from the selected step row's data attribute
+      const typeInput = stepItem.querySelector('input[data-step-field="type"]') || stepItem.querySelector('input[name*="[type]"]')
+      stepType = typeInput?.value || null
+    }
+    if (!stepType) {
       const selectedRow = document.querySelector('.builder__list-row--selected')
       stepType = selectedRow?.dataset?.stepType || null
     }

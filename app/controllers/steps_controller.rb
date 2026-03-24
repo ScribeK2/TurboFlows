@@ -70,7 +70,9 @@ class StepsController < ApplicationController
             turbo_stream.remove("builder-empty-state"),
             turbo_stream.update("builder-panel",
                                 partial: "steps/panel_edit",
-                                locals: { step: @step, workflow: @workflow, readonly: false })
+                                locals: { step: @step, workflow: @workflow, readonly: false }),
+            turbo_stream.update("step-count",
+                                helpers.pluralize(@workflow.steps.count, "step"))
           ]
           render turbo_stream: streams
         end
@@ -98,11 +100,23 @@ class StepsController < ApplicationController
 
       respond_to do |format|
         format.turbo_stream do
-          render turbo_stream: turbo_stream.replace(
-            dom_id(@step),
-            partial: "workflows/step_row",
-            locals: { step: @step.reload, workflow: @workflow }
-          )
+          streams = [
+            turbo_stream.replace(
+              dom_id(@step),
+              partial: "workflows/step_row",
+              locals: { step: @step.reload, workflow: @workflow }
+            )
+          ]
+
+          if @step.is_a?(Steps::SubFlow) && step_params.key?(:sub_flow_workflow_id)
+            streams << turbo_stream.update(
+              "subflow-preview",
+              partial: "steps/fields/sub_flow_preview",
+              locals: { step: @step }
+            )
+          end
+
+          render turbo_stream: streams
         end
         format.html { redirect_to workflow_path(@workflow, edit: true), notice: "Step updated." }
         format.json { render json: step_json(@step) }
@@ -136,7 +150,11 @@ class StepsController < ApplicationController
 
     respond_to do |format|
       format.turbo_stream do
-        streams = [turbo_stream.remove(dom_id(@step))]
+        streams = [
+          turbo_stream.remove(dom_id(@step)),
+          turbo_stream.update("step-count",
+                              helpers.pluralize(remaining_steps, "step"))
+        ]
         if remaining_steps.zero?
           streams << turbo_stream.append("steps-list",
                                          partial: "workflows/empty_state",
@@ -177,7 +195,9 @@ class StepsController < ApplicationController
           turbo_stream.update("steps-list",
                               partial: "workflows/steps_list_items",
                               locals: { workflow: @workflow, steps: steps }),
-          turbo_stream.update("builder-panel", "")
+          turbo_stream.update("builder-panel", ""),
+          turbo_stream.update("step-count",
+                              helpers.pluralize(steps.size, "step"))
         ]
       end
       format.html { redirect_to workflow_path(@workflow, edit: true), notice: "Template applied." }
@@ -236,7 +256,6 @@ class StepsController < ApplicationController
   def step_class_for(type)
     case type.to_s
     when "question"  then Steps::Question
-    when "action"    then Steps::Action
     when "message"   then Steps::Message
     when "escalate"  then Steps::Escalate
     when "resolve"   then Steps::Resolve

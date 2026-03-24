@@ -22,7 +22,9 @@
     </button>
   </div>
 
-  <div class="builder__panel-body">
+  <div class="builder__panel-body"
+       data-step-type="<%= step.step_type %>"
+       data-step-id="<%= step.id %>">
     <% if readonly %>
       <div class="form-group">
         <label class="form-label">Title</label>

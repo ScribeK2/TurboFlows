@@ -20,30 +20,9 @@
   </p>
 </div>
 
-<% if step.sub_flow_workflow_id.present? %>
-  <% target_workflow = step.target_workflow %>
-  <% if target_workflow %>
-    <div class="subflow-preview card card--sub-flow">
-      <div class="flex items-center justify-between">
-        <div>
-          <h4 class="text-sm font-medium"><%= target_workflow.title %></h4>
-          <p class="form-hint mt-0.5 mb-0">
-            <%= target_workflow.steps.size %> steps
-            <% if target_workflow.graph_mode? %>
-              <span class="ml-1 badge">Graph</span>
-            <% end %>
-          </p>
-        </div>
-        <%= link_to workflow_path(target_workflow), target: "_blank", class: "btn btn--plain btn--sm" do %>
-          View
-          <svg class="icon icon--xs ml-0.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-          </svg>
-        <% end %>
-      </div>
-    </div>
-  <% end %>
-<% end %>
+<div id="subflow-preview">
+  <%= render "steps/fields/sub_flow_preview", step: step %>
+</div>
 
 <div class="form-group mt-4">
   <label class="form-label">Variable Mapping <span class="font-normal">(optional)</span></label>
