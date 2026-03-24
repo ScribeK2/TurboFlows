@@ -100,8 +100,9 @@ scorecard.png
 
 # Utility scripts
 reset_user_password.rb
-# Internal documentation
-/docs/
+# Internal documentation (keep docs/ tracked, ignore working dirs)
+/docs/plans/
+/docs/superpowers/
 
 # Load testing
 /test/load/

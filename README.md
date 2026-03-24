@@ -18,132 +18,24 @@
 
 ---
 
-## Features
+## Running your own TurboFlows instance
 
-### Workflow Builder
-- **Six step types** — Question, Action, Sub-Flow, Message, Escalate, and Resolve
-- **Unified builder** — Single-page interface with step list + slide-in detail panel for editing steps, viewing the flow diagram, and managing settings
-- **Drag-and-drop ordering** with SortableJS reordering
-- **Sub-flow support** — Call other workflows as reusable sub-routines with circular reference detection
-- **Rich text content** — Action Text editor (Lexxy/Lexical) for step instructions, messages, and notes
-- **Multi-branch decisions** — Condition builder with presets and variable autocomplete
-- **Autosave** — All changes saved automatically with debounced persistence; flush on step switch
-- **Read-only / edit mode** — View mode for browsing, edit mode for building; role-based access
-- **Optimistic locking** — Concurrent editing protection via `lock_version`
+If you want to run your own instance without changing its code, see our [Deployment guide](docs/deployment.md).
 
-### Scenario Mode
-- **Step-by-step execution** — Walk through any workflow interactively, recording inputs and results
-- **Graph traversal** — Follows branches and connections through the workflow graph
-- **Variable interpolation** — `{{variable}}` syntax resolved at runtime
-- **Sub-flow execution** — Spawns child scenarios for sub-flow steps, resuming the parent on completion
-- **Safety limits** — Iteration cap (1,000), execution timeout (30s), and nested condition depth limit to prevent infinite loops
+If you want to customize TurboFlows and deploy your changes, see the [Development guide](docs/development.md) for local setup, then the [Deployment guide](docs/deployment.md) for pushing to production.
 
-### Collaboration & Real-Time
-- **Action Cable presence** — See who is editing a workflow in real time via `WorkflowChannel`
-- **Optimistic locking** — Prevents conflicting saves with automatic conflict detection
+## Development
 
-### Organization
-- **Hierarchical groups** — Nested groups (up to 5 levels) with recursive membership
-- **Folders** — Organize workflows within groups with drag-and-drop reordering
-- **Template library** — Save and reuse workflows as templates; admin-managed public templates
-- **Search and filtering** — Client-side fuzzy search (Fuse.js) across workflows
+You are welcome — and encouraged — to modify TurboFlows to your liking.
+Please see our [Development guide](docs/development.md) for how to get set up locally.
 
-### Import & Export
-- **Import** from JSON, CSV, YAML, or Markdown — auto-detects format, assigns UUIDs, marks incomplete steps
-- **Export** to JSON or PDF (Prawn) with full step details
+## Architecture
 
-### Access Control
-- **Three roles** — Administrator, Editor, User with granular permissions
-- **Group-based visibility** — Workflows inherit access from group membership; parent groups cascade to children
-- **Account security** — Devise authentication with lockable accounts, rate limiting (Rack::Attack)
-
-### Admin Panel (`/admin`)
-- User management with role assignment, password resets, and bulk group assignment
-- Template management (create, edit, categorize)
-- Group and folder hierarchy management
-- Workflow overview and monitoring
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| **Framework** | Ruby on Rails 8.1 (#nobuild — no Node.js required) |
-| **Frontend** | Hotwire (Turbo + Stimulus), ~60 Stimulus controllers |
-| **Styling** | Vanilla CSS (@layer cascade, OKLCH design tokens, Propshaft) |
-| **Database** | SQLite (dev/test), PostgreSQL (production) |
-| **Real-time** | Action Cable (Redis in production, in-memory in dev) |
-| **Auth** | Devise with lockable accounts |
-| **PDF** | Prawn |
-| **Rich Text** | Action Text + Lexxy (Lexical-based editor) |
-| **JS (vendored)** | SortableJS, Fuse.js, spark-md5 |
-| **Monitoring** | Sentry (sentry-rails) |
-| **Security** | Rack::Attack, Brakeman, Bullet (N+1 detection) |
-| **Linting** | RuboCop (with rails, minitest, performance plugins) |
-| **Deployment** | Kamal, Puma |
-
-## Prerequisites
-
-- Ruby 4.0.0+
-- Bundler
-- SQLite3 (development) or PostgreSQL (production)
-
-No Node.js required — uses Rails' importmap-rails for JS and Propshaft for vanilla CSS (no build step).
-
-## Installation
-
-```bash
-git clone https://github.com/ScribeK2/TurboFlows
-cd TurboFlows
-bundle install
-
-# Setup database
-rails db:create db:migrate db:seed
-
-# Start development server
-bin/dev
-```
-
-Visit `http://localhost:3000` to access the application.
-
-## Usage
-
-1. **Sign up** with email and password
-2. **Create a workflow** — opens the builder with an empty canvas, or start from a template
-3. **Add steps** — use the type picker to add questions, actions, sub-flows, messages, escalations, or resolve steps
-4. **Configure** — click any step to open its editor panel; set up connections between steps with conditions
-5. **Preview** — use View Flow to see the graph diagram in the side panel
-6. **Test** with Scenario Mode — walk through the flow step by step
-7. **Organize** into groups and folders
-8. **Publish** when ready, then export as JSON or PDF
-
-## Running Tests
-
-```bash
-# All tests (Minitest)
-bin/rails test
-
-# Single file
-bin/rails test test/models/workflow_test.rb
-
-# Specific test by line number
-bin/rails test test/models/workflow_test.rb:42
-
-# Verbose output
-bin/rails test -v
-```
-
-## Deployment
-
-Configured for deployment with [Kamal](https://kamal-deploy.org/). See `config/deploy.yml` for details.
-
-Required environment variables:
-- `RAILS_MASTER_KEY`
-- `SECRET_KEY_BASE`
-- PostgreSQL credentials
+See the [Architecture overview](docs/architecture.md) for the tech stack, features, and how the system is organized.
 
 ## Contributing
 
-Contributions welcome. Please follow Rails conventions, add Minitest tests for new features, and ensure all tests pass before submitting.
+Contributions welcome. Please follow Rails conventions, add Minitest tests for new features, and ensure all tests pass before submitting. See our [style guide](STYLE.md) for coding conventions.
 
 ## License
 
