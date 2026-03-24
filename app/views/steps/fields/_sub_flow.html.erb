@@ -8,7 +8,7 @@
   <%= form.label :sub_flow_workflow_id, "Target Workflow", class: "form-label" %>
 
   <select data-subflow-selector-target="select"
-          data-action="change->subflow-selector#selectWorkflow"
+          data-action="change->subflow-selector#selectWorkflow change->inline-autosave#schedule"
           class="form-select w-full"
           name="step[sub_flow_workflow_id]">
     <option value="">-- Select a workflow --</option>
