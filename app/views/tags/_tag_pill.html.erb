@@ -1,0 +1,11 @@
+<span class="tag-pill" id="tag_<%= tag.id %>">
+  <%= tag.name %>
+  <% if current_user&.can_manage_tags? %>
+    <%= button_to "",
+        tag_path(tag),
+        method: :delete,
+        class: "tag-pill__remove",
+        data: { turbo_stream: true },
+        form: { class: "tag-pill__remove-form" } %>
+  <% end %>
+</span>

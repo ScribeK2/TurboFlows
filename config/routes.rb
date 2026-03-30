@@ -27,6 +27,9 @@ Rails.application.routes.draw do
       # Builder panel routes
       get :flow_diagram
       get :settings
+      # Tag assignment
+      post :add_tag
+      delete :remove_tag
     end
     resources :versions, only: [:show], controller: "workflow_versions" do
       member do
@@ -44,6 +47,8 @@ Rails.application.routes.draw do
       end
     end
   end
+
+  resources :tags, only: [:index, :create, :destroy]
 
   # Folder management (accessible to editors/admins)
   patch 'folders/move_workflow', to: 'folders#move_workflow', as: :move_workflow_folder
