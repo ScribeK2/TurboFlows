@@ -10,6 +10,10 @@ class Workflow < ApplicationRecord
   has_many :group_workflows, dependent: :destroy
   has_many :groups, through: :group_workflows
 
+  # Tag associations
+  has_many :taggings, dependent: :destroy
+  has_many :tags, through: :taggings
+
   # Scenario associations
   has_many :scenarios, dependent: :destroy
 

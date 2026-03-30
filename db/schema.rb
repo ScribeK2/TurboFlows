@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 20_260_323_134_024) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_30_125121) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -156,6 +156,23 @@ ActiveRecord::Schema[8.1].define(version: 20_260_323_134_024) do
     t.index ["workflow_id"], name: "index_steps_on_workflow_id"
   end
 
+  create_table "taggings", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "tag_id", null: false
+    t.datetime "updated_at", null: false
+    t.integer "workflow_id", null: false
+    t.index ["tag_id", "workflow_id"], name: "index_taggings_uniqueness", unique: true
+    t.index ["tag_id"], name: "index_taggings_on_tag_id"
+    t.index ["workflow_id"], name: "index_taggings_on_workflow_id"
+  end
+
+  create_table "tags", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.index "LOWER(name)", name: "index_tags_on_lower_name", unique: true
+  end
+
   create_table "transitions", force: :cascade do |t|
     t.string "condition"
     t.datetime "created_at", null: false
@@ -250,6 +267,8 @@ ActiveRecord::Schema[8.1].define(version: 20_260_323_134_024) do
   add_foreign_key "scenarios", "workflow_versions", on_delete: :nullify
   add_foreign_key "scenarios", "workflows"
   add_foreign_key "steps", "workflows"
+  add_foreign_key "taggings", "tags"
+  add_foreign_key "taggings", "workflows"
   add_foreign_key "transitions", "steps"
   add_foreign_key "transitions", "steps", column: "target_step_id"
   add_foreign_key "user_groups", "groups"
