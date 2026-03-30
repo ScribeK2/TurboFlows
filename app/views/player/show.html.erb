@@ -1,0 +1,90 @@
+<% content_for(:workflow_title) { @workflow.title } %>
+<% content_for(:title) { "#{@workflow.title} — Complete — TurboFlows Player" } %>
+
+<%
+  is_completed = @scenario.completed?
+  resolution = @scenario.results&.dig("_resolution")
+  escalation = @scenario.results&.dig("_escalation")
+  steps_completed = @scenario.execution_path&.size || 0
+  duration = if @scenario.started_at && @scenario.completed_at
+    distance_of_time_in_words(@scenario.started_at, @scenario.completed_at)
+  elsif @scenario.started_at
+    distance_of_time_in_words(@scenario.started_at, Time.current)
+  end
+%>
+
+<div class="player-completion">
+  <%# ── Status Icon ── %>
+  <div class="player-completion__icon-wrap player-completion__icon-wrap--<%= is_completed ? 'success' : 'stopped' %>">
+    <% if escalation %>
+      <svg class="player-completion__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+    <% elsif is_completed %>
+      <svg class="player-completion__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    <% else %>
+      <svg class="player-completion__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    <% end %>
+  </div>
+
+  <%# ── Heading ── %>
+  <h1 class="player-completion__title">
+    <% if escalation %>
+      Escalation Required
+    <% elsif is_completed %>
+      Workflow Complete
+    <% else %>
+      Workflow Stopped
+    <% end %>
+  </h1>
+
+  <%# ── Resolution/Escalation Details ── %>
+  <% if resolution || escalation %>
+    <div class="player-completion__details card">
+      <div class="card__body">
+        <% if resolution %>
+          <div class="player-completion__detail-row">
+            <span class="player-completion__detail-label">Resolution</span>
+            <span class="badge badge--resolve"><%= resolution["type"]&.humanize %></span>
+          </div>
+        <% end %>
+        <% if escalation %>
+          <div class="player-completion__detail-row">
+            <span class="player-completion__detail-label">Escalated to</span>
+            <span><%= escalation["type"] %><%= " — #{escalation["value"]}" if escalation["value"].present? %></span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <%# ── Stats ── %>
+  <div class="player-completion__stats">
+    <div class="player-completion__stat">
+      <span class="player-completion__stat-value"><%= steps_completed %></span>
+      <span class="player-completion__stat-label">Steps completed</span>
+    </div>
+    <% if duration %>
+      <div class="player-completion__stat">
+        <span class="player-completion__stat-value"><%= duration %></span>
+        <span class="player-completion__stat-label">Duration</span>
+      </div>
+    <% end %>
+    <% if resolution %>
+      <div class="player-completion__stat">
+        <span class="player-completion__stat-value"><%= resolution["type"]&.titleize %></span>
+        <span class="player-completion__stat-label">Outcome</span>
+      </div>
+    <% end %>
+  </div>
+
+  <%# ── Actions ── %>
+  <div class="player-completion__actions">
+    <%= button_to "Run Again", play_workflow_path(@workflow), method: :post, class: "btn btn--primary" %>
+    <%= link_to "Back to Workflows", play_path, class: "btn btn--plain" %>
+  </div>
+</div>

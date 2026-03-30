@@ -24,6 +24,9 @@ module Admin
       # Agents tab
       @agent_stats = build_agent_stats
 
+      # Step Performance tab
+      @step_performance = build_step_performance(@base_scope)
+
       # Operations tab
       @dropoff_points = build_dropoff_points
       @busiest_hours = @base_scope.where.not(started_at: nil)
@@ -139,6 +142,29 @@ module Admin
           "MAX(scenarios.started_at) as last_active"
         )
         .order(total_runs: :desc)
+    end
+
+    def build_step_performance(scenarios)
+      step_times = Hash.new { |h, k| h[k] = [] }
+
+      scenarios.where.not(execution_path: nil).find_each do |scenario|
+        Array(scenario.execution_path).each do |entry|
+          next if entry["duration_seconds"].blank?
+
+          key = entry["step_title"] || "Unknown"
+          step_times[key] << entry["duration_seconds"].to_f
+        end
+      end
+
+      step_times.map do |title, durations|
+        {
+          title: title,
+          count: durations.size,
+          avg_duration: (durations.sum / durations.size).round(1),
+          max_duration: durations.max.round(1),
+          min_duration: durations.min.round(1)
+        }
+      end.sort_by { |s| -s[:avg_duration] }
     end
 
     def build_dropoff_points

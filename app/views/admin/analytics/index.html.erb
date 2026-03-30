@@ -31,7 +31,7 @@
   <% active_tab = (params[:tab] || "0").to_i %>
   <div class="mt-6" data-controller="tabs" data-tabs-active-value="<%= active_tab %>">
     <div class="wf-status-tabs mb-4">
-      <% %w[Overview Workflows Agents Operations].each_with_index do |label, i| %>
+      <% %w[Overview Workflows Agents Operations Step\ Performance].each_with_index do |label, i| %>
         <% is_active = i == active_tab %>
         <button data-tabs-target="tab" data-action="click->tabs#switch"
                 class="wf-status-tabs__tab <%= 'wf-status-tabs__tab--active' if is_active %>"
@@ -53,6 +53,9 @@
     </div>
     <div data-tabs-target="panel" class="<%= 'is-hidden' unless active_tab == 3 %>">
       <%= render "tab_operations" %>
+    </div>
+    <div data-tabs-target="panel" class="<%= 'is-hidden' unless active_tab == 4 %>">
+      <%= render "tab_step_performance" %>
     </div>
   </div>
 </div>

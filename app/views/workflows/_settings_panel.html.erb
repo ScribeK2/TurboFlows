@@ -61,6 +61,12 @@
           <p class="form-hint">Public workflows are visible to all users.</p>
         </div>
 
+        <div class="form-group">
+          <%= render "tags/tag_selector", workflow: workflow %>
+        </div>
+
+        <%= render "workflows/sharing_panel", workflow: workflow %>
+
         <% if workflow.published_version.present? %>
           <div class="form-group mt-6 pt-4" style="border-top: 1px solid var(--color-border);">
             <label class="form-label">Version</label>

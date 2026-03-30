@@ -2,9 +2,19 @@ class WorkflowVersionsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_workflow
   before_action :set_version, only: [:show, :restore]
+  before_action :set_diff_versions, only: [:diff]
   before_action :ensure_can_view_workflow!
 
   def show
+  end
+
+  def diff
+    @diff = VersionDiffService.call(
+      @version_old.steps_snapshot,
+      @version_new.steps_snapshot,
+      old_metadata: @version_old.metadata_snapshot,
+      new_metadata: @version_new.metadata_snapshot
+    )
   end
 
   def restore
@@ -35,6 +45,16 @@ class WorkflowVersionsController < ApplicationController
 
   def restore_ar_steps_from_snapshot(steps_snapshot, start_node_uuid)
     StepBuilder.call(@workflow, steps_snapshot, start_node_uuid: start_node_uuid, replace: true)
+  end
+
+  def set_diff_versions
+    if params[:v1].blank? || params[:v2].blank?
+      redirect_to versions_workflow_path(@workflow), alert: "Select two versions to compare."
+      return
+    end
+
+    @version_old = @workflow.versions.find(params[:v1])
+    @version_new = @workflow.versions.find(params[:v2])
   end
 
   def ensure_can_view_workflow!

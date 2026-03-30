@@ -1,0 +1,23 @@
+<% if step.media_attachments.any? %>
+  <div class="media-display">
+    <% step.media_attachments.each do |attachment| %>
+      <div class="media-display__item">
+        <% if step.media_image?(attachment.content_type) %>
+          <%= image_tag rails_blob_path(attachment, disposition: "inline"),
+              class: "media-display__image",
+              alt: attachment.filename.to_s,
+              loading: "lazy" %>
+        <% elsif step.media_video?(attachment.content_type) %>
+          <video controls class="media-display__video" preload="metadata">
+            <source src="<%= rails_blob_path(attachment, disposition: "inline") %>" type="<%= attachment.content_type %>">
+          </video>
+        <% else %>
+          <a href="<%= rails_blob_path(attachment, disposition: "attachment") %>" class="media-display__file">
+            <span>&#128196;</span>
+            <span><%= attachment.filename %> (<%= number_to_human_size(attachment.byte_size) %>)</span>
+          </a>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+<% end %>

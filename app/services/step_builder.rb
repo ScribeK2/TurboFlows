@@ -5,7 +5,8 @@ class StepBuilder
     "message" => Steps::Message,
     "escalate" => Steps::Escalate,
     "resolve" => Steps::Resolve,
-    "sub_flow" => Steps::SubFlow
+    "sub_flow" => Steps::SubFlow,
+    "form" => Steps::Form
   }.freeze
 
   RICH_TEXT_FIELDS = {
@@ -56,6 +57,8 @@ class StepBuilder
     when "sub_flow"
       attrs[:sub_flow_workflow_id] = step_data["target_workflow_id"]
       attrs[:variable_mapping] = step_data["variable_mapping"]
+    when "form"
+      attrs[:options] = step_data["options"]
     end
 
     attrs

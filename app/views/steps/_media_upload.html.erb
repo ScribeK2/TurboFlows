@@ -1,0 +1,13 @@
+<div data-controller="media-upload" class="media-upload-section">
+  <label class="form-label">Media Attachments</label>
+  <div class="media-dropzone" data-media-upload-target="dropzone">
+    <p class="media-dropzone__text">Drop files here or click to browse</p>
+    <p class="media-dropzone__hint">Images, videos, PDFs (max 10MB each)</p>
+    <%= file_field_tag "step[media_attachments][]",
+        multiple: true,
+        accept: "image/*,video/mp4,video/webm,application/pdf",
+        data: { media_upload_target: "input", action: "change->media-upload#fileSelected" },
+        class: "media-dropzone__input" %>
+  </div>
+  <div class="media-preview-list" data-media-upload-target="preview"></div>
+</div>

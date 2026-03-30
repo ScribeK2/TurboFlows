@@ -59,6 +59,11 @@ class User < ApplicationRecord
     admin? || editor?
   end
 
+  # Check if user can manage tags
+  def can_manage_tags?
+    admin? || editor?
+  end
+
   # Check if user can manage templates
   def can_manage_templates?
     admin?

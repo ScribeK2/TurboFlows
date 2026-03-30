@@ -125,6 +125,13 @@
                 <div class="wf-list-item__meta">
                   Created <%= time_ago_in_words(workflow.created_at) %> ago
                 </div>
+                <% if workflow.tags.any? %>
+                  <div class="wf-list-item__tags" style="display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.25rem;">
+                    <% workflow.tags.each do |tag| %>
+                      <span class="tag-pill"><%= tag.name %></span>
+                    <% end %>
+                  </div>
+                <% end %>
               </div>
               <div class="wf-list-item__actions">
                 <%= link_to start_workflow_path(workflow), class: "btn btn--positive btn--sm", aria: { label: "Start scenario for #{workflow.title}" } do %>

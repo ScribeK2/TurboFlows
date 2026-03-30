@@ -1,0 +1,33 @@
+<%#
+  Form step fields.
+  Local variables: form (FormBuilder), step (Steps::Form), workflow
+%>
+<div data-controller="form-field-builder">
+  <label class="form-label">Form Fields</label>
+
+  <div data-form-field-builder-target="fieldList" class="form-field-list">
+    <% Array(step.options).each_with_index do |field, i| %>
+      <div class="form-field-row" data-position="<%= i %>">
+        <div class="form-field-row__inputs">
+          <input type="text" name="step[options][][name]" value="<%= field['name'] %>" placeholder="field_name" class="form-input form-input--sm" required>
+          <input type="text" name="step[options][][label]" value="<%= field['label'] %>" placeholder="Label" class="form-input form-input--sm" required>
+          <select name="step[options][][field_type]" class="form-select form-select--sm">
+            <% %w[text textarea number email phone select checkbox].each do |ft| %>
+              <option value="<%= ft %>" <%= "selected" if field["field_type"] == ft %>><%= ft.capitalize %></option>
+            <% end %>
+          </select>
+          <label class="form-checkbox-label">
+            <input type="checkbox" name="step[options][][required]" value="true" class="form-checkbox" <%= "checked" if field["required"] %>>
+            Required
+          </label>
+          <input type="hidden" name="step[options][][position]" value="<%= i %>">
+          <button type="button" class="btn btn--danger btn--sm" data-action="form-field-builder#removeField">Remove</button>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <button type="button" class="btn btn--secondary btn--sm mt-3" data-action="form-field-builder#addField">
+    + Add Field
+  </button>
+</div>

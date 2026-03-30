@@ -47,6 +47,9 @@ class ScenariosController < ApplicationController
     # Auto-advance sub_flow steps immediately without user interaction
     return if auto_advance_non_interactive_step
 
+    # Record the moment this step is displayed for per-step timing
+    @scenario.record_step_started
+
     # NOTE: escalate and resolve steps show UI first, then process on Continue click
     # They are NOT auto-advanced here - they need user acknowledgment
   end
@@ -69,6 +72,9 @@ class ScenariosController < ApplicationController
       redirect_to scenario_path(@scenario), alert: "This workflow has been stopped and cannot be continued."
       return
     end
+
+    # Record end time for the step the user is leaving
+    @scenario.record_step_ended
 
     # Get answer from params
     answer = params[:answer]

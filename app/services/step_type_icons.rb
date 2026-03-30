@@ -7,7 +7,8 @@ module StepTypeIcons
     'sub_flow' => '~',
     'message' => 'm',
     'escalate' => '^',
-    'resolve' => 'r'
+    'resolve' => 'r',
+    'form' => 'f'
   }.freeze
 
   DEFAULT_ICON = '#'

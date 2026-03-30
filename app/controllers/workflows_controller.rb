@@ -1,6 +1,6 @@
 class WorkflowsController < ApplicationController
   before_action :set_workflow,
-                only: %i[show edit update destroy export export_pdf preview variables start begin_execution publish versions sync_steps flow_diagram settings]
+                only: %i[show edit update destroy export export_pdf preview variables start begin_execution publish versions sync_steps flow_diagram settings add_tag remove_tag]
   before_action :ensure_editor_or_admin!, only: %i[new create import import_file]
   before_action :ensure_can_view_workflow!, only: %i[show export export_pdf start begin_execution preview variables versions flow_diagram settings]
   before_action :ensure_can_edit_workflow!, only: %i[edit update publish sync_steps]
@@ -333,6 +333,38 @@ class WorkflowsController < ApplicationController
            layout: false
   end
 
+  def add_tag
+    return head(:forbidden) unless current_user.can_manage_tags?
+
+    tag = Tag.find(params[:tag_id])
+    @workflow.tags << tag unless @workflow.tags.include?(tag)
+    render turbo_stream: turbo_stream.replace("workflow-tags", partial: "tags/tag_selector", locals: { workflow: @workflow })
+  end
+
+  def remove_tag
+    return head(:forbidden) unless current_user.can_manage_tags?
+
+    tag = Tag.find(params[:tag_id])
+    @workflow.tags.delete(tag)
+    render turbo_stream: turbo_stream.replace("workflow-tags", partial: "tags/tag_selector", locals: { workflow: @workflow })
+  end
+
+  def generate_share
+    @workflow = Workflow.find(params[:id])
+    return head(:forbidden) unless @workflow.can_be_edited_by?(current_user)
+
+    @workflow.generate_share_token!
+    redirect_to @workflow, notice: "Share link generated."
+  end
+
+  def revoke_share
+    @workflow = Workflow.find(params[:id])
+    return head(:forbidden) unless @workflow.can_be_edited_by?(current_user)
+
+    @workflow.revoke_share_token!
+    redirect_to @workflow, notice: "Share link revoked."
+  end
+
   def import
     # Show import form
   end
@@ -522,7 +554,7 @@ class WorkflowsController < ApplicationController
     # graph_mode is for DAG-based workflows
     # Steps are managed via AR Step records, not workflow params
     params.require(:workflow).permit(:title, :description, :is_public, :lock_version,
-                                     :graph_mode,
+                                     :graph_mode, :embed_enabled,
                                      :visual_editor_steps_json, :editor_mode)
   end
 

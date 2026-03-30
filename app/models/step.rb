@@ -4,6 +4,16 @@ class Step < ApplicationRecord
   belongs_to :workflow, counter_cache: :steps_count
   has_many :transitions, -> { order(:position) }, dependent: :destroy, inverse_of: :step
   has_many :incoming_transitions, class_name: "Transition", foreign_key: :target_step_id, dependent: :destroy, inverse_of: :target_step
+  has_many :step_responses, dependent: :destroy
+  has_many_attached :media_attachments
+
+  ALLOWED_MEDIA_TYPES = %w[
+    image/png image/jpeg image/gif image/webp image/svg+xml
+    video/mp4 video/webm
+    application/pdf
+  ].freeze
+
+  MAX_MEDIA_SIZE = 10.megabytes
 
   validates :uuid, presence: true, uniqueness: { scope: :workflow_id }
   validates :position, presence: true
@@ -19,6 +29,8 @@ class Step < ApplicationRecord
   def step_type
     type.demodulize.underscore
   end
+
+  validate :validate_media_attachments
 
   # Check if this step is a terminal node (no outgoing transitions)
   def terminal?
@@ -48,9 +60,32 @@ class Step < ApplicationRecord
     nil
   end
 
+  def media_image?(content_type)
+    content_type.start_with?("image/")
+  end
+
+  def media_video?(content_type)
+    content_type.start_with?("video/")
+  end
+
+  def media_document?(content_type)
+    content_type == "application/pdf"
+  end
+
   private
 
   def generate_uuid
     self.uuid = SecureRandom.uuid
+  end
+
+  def validate_media_attachments
+    media_attachments.each do |attachment|
+      unless ALLOWED_MEDIA_TYPES.include?(attachment.content_type)
+        errors.add(:media_attachments, "must be an image, video, or PDF")
+      end
+      if attachment.byte_size > MAX_MEDIA_SIZE
+        errors.add(:media_attachments, "must be less than 10MB each")
+      end
+    end
   end
 end

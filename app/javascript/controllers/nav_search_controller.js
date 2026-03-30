@@ -74,7 +74,7 @@ export default class extends Controller {
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
       this.workflows = await response.json()
       this.fuse = new Fuse(this.workflows, {
-        keys: ["title", "description"],
+        keys: ["title", "description", "tags"],
         includeMatches: true,
         threshold: 0.3,
         minMatchCharLength: 2

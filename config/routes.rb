@@ -27,8 +27,17 @@ Rails.application.routes.draw do
       # Builder panel routes
       get :flow_diagram
       get :settings
+      # Tag assignment
+      post :add_tag
+      delete :remove_tag
+      # Sharing
+      post :generate_share
+      delete :revoke_share
     end
     resources :versions, only: [:show], controller: "workflow_versions" do
+      collection do
+        get :diff
+      end
       member do
         post :restore
       end
@@ -44,6 +53,8 @@ Rails.application.routes.draw do
       end
     end
   end
+
+  resources :tags, only: %i[index create destroy]
 
   # Folder management (accessible to editors/admins)
   patch 'folders/move_workflow', to: 'folders#move_workflow', as: :move_workflow_folder
@@ -61,6 +72,19 @@ Rails.application.routes.draw do
       get :step
       post :stop
     end
+  end
+
+  # Shared player route (no auth required)
+  get "s/:share_token", to: "player#show_shared", as: :shared_player
+
+  # Player routes (authenticated)
+  get "play", to: "player#index", as: :play
+  post "play/:id", to: "player#start", as: :play_workflow
+  scope "player/scenarios/:id" do
+    get "step", to: "player#step", as: :player_scenario_step
+    post "next", to: "player#next_step", as: :player_scenario_next
+    post "back", to: "player#back", as: :player_scenario_back
+    get "show", to: "player#show", as: :player_scenario_show
   end
 
   # Admin namespace

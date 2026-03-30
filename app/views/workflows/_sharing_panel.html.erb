@@ -1,0 +1,66 @@
+<%#
+  Sharing Panel — share link and embed settings for a workflow.
+
+  Rendered inside the settings panel form (inline-autosave).
+  Uses JS fetch instead of button_to to avoid nested forms.
+
+  Local variables:
+  - workflow: Workflow object
+%>
+<div class="form-group mt-6 pt-4" style="border-top: 1px solid var(--color-border);"
+     data-controller="share-link"
+     data-share-link-generate-url-value="<%= generate_share_workflow_path(workflow) %>"
+     data-share-link-revoke-url-value="<%= revoke_share_workflow_path(workflow) %>">
+  <label class="form-label">Sharing</label>
+
+  <% if workflow.shared? %>
+    <div class="form-group">
+      <label class="form-label" style="font-size: 0.85rem;">Share Link</label>
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <input type="text" readonly class="form-input" style="flex: 1;"
+               value="<%= shared_player_url(share_token: workflow.share_token) %>"
+               data-share-link-target="urlField">
+        <button type="button" class="btn btn--sm btn--secondary"
+                data-action="click->share-link#copy">
+          Copy
+        </button>
+      </div>
+    </div>
+
+    <button type="button" class="btn btn--sm btn--danger"
+            data-action="click->share-link#revoke">
+      Revoke Share Link
+    </button>
+  <% else %>
+    <p class="form-hint">Generate a share link to let anyone view this workflow without signing in.</p>
+    <button type="button" class="btn btn--sm btn--primary"
+            data-action="click->share-link#generate">
+      Generate Share Link
+    </button>
+  <% end %>
+
+  <% if workflow.shared? %>
+    <div class="form-group" style="margin-top: 1rem;">
+      <label class="form-check">
+        <input type="hidden" name="workflow[embed_enabled]" value="0">
+        <%= check_box_tag "workflow[embed_enabled]", "1", workflow.embed_enabled?,
+            class: "form-checkbox",
+            data: { action: "change->inline-autosave#schedule" } %>
+        <span class="form-label mb-0">Allow embedding</span>
+      </label>
+      <p class="form-hint">Enable embedding this workflow in external websites via iframe.</p>
+    </div>
+
+    <% if workflow.embeddable? %>
+      <div class="form-group" style="margin-top: 0.5rem;">
+        <label class="form-label" style="font-size: 0.85rem;">Embed Code</label>
+        <textarea readonly class="form-input" rows="3" style="font-family: monospace; font-size: 0.8rem;"
+                  data-share-link-target="embedCode"><iframe src="<%= shared_player_url(share_token: workflow.share_token) %>" width="100%" height="600" frameborder="0"></iframe></textarea>
+        <button type="button" class="btn btn--sm btn--secondary" style="margin-top: 0.5rem;"
+                data-action="click->share-link#copyEmbed">
+          Copy Embed Code
+        </button>
+      </div>
+    <% end %>
+  <% end %>
+</div>

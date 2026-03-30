@@ -10,6 +10,10 @@ class Workflow < ApplicationRecord
   has_many :group_workflows, dependent: :destroy
   has_many :groups, through: :group_workflows
 
+  # Tag associations
+  has_many :taggings, dependent: :destroy
+  has_many :tags, through: :taggings
+
   # Scenario associations
   has_many :scenarios, dependent: :destroy
 
@@ -318,6 +322,26 @@ class Workflow < ApplicationRecord
   # Get all terminal steps (no outgoing transitions)
   def terminal_nodes
     steps.where.missing(:transitions)
+  end
+
+  # ============================================================================
+  # Sharing & Embedding
+  # ============================================================================
+
+  def generate_share_token!
+    update!(share_token: SecureRandom.urlsafe_base64(18))
+  end
+
+  def revoke_share_token!
+    update!(share_token: nil)
+  end
+
+  def shared?
+    share_token.present?
+  end
+
+  def embeddable?
+    shared? && embed_enabled?
   end
 
   # Get sub-flow steps

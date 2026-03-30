@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 20_260_323_134_024) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_30_133149) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -120,6 +120,18 @@ ActiveRecord::Schema[8.1].define(version: 20_260_323_134_024) do
     t.index ["workflow_version_id"], name: "index_scenarios_on_workflow_version_id"
   end
 
+  create_table "step_responses", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.json "responses", default: {}
+    t.integer "scenario_id", null: false
+    t.integer "step_id", null: false
+    t.datetime "submitted_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["scenario_id", "step_id"], name: "index_step_responses_on_scenario_id_and_step_id"
+    t.index ["scenario_id"], name: "index_step_responses_on_scenario_id"
+    t.index ["step_id"], name: "index_step_responses_on_step_id"
+  end
+
   create_table "steps", force: :cascade do |t|
     t.string "action_type"
     t.string "answer_type"
@@ -154,6 +166,23 @@ ActiveRecord::Schema[8.1].define(version: 20_260_323_134_024) do
     t.index ["workflow_id", "position"], name: "index_steps_on_workflow_id_and_position"
     t.index ["workflow_id", "uuid"], name: "index_steps_on_workflow_id_and_uuid", unique: true
     t.index ["workflow_id"], name: "index_steps_on_workflow_id"
+  end
+
+  create_table "taggings", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "tag_id", null: false
+    t.datetime "updated_at", null: false
+    t.integer "workflow_id", null: false
+    t.index ["tag_id", "workflow_id"], name: "index_taggings_uniqueness", unique: true
+    t.index ["tag_id"], name: "index_taggings_on_tag_id"
+    t.index ["workflow_id"], name: "index_taggings_on_workflow_id"
+  end
+
+  create_table "tags", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.index "LOWER(name)", name: "index_tags_on_lower_name", unique: true
   end
 
   create_table "transitions", force: :cascade do |t|
@@ -217,10 +246,12 @@ ActiveRecord::Schema[8.1].define(version: 20_260_323_134_024) do
   create_table "workflows", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "draft_expires_at"
+    t.boolean "embed_enabled", default: false, null: false
     t.boolean "graph_mode", default: true, null: false
     t.boolean "is_public", default: false, null: false
     t.integer "lock_version", default: 0, null: false
     t.integer "published_version_id"
+    t.string "share_token"
     t.integer "start_step_id"
     t.string "status", default: "published", null: false
     t.integer "steps_count", default: 0, null: false
@@ -232,6 +263,7 @@ ActiveRecord::Schema[8.1].define(version: 20_260_323_134_024) do
     t.index ["graph_mode"], name: "index_workflows_on_graph_mode"
     t.index ["is_public"], name: "index_workflows_on_is_public"
     t.index ["published_version_id"], name: "index_workflows_on_published_version_id"
+    t.index ["share_token"], name: "index_workflows_on_share_token", unique: true
     t.index ["start_step_id"], name: "index_workflows_on_start_step_id"
     t.index ["status", "user_id"], name: "index_workflows_on_status_and_user_id"
     t.index ["status"], name: "index_workflows_on_status"
@@ -249,7 +281,11 @@ ActiveRecord::Schema[8.1].define(version: 20_260_323_134_024) do
   add_foreign_key "scenarios", "users"
   add_foreign_key "scenarios", "workflow_versions", on_delete: :nullify
   add_foreign_key "scenarios", "workflows"
+  add_foreign_key "step_responses", "scenarios"
+  add_foreign_key "step_responses", "steps"
   add_foreign_key "steps", "workflows"
+  add_foreign_key "taggings", "tags"
+  add_foreign_key "taggings", "workflows"
   add_foreign_key "transitions", "steps"
   add_foreign_key "transitions", "steps", column: "target_step_id"
   add_foreign_key "user_groups", "groups"

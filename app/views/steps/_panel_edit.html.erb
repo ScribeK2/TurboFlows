@@ -67,6 +67,10 @@
         <%# Type-specific fields %>
         <%= render "steps/fields/#{step.step_type}", form: f, step: step, workflow: workflow %>
 
+        <%# Media attachments %>
+        <%= render "steps/media_upload" %>
+        <%= render "steps/media_attachments", step: step %>
+
         <%# Connections section %>
         <% unless step.is_a?(Steps::Resolve) %>
           <%= render "steps/transitions_editor", step: step, workflow: workflow %>

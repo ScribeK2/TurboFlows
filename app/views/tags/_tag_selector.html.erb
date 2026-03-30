@@ -1,0 +1,28 @@
+<div id="workflow-tags" data-controller="tag-input" data-tag-input-url-value="<%= tags_path(format: :json) %>">
+  <label class="form-label">Tags</label>
+  <div class="tag-selector">
+    <div class="tag-selector__pills" data-tag-input-target="pills">
+      <% workflow.tags.each do |tag| %>
+        <span class="tag-pill" data-tag-id="<%= tag.id %>">
+          <%= tag.name %>
+          <% if current_user&.can_manage_tags? %>
+            <button type="button" class="tag-pill__remove"
+                    data-action="tag-input#removeTag"
+                    data-tag-input-tag-id-param="<%= tag.id %>">&times;</button>
+          <% end %>
+        </span>
+      <% end %>
+    </div>
+    <% if current_user&.can_manage_tags? %>
+      <div class="tag-selector__input-wrap">
+        <input type="text"
+               class="tag-selector__input"
+               placeholder="Add tag..."
+               data-tag-input-target="input"
+               data-action="input->tag-input#onInput keydown->tag-input#onKeydown"
+               autocomplete="off" />
+        <div class="tag-selector__suggestions" data-tag-input-target="suggestions" hidden></div>
+      </div>
+    <% end %>
+  </div>
+</div>

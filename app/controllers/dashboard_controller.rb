@@ -12,9 +12,9 @@ class DashboardController < ApplicationController
       visible_ids = Workflow.visible_to(current_user).select(:id)
       draft_ids = current_user.workflows.drafts.select(:id)
       @workflows = Workflow.where(id: visible_ids).or(Workflow.where(id: draft_ids))
-                           .order(created_at: :desc).limit(5)
+                           .includes(:tags).order(created_at: :desc).limit(5)
     else
-      @workflows = Workflow.visible_to(current_user).recent.limit(5)
+      @workflows = Workflow.visible_to(current_user).includes(:tags).recent.limit(5)
     end
 
     # Scenario stats (scoped to current user)
