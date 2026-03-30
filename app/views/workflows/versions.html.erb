@@ -4,6 +4,19 @@
     <%= link_to "Back to Workflow", @workflow, class: "btn btn--plain btn--sm" %>
   </div>
 
+  <% if @versions.size >= 2 %>
+    <div class="card p-4 mb-4">
+      <h2 class="font-semibold mb-3">Compare Versions</h2>
+      <%= form_tag diff_workflow_versions_path(@workflow), method: :get, class: "flex items-center gap-3 flex-wrap" do %>
+        <label class="text-sm">From:</label>
+        <%= select_tag :v1, options_from_collection_for_select(@versions, :id, ->(v) { "v#{v.version_number}" }), class: "input input--sm" %>
+        <label class="text-sm">To:</label>
+        <%= select_tag :v2, options_from_collection_for_select(@versions, :id, ->(v) { "v#{v.version_number}" }, @versions.first.id), class: "input input--sm" %>
+        <%= submit_tag "Compare", class: "btn btn--primary btn--sm" %>
+      <% end %>
+    </div>
+  <% end %>
+
   <% if @versions.any? %>
     <div class="table-wrap">
       <table class="table">

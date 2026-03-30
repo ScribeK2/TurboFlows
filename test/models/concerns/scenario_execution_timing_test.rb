@@ -25,8 +25,8 @@ class ScenarioExecutionTimingTest < ActiveSupport::TestCase
     assert_nil scenario.step_started_at_pending
 
     scenario.record_step_started
-    assert scenario.step_started_at_pending.present?
-    assert_nothing_raised { Time.parse(scenario.step_started_at_pending) }
+    assert_predicate scenario.step_started_at_pending, :present?
+    assert_nothing_raised { Time.zone.parse(scenario.step_started_at_pending) }
   end
 
   test "build_path_entry consumes pending started_at" do
@@ -60,9 +60,9 @@ class ScenarioExecutionTimingTest < ActiveSupport::TestCase
     end
 
     last_entry = scenario.reload.execution_path.last
-    assert last_entry["ended_at"].present?
-    assert last_entry["duration_seconds"].present?
-    assert last_entry["duration_seconds"] >= 4.5, "duration should be ~5 seconds"
+    assert_predicate last_entry["ended_at"], :present?
+    assert_predicate last_entry["duration_seconds"], :present?
+    assert_operator last_entry["duration_seconds"], :>=, 4.5, "duration should be ~5 seconds"
   end
 
   test "record_step_ended is a no-op when execution_path is blank" do
@@ -96,8 +96,8 @@ class ScenarioExecutionTimingTest < ActiveSupport::TestCase
 
     scenario.process_step(nil)
 
-    assert scenario.execution_path.present?
+    assert_predicate scenario.execution_path, :present?
     entry = scenario.execution_path.last
-    assert entry["started_at"].present?, "path entry should include started_at"
+    assert_predicate entry["started_at"], :present?, "path entry should include started_at"
   end
 end

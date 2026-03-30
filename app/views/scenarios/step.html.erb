@@ -420,6 +420,20 @@
               </div>
             <% end %>
 
+          <% when 'form' %>
+            <%= form_with url: next_step_scenario_path(@scenario), method: :post, class: "space-y-4", data: { scenario_step_target: "form" } do |form| %>
+              <%= render "scenarios/form_step", step: step %>
+              <div class="scenario-button-bar">
+                <div>
+                  <%= scenario_back_button(@scenario) %>
+                </div>
+                <div class="scenario-btn-group">
+                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
+                  <%= form.submit "Submit Form", class: "btn btn--primary", data: { scenario_step_target: "submit" } %>
+                </div>
+              </div>
+            <% end %>
+
           <% when 'sub_flow' %>
             <%# Sub-flow steps are auto-processed by the controller. This hidden fallback %>
             <%# auto-submits via JS in case auto-advance didn't redirect. %>

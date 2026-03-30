@@ -27,6 +27,11 @@
           <% end %>
           <%= f.submit "Next", class: "btn btn--primary" %>
         <% end %>
+      <% elsif @current_step.step_type == "form" %>
+        <%= form_with url: player_scenario_next_path(@scenario), method: :post do |f| %>
+          <%= render "scenarios/form_step", step: @current_step %>
+          <button type="submit" class="btn btn--primary" style="margin-top: var(--space-4);">Submit Form</button>
+        <% end %>
       <% else %>
         <%= button_to "Continue", player_scenario_next_path(@scenario), method: :post, class: "btn btn--primary" %>
       <% end %>

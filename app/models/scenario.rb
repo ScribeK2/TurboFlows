@@ -177,8 +177,8 @@ class Scenario < ApplicationRecord
     return false unless step
 
     # Idempotency guard: prevent re-processing the same non-interactive step.
-    # Question steps are excluded because users can legitimately re-answer after back navigation.
-    if execution_path.present? && step.step_type != 'question'
+    # Question and form steps are excluded because users can legitimately re-answer after back navigation.
+    if execution_path.present? && %w[question form].exclude?(step.step_type)
       last_entry = execution_path.last
       return false if last_entry&.dig('step_uuid') == step.uuid
     end
@@ -210,6 +210,9 @@ class Scenario < ApplicationRecord
 
     when 'sub_flow'
       return process_subflow_step(step, path_entry)
+
+    when 'form'
+      process_form_step(step, answer, path_entry)
 
     when 'message'
       process_message_step(step, path_entry, resolved_here: resolved_here)
@@ -394,6 +397,33 @@ class Scenario < ApplicationRecord
     path_entry[:answer] = answer
     self.execution_path << path_entry
 
+    advance_to_next_step(step)
+  end
+
+  # Process a form step — validates field responses, persists a StepResponse, and merges values into results
+  def process_form_step(step, answer, path_entry)
+    responses = answer.is_a?(Hash) ? answer : {}
+
+    validation_errors = step.validate_responses(responses)
+    if validation_errors.any?
+      # Store errors on the path entry so the view can display them, but don't advance
+      path_entry["form_errors"] = validation_errors
+      return false
+    end
+
+    StepResponse.create!(
+      scenario: self,
+      step: step,
+      responses: responses,
+      submitted_at: Time.current
+    )
+
+    path_entry["form_submitted"] = true
+    path_entry["response_summary"] = responses.map { |k, v| "#{k}: #{v}" }.join(", ").truncate(200)
+
+    responses.each { |k, v| (self.results ||= {})[k] = v }
+
+    self.execution_path << path_entry
     advance_to_next_step(step)
   end
 

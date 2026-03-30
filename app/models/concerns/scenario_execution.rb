@@ -19,7 +19,7 @@ module ScenarioExecution
 
     now = Time.current
     last_entry["ended_at"] = now.iso8601(3)
-    started = Time.parse(last_entry["started_at"])
+    started = Time.zone.parse(last_entry["started_at"])
     last_entry["duration_seconds"] = (now - started).round(1)
     save!(touch: false)
   end
@@ -86,6 +86,10 @@ module ScenarioExecution
     when 'action'
       path.last[:action_completed] = true
       results[step.title] = "Action executed"
+      current_step_index + 1
+    when 'form'
+      path.last[:form_submitted] = true
+      results[step.title] = "Form submitted"
       current_step_index + 1
     else
       current_step_index + 1

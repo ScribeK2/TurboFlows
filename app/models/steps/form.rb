@@ -14,7 +14,7 @@ module Steps
 
     # Returns the names of all required fields
     def required_field_names
-      fields.select { |f| f["required"] }.map { |f| f["name"] }
+      fields.select { |f| f["required"] }.pluck("name")
     end
 
     # Look up a single field definition by name

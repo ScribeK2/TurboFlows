@@ -54,7 +54,7 @@ Rails.application.routes.draw do
     end
   end
 
-  resources :tags, only: [:index, :create, :destroy]
+  resources :tags, only: %i[index create destroy]
 
   # Folder management (accessible to editors/admins)
   patch 'folders/move_workflow', to: 'folders#move_workflow', as: :move_workflow_folder

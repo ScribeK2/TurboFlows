@@ -14,7 +14,7 @@ class TagsController < ApplicationController
     if tag.persisted?
       render turbo_stream: turbo_stream.append("tag-list", partial: "tags/tag_pill", locals: { tag: tag })
     else
-      head :unprocessable_entity
+      head :unprocessable_content
     end
   end
 
@@ -27,7 +27,7 @@ class TagsController < ApplicationController
   private
 
   def tag_params
-    params.require(:tag).permit(:name)
+    params.expect(tag: [:name])
   end
 
   def ensure_can_manage_tags!

@@ -5,7 +5,7 @@ class TagTest < ActiveSupport::TestCase
 
   test "valid tag with name" do
     tag = Tag.new(name: "Priority")
-    assert tag.valid?
+    assert_predicate tag, :valid?
   end
 
   test "invalid without name" do

@@ -6,9 +6,9 @@ class PlayerController < ApplicationController
 
   def index
     @workflows = Workflow.published
-      .where(id: Workflow.visible_to(current_user).select(:id))
-      .includes(:tags, :versions)
-      .order(updated_at: :desc)
+                         .where(id: Workflow.visible_to(current_user).select(:id))
+                         .includes(:tags, :versions)
+                         .order(updated_at: :desc)
   end
 
   def start

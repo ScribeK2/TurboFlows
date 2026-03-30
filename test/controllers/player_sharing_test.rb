@@ -22,7 +22,7 @@ class PlayerSharingTest < ActionDispatch::IntegrationTest
 
   test "workflow can generate share token" do
     @workflow.generate_share_token!
-    assert @workflow.share_token.present?
+    assert_predicate @workflow.share_token, :present?
     assert_equal 24, @workflow.share_token.length
   end
 

@@ -5,13 +5,13 @@ class StepResponseTest < ActiveSupport::TestCase
     @user = User.create!(email: "resp@test.com", password: "password123!", role: "admin")
     @workflow = Workflow.create!(title: "Resp Flow", user: @user)
     @step = Steps::Form.create!(workflow: @workflow, title: "Form", uuid: SecureRandom.uuid, position: 0,
-      options: [{ "name" => "phone", "label" => "Phone", "field_type" => "text", "required" => true, "position" => 0 }])
+                                options: [{ "name" => "phone", "label" => "Phone", "field_type" => "text", "required" => true, "position" => 0 }])
     @scenario = Scenario.create!(workflow: @workflow, user: @user, purpose: "simulation")
   end
 
   test "valid step response" do
     response = StepResponse.new(scenario: @scenario, step: @step, responses: { "phone" => "555-1234" }, submitted_at: Time.current)
-    assert response.valid?
+    assert_predicate response, :valid?
   end
 
   test "invalid without scenario" do

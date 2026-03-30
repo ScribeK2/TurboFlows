@@ -41,13 +41,14 @@ class VersionDiffService
 
   def diff_step(old_step, new_step)
     all_keys = (old_step.keys + new_step.keys).uniq - IGNORED_KEYS
-    all_keys.select { |key| old_step[key] != new_step[key] }
+    all_keys.reject { |key| old_step[key] == new_step[key] }
   end
 
   def diff_metadata
     all_keys = (@old_metadata.keys + @new_metadata.keys).uniq
     all_keys.each_with_object({}) do |key, changes|
       next if @old_metadata[key] == @new_metadata[key]
+
       changes[key] = { old: @old_metadata[key], new: @new_metadata[key] }
     end
   end
