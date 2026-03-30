@@ -93,6 +93,9 @@ class Scenario < ApplicationRecord
   # Track iteration count for step-by-step processing
   attr_accessor :iteration_count
 
+  # Pending timestamp set when a step is displayed, consumed when path entry is built
+  attr_accessor :step_started_at_pending
+
   def initialize_execution_data
     self.execution_path ||= []
     self.results ||= {}
@@ -366,11 +369,14 @@ class Scenario < ApplicationRecord
 
   # Build execution path entry for a step
   def build_path_entry(step)
-    {
+    entry = {
       step_title: step.title,
       step_type: step.step_type,
-      step_uuid: step.uuid
+      step_uuid: step.uuid,
+      started_at: step_started_at_pending || Time.current.iso8601(3)
     }
+    self.step_started_at_pending = nil
+    entry
   end
 
   # Process a question step

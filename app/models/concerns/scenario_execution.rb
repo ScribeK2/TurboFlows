@@ -3,6 +3,27 @@
 module ScenarioExecution
   extend ActiveSupport::Concern
 
+  # Record the moment a step is displayed to the user.
+  # The timestamp is stored as a pending attr_accessor and consumed by build_path_entry.
+  def record_step_started
+    self.step_started_at_pending = Time.current.iso8601(3)
+  end
+
+  # Record the moment a user advances past the current step.
+  # Stamps ended_at and duration_seconds on the last execution_path entry.
+  def record_step_ended
+    return if execution_path.blank?
+
+    last_entry = execution_path.last
+    return unless last_entry && last_entry["started_at"].present?
+
+    now = Time.current
+    last_entry["ended_at"] = now.iso8601(3)
+    started = Time.parse(last_entry["started_at"])
+    last_entry["duration_seconds"] = (now - started).round(1)
+    save!(touch: false)
+  end
+
   def determine_next_step_index(step, results)
     # Check for universal jumps (works for all step types)
     jump_result = check_jumps(step, results)
