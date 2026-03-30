@@ -114,10 +114,35 @@ class PlayerController < ApplicationController
   end
 
   def back
-    if @scenario.execution_path.present? && @scenario.execution_path.size > 1
-      @scenario.execution_path.pop
-      @scenario.current_step_index = [@scenario.current_step_index.to_i - 1, 0].max
-      @scenario.save!
+    if @scenario.execution_path.present? && @scenario.execution_path.size > 0
+      # Pop to the last interactive step (skip sub_flow entries)
+      popped_step = nil
+      while @scenario.execution_path.size > 0
+        candidate = @scenario.execution_path.pop
+        next if candidate["step_type"] == "sub_flow"
+        popped_step = candidate
+        break
+      end
+
+      if popped_step
+        # Rebuild results from remaining path
+        @scenario.results = {}
+        @scenario.inputs = {}
+        @scenario.execution_path.each do |entry|
+          next unless entry["answer"].present?
+          variable = entry["variable_name"] || entry["step_title"]
+          @scenario.results[variable] = entry["answer"] if variable
+          @scenario.inputs[variable] = entry["answer"] if variable
+        end
+
+        # Restore position from the popped step
+        if popped_step["step_uuid"].present?
+          @scenario.current_node_uuid = popped_step["step_uuid"]
+        end
+        @scenario.current_step_index = [@scenario.current_step_index.to_i - 1, 0].max
+        @scenario.status = "active" if @scenario.completed?
+        @scenario.save!
+      end
     end
     redirect_to player_scenario_step_path(@scenario)
   end
