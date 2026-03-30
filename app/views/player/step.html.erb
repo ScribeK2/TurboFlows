@@ -125,7 +125,7 @@
           <div class="scenario-button-bar">
             <div>
               <% if @scenario.execution_path.present? && @scenario.execution_path.size > 0 %>
-                <%= button_to "Back", player_scenario_back_path(@scenario), method: :post, class: "scenario-btn-cancel" %>
+                <%= link_to "Back", player_scenario_back_path(@scenario), class: "scenario-btn-cancel", data: { turbo_method: :post } %>
               <% end %>
             </div>
             <div class="scenario-btn-group">
@@ -171,7 +171,7 @@
           <div class="scenario-button-bar">
             <div>
               <% if @scenario.execution_path.present? && @scenario.execution_path.size > 0 %>
-                <%= button_to "Back", player_scenario_back_path(@scenario), method: :post, class: "scenario-btn-cancel" %>
+                <%= link_to "Back", player_scenario_back_path(@scenario), class: "scenario-btn-cancel", data: { turbo_method: :post } %>
               <% end %>
             </div>
             <div class="scenario-btn-group">
@@ -205,7 +205,7 @@
         <div class="scenario-button-bar">
           <div>
             <% if @scenario.execution_path.present? && @scenario.execution_path.size > 0 %>
-              <%= button_to "Back", player_scenario_back_path(@scenario), method: :post, class: "scenario-btn-cancel" %>
+              <%= link_to "Back", player_scenario_back_path(@scenario), class: "scenario-btn-cancel", data: { turbo_method: :post } %>
             <% end %>
           </div>
           <div class="scenario-btn-group">
@@ -257,7 +257,7 @@
         <div class="scenario-button-bar">
           <div>
             <% if @scenario.execution_path.present? && @scenario.execution_path.size > 0 %>
-              <%= button_to "Back", player_scenario_back_path(@scenario), method: :post, class: "scenario-btn-cancel" %>
+              <%= link_to "Back", player_scenario_back_path(@scenario), class: "scenario-btn-cancel", data: { turbo_method: :post } %>
             <% end %>
           </div>
           <div class="scenario-btn-group">
@@ -309,7 +309,7 @@
         <div class="scenario-button-bar">
           <div>
             <% if @scenario.execution_path.present? && @scenario.execution_path.size > 0 %>
-              <%= button_to "Back", player_scenario_back_path(@scenario), method: :post, class: "scenario-btn-cancel" %>
+              <%= link_to "Back", player_scenario_back_path(@scenario), class: "scenario-btn-cancel", data: { turbo_method: :post } %>
             <% end %>
           </div>
           <div class="scenario-btn-group">
@@ -328,7 +328,7 @@
           <div class="scenario-button-bar">
             <div>
               <% if @scenario.execution_path.present? && @scenario.execution_path.size > 0 %>
-                <%= button_to "Back", player_scenario_back_path(@scenario), method: :post, class: "scenario-btn-cancel" %>
+                <%= link_to "Back", player_scenario_back_path(@scenario), class: "scenario-btn-cancel", data: { turbo_method: :post } %>
               <% end %>
             </div>
             <div class="scenario-btn-group">
@@ -340,7 +340,7 @@
       <% else %>
         <%= button_to "Continue", player_scenario_next_path(@scenario), method: :post, params: { answer: "" }, class: "btn btn--primary" %>
         <% if @scenario.execution_path.present? && @scenario.execution_path.size > 0 %>
-          <%= button_to "Back", player_scenario_back_path(@scenario), method: :post, class: "scenario-btn-cancel", style: "margin-top: var(--space-2);" %>
+          <%= link_to "Back", player_scenario_back_path(@scenario), class: "scenario-btn-cancel", style: "margin-top: var(--space-2);", data: { turbo_method: :post } %>
         <% end %>
       <% end %>
 
