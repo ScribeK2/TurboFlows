@@ -41,6 +41,45 @@ class PlayerController < ApplicationController
       return
     end
 
+    # Handle awaiting_subflow: redirect to the active child scenario
+    if @scenario.awaiting_subflow?
+      active_child = @scenario.active_child_scenario
+      if active_child && !active_child.complete?
+        redirect_to player_scenario_step_path(active_child)
+      else
+        @scenario.process_subflow_completion
+        redirect_to @scenario.complete? ? player_scenario_show_path(@scenario) : player_scenario_step_path(@scenario)
+      end
+      return
+    end
+
+    # Auto-advance sub_flow steps (they don't need user interaction)
+    if @current_step&.step_type == "sub_flow"
+      @scenario.process_step(nil)
+      if @scenario.awaiting_subflow?
+        active_child = @scenario.active_child_scenario
+        redirect_to player_scenario_step_path(active_child || @scenario)
+      elsif @scenario.complete?
+        redirect_to player_scenario_show_path(@scenario)
+      else
+        redirect_to player_scenario_step_path(@scenario)
+      end
+      return
+    end
+
+    # Auto-advance resolve steps in child scenarios (so sub-flows complete seamlessly)
+    if @scenario.parent_scenario.present? && @current_step&.step_type == "resolve"
+      @scenario.process_step(nil)
+      if @scenario.complete?
+        parent = @scenario.parent_scenario
+        parent.process_subflow_completion
+        redirect_to parent.complete? ? player_scenario_show_path(parent) : player_scenario_step_path(parent)
+      else
+        redirect_to player_scenario_step_path(@scenario)
+      end
+      return
+    end
+
     @scenario.step_started_at_pending = Time.current.iso8601(3)
   end
 
@@ -49,8 +88,26 @@ class PlayerController < ApplicationController
     @scenario.record_step_ended
     @scenario.process_step(answer, resolved_here: params[:resolved].present?)
 
+    # Handle sub-flow creation after processing
+    if @scenario.awaiting_subflow?
+      active_child = @scenario.active_child_scenario
+      if active_child
+        redirect_to player_scenario_step_path(active_child)
+      else
+        redirect_to player_scenario_step_path(@scenario)
+      end
+      return
+    end
+
     if @scenario.completed? || @scenario.stopped?
-      redirect_to player_scenario_show_path(@scenario)
+      # If this is a child scenario completing, return to parent
+      if @scenario.parent_scenario.present?
+        parent = @scenario.parent_scenario
+        parent.process_subflow_completion
+        redirect_to parent.complete? ? player_scenario_show_path(parent) : player_scenario_step_path(parent)
+      else
+        redirect_to player_scenario_show_path(@scenario)
+      end
     else
       redirect_to player_scenario_step_path(@scenario)
     end
