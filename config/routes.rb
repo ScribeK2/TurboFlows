@@ -71,6 +71,9 @@ Rails.application.routes.draw do
     end
   end
 
+  # Shared player route (no auth required)
+  get "s/:share_token", to: "player#show_shared", as: :shared_player
+
   # Player routes (authenticated)
   get "play", to: "player#index", as: :play
   post "play/:id", to: "player#start", as: :play_workflow

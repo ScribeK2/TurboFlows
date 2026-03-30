@@ -1,7 +1,7 @@
 class PlayerController < ApplicationController
   layout "player"
 
-  before_action :authenticate_user!
+  before_action :authenticate_user!, except: %i[show_shared step next_step back show]
   before_action :set_scenario, only: %i[step next_step back show]
 
   def index
@@ -63,11 +63,28 @@ class PlayerController < ApplicationController
     @workflow = @scenario.workflow
   end
 
+  def show_shared
+    @workflow = Workflow.published.find_by!(share_token: params[:share_token])
+    @embed_mode = params[:embed] == "1" && @workflow.embeddable?
+
+    scenario = Scenario.create!(
+      workflow: @workflow,
+      user: @workflow.user,
+      purpose: "live",
+      started_at: Time.current
+    )
+
+    redirect_to player_scenario_step_path(scenario)
+  rescue ActiveRecord::RecordNotFound
+    head :not_found
+  end
+
   private
 
   def set_scenario
     @scenario = Scenario.find(params[:id])
     return if current_user && @scenario.user == current_user
+    return if @scenario.workflow.shared? && !current_user
 
     head :forbidden
   end

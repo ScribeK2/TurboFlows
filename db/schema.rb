@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_30_125121) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_30_132237) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -234,10 +234,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_30_125121) do
   create_table "workflows", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "draft_expires_at"
+    t.boolean "embed_enabled", default: false, null: false
     t.boolean "graph_mode", default: true, null: false
     t.boolean "is_public", default: false, null: false
     t.integer "lock_version", default: 0, null: false
     t.integer "published_version_id"
+    t.string "share_token"
     t.integer "start_step_id"
     t.string "status", default: "published", null: false
     t.integer "steps_count", default: 0, null: false
@@ -249,6 +251,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_30_125121) do
     t.index ["graph_mode"], name: "index_workflows_on_graph_mode"
     t.index ["is_public"], name: "index_workflows_on_is_public"
     t.index ["published_version_id"], name: "index_workflows_on_published_version_id"
+    t.index ["share_token"], name: "index_workflows_on_share_token", unique: true
     t.index ["start_step_id"], name: "index_workflows_on_start_step_id"
     t.index ["status", "user_id"], name: "index_workflows_on_status_and_user_id"
     t.index ["status"], name: "index_workflows_on_status"
