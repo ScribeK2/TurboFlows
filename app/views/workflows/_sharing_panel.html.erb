@@ -2,12 +2,15 @@
   Sharing Panel — share link and embed settings for a workflow.
 
   Rendered inside the settings panel form (inline-autosave).
+  Uses JS fetch instead of button_to to avoid nested forms.
 
   Local variables:
   - workflow: Workflow object
 %>
 <div class="form-group mt-6 pt-4" style="border-top: 1px solid var(--color-border);"
-     data-controller="share-link">
+     data-controller="share-link"
+     data-share-link-generate-url-value="<%= generate_share_workflow_path(workflow) %>"
+     data-share-link-revoke-url-value="<%= revoke_share_workflow_path(workflow) %>">
   <label class="form-label">Sharing</label>
 
   <% if workflow.shared? %>
@@ -24,15 +27,16 @@
       </div>
     </div>
 
-    <%= button_to "Revoke Share Link", revoke_share_workflow_path(workflow),
-        method: :delete,
-        class: "btn btn--sm btn--danger",
-        data: { turbo_confirm: "Revoke the share link? Existing links will stop working." } %>
+    <button type="button" class="btn btn--sm btn--danger"
+            data-action="click->share-link#revoke">
+      Revoke Share Link
+    </button>
   <% else %>
     <p class="form-hint">Generate a share link to let anyone view this workflow without signing in.</p>
-    <%= button_to "Generate Share Link", generate_share_workflow_path(workflow),
-        method: :post,
-        class: "btn btn--sm btn--primary" %>
+    <button type="button" class="btn btn--sm btn--primary"
+            data-action="click->share-link#generate">
+      Generate Share Link
+    </button>
   <% end %>
 
   <% if workflow.shared? %>
