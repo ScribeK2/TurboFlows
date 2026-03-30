@@ -9,6 +9,7 @@ class Scenario < ApplicationRecord
   # Parent/child scenario associations for sub-flows
   belongs_to :parent_scenario, class_name: 'Scenario', optional: true
   has_many :child_scenarios, class_name: 'Scenario', foreign_key: 'parent_scenario_id', dependent: :destroy
+  has_many :step_responses, dependent: :destroy
 
   # String-backed enum — maps to existing column values with no migration needed.
   # :timed_out maps to DB "timeout", :errored maps to DB "error" to avoid Ruby naming conflicts.

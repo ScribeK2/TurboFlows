@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_30_132237) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_30_133149) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -118,6 +118,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_30_132237) do
     t.index ["workflow_id", "purpose", "outcome"], name: "index_scenarios_on_workflow_id_and_purpose_and_outcome"
     t.index ["workflow_id"], name: "index_scenarios_on_workflow_id"
     t.index ["workflow_version_id"], name: "index_scenarios_on_workflow_version_id"
+  end
+
+  create_table "step_responses", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.json "responses", default: {}
+    t.integer "scenario_id", null: false
+    t.integer "step_id", null: false
+    t.datetime "submitted_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["scenario_id", "step_id"], name: "index_step_responses_on_scenario_id_and_step_id"
+    t.index ["scenario_id"], name: "index_step_responses_on_scenario_id"
+    t.index ["step_id"], name: "index_step_responses_on_step_id"
   end
 
   create_table "steps", force: :cascade do |t|
@@ -269,6 +281,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_30_132237) do
   add_foreign_key "scenarios", "users"
   add_foreign_key "scenarios", "workflow_versions", on_delete: :nullify
   add_foreign_key "scenarios", "workflows"
+  add_foreign_key "step_responses", "scenarios"
+  add_foreign_key "step_responses", "steps"
   add_foreign_key "steps", "workflows"
   add_foreign_key "taggings", "tags"
   add_foreign_key "taggings", "workflows"

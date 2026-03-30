@@ -4,6 +4,7 @@ class Step < ApplicationRecord
   belongs_to :workflow, counter_cache: :steps_count
   has_many :transitions, -> { order(:position) }, dependent: :destroy, inverse_of: :step
   has_many :incoming_transitions, class_name: "Transition", foreign_key: :target_step_id, dependent: :destroy, inverse_of: :target_step
+  has_many :step_responses, dependent: :destroy
   has_many_attached :media_attachments
 
   ALLOWED_MEDIA_TYPES = %w[
