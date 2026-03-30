@@ -148,20 +148,18 @@
           </div>
         </div>
 
-        <%= button_to "Continue", player_scenario_next_path(@scenario), method: :post, params: { answer: "" } do %>
+        <%= form_with url: player_scenario_next_path(@scenario), method: :post do %>
+          <input type="hidden" name="answer" value="completed">
           <div class="scenario-button-bar">
             <div>
               <% if @scenario.execution_path.present? && @scenario.execution_path.size > 0 %>
-                <!--  back is handled below -->
+                <%= button_to "Back", player_scenario_back_path(@scenario), method: :post, class: "scenario-btn-cancel" %>
               <% end %>
             </div>
             <div class="scenario-btn-group">
-              <span class="btn btn--primary">Continue</span>
+              <button type="submit" class="btn btn--primary">Continue</button>
             </div>
           </div>
-        <% end %>
-        <% if @scenario.execution_path.present? && @scenario.execution_path.size > 0 %>
-          <%= button_to "Back", player_scenario_back_path(@scenario), method: :post, class: "scenario-btn-cancel", style: "margin-top: var(--space-2);" %>
         <% end %>
 
       <% when "message" %>
