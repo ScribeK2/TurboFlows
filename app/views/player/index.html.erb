@@ -1,0 +1,17 @@
+<% content_for(:title) { "Play — TurboFlows" } %>
+
+<h1>Available Workflows</h1>
+
+<div class="player-workflow-list">
+  <% @workflows.each do |workflow| %>
+    <%= button_to play_workflow_path(workflow), method: :post, class: "player-workflow-card" do %>
+      <div class="player-workflow-card__title"><%= workflow.title %></div>
+      <div class="player-workflow-card__meta">
+        <%= workflow.steps.size %> steps
+        <% if workflow.versions.any? %>
+          &middot; v<%= workflow.versions.last.version_number %>
+        <% end %>
+      </div>
+    <% end %>
+  <% end %>
+</div>

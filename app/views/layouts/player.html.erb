@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= content_for?(:title) ? yield(:title) : "TurboFlows Player" %></title>
+  <meta name="csrf-token" content="<%= form_authenticity_token %>">
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+  <%= stylesheet_link_tag "application", data: { turbo_track: "reload" } %>
+  <%= javascript_importmap_tags %>
+</head>
+<body class="player-layout<%= " player-layout--embed" if @embed_mode %>">
+  <header class="player-header">
+    <div class="player-header__title">
+      <% if content_for?(:workflow_title) %>
+        <%= yield(:workflow_title) %>
+      <% else %>
+        TurboFlows
+      <% end %>
+    </div>
+    <% if current_user %>
+      <div class="player-header__actions">
+        <%= link_to "Exit Player", play_path, class: "player-link" %>
+      </div>
+    <% end %>
+  </header>
+
+  <main class="player-main">
+    <% flash.each do |type, message| %>
+      <div class="flash flash--<%= type %>"><%= message %></div>
+    <% end %>
+    <%= yield %>
+  </main>
+
+  <footer class="player-footer">
+    <span class="player-footer__mark">TurboFlows</span>
+  </footer>
+</body>
+</html>

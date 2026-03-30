@@ -1,0 +1,41 @@
+<% content_for(:workflow_title) { @workflow.title } %>
+<% content_for(:title) { "#{@workflow.title} — TurboFlows Player" } %>
+
+<% if @current_step %>
+  <div class="player-step">
+    <div class="player-step__header">
+      <h2 class="player-step__title"><%= @current_step.title %></h2>
+      <span class="player-step__type"><%= @current_step.step_type.humanize %></span>
+    </div>
+
+    <div class="player-step__content">
+      <% if @current_step.respond_to?(:content) && @current_step.content.present? %>
+        <%= @current_step.content %>
+      <% end %>
+    </div>
+
+    <div class="player-step__actions">
+      <% if @current_step.step_type == "question" %>
+        <%= form_with url: player_scenario_next_path(@scenario), method: :post do |f| %>
+          <% if @current_step.respond_to?(:options) && @current_step.options.present? %>
+            <% @current_step.options.each do |option| %>
+              <%= f.radio_button :answer, option, id: "answer_#{option}" %>
+              <%= f.label :answer, option, value: option %>
+            <% end %>
+          <% else %>
+            <%= f.text_field :answer, placeholder: "Your answer..." %>
+          <% end %>
+          <%= f.submit "Next", class: "btn btn--primary" %>
+        <% end %>
+      <% else %>
+        <%= button_to "Continue", player_scenario_next_path(@scenario), method: :post, class: "btn btn--primary" %>
+      <% end %>
+
+      <% if @scenario.execution_path.present? && @scenario.execution_path.size > 0 %>
+        <%= button_to "Back", player_scenario_back_path(@scenario), method: :post, class: "btn btn--plain" %>
+      <% end %>
+    </div>
+  </div>
+<% else %>
+  <p>No step available.</p>
+<% end %>

@@ -32,6 +32,9 @@ Rails.application.routes.draw do
       delete :remove_tag
     end
     resources :versions, only: [:show], controller: "workflow_versions" do
+      collection do
+        get :diff
+      end
       member do
         post :restore
       end
@@ -66,6 +69,16 @@ Rails.application.routes.draw do
       get :step
       post :stop
     end
+  end
+
+  # Player routes (authenticated)
+  get "play", to: "player#index", as: :play
+  post "play/:id", to: "player#start", as: :play_workflow
+  scope "player/scenarios/:id" do
+    get "step", to: "player#step", as: :player_scenario_step
+    post "next", to: "player#next_step", as: :player_scenario_next
+    post "back", to: "player#back", as: :player_scenario_back
+    get "show", to: "player#show", as: :player_scenario_show
   end
 
   # Admin namespace
