@@ -242,6 +242,7 @@ class StepsController < ApplicationController
       :resolution_type, :resolution_code, :notes_required, :survey_trigger,
       :sub_flow_workflow_id, :instructions, :content, :notes, :lock_version,
       :transitions_json,
+      media_attachments: [],
       options: [[:label, :value]],
       output_fields: [[:name, :value]],
       jumps: {},

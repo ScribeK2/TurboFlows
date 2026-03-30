@@ -427,6 +427,11 @@
               <%= form.hidden_field :answer, value: "" %>
             <% end %>
           <% end %>
+
+          <%# Media attachments for the current step %>
+          <% if step.respond_to?(:media_attachments) && step.media_attachments.any? %>
+            <%= render "steps/media_attachments", step: step %>
+          <% end %>
         </div>
       </div>
     <% else %>
