@@ -7,7 +7,10 @@
   <meta name="csrf-token" content="<%= form_authenticity_token %>">
   <%= csrf_meta_tags %>
   <%= csp_meta_tag %>
-  <%= stylesheet_link_tag "application", data: { turbo_track: "reload" } %>
+  <%= stylesheet_link_tag "application", "_global", "reset", "base",
+        "buttons", "forms", "cards", "badges", "flash",
+        "_tags", "_player", "_media", "_form_step",
+        data: { turbo_track: "reload" } %>
   <%= javascript_importmap_tags %>
 </head>
 <body class="player-layout<%= " player-layout--embed" if @embed_mode %>">

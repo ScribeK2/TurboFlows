@@ -22,7 +22,12 @@ class PlayerController < ApplicationController
       workflow: workflow,
       user: current_user,
       purpose: "live",
-      started_at: Time.current
+      started_at: Time.current,
+      current_step_index: 0,
+      current_node_uuid: workflow.start_node&.uuid,
+      execution_path: [],
+      results: {},
+      inputs: {}
     )
     redirect_to player_scenario_step_path(scenario)
   end
@@ -41,6 +46,7 @@ class PlayerController < ApplicationController
 
   def next_step
     answer = params[:answer] || params[:selected_option]
+    @scenario.record_step_ended
     @scenario.process_step(answer, resolved_here: params[:resolved].present?)
 
     if @scenario.completed? || @scenario.stopped?
@@ -71,7 +77,12 @@ class PlayerController < ApplicationController
       workflow: @workflow,
       user: @workflow.user,
       purpose: "live",
-      started_at: Time.current
+      started_at: Time.current,
+      current_step_index: 0,
+      current_node_uuid: @workflow.start_node&.uuid,
+      execution_path: [],
+      results: {},
+      inputs: {}
     )
 
     redirect_to player_scenario_step_path(scenario)

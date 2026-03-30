@@ -12,7 +12,10 @@ class TagsController < ApplicationController
     tag.save if tag.new_record?
 
     if tag.persisted?
-      render turbo_stream: turbo_stream.append("tag-list", partial: "tags/tag_pill", locals: { tag: tag })
+      respond_to do |format|
+        format.json { render json: { id: tag.id, name: tag.name } }
+        format.turbo_stream { render turbo_stream: turbo_stream.append("tag-list", partial: "tags/tag_pill", locals: { tag: tag }) }
+      end
     else
       head :unprocessable_content
     end
