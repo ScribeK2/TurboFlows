@@ -7,6 +7,8 @@
     step_number = (@scenario.execution_path&.size || 0) + 1
     total_steps = @workflow.steps.size
     progress_pct = total_steps > 0 ? ((step_number.to_f / total_steps) * 100).clamp(0, 100).round : 0
+    auto_advance = %w[yes_no multiple_choice].include?(@current_step.try(:answer_type))
+    step_info_text = "Step #{step_number}: #{@current_step.title}"
   %>
 
   <%# ── Progress Bar ── %>
@@ -18,8 +20,13 @@
   </div>
 
   <%# ── Step Card ── %>
-  <div class="card player-step-card">
+  <div class="card player-step-card"
+       data-controller="scenario-step"
+       data-scenario-step-auto-advance-value="<%= auto_advance %>"
+       data-scenario-step-step-info-value="<%= step_info_text %>"
+       data-scenario-step-cancel-url-value="<%= play_path %>">
     <div class="card__body">
+      <div aria-live="polite" class="sr-only" data-scenario-step-target="announce"></div>
       <%# ── Step Header ── %>
       <div class="scenario-step-header">
         <div class="scenario-step-header__info">
@@ -49,14 +56,14 @@
       <%# ── Step Type Content ── %>
       <% case stype %>
       <% when "question" %>
-        <%= form_with url: player_scenario_next_path(@scenario), method: :post, class: "space-y-4" do |f| %>
+        <%= form_with url: player_scenario_next_path(@scenario), method: :post, class: "space-y-4", data: { scenario_step_target: "form" } do |f| %>
           <div>
             <label class="form-label"><%= VariableInterpolator.interpolate(@current_step.question.presence || @current_step.title, @scenario.results || {}) %></label>
 
             <% if @current_step.respond_to?(:answer_type) && @current_step.answer_type == "yes_no" %>
               <div class="grid grid-cols-2 gap-3">
                 <label class="radio-card radio-card-yes">
-                  <%= f.radio_button :answer, "yes", required: true %>
+                  <%= f.radio_button :answer, "yes", required: true, data: { action: "change->scenario-step#inputChanged", scenario_step_target: "input" } %>
                   <span class="radio-icon radio-icon-yes">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
@@ -66,7 +73,7 @@
                   <span class="radio-label">Yes</span>
                 </label>
                 <label class="radio-card radio-card-no">
-                  <%= f.radio_button :answer, "no", required: true %>
+                  <%= f.radio_button :answer, "no", required: true, data: { action: "change->scenario-step#inputChanged", scenario_step_target: "input" } %>
                   <span class="radio-icon radio-icon-no">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -83,7 +90,7 @@
                   <% opt_val = option.is_a?(Hash) ? (option["value"] || option["label"]) : option %>
                   <% opt_label = option.is_a?(Hash) ? (option["label"] || option["value"]) : option %>
                   <label class="radio-card">
-                    <%= f.radio_button :answer, opt_val, required: true %>
+                    <%= f.radio_button :answer, opt_val, required: true, data: { action: "change->scenario-step#inputChanged", scenario_step_target: "input" } %>
                     <span class="radio-dot"></span>
                     <span class="radio-label"><%= opt_label %></span>
                   </label>
@@ -96,7 +103,7 @@
                   <% opt_val = option.is_a?(Hash) ? (option["value"] || option["label"]) : option %>
                   <% opt_label = option.is_a?(Hash) ? (option["label"] || option["value"]) : option %>
                   <label class="radio-card">
-                    <%= f.radio_button :answer, opt_val, required: true %>
+                    <%= f.radio_button :answer, opt_val, required: true, data: { action: "change->scenario-step#inputChanged", scenario_step_target: "input" } %>
                     <span class="radio-dot"></span>
                     <span class="radio-label"><%= opt_label %></span>
                   </label>
@@ -122,7 +129,7 @@
               <% end %>
             </div>
             <div class="scenario-btn-group">
-              <%= f.submit "Continue", class: "btn btn--primary" %>
+              <%= f.submit "Continue", class: "btn btn--primary", disabled: auto_advance, data: { scenario_step_target: "submit" } %>
             </div>
           </div>
         <% end %>
