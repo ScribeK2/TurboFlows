@@ -4,3 +4,5 @@
  * Layer order declaration only; files loaded via stylesheet_link_tag. */
 
 @layer reset, base, components, modules, utilities;
+
+@import "_tags.css";
