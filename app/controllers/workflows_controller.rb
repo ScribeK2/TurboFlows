@@ -349,6 +349,22 @@ class WorkflowsController < ApplicationController
     render turbo_stream: turbo_stream.replace("workflow-tags", partial: "tags/tag_selector", locals: { workflow: @workflow })
   end
 
+  def generate_share
+    @workflow = Workflow.find(params[:id])
+    return head(:forbidden) unless @workflow.can_be_edited_by?(current_user)
+
+    @workflow.generate_share_token!
+    redirect_to @workflow, notice: "Share link generated."
+  end
+
+  def revoke_share
+    @workflow = Workflow.find(params[:id])
+    return head(:forbidden) unless @workflow.can_be_edited_by?(current_user)
+
+    @workflow.revoke_share_token!
+    redirect_to @workflow, notice: "Share link revoked."
+  end
+
   def import
     # Show import form
   end
@@ -538,7 +554,7 @@ class WorkflowsController < ApplicationController
     # graph_mode is for DAG-based workflows
     # Steps are managed via AR Step records, not workflow params
     params.require(:workflow).permit(:title, :description, :is_public, :lock_version,
-                                     :graph_mode,
+                                     :graph_mode, :embed_enabled,
                                      :visual_editor_steps_json, :editor_mode)
   end
 

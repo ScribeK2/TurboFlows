@@ -30,6 +30,9 @@ Rails.application.routes.draw do
       # Tag assignment
       post :add_tag
       delete :remove_tag
+      # Sharing
+      post :generate_share
+      delete :revoke_share
     end
     resources :versions, only: [:show], controller: "workflow_versions" do
       collection do
