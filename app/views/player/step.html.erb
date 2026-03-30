@@ -27,7 +27,7 @@
             <%= step_number %>
           </span>
           <div>
-            <h2 class="player-step-card__title"><%= @current_step.title %></h2>
+            <h2 class="player-step-card__title"><%= VariableInterpolator.interpolate(@current_step.title, @scenario.results || {}) %></h2>
             <span class="<%= step_type_badge_classes(stype) %>">
               <%= step_type_svg_icon(stype, css_classes: "icon icon--xs") %>
               <%= step_type_label(stype) %>
@@ -51,7 +51,7 @@
       <% when "question" %>
         <%= form_with url: player_scenario_next_path(@scenario), method: :post, class: "space-y-4" do |f| %>
           <div>
-            <label class="form-label"><%= @current_step.title %></label>
+            <label class="form-label"><%= VariableInterpolator.interpolate(@current_step.question.presence || @current_step.title, @scenario.results || {}) %></label>
 
             <% if @current_step.respond_to?(:answer_type) && @current_step.answer_type == "yes_no" %>
               <div class="grid grid-cols-2 gap-3">
@@ -143,6 +143,17 @@
                 <% if @current_step.respond_to?(:instructions) && @current_step.instructions.present? %>
                   <div class="text-sm"><%= @current_step.instructions %></div>
                 <% end %>
+                <% if @current_step.respond_to?(:output_fields) && @current_step.output_fields.present? %>
+                  <div class="mt-3">
+                    <h4 class="text-xs font-semibold mb-1" style="color: var(--color-ink-muted); text-transform: uppercase; letter-spacing: 0.05em;">Output Fields</h4>
+                    <% @current_step.output_fields.each do |field| %>
+                      <div class="text-sm" style="display: flex; gap: var(--space-2); padding: var(--space-1) 0;">
+                        <strong><%= field["name"] %>:</strong>
+                        <span style="color: var(--color-ink-subtle);"><%= field["value"].presence || "—" %></span>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
               </div>
             </div>
           </div>
@@ -228,6 +239,9 @@
                     <span class="badge <%= priority_mod %>"><%= @current_step.priority&.titleize %></span>
                   </p>
                 <% end %>
+                <% if @current_step.respond_to?(:reason_required) && @current_step.reason_required %>
+                  <p class="text-sm" style="color: var(--color-ink-muted); font-style: italic;">A reason must be documented for this escalation.</p>
+                <% end %>
               </div>
             </div>
           </div>
@@ -270,6 +284,15 @@
                     %>
                     <span class="badge <%= res_mod %>"><%= @current_step.resolution_type&.titleize %></span>
                   </p>
+                <% end %>
+                <% if @current_step.respond_to?(:resolution_code) && @current_step.resolution_code.present? %>
+                  <p class="text-sm mb-2"><strong>Resolution Code:</strong> <%= @current_step.resolution_code %></p>
+                <% end %>
+                <% if @current_step.respond_to?(:notes) && @current_step.notes.present? %>
+                  <div class="text-sm mb-2"><%= @current_step.notes %></div>
+                <% end %>
+                <% if @current_step.respond_to?(:notes_required) && @current_step.notes_required %>
+                  <p class="text-sm" style="color: var(--color-ink-muted); font-style: italic;">Notes are required for this resolution.</p>
                 <% end %>
               </div>
             </div>
