@@ -135,11 +135,11 @@
                 </label>
 
                 <% if step['answer_type'] == 'yes_no' %>
-                  <div class="grid grid-cols-2 gap-3">
+                  <div class="radio-grid">
                     <label class="radio-card radio-card-yes">
                       <%= form.radio_button :answer, "yes", { required: true, data: { action: "change->scenario-step#inputChanged", scenario_step_target: "input" } } %>
                       <span class="radio-icon radio-icon-yes">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
                       </span>
@@ -149,7 +149,7 @@
                     <label class="radio-card radio-card-no">
                       <%= form.radio_button :answer, "no", { required: true, data: { action: "change->scenario-step#inputChanged" } } %>
                       <span class="radio-icon radio-icon-no">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                       </span>
@@ -159,7 +159,7 @@
                   </div>
                 <% elsif step['answer_type'] == 'multiple_choice' %>
                   <% if step['options'].present? %>
-                    <div class="space-y-2.5">
+                    <div class="radio-list">
                       <% step['options'].each_with_index do |option, opt_idx| %>
                         <label class="radio-card">
                           <%= form.radio_button :answer, option['value'] || option['label'], { required: true, data: { action: "change->scenario-step#inputChanged" }.merge(opt_idx == 0 ? { scenario_step_target: "input" } : {}) } %>
@@ -171,7 +171,7 @@
                   <% else %>
                     <div class="scenario-input-wrap">
                       <span class="scenario-input-icon">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
                         </svg>
                       </span>
@@ -186,7 +186,7 @@
                   <% else %>
                     <div class="scenario-input-wrap">
                       <span class="scenario-input-icon">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
                         </svg>
                       </span>
@@ -198,15 +198,15 @@
                   <div class="scenario-input-wrap">
                     <span class="scenario-input-icon">
                       <% if step['answer_type'] == 'number' %>
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5l-3.9 19.5m-2.1-19.5l-3.9 19.5" />
                         </svg>
                       <% elsif step['answer_type'] == 'date' %>
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
                         </svg>
                       <% else %>
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
                         </svg>
                       <% end %>
