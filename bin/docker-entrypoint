@@ -1,0 +1,12 @@
+#!/bin/bash
+set -e
+
+# Create storage directories for SQLite databases and backups
+mkdir -p /rails/storage/db
+mkdir -p /rails/storage/backups
+
+# Run database migrations (creates tables on first boot, migrates on updates)
+# db:prepare runs against all configured databases (primary, cache, queue, cable)
+bin/rails db:prepare
+
+exec "$@"

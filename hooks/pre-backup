@@ -1,0 +1,18 @@
+#!/bin/bash
+set -e
+
+# ONCE pre-backup hook: create safe copies of all SQLite databases
+# using SQLite's online backup feature (consistent snapshot while app is running)
+
+mkdir -p /rails/storage/backups
+
+for db in production production_cache production_queue production_cable; do
+  src="/rails/storage/db/${db}.sqlite3"
+  dst="/rails/storage/backups/${db}.sqlite3"
+  if [ -f "$src" ]; then
+    sqlite3 "$src" ".backup '$dst'"
+    echo "[pre-backup] Backed up $db"
+  fi
+done
+
+echo "[pre-backup] Complete"

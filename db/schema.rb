@@ -243,6 +243,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_10_130000) do
     t.index ["unlock_token"], name: "index_users_on_unlock_token", unique: true
   end
 
+  create_table "workflow_presences", force: :cascade do |t|
+    t.datetime "last_seen_at", null: false
+    t.string "user_email", null: false
+    t.integer "user_id", null: false
+    t.string "user_name", null: false
+    t.integer "workflow_id", null: false
+    t.index ["last_seen_at"], name: "index_workflow_presences_on_last_seen_at"
+    t.index ["user_id"], name: "index_workflow_presences_on_user_id"
+    t.index ["workflow_id", "user_id"], name: "index_workflow_presences_on_workflow_id_and_user_id", unique: true
+    t.index ["workflow_id"], name: "index_workflow_presences_on_workflow_id"
+  end
+
   create_table "workflow_versions", force: :cascade do |t|
     t.text "changelog"
     t.datetime "created_at", null: false
@@ -308,6 +320,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_10_130000) do
   add_foreign_key "user_groups", "users"
   add_foreign_key "user_workflow_pins", "users"
   add_foreign_key "user_workflow_pins", "workflows"
+  add_foreign_key "workflow_presences", "users"
+  add_foreign_key "workflow_presences", "workflows"
   add_foreign_key "workflow_versions", "users", column: "published_by_id"
   add_foreign_key "workflow_versions", "workflows"
   add_foreign_key "workflows", "steps", column: "start_step_id"

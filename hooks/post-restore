@@ -1,0 +1,16 @@
+#!/bin/bash
+set -e
+
+# ONCE post-restore hook: move restored backup files to primary locations
+# Called after ONCE restores data from a backup, before the app boots
+
+for db in production production_cache production_queue production_cable; do
+  src="/rails/storage/backups/${db}.sqlite3"
+  dst="/rails/storage/db/${db}.sqlite3"
+  if [ -f "$src" ]; then
+    cp "$src" "$dst"
+    echo "[post-restore] Restored $db"
+  fi
+done
+
+echo "[post-restore] Complete"

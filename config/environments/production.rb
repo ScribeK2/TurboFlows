@@ -8,36 +8,22 @@ Rails.application.configure do
   # Full error reports are disabled.
   config.consider_all_requests_local = false
 
-  # Ensures that a master key has been made available in ENV["RAILS_MASTER_KEY"], config/master.key, or an environment
-  # key such as config/credentials/production.key. This key is used to decrypt credentials (and other encrypted files).
-  config.require_master_key = true
+  # Disable master key requirement — ONCE provides SECRET_KEY_BASE at runtime
+  config.require_master_key = false
 
-  # Enable static file serving from the `/public` folder (turn off if using NGINX/Apache for it).
-  # On Render, we need to serve static files ourselves, so enable this
   # Static files served by Rails (importmap JS + Propshaft-compiled vanilla CSS)
   config.public_file_server.enabled = ENV.fetch("RAILS_SERVE_STATIC_FILES", "true") == "true"
   config.public_file_server.headers = {
     'Cache-Control' => "public, max-age=31536000"
   }
 
-  # Enable serving of images, stylesheets, and JavaScripts from an asset server.
-  # config.asset_host = "http://assets.example.com"
-
-  # Specifies the header that your server uses for sending files.
-  # config.action_dispatch.x_sendfile_header = "X-Sendfile" # for Apache
-  # config.action_dispatch.x_sendfile_header = "X-Accel-Redirect" # for NGINX
-
   # Store uploaded files on the local file system (see config/storage.yml for options).
   config.active_storage.service = :local
   config.active_storage.variant_processor = :mini_magick
 
-  # Mount Action Cable outside main process or domain.
-  # config.action_cable.mount_path = nil
-  # config.action_cable.url = "wss://example.com/cable"
-  # config.action_cable.allowed_request_origins = [ "http://example.com", /http:\/\/example.*/ ]
-
-  # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
-  config.force_ssl = true
+  # SSL: controlled by ONCE's DISABLE_SSL env var
+  config.assume_ssl = ENV["DISABLE_SSL"].blank?
+  config.force_ssl = ENV["DISABLE_SSL"].blank?
 
   # Include generic and useful information about system operation, but avoid logging too much
   # information to avoid inadvertent exposure of personally identifiable information (PII).
@@ -46,24 +32,26 @@ Rails.application.configure do
   # Prepend all log lines with the following tags.
   config.log_tags = [ :request_id ]
 
-  # Use Redis as cache store for cross-worker fragment caching
-  config.cache_store = :redis_cache_store, {
-    url: ENV.fetch("REDIS_URL", "redis://localhost:6379/1"),
-    expires_in: 1.hour,
-    error_handler: ->(method:, returning:, exception:) {
-      Rails.logger.warn("Redis cache error: #{exception.message}")
-    }
-  }
-
-  # Use a real queuing backend for Active Job (and separate queues per environment).
+  # Solid stack: SQLite-backed cache, queue, cable (no Redis)
+  config.cache_store = :solid_cache_store
   config.active_job.queue_adapter = :solid_queue
-  # config.active_job.queue_name_prefix = "turboflows_production"
+  config.solid_queue.connects_to = { database: { writing: :queue } }
 
   config.action_mailer.perform_caching = false
 
-  # Ignore bad email addresses and do not raise email delivery errors.
-  # Set this to true and configure the email server for immediate delivery to raise delivery errors.
-  # config.action_mailer.raise_delivery_errors = false
+  # SMTP configuration from ONCE env vars
+  if ENV["SMTP_ADDRESS"].present?
+    config.action_mailer.delivery_method = :smtp
+    config.action_mailer.smtp_settings = {
+      address: ENV["SMTP_ADDRESS"],
+      port: ENV.fetch("SMTP_PORT", 587).to_i,
+      user_name: ENV["SMTP_USERNAME"],
+      password: ENV["SMTP_PASSWORD"]
+    }
+  end
+  config.action_mailer.default_options = {
+    from: ENV.fetch("MAILER_FROM_ADDRESS", "noreply@example.com")
+  }
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
   # the I18n.default_locale when a translation cannot be found).
@@ -75,25 +63,15 @@ Rails.application.configure do
   # Use default logging formatter so that PID and timestamp are not suppressed.
   config.log_formatter = ::Logger::Formatter.new
 
-  # Use a different logger for distributed setups.
-  # require "syslog/logger"
-  # config.logger = ActiveSupport::TaggedLogging.new(Syslog::Logger.new "app-name")
-
-  if ENV["RAILS_LOG_TO_STDOUT"].present?
-    config.logger = ActiveSupport::TaggedLogging.logger($stdout)
-  end
+  # Log to stdout in containerized environments
+  config.logger = ActiveSupport::TaggedLogging.logger($stdout)
 
   # Do not dump schema after migrations.
   config.active_record.dump_schema_after_migration = false
 
-  # Enable DNS rebinding protection and other `Host` header attacks.
-  config.hosts = [
-    ENV.fetch("APP_HOST", "localhost"),
-    /.*\.#{Regexp.escape(ENV.fetch("APP_HOST", "localhost"))}/
-  ]
-  # Skip DNS rebinding protection for the default health check endpoint.
-  config.hosts << "healthz"
+  # Host header protection: configurable via APP_HOST env var
+  config.hosts << ENV["APP_HOST"] if ENV["APP_HOST"].present?
 
-  # Default URL options for Devise
-  config.action_mailer.default_url_options = { host: ENV.fetch("HOST", "localhost") }
+  # Default URL options for Devise and Action Mailer
+  config.action_mailer.default_url_options = { host: ENV.fetch("APP_HOST", "localhost") }
 end

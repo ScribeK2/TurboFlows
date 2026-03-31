@@ -3,11 +3,11 @@ require "test_helper"
 class CachingTest < ActiveSupport::TestCase
   include PerformanceHelper
 
-  test "production environment configures redis cache store" do
+  test "production environment configures solid cache store" do
     config_content = Rails.root.join("config/environments/production.rb").read
 
-    assert_match(/config\.cache_store\s*=\s*:redis_cache_store/, config_content,
-                 "Production should configure Redis as the cache store")
+    assert_match(/config\.cache_store\s*=\s*:solid_cache_store/, config_content,
+                 "Production should configure Solid Cache as the cache store")
     assert_no_match(/^\s*#\s*config\.cache_store/, config_content,
                     "Cache store config should not be commented out")
   end

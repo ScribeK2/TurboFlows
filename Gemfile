@@ -6,12 +6,14 @@ ruby "4.0.1"
 gem "bootsnap", ">= 1.4.4", require: false
 gem "csv"
 gem "importmap-rails"
-gem "pg", "~> 1.1", group: [:production]
 gem "propshaft"
 gem "puma", ">= 5.0"
 gem "rails", "~> 8.1.0"
-gem "redis", "~> 5.0"
-gem "sqlite3", ">= 2.1", group: %i[development test]
+gem "sqlite3", ">= 2.1"
+
+# Solid stack: SQLite-backed replacements for Redis (cache, cable, queue)
+gem "solid_cache"
+gem "solid_cable"
 gem "solid_queue"
 gem "stimulus-rails"
 gem "turbo-rails"

@@ -5,8 +5,8 @@ class ActionCableBroadcastTest < ActiveSupport::TestCase
 
   test "workflow channel has presence tracking" do
     channel_source = Rails.root.join("app/channels/workflow_channel.rb").read
-    assert_match(/add_presence/, channel_source)
-    assert_match(/remove_presence/, channel_source)
+    assert_match(/WorkflowPresence\.track/, channel_source)
+    assert_match(/WorkflowPresence\.untrack/, channel_source)
     assert_match(/broadcast_presence_update/, channel_source)
   end
 

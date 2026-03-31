@@ -1,12 +1,15 @@
 require "test_helper"
 
 class ConfigTest < ActiveSupport::TestCase
-  test "database pool accounts for web concurrency in production config" do
+  test "production database uses SQLite with WAL mode" do
     db_config = Rails.root.join("config/database.yml").read
 
-    # Pool should reference WEB_CONCURRENCY, not just RAILS_MAX_THREADS
-    assert_match(/WEB_CONCURRENCY/, db_config,
-                 "Production DB pool should account for WEB_CONCURRENCY (Puma workers)")
+    assert_match(/adapter: sqlite3/, db_config,
+                 "Production DB should use SQLite adapter")
+    assert_match(/default_transaction_mode: immediate/, db_config,
+                 "Production DB should use WAL mode via immediate transaction mode")
+    assert_match(/busy_timeout: 5000/, db_config,
+                 "Production DB should set busy_timeout for write contention handling")
   end
 
   test "production cache store is not commented out" do

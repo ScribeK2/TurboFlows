@@ -49,30 +49,33 @@ test:
   <% end %>
 
 # -------------------------------------------------
-# 4. Production – PostgreSQL via DATABASE_URL
+# 4. Production – SQLite (ONCE self-hosted)
 # -------------------------------------------------
-# Pool size calculation:
-# Each Puma worker needs its own connection pool
-# Formula: RAILS_MAX_THREADS * WEB_CONCURRENCY = minimum pool size
-# We add a small buffer for background tasks and ActionCable
-#
-# Example with defaults (5 threads * 2 workers = 10):
-# - 10 connections per worker minimum
-# - With 2 workers that's 20 total connections needed
-# - Database should have at least 25-30 max_connections
+# All databases stored in storage/db/ which maps to /rails/storage/db/
+# in Docker. ONCE mounts a persistent volume at /rails/storage.
+# WAL mode via default_transaction_mode: immediate for write concurrency.
+# Separate DB files for cache/queue/cable isolate write contention.
 production:
   primary:
-    adapter: postgresql
-    url: <%= ENV["DATABASE_URL"] %>
-    pool: <%= ENV.fetch("RAILS_MAX_THREADS", 5).to_i * ENV.fetch("WEB_CONCURRENCY", 2).to_i + 2 %>
-    connect_timeout: 5
-    prepared_statements: true
-    advisory_locks: true
-    reaping_frequency: 10
+    <<: *default
+    database: storage/db/production.sqlite3
+    default_transaction_mode: immediate
+    busy_timeout: 5000
+  cache:
+    <<: *default
+    database: storage/db/production_cache.sqlite3
+    default_transaction_mode: immediate
+    busy_timeout: 5000
+    migrations_paths: db/cache_migrate
   queue:
-    adapter: postgresql
-    url: <%= ENV["DATABASE_URL"] %>
-    pool: <%= ENV.fetch("RAILS_MAX_THREADS", 5).to_i * ENV.fetch("WEB_CONCURRENCY", 2).to_i + 2 %>
-    connect_timeout: 5
-    prepared_statements: true
+    <<: *default
+    database: storage/db/production_queue.sqlite3
+    default_transaction_mode: immediate
+    busy_timeout: 5000
     migrations_paths: db/queue_migrate
+  cable:
+    <<: *default
+    database: storage/db/production_cable.sqlite3
+    default_transaction_mode: immediate
+    busy_timeout: 5000
+    migrations_paths: db/cable_migrate
