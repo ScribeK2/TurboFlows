@@ -8,7 +8,8 @@ Rails.application.configure do
   # Full error reports are disabled.
   config.consider_all_requests_local = false
 
-  # Disable master key requirement — ONCE provides SECRET_KEY_BASE at runtime
+  # Disable master key requirement — ONCE provides SECRET_KEY_BASE at runtime.
+  # Also allows asset precompilation during Docker build without keys.
   config.require_master_key = false
 
   # Static files served by Rails (importmap JS + Propshaft-compiled vanilla CSS)
