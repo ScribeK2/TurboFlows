@@ -99,4 +99,71 @@ class PlayerControllerTest < ActionDispatch::IntegrationTest
     get player_scenario_show_path(scenario)
     assert_response :success
   end
+
+  # === Cancel Button ===
+
+  test "player step renders cancel button for authenticated user" do
+    sign_in @regular
+    post play_workflow_path(@workflow)
+    scenario = Scenario.last
+    get player_scenario_step_path(scenario)
+    assert_response :success
+    assert_select "a.scenario-btn-cancel", text: "Cancel"
+  end
+
+  test "player step does not render cancel for shared anonymous scenario" do
+    @workflow.generate_share_token!
+    # Start via share link (creates scenario as workflow owner)
+    get shared_player_path(@workflow.share_token)
+    assert_response :redirect
+    scenario = Scenario.last
+    get player_scenario_step_path(scenario)
+    assert_response :success
+    assert_select "a.scenario-btn-cancel", text: "Cancel", count: 0
+  end
+
+  # === Answer Type Rendering ===
+
+  test "player step renders dropdown select for dropdown answer type" do
+    resolve = @workflow.steps.find_by(title: "Done")
+    question = Steps::Question.create!(
+      workflow: @workflow,
+      title: "Pick one",
+      uuid: SecureRandom.uuid,
+      position: 0,
+      answer_type: "dropdown",
+      options: [{ "label" => "A", "value" => "a" }, { "label" => "B", "value" => "b" }]
+    )
+    Transition.create!(step: question, target_step: resolve, position: 0)
+    @workflow.update!(start_step: question)
+    WorkflowPublisher.publish(@workflow, @admin)
+
+    sign_in @regular
+    post play_workflow_path(@workflow)
+    scenario = Scenario.last
+    get player_scenario_step_path(scenario)
+    assert_response :success
+    assert_select "select.scenario-select"
+  end
+
+  test "player step renders number input for number answer type" do
+    resolve = @workflow.steps.find_by(title: "Done")
+    question = Steps::Question.create!(
+      workflow: @workflow,
+      title: "How many?",
+      uuid: SecureRandom.uuid,
+      position: 0,
+      answer_type: "number"
+    )
+    Transition.create!(step: question, target_step: resolve, position: 0)
+    @workflow.update!(start_step: question)
+    WorkflowPublisher.publish(@workflow, @admin)
+
+    sign_in @regular
+    post play_workflow_path(@workflow)
+    scenario = Scenario.last
+    get player_scenario_step_path(scenario)
+    assert_response :success
+    assert_select "input[type=number]"
+  end
 end

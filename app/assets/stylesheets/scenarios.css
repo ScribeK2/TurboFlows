@@ -19,37 +19,37 @@
   display: flex;
   align-items: center;
   padding: 0.875rem 1.125rem;
-  border: 2px solid #e2e8f0;
-  border-left: 4px solid #e2e8f0;
+  border: 2px solid var(--color-border);
+  border-left: 4px solid var(--color-border);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition:
     border-color var(--duration-fast) var(--ease-spring),
     box-shadow var(--duration-fast) var(--ease-out),
     background var(--duration-fast) var(--ease-out);
-  background: white;
+  background: var(--color-canvas-raised);
   box-shadow: var(--shadow-sm);
 }
 
 .radio-card:hover {
   border-color: var(--color-border-strong);
-  border-left-color: #3b82f6;
-  background: #f8fafc;
+  border-left-color: var(--color-primary);
+  background: var(--color-canvas);
   box-shadow: var(--shadow);
   transform: translateY(-1px);
 }
 
 .radio-card:active {
   transform: translateY(0);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 2px oklch(0 0 0 / 0.04);
 }
 
 .radio-card:has(input:checked) {
-  border-color: #3b82f6;
-  border-left-color: #3b82f6;
+  border-color: var(--color-primary);
+  border-left-color: var(--color-primary);
   border-left-width: 4px;
-  background: #eff6ff;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.1);
+  background: oklch(0.97 0.02 250);
+  box-shadow: 0 2px 8px oklch(0.55 0.20 250 / 0.15), 0 0 0 1px oklch(0.55 0.20 250 / 0.1);
   transition: border-left-width var(--duration-fast) var(--ease-spring),
               background var(--duration-fast) var(--ease-out);
 }
@@ -59,24 +59,24 @@
   width: 1.375rem;
   height: 1.375rem;
   border-radius: 50%;
-  border: 2px solid #cbd5e1;
+  border: 2px solid var(--color-border-strong);
   margin-right: 0.875rem;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  background: white;
+  background: var(--color-canvas-raised);
 }
 
 .radio-card:hover .radio-dot {
-  border-color: #93c5fd;
+  border-color: oklch(0.78 0.10 250);
 }
 
 .radio-card:has(input:checked) .radio-dot {
-  border-color: #3b82f6;
-  background: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  box-shadow: 0 0 0 2px oklch(0.55 0.20 250 / 0.2);
 }
 
 .radio-card:has(input:checked) .radio-dot::after {
@@ -84,7 +84,7 @@
   width: 0.375rem;
   height: 0.375rem;
   border-radius: 50%;
-  background: white;
+  background: var(--color-canvas-raised);
   animation: radioDotPop 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -96,13 +96,13 @@
 /* Label text */
 .radio-card .radio-label {
   font-weight: 500;
-  color: #334155;
+  color: oklch(0.30 0.02 245);
   font-size: 0.9375rem;
   transition: color 0.2s ease, font-weight 0.2s ease;
 }
 
 .radio-card:has(input:checked) .radio-label {
-  color: #1e40af;
+  color: oklch(0.35 0.15 250);
   font-weight: 600;
 }
 
@@ -120,60 +120,60 @@
 }
 
 .radio-card .radio-icon.radio-icon-yes {
-  background: #dcfce7;
-  color: #16a34a;
+  background: oklch(0.93 0.05 145);
+  color: var(--color-positive);
 }
 
 .radio-card .radio-icon.radio-icon-no {
-  background: #fee2e2;
-  color: #dc2626;
+  background: oklch(0.93 0.04 25);
+  color: var(--color-negative);
 }
 
 .radio-card:has(input:checked) .radio-icon.radio-icon-yes {
-  background: #16a34a;
-  color: white;
-  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+  background: var(--color-positive);
+  color: var(--color-canvas-raised);
+  box-shadow: 0 0 0 3px oklch(0.55 0.19 145 / 0.15);
 }
 
 .radio-card:has(input:checked) .radio-icon.radio-icon-no {
-  background: #dc2626;
-  color: white;
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+  background: var(--color-negative);
+  color: var(--color-canvas-raised);
+  box-shadow: 0 0 0 3px oklch(0.55 0.22 25 / 0.15);
 }
 
 /* Yes/No specific: selected card gets tinted to match */
 .radio-card.radio-card-yes:has(input:checked) {
-  border-color: #16a34a;
-  border-left-color: #16a34a;
-  background: #f0fdf4;
-  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.12), 0 0 0 1px rgba(22, 163, 74, 0.1);
+  border-color: var(--color-positive);
+  border-left-color: var(--color-positive);
+  background: oklch(0.97 0.03 145);
+  box-shadow: 0 2px 8px oklch(0.55 0.19 145 / 0.12), 0 0 0 1px oklch(0.55 0.19 145 / 0.1);
 }
 
 .radio-card.radio-card-yes:has(input:checked) .radio-dot {
-  border-color: #16a34a;
-  background: #16a34a;
-  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.2);
+  border-color: var(--color-positive);
+  background: var(--color-positive);
+  box-shadow: 0 0 0 2px oklch(0.55 0.19 145 / 0.2);
 }
 
 .radio-card.radio-card-yes:has(input:checked) .radio-label {
-  color: #166534;
+  color: oklch(0.35 0.12 145);
 }
 
 .radio-card.radio-card-no:has(input:checked) {
-  border-color: #dc2626;
-  border-left-color: #dc2626;
-  background: #fef2f2;
-  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.12), 0 0 0 1px rgba(220, 38, 38, 0.1);
+  border-color: var(--color-negative);
+  border-left-color: var(--color-negative);
+  background: oklch(0.97 0.02 25);
+  box-shadow: 0 2px 8px oklch(0.55 0.22 25 / 0.12), 0 0 0 1px oklch(0.55 0.22 25 / 0.1);
 }
 
 .radio-card.radio-card-no:has(input:checked) .radio-dot {
-  border-color: #dc2626;
-  background: #dc2626;
-  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
+  border-color: var(--color-negative);
+  background: var(--color-negative);
+  box-shadow: 0 0 0 2px oklch(0.55 0.22 25 / 0.2);
 }
 
 .radio-card.radio-card-no:has(input:checked) .radio-label {
-  color: #991b1b;
+  color: oklch(0.35 0.12 25);
 }
 
 /* ============================================================================
@@ -181,106 +181,106 @@
    ============================================================================ */
 
 [data-theme="dark"] .radio-card {
-  background: #1e293b;
-  border-color: #334155;
-  border-left-color: #334155;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  background: var(--color-canvas-raised);
+  border-color: var(--color-border);
+  border-left-color: var(--color-border);
+  box-shadow: 0 1px 2px oklch(0 0 0 / 0.2);
 }
 
 [data-theme="dark"] .radio-card:hover {
-  border-color: #475569;
-  border-left-color: #60a5fa;
-  background: #1e293b;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border-color: var(--color-border-strong);
+  border-left-color: oklch(0.70 0.14 250);
+  background: var(--color-canvas-raised);
+  box-shadow: 0 2px 8px oklch(0 0 0 / 0.3);
 }
 
 [data-theme="dark"] .radio-card:has(input:checked) {
-  border-color: #60a5fa;
-  border-left-color: #60a5fa;
-  background: rgba(59, 130, 246, 0.1);
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.2);
+  border-color: oklch(0.70 0.14 250);
+  border-left-color: oklch(0.70 0.14 250);
+  background: oklch(0.55 0.20 250 / 0.1);
+  box-shadow: 0 2px 8px oklch(0.55 0.20 250 / 0.15), 0 0 0 1px oklch(0.55 0.20 250 / 0.2);
 }
 
 [data-theme="dark"] .radio-card .radio-dot {
-  border-color: #475569;
-  background: #0f172a;
+  border-color: var(--color-border-strong);
+  background: oklch(0.10 0.02 245);
 }
 
 [data-theme="dark"] .radio-card:hover .radio-dot {
-  border-color: #60a5fa;
+  border-color: oklch(0.70 0.14 250);
 }
 
 [data-theme="dark"] .radio-card:has(input:checked) .radio-dot {
-  border-color: #60a5fa;
-  background: #60a5fa;
-  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.25);
+  border-color: oklch(0.70 0.14 250);
+  background: oklch(0.70 0.14 250);
+  box-shadow: 0 0 0 2px oklch(0.70 0.14 250 / 0.25);
 }
 
 [data-theme="dark"] .radio-card .radio-label {
-  color: #cbd5e1;
+  color: var(--color-border-strong);
 }
 
 [data-theme="dark"] .radio-card:has(input:checked) .radio-label {
-  color: #93c5fd;
+  color: oklch(0.78 0.10 250);
 }
 
 /* Dark mode: Yes icon */
 [data-theme="dark"] .radio-card .radio-icon.radio-icon-yes {
-  background: rgba(22, 163, 74, 0.15);
-  color: #4ade80;
+  background: oklch(0.55 0.19 145 / 0.15);
+  color: oklch(0.75 0.16 145);
 }
 
 [data-theme="dark"] .radio-card:has(input:checked) .radio-icon.radio-icon-yes {
-  background: #16a34a;
-  color: white;
-  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.2);
+  background: var(--color-positive);
+  color: var(--color-canvas-raised);
+  box-shadow: 0 0 0 3px oklch(0.55 0.19 145 / 0.2);
 }
 
 /* Dark mode: No icon */
 [data-theme="dark"] .radio-card .radio-icon.radio-icon-no {
-  background: rgba(220, 38, 38, 0.15);
-  color: #f87171;
+  background: oklch(0.55 0.22 25 / 0.15);
+  color: oklch(0.65 0.18 25);
 }
 
 [data-theme="dark"] .radio-card:has(input:checked) .radio-icon.radio-icon-no {
-  background: #dc2626;
-  color: white;
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+  background: var(--color-negative);
+  color: var(--color-canvas-raised);
+  box-shadow: 0 0 0 3px oklch(0.55 0.22 25 / 0.2);
 }
 
 /* Dark mode: Yes/No card tints */
 [data-theme="dark"] .radio-card.radio-card-yes:has(input:checked) {
-  border-color: #4ade80;
-  border-left-color: #4ade80;
-  background: rgba(22, 163, 74, 0.1);
-  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.15), 0 0 0 1px rgba(22, 163, 74, 0.2);
+  border-color: oklch(0.75 0.16 145);
+  border-left-color: oklch(0.75 0.16 145);
+  background: oklch(0.55 0.19 145 / 0.1);
+  box-shadow: 0 2px 8px oklch(0.55 0.19 145 / 0.15), 0 0 0 1px oklch(0.55 0.19 145 / 0.2);
 }
 
 [data-theme="dark"] .radio-card.radio-card-yes:has(input:checked) .radio-dot {
-  border-color: #4ade80;
-  background: #4ade80;
-  box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.25);
+  border-color: oklch(0.75 0.16 145);
+  background: oklch(0.75 0.16 145);
+  box-shadow: 0 0 0 2px oklch(0.75 0.16 145 / 0.25);
 }
 
 [data-theme="dark"] .radio-card.radio-card-yes:has(input:checked) .radio-label {
-  color: #86efac;
+  color: oklch(0.82 0.14 145);
 }
 
 [data-theme="dark"] .radio-card.radio-card-no:has(input:checked) {
-  border-color: #f87171;
-  border-left-color: #f87171;
-  background: rgba(220, 38, 38, 0.1);
-  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.15), 0 0 0 1px rgba(220, 38, 38, 0.2);
+  border-color: oklch(0.65 0.18 25);
+  border-left-color: oklch(0.65 0.18 25);
+  background: oklch(0.55 0.22 25 / 0.1);
+  box-shadow: 0 2px 8px oklch(0.55 0.22 25 / 0.15), 0 0 0 1px oklch(0.55 0.22 25 / 0.2);
 }
 
 [data-theme="dark"] .radio-card.radio-card-no:has(input:checked) .radio-dot {
-  border-color: #f87171;
-  background: #f87171;
-  box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.25);
+  border-color: oklch(0.65 0.18 25);
+  background: oklch(0.65 0.18 25);
+  box-shadow: 0 0 0 2px oklch(0.65 0.18 25 / 0.25);
 }
 
 [data-theme="dark"] .radio-card.radio-card-no:has(input:checked) .radio-label {
-  color: #fca5a5;
+  color: oklch(0.75 0.12 25);
 }
 
 /* ============================================================================
@@ -313,29 +313,29 @@
 .scenario-input-wrap .scenario-input {
   width: 100%;
   padding: 0.625rem 0.875rem 0.625rem 2.75rem;
-  border: 2px solid #e2e8f0;
+  border: 2px solid var(--color-border);
   border-radius: 0.75rem;
-  background: white;
-  color: #0f172a;
+  background: var(--color-canvas-raised);
+  color: var(--color-ink);
   font-size: 0.9375rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 2px oklch(0 0 0 / 0.04);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   outline: none;
 }
 
 .scenario-input-wrap .scenario-input::placeholder {
-  color: #94a3b8;
+  color: var(--color-ink-muted);
   font-weight: 400;
 }
 
 .scenario-input-wrap .scenario-input:hover {
-  border-color: #94a3b8;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  border-color: var(--color-ink-muted);
+  box-shadow: 0 2px 4px oklch(0 0 0 / 0.06);
 }
 
 .scenario-input-wrap .scenario-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12), 0 1px 2px rgba(0, 0, 0, 0.04);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px oklch(0.55 0.20 250 / 0.12), 0 1px 2px oklch(0 0 0 / 0.04);
 }
 
 /* Dropdown-specific: no left icon padding */
@@ -356,38 +356,40 @@
 
 /* Dark mode inputs */
 [data-theme="dark"] .scenario-input-wrap .scenario-input-icon {
-  color: #64748b;
+  color: var(--color-ink-subtle);
 }
 
 [data-theme="dark"] .scenario-input-wrap:focus-within .scenario-input-icon {
-  color: #60a5fa;
+  color: oklch(0.70 0.14 250);
 }
 
 [data-theme="dark"] .scenario-input-wrap .scenario-input {
-  background: #1e293b;
-  border-color: #334155;
-  color: #f1f5f9;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  background: var(--color-canvas-raised);
+  border-color: var(--color-border);
+  color: var(--color-ink);
+  box-shadow: 0 1px 2px oklch(0 0 0 / 0.2);
 }
 
 [data-theme="dark"] .scenario-input-wrap .scenario-input::placeholder {
-  color: #64748b;
+  color: var(--color-ink-subtle);
 }
 
 [data-theme="dark"] .scenario-input-wrap .scenario-input:hover {
-  border-color: #475569;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  border-color: var(--color-border-strong);
+  box-shadow: 0 2px 4px oklch(0 0 0 / 0.3);
 }
 
 [data-theme="dark"] .scenario-input-wrap .scenario-input:focus {
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15), 0 1px 2px rgba(0, 0, 0, 0.2);
+  border-color: oklch(0.70 0.14 250);
+  box-shadow: 0 0 0 3px oklch(0.70 0.14 250 / 0.15), 0 1px 2px oklch(0 0 0 / 0.2);
 }
 
+/* data-URI exception: var() unsupported in url() */
 [data-theme="dark"] .scenario-input-wrap .scenario-input.scenario-select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
 }
 
+/* data-URI exception: var() unsupported in url() */
 [data-theme="dark"] .scenario-input-wrap .scenario-input.scenario-select:focus {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2360a5fa' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
 }
@@ -403,47 +405,47 @@
   justify-content: space-between;
   padding-top: 1.25rem;
   margin-top: 0.5rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--color-border);
 }
 
 [data-theme="dark"] .scenario-button-bar {
-  border-top-color: #334155;
+  border-top-color: var(--color-border);
 }
 
 .scenario-btn-cancel {
   display: inline-flex;
   align-items: center;
   padding: 0.5rem 1.125rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: 0.625rem;
-  background: white;
-  color: #64748b;
+  background: var(--color-canvas-raised);
+  color: var(--color-ink-subtle);
   font-size: 0.875rem;
   font-weight: 500;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 2px oklch(0 0 0 / 0.04);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   text-decoration: none;
 }
 
 .scenario-btn-cancel:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-  color: #475569;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  background: var(--color-canvas);
+  border-color: var(--color-border-strong);
+  color: var(--color-border-strong);
+  box-shadow: 0 2px 4px oklch(0 0 0 / 0.06);
   text-decoration: none;
 }
 
 [data-theme="dark"] .scenario-btn-cancel {
-  background: #1e293b;
-  border-color: #334155;
-  color: #94a3b8;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  background: var(--color-canvas-raised);
+  border-color: var(--color-border);
+  color: var(--color-ink-muted);
+  box-shadow: 0 1px 2px oklch(0 0 0 / 0.2);
 }
 
 [data-theme="dark"] .scenario-btn-cancel:hover {
-  background: #283548;
-  border-color: #475569;
-  color: #cbd5e1;
+  background: oklch(0.22 0.02 245);
+  border-color: var(--color-border-strong);
+  color: var(--color-border-strong);
 }
 
 .scenario-btn-resolve {
@@ -451,54 +453,42 @@
   align-items: center;
   gap: 0.375rem;
   padding: 0.5rem 1.125rem;
-  border: 1.5px solid #86efac;
+  border: 1.5px solid oklch(0.82 0.14 145);
   border-radius: 0.625rem;
-  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
-  color: #15803d;
+  background: linear-gradient(135deg, oklch(0.97 0.03 145), oklch(0.93 0.05 145));
+  color: oklch(0.45 0.15 145);
   font-size: 0.875rem;
   font-weight: 600;
-  box-shadow: 0 1px 3px rgba(22, 163, 74, 0.1);
+  box-shadow: 0 1px 3px oklch(0.55 0.19 145 / 0.1);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
 }
 
 .scenario-btn-resolve:hover {
-  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
-  border-color: #4ade80;
-  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.15);
+  background: linear-gradient(135deg, oklch(0.93 0.05 145), oklch(0.89 0.07 145));
+  border-color: oklch(0.75 0.16 145);
+  box-shadow: 0 2px 6px oklch(0.55 0.19 145 / 0.15);
   transform: translateY(-1px);
 }
 
 [data-theme="dark"] .scenario-btn-resolve {
-  background: linear-gradient(135deg, rgba(22, 163, 74, 0.12), rgba(22, 163, 74, 0.2));
-  border-color: #166534;
-  color: #86efac;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(135deg, oklch(0.55 0.19 145 / 0.12), oklch(0.55 0.19 145 / 0.2));
+  border-color: oklch(0.35 0.12 145);
+  color: oklch(0.82 0.14 145);
+  box-shadow: 0 1px 3px oklch(0 0 0 / 0.2);
 }
 
 [data-theme="dark"] .scenario-btn-resolve:hover {
-  background: linear-gradient(135deg, rgba(22, 163, 74, 0.2), rgba(22, 163, 74, 0.3));
-  border-color: #22c55e;
-  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.2);
+  background: linear-gradient(135deg, oklch(0.55 0.19 145 / 0.2), oklch(0.55 0.19 145 / 0.3));
+  border-color: oklch(0.65 0.19 145);
+  box-shadow: 0 2px 6px oklch(0.55 0.19 145 / 0.2);
 }
 
 /* ============================================================================
    Scenario Progress Stepper
    ============================================================================ */
 
-.progress-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-border) transparent;
-}
-
-.progress-scroll::-webkit-scrollbar {
-  height: 4px;
-}
-
-.progress-scroll::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: var(--radius-full);
-}
+/* .progress-scroll moved to utilities.css (single source of truth) */
 
 /* ============================================================================
    Stepper Pill — Progress breadcrumb dots/pills for the scenario stepper

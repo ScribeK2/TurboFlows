@@ -19,6 +19,26 @@
     <div class="player-progress__text">Step <%= step_number %> of <%= total_steps %></div>
   </div>
 
+  <%# ── Progress Stepper (read-only, minimal dots) ── %>
+  <% if @scenario.execution_path.present? && @scenario.execution_path.any? %>
+    <div class="player-stepper">
+      <div class="player-stepper__track">
+        <% @scenario.execution_path.each_with_index do |path_item, index| %>
+          <% stype_pill = path_item['step_type'] || path_item['type'] %>
+          <span class="player-stepper__dot player-stepper__dot--completed player-stepper__dot--<%= stype_pill %>"
+                title="<%= path_item['step_title'] %><%= " — #{path_item['answer']}" if path_item['answer'].present? %>">
+            <svg class="player-stepper__check" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </span>
+        <% end %>
+        <span class="player-stepper__dot player-stepper__dot--current" title="Current step">
+          <%= step_number %>
+        </span>
+      </div>
+    </div>
+  <% end %>
+
   <%# ── Step Card ── %>
   <div class="card player-step-card"
        data-controller="scenario-step"
@@ -45,12 +65,12 @@
 
       <%# ── Description ── %>
       <% if stype != "message" && @current_step.respond_to?(:description) && @current_step.description.present? %>
-        <div class="text-sm mb-4 player-step-card__desc"><%= @current_step.description %></div>
+        <div class="text-sm mb-4 player-step-card__desc"><%= render_step_content(@current_step, 'description', @scenario.results || {}) %></div>
       <% end %>
 
       <%# ── Rich Content ── %>
       <% if @current_step.respond_to?(:content) && @current_step.content.present? && stype != "message" %>
-        <div class="player-step-card__content"><%= @current_step.content %></div>
+        <div class="player-step-card__content"><%= render_step_content(@current_step, 'content', @scenario.results || {}) %></div>
       <% end %>
 
       <%# ── Step Type Content ── %>
@@ -65,7 +85,7 @@
                 <label class="radio-card radio-card-yes">
                   <%= f.radio_button :answer, "yes", required: true, data: { action: "change->scenario-step#inputChanged", scenario_step_target: "input" } %>
                   <span class="radio-icon radio-icon-yes">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                    <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                   </span>
@@ -75,7 +95,7 @@
                 <label class="radio-card radio-card-no">
                   <%= f.radio_button :answer, "no", required: true, data: { action: "change->scenario-step#inputChanged", scenario_step_target: "input" } %>
                   <span class="radio-icon radio-icon-no">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                    <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </span>
@@ -97,6 +117,19 @@
                 <% end %>
               </div>
 
+            <% elsif @current_step.respond_to?(:answer_type) && @current_step.answer_type == "dropdown" && @current_step.respond_to?(:options) && @current_step.options.present? %>
+              <div class="scenario-input-wrap">
+                <%= f.select :answer,
+                  @current_step.options.map { |opt|
+                    opt_label = opt.is_a?(Hash) ? (opt["label"] || opt["value"]) : opt
+                    opt_val = opt.is_a?(Hash) ? (opt["value"] || opt["label"]) : opt
+                    [opt_label, opt_val]
+                  },
+                  { prompt: "-- Select an option --" },
+                  { class: "scenario-input scenario-select", required: true,
+                    data: { action: "change->scenario-step#inputChanged", scenario_step_target: "input" } } %>
+              </div>
+
             <% elsif @current_step.respond_to?(:options) && @current_step.options.present? %>
               <div class="space-y-2.5">
                 <% @current_step.options.each do |option| %>
@@ -111,57 +144,93 @@
               </div>
 
             <% else %>
+              <%# Text, Number, Date inputs with type-specific icons %>
               <div class="scenario-input-wrap">
                 <span class="scenario-input-icon">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                  </svg>
+                  <% answer_type = @current_step.try(:answer_type) %>
+                  <% if answer_type == "number" %>
+                    <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5l-3.9 19.5m-2.1-19.5l-3.9 19.5" />
+                    </svg>
+                  <% elsif answer_type == "date" %>
+                    <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                    </svg>
+                  <% else %>
+                    <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                    </svg>
+                  <% end %>
                 </span>
-                <%= f.text_field :answer, class: "scenario-input", required: true, placeholder: "Type your answer..." %>
+                <%
+                  input_type = case answer_type
+                               when "number" then "number"
+                               when "date" then "date"
+                               else "text"
+                               end
+                  placeholder = case answer_type
+                                when "number" then "Enter a number"
+                                when "date" then "YYYY-MM-DD"
+                                else "Type your answer..."
+                                end
+                %>
+                <%= f.text_field :answer, type: input_type, class: "scenario-input", required: true, placeholder: placeholder %>
               </div>
             <% end %>
           </div>
 
           <div class="scenario-button-bar">
             <div>
-              <% if @scenario.execution_path.present? && @scenario.execution_path.size > 0 %>
-                <%= link_to "Back", player_scenario_back_path(@scenario), class: "scenario-btn-cancel", data: { turbo_method: :post } %>
-              <% end %>
+              <%= player_back_button(@scenario) %>
             </div>
             <div class="scenario-btn-group">
+              <% if current_user %>
+                <%= link_to "Cancel", play_path, class: "scenario-btn-cancel", data: { turbo_confirm: "Are you sure you want to cancel? Your progress will be lost." } %>
+              <% end %>
               <%= f.submit "Continue", class: "btn btn--primary", disabled: auto_advance, data: { scenario_step_target: "submit" } %>
             </div>
           </div>
         <% end %>
 
       <% when "action" %>
-        <div class="step-content-box step-content-box--action mb-4">
+        <div class="step-content-box step-content-box--action mb-4" data-controller="clipboard">
           <div class="step-content-box__accent"></div>
           <div class="step-content-box__body">
-            <div class="scenario-content-layout">
-              <div class="step-content-box__icon-wrap mr-3 mt-0.5">
-                <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.65-5.65a8 8 0 1111.56-1.22l.13.13-6.04 6.74z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-4.5-4.5" />
+            <div class="scenario-content-layout--between">
+              <div class="scenario-content-layout flex-1">
+                <div class="step-content-box__icon-wrap mr-3 mt-0.5">
+                  <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.65-5.65a8 8 0 1111.56-1.22l.13.13-6.04 6.74z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-4.5-4.5" />
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <h3 class="step-content-box__label">Instructions</h3>
+                  <% if @current_step.respond_to?(:instructions) && @current_step.instructions.present? %>
+                    <div class="text-sm" data-clipboard-target="source"><%= render_step_content(@current_step, 'instructions', @scenario.results || {}) %></div>
+                  <% end %>
+                  <% if @current_step.respond_to?(:output_fields) && @current_step.output_fields.present? %>
+                    <div class="mt-3">
+                      <h4 class="text-xs font-semibold mb-1" style="color: var(--color-ink-muted); text-transform: uppercase; letter-spacing: 0.05em;">Output Fields</h4>
+                      <% @current_step.output_fields.each do |field| %>
+                        <div class="text-sm" style="display: flex; gap: var(--space-2); padding: var(--space-1) 0;">
+                          <strong><%= field["name"] %>:</strong>
+                          <span style="color: var(--color-ink-subtle);"><%= field["value"].presence || "—" %></span>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+              <button type="button"
+                      class="btn btn--plain btn--sm ml-3 mt-1 flex-shrink-0"
+                      title="Copy instructions to clipboard"
+                      data-action="click->clipboard#copy"
+                      data-clipboard-target="button">
+                <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
                 </svg>
-              </div>
-              <div class="flex-1">
-                <h3 class="step-content-box__label">Instructions</h3>
-                <% if @current_step.respond_to?(:instructions) && @current_step.instructions.present? %>
-                  <div class="text-sm"><%= @current_step.instructions %></div>
-                <% end %>
-                <% if @current_step.respond_to?(:output_fields) && @current_step.output_fields.present? %>
-                  <div class="mt-3">
-                    <h4 class="text-xs font-semibold mb-1" style="color: var(--color-ink-muted); text-transform: uppercase; letter-spacing: 0.05em;">Output Fields</h4>
-                    <% @current_step.output_fields.each do |field| %>
-                      <div class="text-sm" style="display: flex; gap: var(--space-2); padding: var(--space-1) 0;">
-                        <strong><%= field["name"] %>:</strong>
-                        <span style="color: var(--color-ink-subtle);"><%= field["value"].presence || "—" %></span>
-                      </div>
-                    <% end %>
-                  </div>
-                <% end %>
-              </div>
+              </button>
             </div>
           </div>
         </div>
@@ -170,11 +239,12 @@
           <input type="hidden" name="answer" value="completed">
           <div class="scenario-button-bar">
             <div>
-              <% if @scenario.execution_path.present? && @scenario.execution_path.size > 0 %>
-                <%= link_to "Back", player_scenario_back_path(@scenario), class: "scenario-btn-cancel", data: { turbo_method: :post } %>
-              <% end %>
+              <%= player_back_button(@scenario) %>
             </div>
             <div class="scenario-btn-group">
+              <% if current_user %>
+                <%= link_to "Cancel", play_path, class: "scenario-btn-cancel", data: { turbo_confirm: "Are you sure you want to cancel? Your progress will be lost." } %>
+              <% end %>
               <button type="submit" class="btn btn--primary">Continue</button>
             </div>
           </div>
@@ -193,7 +263,7 @@
               <div class="flex-1">
                 <h3 class="step-content-box__label">Message</h3>
                 <% if @current_step.respond_to?(:content) && @current_step.content.present? %>
-                  <div class="text-sm"><%= @current_step.content %></div>
+                  <div class="text-sm"><%= render_step_content(@current_step, 'content', @scenario.results || {}) %></div>
                 <% else %>
                   <p class="text-sm" style="color: var(--color-ink-muted); font-style: italic;">No message content provided.</p>
                 <% end %>
@@ -204,11 +274,12 @@
 
         <div class="scenario-button-bar">
           <div>
-            <% if @scenario.execution_path.present? && @scenario.execution_path.size > 0 %>
-              <%= link_to "Back", player_scenario_back_path(@scenario), class: "scenario-btn-cancel", data: { turbo_method: :post } %>
-            <% end %>
+            <%= player_back_button(@scenario) %>
           </div>
           <div class="scenario-btn-group">
+            <% if current_user %>
+              <%= link_to "Cancel", play_path, class: "scenario-btn-cancel", data: { turbo_confirm: "Are you sure you want to cancel? Your progress will be lost." } %>
+            <% end %>
             <%= button_to "Continue", player_scenario_next_path(@scenario), method: :post, params: { answer: "" }, class: "btn btn--primary" %>
           </div>
         </div>
@@ -256,11 +327,12 @@
 
         <div class="scenario-button-bar">
           <div>
-            <% if @scenario.execution_path.present? && @scenario.execution_path.size > 0 %>
-              <%= link_to "Back", player_scenario_back_path(@scenario), class: "scenario-btn-cancel", data: { turbo_method: :post } %>
-            <% end %>
+            <%= player_back_button(@scenario) %>
           </div>
           <div class="scenario-btn-group">
+            <% if current_user %>
+              <%= link_to "Cancel", play_path, class: "scenario-btn-cancel", data: { turbo_confirm: "Are you sure you want to cancel? Your progress will be lost." } %>
+            <% end %>
             <%= button_to "Continue", player_scenario_next_path(@scenario), method: :post, params: { answer: "" }, class: "btn btn--primary" %>
           </div>
         </div>
@@ -296,7 +368,7 @@
                   <p class="text-sm mb-2"><strong>Resolution Code:</strong> <%= @current_step.resolution_code %></p>
                 <% end %>
                 <% if @current_step.respond_to?(:notes) && @current_step.notes.present? %>
-                  <div class="text-sm mb-2"><%= @current_step.notes %></div>
+                  <div class="text-sm mb-2"><%= render_step_content(@current_step, 'notes', @scenario.results || {}) %></div>
                 <% end %>
                 <% if @current_step.respond_to?(:notes_required) && @current_step.notes_required %>
                   <p class="text-sm" style="color: var(--color-ink-muted); font-style: italic;">Notes are required for this resolution.</p>
@@ -308,11 +380,12 @@
 
         <div class="scenario-button-bar">
           <div>
-            <% if @scenario.execution_path.present? && @scenario.execution_path.size > 0 %>
-              <%= link_to "Back", player_scenario_back_path(@scenario), class: "scenario-btn-cancel", data: { turbo_method: :post } %>
-            <% end %>
+            <%= player_back_button(@scenario) %>
           </div>
           <div class="scenario-btn-group">
+            <% if current_user %>
+              <%= link_to "Cancel", play_path, class: "scenario-btn-cancel", data: { turbo_confirm: "Are you sure you want to cancel? Your progress will be lost." } %>
+            <% end %>
             <%= button_to "Complete Workflow", player_scenario_next_path(@scenario), method: :post, params: { answer: "" }, class: "btn btn--positive" %>
           </div>
         </div>
@@ -327,21 +400,29 @@
           <%= render "scenarios/form_step", step: @current_step %>
           <div class="scenario-button-bar">
             <div>
-              <% if @scenario.execution_path.present? && @scenario.execution_path.size > 0 %>
-                <%= link_to "Back", player_scenario_back_path(@scenario), class: "scenario-btn-cancel", data: { turbo_method: :post } %>
-              <% end %>
+              <%= player_back_button(@scenario) %>
             </div>
             <div class="scenario-btn-group">
+              <% if current_user %>
+                <%= link_to "Cancel", play_path, class: "scenario-btn-cancel", data: { turbo_confirm: "Are you sure you want to cancel? Your progress will be lost." } %>
+              <% end %>
               <%= form.submit "Submit Form", class: "btn btn--primary" %>
             </div>
           </div>
         <% end %>
 
       <% else %>
-        <%= button_to "Continue", player_scenario_next_path(@scenario), method: :post, params: { answer: "" }, class: "btn btn--primary" %>
-        <% if @scenario.execution_path.present? && @scenario.execution_path.size > 0 %>
-          <%= link_to "Back", player_scenario_back_path(@scenario), class: "scenario-btn-cancel", style: "margin-top: var(--space-2);", data: { turbo_method: :post } %>
-        <% end %>
+        <div class="scenario-button-bar">
+          <div>
+            <%= player_back_button(@scenario) %>
+          </div>
+          <div class="scenario-btn-group">
+            <% if current_user %>
+              <%= link_to "Cancel", play_path, class: "scenario-btn-cancel", data: { turbo_confirm: "Are you sure you want to cancel? Your progress will be lost." } %>
+            <% end %>
+            <%= button_to "Continue", player_scenario_next_path(@scenario), method: :post, params: { answer: "" }, class: "btn btn--primary" %>
+          </div>
+        </div>
       <% end %>
 
       <%# ── Media Attachments ── %>
