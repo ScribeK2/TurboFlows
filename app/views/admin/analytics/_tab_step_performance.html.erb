@@ -1,0 +1,32 @@
+<div data-tab="step-performance">
+  <% if @step_performance.any? %>
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Step</th>
+            <th>Times Visited</th>
+            <th>Avg Duration</th>
+            <th>Min</th>
+            <th>Max</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @step_performance.each do |step| %>
+            <tr>
+              <td class="font-medium"><%= step[:title] %></td>
+              <td><%= step[:count] %></td>
+              <td><%= number_with_precision(step[:avg_duration], precision: 1) %>s</td>
+              <td><%= number_with_precision(step[:min_duration], precision: 1) %>s</td>
+              <td><%= number_with_precision(step[:max_duration], precision: 1) %>s</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="card p-8 text-center">
+      <p>No step timing data available yet. Timing data is recorded from new scenario runs.</p>
+    </div>
+  <% end %>
+</div>

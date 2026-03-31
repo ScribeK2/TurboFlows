@@ -1,0 +1,38 @@
+<div class="player-form-fields">
+  <% Array(step.fields).sort_by { |f| f["position"].to_i }.each do |field| %>
+    <div class="player-form-field">
+      <label>
+        <%= field["label"] %>
+        <% if field["required"] %>
+          <span class="player-form-field__required">*</span>
+        <% end %>
+      </label>
+
+      <% case field["field_type"] %>
+      <% when "text", "email", "phone", "number" %>
+        <input type="<%= field['field_type'] == 'phone' ? 'tel' : field['field_type'] %>"
+               name="answer[<%= field['name'] %>]"
+               class="form-input"
+               placeholder="<%= field['label'] %>"
+               <%= "required" if field["required"] %>>
+      <% when "textarea" %>
+        <textarea name="answer[<%= field['name'] %>]"
+                  class="form-input"
+                  placeholder="<%= field['label'] %>"
+                  <%= "required" if field["required"] %>></textarea>
+      <% when "select" %>
+        <select name="answer[<%= field['name'] %>]" class="form-select" <%= "required" if field["required"] %>>
+          <option value="">Select...</option>
+          <% Array(field["select_options"]).each do |opt| %>
+            <option value="<%= opt["value"] || opt["label"] %>"><%= opt["label"] %></option>
+          <% end %>
+        </select>
+      <% when "checkbox" %>
+        <label class="form-checkbox-label">
+          <input type="checkbox" name="answer[<%= field['name'] %>]" value="true" class="form-checkbox">
+          <%= field["label"] %>
+        </label>
+      <% end %>
+    </div>
+  <% end %>
+</div>

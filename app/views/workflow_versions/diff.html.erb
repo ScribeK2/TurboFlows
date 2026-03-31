@@ -1,0 +1,104 @@
+<div class="page-content" style="max-width: 56rem; margin: 0 auto;">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="page-title">
+        Compare: v<%= @version_old.version_number %> &rarr; v<%= @version_new.version_number %>
+      </h1>
+      <p class="text-sm mt-1"><%= @workflow.title %></p>
+    </div>
+    <%= link_to "Back to Versions", versions_workflow_path(@workflow), class: "btn btn--plain" %>
+  </div>
+
+  <% has_changes = @diff[:added].any? || @diff[:removed].any? || @diff[:modified].any? || @diff[:metadata_changes].any? %>
+
+  <% unless has_changes %>
+    <div class="card p-8 text-center">
+      <p class="font-medium">No differences</p>
+      <p class="text-sm mt-2">These two versions are identical.</p>
+    </div>
+  <% else %>
+    <%# Metadata changes %>
+    <% if @diff[:metadata_changes].any? %>
+      <div class="card p-6 mb-4">
+        <h2 class="font-semibold mb-4">Metadata Changes</h2>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <% @diff[:metadata_changes].each do |key, change| %>
+            <div class="diff-modified">
+              <span class="font-medium"><%= key.humanize %>:</span>
+              <span class="diff-old-value"><%= change[:old].inspect %></span>
+              &rarr;
+              <span class="diff-new-value"><%= change[:new].inspect %></span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Added steps %>
+    <% if @diff[:added].any? %>
+      <div class="card p-6 mb-4">
+        <h2 class="font-semibold mb-4">Added Steps (<%= @diff[:added].size %>)</h2>
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <% @diff[:added].each do |step| %>
+            <div class="diff-added">
+              <div class="flex items-center gap-3">
+                <span class="badge badge--<%= step['type'] || 'default' %>">
+                  <%= step['type']&.humanize %>
+                </span>
+                <span class="text-sm font-medium"><%= step['title'] %></span>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Removed steps %>
+    <% if @diff[:removed].any? %>
+      <div class="card p-6 mb-4">
+        <h2 class="font-semibold mb-4">Removed Steps (<%= @diff[:removed].size %>)</h2>
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <% @diff[:removed].each do |step| %>
+            <div class="diff-removed">
+              <div class="flex items-center gap-3">
+                <span class="badge badge--<%= step['type'] || 'default' %>">
+                  <%= step['type']&.humanize %>
+                </span>
+                <span class="text-sm font-medium"><%= step['title'] %></span>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Modified steps %>
+    <% if @diff[:modified].any? %>
+      <div class="card p-6 mb-4">
+        <h2 class="font-semibold mb-4">Modified Steps (<%= @diff[:modified].size %>)</h2>
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <% @diff[:modified].each do |change| %>
+            <div class="diff-modified">
+              <div class="flex items-center gap-3 mb-2">
+                <span class="badge badge--<%= change[:new]['type'] || 'default' %>">
+                  <%= change[:new]['type']&.humanize %>
+                </span>
+                <span class="text-sm font-medium"><%= change[:new]['title'] %></span>
+              </div>
+              <div class="diff-field-changes">
+                <% change[:changed_fields].each do |field| %>
+                  <div class="diff-field">
+                    <span class="diff-field__label"><%= field.humanize %>:</span>
+                    <span class="diff-old-value"><%= change[:old][field].inspect %></span>
+                    &rarr;
+                    <span class="diff-new-value"><%= change[:new][field].inspect %></span>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+</div>

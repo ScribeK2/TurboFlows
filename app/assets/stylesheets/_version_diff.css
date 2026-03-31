@@ -1,0 +1,53 @@
+@layer components {
+  .diff-added {
+    padding: var(--space-3);
+    background: oklch(0.95 0.05 145 / 0.3);
+    border: 1px solid oklch(0.7 0.1 145 / 0.4);
+    border-radius: var(--radius);
+  }
+
+  .diff-removed {
+    padding: var(--space-3);
+    background: oklch(0.95 0.05 25 / 0.3);
+    border: 1px solid oklch(0.7 0.1 25 / 0.4);
+    border-radius: var(--radius);
+    text-decoration: line-through;
+    opacity: 0.8;
+  }
+
+  .diff-modified {
+    padding: var(--space-3);
+    background: oklch(0.95 0.05 80 / 0.3);
+    border: 1px solid oklch(0.7 0.1 80 / 0.4);
+    border-radius: var(--radius);
+  }
+
+  .diff-field-changes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    font-size: 0.875rem;
+  }
+
+  .diff-field {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+  }
+
+  .diff-field__label {
+    font-weight: 500;
+    min-width: 6rem;
+  }
+
+  .diff-old-value {
+    color: oklch(0.55 0.1 25);
+    text-decoration: line-through;
+  }
+
+  .diff-new-value {
+    color: oklch(0.45 0.1 145);
+    font-weight: 500;
+  }
+}
