@@ -6,7 +6,7 @@ Follow these conventions for every change. RuboCop (with rails, minitest, perfor
 - Explicit > implicit.
 - Thin controllers (ideally <10-15 lines per action; move logic to models/services).
 - Models can be rich — use app/models/concerns/ for shared behavior.
-- One Stimulus controller per logical feature (~64 controllers — maintain this granularity).
+- One Stimulus controller per logical feature (~69 controllers — maintain this granularity).
 - Turbo Streams for all dynamic UI updates (avoid full reloads).
 
 ## Ruby / Rails

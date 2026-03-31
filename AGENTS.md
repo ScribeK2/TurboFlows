@@ -5,10 +5,13 @@ This file provides guidance to AI coding agents working with TurboFlows.
 ## What is TurboFlows?
 A straightforward workflow creator for call/chat centers to build, simulate, and manage post-onboarding training + client troubleshooting flows with drag-and-drop simplicity.
 
-- Six step types: Question, Action, Sub-Flow, Message, Escalate, Resolve
+- Seven step types: Question, Action, Sub-Flow, Message, Escalate, Resolve, Form
 - All workflows are graphs — every step connects via explicit Transitions (no separate "linear mode")
 - Every workflow must have at least one Resolve step (the only always-terminal type)
 - Scenario Mode: interactive step-by-step graph traversal with variable interpolation {{var}}, sub-flow recursion, safety limits
+- Player Mode: user-facing workflow execution UI for agents on live calls/training. Separate layout, read-only progress stepper, share links, embed mode
+- Sharing: workflows can generate share tokens (`/s/:share_token`) for anonymous access, with optional iframe embedding
+- Tags: workflow categorization with tag pills, autocomplete, and search integration
 - Real-time collaboration via Action Cable (WorkflowChannel presence)
 - Hierarchical Groups (up to 5 levels) + Folders + drag-and-drop organization
 - Workflow templates: YAML-driven archetypes (`WorkflowTemplate`) loaded from `config/templates.yml` (5 presets: Guided Decision, Verification Checklist, Triage & Escalate, Diagnosis Flow, Simple Handoff)
@@ -58,7 +61,8 @@ Kamal: `kamal deploy` (see `config/deploy.yml`). Required env: `RAILS_MASTER_KEY
 **Core Domain Models**
 
 - `Workflow` — container with versions (`workflow_version.rb`), autosave, optimistic locking (`lock_version`)
-- `Step` — STI base class (`app/models/step.rb`); subclasses in `app/models/steps/` (Question, Action, SubFlow, Message, Escalate, Resolve). UUID-based identification (immutable via `attr_readonly`). Includes `Step::Positionable` concern for ordering.
+- `Step` — STI base class (`app/models/step.rb`); subclasses in `app/models/steps/` (Question, Action, SubFlow, Message, Escalate, Resolve, Form). UUID-based identification (immutable via `attr_readonly`). Includes `Step::Positionable` concern for ordering.
+- `Tag` / `Tagging` — workflow categorization (polymorphic tagging)
 - `Transition` — directed edges between steps (same workflow only). Supports conditional expressions via `ConditionEvaluator`, simple value matching, and position-ordered evaluation (first match wins).
 - `Scenario` — simulation runner. Always uses graph traversal via `StepResolver` and `current_node_uuid` tracking. Spawns child scenarios for sub-flows, enforces iteration limits on circular graphs.
 - `Group` / `Folder` — hierarchical org (recursive membership, cascade permissions)
@@ -114,6 +118,28 @@ All workflows are graphs. There is no separate "linear mode" — a sequential fl
 - All terminal nodes must be Resolve steps (on publish)
 - Step UUIDs are immutable after creation
 - Optimistic locking on both Workflow and Step (`lock_version`)
+
+## Player Mode
+
+The Player is the user-facing workflow execution UI, separate from the builder's Scenario mode. It has its own layout, routes, and controller.
+
+**Routes:** `/play` (index), `/play/:id` (start), `/player/scenarios/:id/step` (step), `/player/scenarios/:id/show` (completion), `/s/:share_token` (shared anonymous access)
+
+**Key files:**
+- `app/controllers/player_controller.rb` — start, step, next_step, back, show, show_shared
+- `app/views/layouts/player.html.erb` — standalone layout (header, main, footer)
+- `app/views/player/step.html.erb` — step execution with progress stepper, clipboard, cancel
+- `app/views/player/show.html.erb` — completion screen with stats
+- `app/views/player/index.html.erb` — workflow card grid
+- `app/helpers/player_helper.rb` — `player_back_button` helper (uses Player routes, not Scenario routes)
+- `app/assets/stylesheets/_player.css` — Player-specific layout and component styles
+
+**Key differences from Scenario mode:**
+- Operates on AR Step objects (`@current_step`), not execution path hashes (`step['field']`)
+- Uses `player_scenario_*_path` routes, not `*_scenario_path` routes
+- Cancel button hidden for anonymous/shared scenarios (no Player index to return to)
+- Progress stepper is read-only minimal dots (not the builder's interactive pill breadcrumbs)
+- Supports all answer types: yes/no, multiple choice, dropdown, number, date, text, form
 
 ## Navigation & Search
 

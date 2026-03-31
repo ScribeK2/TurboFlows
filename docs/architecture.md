@@ -5,7 +5,7 @@
 | Layer | Technology |
 |-------|-----------|
 | **Framework** | Ruby on Rails 8.1 (#nobuild — no Node.js required) |
-| **Frontend** | Hotwire (Turbo + Stimulus), ~60 Stimulus controllers |
+| **Frontend** | Hotwire (Turbo + Stimulus), ~69 Stimulus controllers |
 | **Styling** | Vanilla CSS (@layer cascade, OKLCH design tokens, Propshaft) |
 | **Database** | SQLite (dev/test), PostgreSQL (production) |
 | **Real-time** | Action Cable (Redis in production, in-memory in dev) |
@@ -21,7 +21,7 @@
 ## Features
 
 ### Workflow Builder
-- **Six step types** — Question, Action, Sub-Flow, Message, Escalate, and Resolve
+- **Seven step types** — Question, Action, Sub-Flow, Message, Escalate, Resolve, and Form
 - **Unified builder** — Single-page interface with step list + slide-in detail panel
 - **Drag-and-drop ordering** with SortableJS
 - **Sub-flow support** — Call other workflows as reusable sub-routines with circular reference detection
@@ -37,6 +37,15 @@
 - **Variable interpolation** — `{{variable}}` syntax resolved at runtime
 - **Sub-flow execution** — Spawns child scenarios for sub-flow steps
 - **Safety limits** — Iteration cap, execution timeout, and nested condition depth limit
+
+### Player Mode
+- **User-facing execution** — Standalone UI for agents on live calls and new hire training
+- **Minimal progress stepper** — Color-coded dots showing completed steps at a glance
+- **All answer types** — Yes/no, multiple choice, dropdown, number, date, text, and form
+- **Clipboard copy** — One-click copy of action step instructions
+- **Share links** — Generate anonymous access links (`/s/:token`) for external users
+- **Embed mode** — Iframe-embeddable player with hidden chrome
+- **Separate layout** — Own header, footer, and CSS (`_player.css`), independent of the builder
 
 ### Collaboration & Real-Time
 - **Action Cable presence** — See who is editing a workflow in real time
@@ -56,6 +65,11 @@
 - **Three roles** — Administrator, Editor, User with granular permissions
 - **Group-based visibility** — Workflows inherit access from group membership
 - **Account security** — Devise authentication with lockable accounts, rate limiting (Rack::Attack)
+
+### Tags
+- **Workflow tagging** — Categorize workflows with reusable tags
+- **Autocomplete** — Tag selector with search-as-you-type
+- **Dashboard pills** — Tags shown on workflow cards and in search results
 
 ### Admin Panel (`/admin`)
 - User management with role assignment, password resets, and bulk group assignment
