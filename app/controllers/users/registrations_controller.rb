@@ -1,4 +1,20 @@
 class Users::RegistrationsController < Devise::RegistrationsController
+  # Override create to avoid Devise's respond_with calling user_url (route doesn't exist).
+  # Devise 5+ with Turbo needs explicit redirect after sign-up.
+  def create
+    build_resource(sign_up_params)
+    resource.save
+    if resource.persisted?
+      set_flash_message! :notice, :signed_up
+      sign_up(resource_name, resource)
+      redirect_to after_sign_up_path_for(resource)
+    else
+      clean_up_passwords resource
+      set_minimum_password_length
+      respond_with resource
+    end
+  end
+
   # Override update to handle display_name updates without requiring current_password
   def update
     self.resource = resource_class.to_adapter.get!(send(:"current_#{resource_name}").to_key)
@@ -47,7 +63,11 @@ class Users::RegistrationsController < Devise::RegistrationsController
     )
   end
 
-  def after_inactive_sign_up_path_for(resource)
+  def after_sign_up_path_for(_resource)
+    root_path
+  end
+
+  def after_inactive_sign_up_path_for(_resource)
     root_path
   end
 end
