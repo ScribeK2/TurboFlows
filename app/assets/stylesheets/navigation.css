@@ -253,7 +253,7 @@
 }
 
 .popup--animated::backdrop {
-  background: oklch(0.10 0.01 245 / 0.6);
+  background: var(--color-backdrop);
   transition: background 150ms;
 }
 
@@ -266,6 +266,27 @@
 /* --- Menu popup --- */
 .nav__menu {
   width: min(28rem, calc(100vw - 2rem));
+  margin-inline: auto;
+  margin-block: 4rem 0;
+}
+
+/* Override shared .popup--animated scale for nav menu only */
+.nav__menu.popup--animated {
+  transform: translateY(-8px);
+}
+
+.nav__menu.popup--animated[open] {
+  transform: translateY(0);
+}
+
+@starting-style {
+  .nav__menu.popup--animated[open] {
+    transform: translateY(-8px);
+  }
+}
+
+.nav__menu.popup--animated::backdrop {
+  background: var(--color-backdrop-light);
 }
 
 .nav__menu-loading {
