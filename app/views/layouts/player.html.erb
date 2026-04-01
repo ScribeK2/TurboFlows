@@ -27,13 +27,7 @@
 <body class="player-layout<%= " player-layout--embed" if @embed_mode %>">
   <header class="player-header">
     <div class="player-header__brand">
-      <svg class="player-header__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <circle cx="5" cy="6" r="2" fill="#10b981" />
-        <circle cx="12" cy="18" r="2" fill="#3b82f6" />
-        <circle cx="19" cy="6" r="2" fill="#f59e0b" />
-        <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 8v2a4 4 0 004 4h2" />
-        <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M19 8v2a4 4 0 01-4 4h-2" />
-      </svg>
+      <%= render "shared/brand_icon", css_class: "player-header__icon" %>
       <div class="player-header__title">
         <% if content_for?(:workflow_title) %>
           <%= yield(:workflow_title) %>

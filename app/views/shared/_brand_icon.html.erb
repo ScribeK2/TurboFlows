@@ -1,0 +1,41 @@
+<svg class="<%= local_assigns[:css_class] %>" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <style>
+    .tf-dot-green { fill: oklch(0.70 0.19 160) }
+    .tf-dot-blue { fill: oklch(0.62 0.21 255) }
+    .tf-dot-amber { fill: oklch(0.78 0.18 75) }
+    .tf-glow-green-start { stop-color: oklch(0.70 0.19 160) }
+    .tf-glow-blue-start { stop-color: oklch(0.62 0.21 255) }
+    .tf-glow-amber-start { stop-color: oklch(0.78 0.18 75) }
+  </style>
+  <defs>
+    <radialGradient id="tf-glow-g" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" class="tf-glow-green-start" stop-color="#10b981" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="tf-glow-b" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" class="tf-glow-blue-start" stop-color="#3b82f6" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="tf-glow-a" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" class="tf-glow-amber-start" stop-color="#f59e0b" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <%# Paths (behind dots) — bezier curves, currentColor adapts to theme %>
+  <path stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none" opacity="0.7"
+        d="M5.5 8.2 C5.5 10.5, 7 13, 10.5 14"/>
+  <path stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none" opacity="0.7"
+        d="M18.5 8.2 C18.5 10.5, 17 13, 13.5 14"/>
+  <path stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none" opacity="0.7"
+        d="M10.5 14 C11 15.5, 11.5 16.5, 12 17.5"/>
+  <path stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none" opacity="0.7"
+        d="M13.5 14 C13 15.5, 12.5 16.5, 12 17.5"/>
+  <%# Glow halos %>
+  <circle cx="5.5" cy="6.2" r="4.5" fill="url(#tf-glow-g)"/>
+  <circle cx="12" cy="18.2" r="4.5" fill="url(#tf-glow-b)"/>
+  <circle cx="18.5" cy="6.2" r="4.5" fill="url(#tf-glow-a)"/>
+  <%# Solid dots — hex fallback + OKLCH class override %>
+  <circle cx="5.5" cy="6.2" r="1.8" class="tf-dot-green" fill="#10b981"/>
+  <circle cx="12" cy="18.2" r="1.8" class="tf-dot-blue" fill="#3b82f6"/>
+  <circle cx="18.5" cy="6.2" r="1.8" class="tf-dot-amber" fill="#f59e0b"/>
+</svg>
