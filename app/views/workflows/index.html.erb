@@ -78,7 +78,7 @@
       </div>
 
       <!-- Status Filter Tabs + Sort Controls -->
-      <div class="flex items-center justify-between gap-3 mb-4" style="flex-wrap: wrap;">
+      <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <%# Status filter tabs %>
         <div class="wf-status-tabs">
           <%
@@ -142,7 +142,7 @@
                   <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8" />
                   </svg>
-                  <span class="font-semibold" style="font-style: italic;">Uncategorized</span>
+                  <span class="font-semibold italic">Uncategorized</span>
                 </div>
                 <span class="badge">
                   <%= pluralize(@uncategorized_workflows.size, "workflow") %>

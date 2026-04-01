@@ -40,3 +40,6 @@ Follow these conventions for every change. RuboCop (with rails, minitest, perfor
 - Snake_case filenames, singular where logical.
 
 Match style of existing files: app/models/workflow.rb, app/models/scenario.rb, Stimulus controllers, recent commits (vanilla CSS shift, optimistic locking).
+
+## Maintenance
+- When modifying CSS component files in `app/assets/stylesheets/`, verify that `UIGUIDE.md` references are still accurate (class names, file references, component descriptions).

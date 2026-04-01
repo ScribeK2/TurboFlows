@@ -158,6 +158,9 @@ The Player is the user-facing workflow execution UI, separate from the builder's
 - Background jobs: Active Job (expandable to Solid Queue)
 - Security: Rack::Attack, Bullet (N+1), Brakeman
 
+## UI Guide
+@UIGUIDE.md
+
 ## Coding Style
 @STYLE.md
 

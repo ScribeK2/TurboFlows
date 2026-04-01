@@ -265,7 +265,7 @@
                 <% if @current_step.respond_to?(:content) && @current_step.content.present? %>
                   <div class="text-sm"><%= render_step_content(@current_step, 'content', @scenario.results || {}) %></div>
                 <% else %>
-                  <p class="text-sm" style="color: var(--color-ink-muted); font-style: italic;">No message content provided.</p>
+                  <p class="text-sm italic" style="color: var(--color-ink-muted);">No message content provided.</p>
                 <% end %>
               </div>
             </div>
@@ -318,7 +318,7 @@
                   </p>
                 <% end %>
                 <% if @current_step.respond_to?(:reason_required) && @current_step.reason_required %>
-                  <p class="text-sm" style="color: var(--color-ink-muted); font-style: italic;">A reason must be documented for this escalation.</p>
+                  <p class="text-sm italic" style="color: var(--color-ink-muted);">A reason must be documented for this escalation.</p>
                 <% end %>
               </div>
             </div>
@@ -371,7 +371,7 @@
                   <div class="text-sm mb-2"><%= render_step_content(@current_step, 'notes', @scenario.results || {}) %></div>
                 <% end %>
                 <% if @current_step.respond_to?(:notes_required) && @current_step.notes_required %>
-                  <p class="text-sm" style="color: var(--color-ink-muted); font-style: italic;">Notes are required for this resolution.</p>
+                  <p class="text-sm italic" style="color: var(--color-ink-muted);">Notes are required for this resolution.</p>
                 <% end %>
               </div>
             </div>
