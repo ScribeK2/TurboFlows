@@ -38,6 +38,15 @@ module ApplicationHelper
     end
   end
 
+  # Sanitize SVG icon markup — allows only safe SVG elements and attributes.
+  # Use instead of `raw` when rendering icon HTML in views.
+  def sanitize_svg(html)
+    sanitize(html, tags: %w[svg path circle rect line polyline polygon g defs use symbol],
+                   attributes: %w[viewBox xmlns fill stroke stroke-width stroke-linecap
+                                  stroke-linejoin d cx cy r x y width height points
+                                  class transform opacity id href xlink:href])
+  end
+
   private
 
   def build_tree_nodes(parents, all_groups)

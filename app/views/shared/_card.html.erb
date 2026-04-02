@@ -9,7 +9,7 @@
     <div class="card__header">
       <% if local_assigns[:icon] %>
         <div class="flex-shrink-0 mr-3">
-          <%= raw icon %>
+          <%= sanitize_svg(icon) %>
         </div>
       <% end %>
       <% if local_assigns[:title] %>
@@ -21,7 +21,7 @@
   <% end %>
 
   <div class="card__body <%= local_assigns[:content_class] || '' %>">
-    <%= local_assigns[:content].html_safe if local_assigns[:content] %>
+    <%= local_assigns[:content] if local_assigns[:content] %>
   </div>
 
   <% if local_assigns[:footer] %>
