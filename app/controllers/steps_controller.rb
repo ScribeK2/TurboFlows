@@ -255,14 +255,7 @@ class StepsController < ApplicationController
   end
 
   def step_class_for(type)
-    case type.to_s
-    when "question"  then Steps::Question
-    when "message"   then Steps::Message
-    when "escalate"  then Steps::Escalate
-    when "resolve"   then Steps::Resolve
-    when "sub_flow"  then Steps::SubFlow
-    else                  Steps::Action
-    end
+    Step.class_for_type(type)
   end
 
   def step_locals(step, expanded: false)

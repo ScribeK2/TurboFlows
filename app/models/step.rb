@@ -24,6 +24,19 @@ class Step < ApplicationRecord
 
   scope :ordered, -> { order(:position) }
 
+  STEP_TYPE_MAP = {
+    "question" => "Steps::Question",
+    "message"  => "Steps::Message",
+    "escalate" => "Steps::Escalate",
+    "resolve"  => "Steps::Resolve",
+    "sub_flow" => "Steps::SubFlow",
+    "form"     => "Steps::Form"
+  }.freeze
+
+  def self.class_for_type(type)
+    STEP_TYPE_MAP.fetch(type.to_s, "Steps::Action").constantize
+  end
+
   # Short step type name (e.g., "question", "action", "sub_flow")
   # Used by Scenario and other code that dispatches on step type.
   def step_type
