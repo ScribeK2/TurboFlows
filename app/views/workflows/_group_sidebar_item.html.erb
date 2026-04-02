@@ -17,7 +17,7 @@
         </svg>
       </button>
     <% else %>
-      <span style="width: 1.5rem; display: inline-block;"></span>
+      <span class="w-6 inline-block"></span>
     <% end %>
 
     <%= link_to workflows_path(group_id: group.id, search: params[:search]),
@@ -25,7 +25,7 @@
       <svg class="icon icon--sm mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
       </svg>
-      <span class="flex-1 break-words" style="min-width: 0;"><%= group.name %></span>
+      <span class="flex-1 break-words min-w-0"><%= group.name %></span>
       <% if workflows_count > 0 %>
         <span class="ml-2 badge flex-shrink-0">
           <%= workflows_count %>
@@ -35,7 +35,7 @@
   </div>
 
   <% if has_children %>
-    <ul class="children is-hidden ml-4" style="display: flex; flex-direction: column; gap: 0.25rem; border-left: 2px solid var(--color-border); padding-left: 0.5rem; overflow: hidden;" data-children data-group-id="<%= group.id %>">
+    <ul class="children is-hidden ml-4 flex-col-gap-1 border-l-2 pl-2 overflow-hidden" data-children data-group-id="<%= group.id %>">
       <% group.children.order(:position, :name).each do |child| %>
         <%= render partial: "workflows/group_sidebar_item", locals: { group: child, level: level + 1, selected_group: @selected_group } %>
       <% end %>

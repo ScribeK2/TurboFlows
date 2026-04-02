@@ -76,7 +76,7 @@
           </div>
 
           <%# Step Form Fields %>
-          <div id="step-form-fields" style="display: flex; flex-direction: column; gap: 1rem;">
+          <div id="step-form-fields" class="flex-col-gap-4">
             <%# Basic fields that apply to all step types %>
             <div class="form-group">
               <label class="form-label">Title <span class="form-required-indicator" aria-hidden="true">*</span></label>
@@ -97,9 +97,9 @@
             </div>
 
             <%# Type-specific fields - shown based on step type %>
-            <div id="type-specific-fields" style="display: flex; flex-direction: column; gap: 1rem;">
+            <div id="type-specific-fields" class="flex-col-gap-4">
               <%# Question fields %>
-              <div id="question-fields" class="is-hidden" style="display: flex; flex-direction: column; gap: 1rem;">
+              <div id="question-fields" class="is-hidden flex-col-gap-4">
                 <div class="form-group">
                   <label class="form-label">Question Text</label>
                   <input type="text"
@@ -135,7 +135,7 @@
               </div>
 
               <%# Action fields %>
-              <div id="action-fields" class="is-hidden" style="display: flex; flex-direction: column; gap: 1rem;">
+              <div id="action-fields" class="is-hidden flex-col-gap-4">
                 <div class="form-group">
                   <label class="form-label">Action Type</label>
                   <input type="text"

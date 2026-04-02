@@ -1,4 +1,4 @@
-<div class="group-selector-container" data-controller="group-selector" style="position: relative; z-index: 10;">
+<div class="group-selector-container relative z-10" data-controller="group-selector">
   <label class="form-label">
     Group Assignment
   </label>
@@ -6,7 +6,7 @@
     Select one or more groups to organize this workflow. The first selected group will be the primary group.
   </p>
 
-  <div class="relative" style="z-index: 100;">
+  <div class="relative z-100">
     <div class="group-selector-input-container">
       <button type="button"
               data-action="click->group-selector#toggle"
@@ -19,7 +19,7 @@
 
       <div class="is-hidden card" style="position: absolute; top: 100%; left: 0; right: 0; margin-top: 0.25rem; z-index: 100; max-height: 16rem; overflow-y: auto;"
            data-group-selector-target="dropdown">
-        <div class="p-3" style="border-bottom: 1px solid var(--color-border);">
+        <div class="p-3 border-b">
           <input type="text"
                  data-group-selector-target="search"
                  data-action="input->group-selector#filter"

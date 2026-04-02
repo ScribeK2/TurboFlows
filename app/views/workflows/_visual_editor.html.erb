@@ -19,7 +19,7 @@
   <div class="editor-toolbar" data-controller="canvas-zoom">
     <div class="flex items-center gap-3">
       <span class="text-sm" data-visual-editor-target="stepCount">0 steps</span>
-      <div class="w-px h-5" style="background: var(--color-border);"></div>
+      <div class="w-px h-5 bg-border"></div>
       <button type="button" data-visual-editor-target="undoBtn"
               data-action="click->visual-editor#undo"
               class="editor-zoom__btn" title="Undo (Ctrl+Z)" disabled>
@@ -48,7 +48,7 @@
               title="Fit to screen">
         <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
       </button>
-      <div class="w-px h-5 mx-1" style="background: var(--color-border);"></div>
+      <div class="w-px h-5 mx-1 bg-border"></div>
       <button type="button" data-action="click->canvas-zoom#autoArrange"
               class="btn btn--plain btn--sm"
               title="Auto-arrange">
@@ -129,7 +129,7 @@
   <div data-ve-connection-target="conditionPopover"
        class="is-hidden editor-popover">
     <p class="editor-popover__label">Connection Condition</p>
-    <div data-ve-connection-target="conditionOptions" style="display: flex; flex-direction: column; gap: 0.375rem;"></div>
+    <div data-ve-connection-target="conditionOptions" class="flex-col-gap-2"></div>
   </div>
 
   <%# Step config modal — owned by ve-step-modal %>

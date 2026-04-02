@@ -4,7 +4,7 @@
     <div class="flash__body">
       <div class="flash__text">
         <strong><%= pluralize(object.errors.count, "error") %> prohibited this <%= object.model_name.human.downcase %> from being saved:</strong>
-        <ul class="mt-1" style="padding-left: 1.25rem; list-style: disc;">
+        <ul class="mt-1 pl-5 list-disc">
           <% object.errors.full_messages.each do |message| %>
             <li><%= message %></li>
           <% end %>

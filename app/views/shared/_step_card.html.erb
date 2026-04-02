@@ -19,7 +19,7 @@
   type_icon = type_icons[step_type.to_s] || '#'
 %>
 
-<div class="step-list-item border-b transition-colors" style="border-color: var(--color-border);">
+<div class="step-list-item border-b transition-colors">
   <div class="flex-shrink-0 mt-0.5">
     <span class="badge badge--<%= step_type.to_s.tr('_', '-') %> font-bold"><%= type_icon %></span>
   </div>
@@ -29,7 +29,7 @@
       <span class="badge badge--<%= step_type.to_s.tr('_', '-') %>"><%= step_type.to_s.capitalize %></span>
     </div>
     <% if step_preview.present? %>
-      <p class="text-xs truncate" style="color: var(--color-ink-muted);"><%= step_preview %></p>
+      <p class="text-xs truncate text-muted"><%= step_preview %></p>
     <% end %>
   </div>
 </div>

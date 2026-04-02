@@ -7,7 +7,7 @@
   Local variables:
   - workflow: Workflow object
 %>
-<div class="form-group mt-6 pt-4" style="border-top: 1px solid var(--color-border);"
+<div class="form-group mt-6 pt-4 border-t"
      data-controller="share-link"
      data-share-link-generate-url-value="<%= workflow_share_path(workflow) %>"
      data-share-link-revoke-url-value="<%= workflow_share_path(workflow) %>">
@@ -15,9 +15,9 @@
 
   <% if workflow.shared? %>
     <div class="form-group">
-      <label class="form-label" style="font-size: 0.85rem;">Share Link</label>
-      <div style="display: flex; gap: 0.5rem; align-items: center;">
-        <input type="text" readonly class="form-input" style="flex: 1;"
+      <label class="form-label text-sm">Share Link</label>
+      <div class="flex gap-2 items-center">
+        <input type="text" readonly class="form-input flex-1"
                value="<%= shared_player_url(share_token: workflow.share_token) %>"
                data-share-link-target="urlField">
         <button type="button" class="btn btn--sm btn--secondary"
@@ -40,7 +40,7 @@
   <% end %>
 
   <% if workflow.shared? %>
-    <div class="form-group" style="margin-top: 1rem;">
+    <div class="form-group mt-4">
       <label class="form-check">
         <input type="hidden" name="workflow[embed_enabled]" value="0">
         <%= check_box_tag "workflow[embed_enabled]", "1", workflow.embed_enabled?,
@@ -52,11 +52,11 @@
     </div>
 
     <% if workflow.embeddable? %>
-      <div class="form-group" style="margin-top: 0.5rem;">
-        <label class="form-label" style="font-size: 0.85rem;">Embed Code</label>
-        <textarea readonly class="form-input" rows="3" style="font-family: monospace; font-size: 0.8rem;"
+      <div class="form-group mt-2">
+        <label class="form-label text-sm">Embed Code</label>
+        <textarea readonly class="form-input font-mono text-sm"
                   data-share-link-target="embedCode"><iframe src="<%= shared_player_url(share_token: workflow.share_token) %>" width="100%" height="600" frameborder="0"></iframe></textarea>
-        <button type="button" class="btn btn--sm btn--secondary" style="margin-top: 0.5rem;"
+        <button type="button" class="btn btn--sm btn--secondary mt-2"
                 data-action="click->share-link#copyEmbed">
           Copy Embed Code
         </button>

@@ -68,7 +68,7 @@
         <%= render "workflows/sharing_panel", workflow: workflow %>
 
         <% if workflow.published_version.present? %>
-          <div class="form-group mt-6 pt-4" style="border-top: 1px solid var(--color-border);">
+          <div class="form-group mt-6 pt-4 border-t">
             <label class="form-label">Version</label>
             <p>v<%= workflow.published_version.version_number %> — published <%= workflow.published_version.published_at.strftime('%b %d, %Y') %></p>
           </div>

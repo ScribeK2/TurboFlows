@@ -3,7 +3,7 @@
     <div class="flash__body">
       <div class="flash__text">
         <strong><%= pluralize(resource.errors.count, "error") %> prohibited this account from being saved:</strong>
-        <ul class="mt-1" style="padding-left: 1.25rem; list-style: disc;">
+        <ul class="mt-1 pl-5 list-disc">
           <% resource.errors.full_messages.each do |message| %>
             <li><%= message %></li>
           <% end %>

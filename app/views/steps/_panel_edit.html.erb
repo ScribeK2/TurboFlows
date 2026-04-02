@@ -41,13 +41,13 @@
       <% end %>
       <%# Show connections read-only %>
       <% if step.transitions.any? %>
-        <div class="mt-4 pt-4" style="border-top: 1px solid var(--color-border);">
+        <div class="mt-4 pt-4 border-t">
           <label class="form-label">Connections</label>
           <% step.transitions.includes(:target_step).each do |t| %>
             <div class="flex items-center gap-2 py-1">
               <span class="text-sm"><%= t.condition.presence || "Default" %></span>
               <span>&rarr;</span>
-              <span class="text-sm" style="color: var(--color-primary);"><%= t.target_step&.title %></span>
+              <span class="text-sm text-primary"><%= t.target_step&.title %></span>
             </div>
           <% end %>
         </div>

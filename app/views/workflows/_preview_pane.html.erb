@@ -12,7 +12,7 @@
     <% sdesc = step.is_a?(Step) ? step.try(:description).to_s : step["description"] %>
     <% case stype %>
     <% when "question" %>
-      <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+      <div class="flex-col-gap-3">
         <% if stitle.present? %>
           <h5 class="font-medium"><%= VariableInterpolator.interpolate(stitle, sample_variables) %></h5>
         <% end %>
@@ -42,11 +42,11 @@
               <button class="btn btn--negative" disabled>No</button>
             </div>
           <% when "multiple_choice" %>
-            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <div class="flex-col-gap-2">
               <% if options.present? && options.is_a?(Array) %>
                 <% options.each do |option| %>
-                  <label class="preview-radio-option card" style="cursor: not-allowed;">
-                    <input type="radio" name="preview_<%= index %>" disabled style="cursor: not-allowed;" />
+                  <label class="preview-radio-option card cursor-not-allowed">
+                    <input type="radio" name="preview_<%= index %>" disabled class="cursor-not-allowed" />
                     <span class="text-sm"><%= option["label"] || option["value"] || "Option" %></span>
                   </label>
                 <% end %>
@@ -91,7 +91,7 @@
       </div>
 
     <% when "action" %>
-      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+      <div class="flex-col-gap-2">
         <% if stitle.present? %>
           <h5 class="font-medium"><%= VariableInterpolator.interpolate(stitle, sample_variables) %></h5>
         <% end %>
@@ -123,7 +123,7 @@
       </div>
 
     <% when "message" %>
-      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+      <div class="flex-col-gap-2">
         <% if stitle.present? %>
           <h5 class="font-medium"><%= VariableInterpolator.interpolate(stitle, sample_variables) %></h5>
         <% end %>
@@ -156,7 +156,7 @@
       </div>
 
     <% when "escalate" %>
-      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+      <div class="flex-col-gap-2">
         <% if stitle.present? %>
           <h5 class="font-medium"><%= VariableInterpolator.interpolate(stitle, sample_variables) %></h5>
         <% end %>
@@ -171,7 +171,7 @@
             <span class="font-medium">Escalation</span>
           </div>
 
-          <div style="display: flex; flex-direction: column; gap: 0.25rem;" class="text-sm">
+          <div class="flex-col-gap-1 text-sm">
             <% target_type = step.is_a?(Step) ? step.target_type : step["target_type"] %>
             <% target_value = step.is_a?(Step) ? step.target_value : step["target_value"] %>
             <% if target_type.present? || target_value.present? %>
@@ -210,7 +210,7 @@
       </div>
 
     <% when "resolve" %>
-      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+      <div class="flex-col-gap-2">
         <% if stitle.present? %>
           <h5 class="font-medium"><%= VariableInterpolator.interpolate(stitle, sample_variables) %></h5>
         <% end %>
@@ -226,7 +226,7 @@
             <span class="badge">Terminal</span>
           </div>
 
-          <div style="display: flex; flex-direction: column; gap: 0.25rem;" class="text-sm">
+          <div class="flex-col-gap-1 text-sm">
             <% res_type = step.is_a?(Step) ? step.resolution_type : step["resolution_type"] %>
             <div class="flex items-center gap-2">
               <span>Type:</span>
@@ -260,7 +260,7 @@
       </div>
 
     <% when "sub_flow" %>
-      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+      <div class="flex-col-gap-2">
         <% if stitle.present? %>
           <h5 class="font-medium"><%= VariableInterpolator.interpolate(stitle, sample_variables) %></h5>
         <% end %>

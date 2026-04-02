@@ -1,4 +1,4 @@
-<div class="page-content" style="max-width: 56rem; margin: 0 auto;">
+<div class="page-content page-narrow">
   <div class="flex items-center justify-between mb-6">
     <div>
       <h1 class="page-title">
@@ -27,7 +27,7 @@
     <h2 class="font-semibold mb-4">
       Steps (<%= @version.steps_snapshot.length %>)
     </h2>
-    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+    <div class="flex-col-gap-3">
       <% @version.steps_snapshot.each_with_index do |step, index| %>
         <div class="version-step-item card">
           <div class="flex items-center gap-3">

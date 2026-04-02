@@ -34,6 +34,12 @@
   }
 }
 
+/* Narrow variant — for detail/comparison pages that cap at 56rem */
+.page-narrow {
+  max-width: 56rem;
+  margin-inline: auto;
+}
+
 /* Shared page header — consistent title + spacing across all top-level pages */
 .page-header-section {
   margin-bottom: var(--space-8);

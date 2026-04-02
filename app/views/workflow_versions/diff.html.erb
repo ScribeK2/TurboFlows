@@ -1,4 +1,4 @@
-<div class="page-content" style="max-width: 56rem; margin: 0 auto;">
+<div class="page-content page-narrow">
   <div class="flex items-center justify-between mb-6">
     <div>
       <h1 class="page-title">
@@ -21,7 +21,7 @@
     <% if @diff[:metadata_changes].any? %>
       <div class="card p-6 mb-4">
         <h2 class="font-semibold mb-4">Metadata Changes</h2>
-        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+        <div class="flex-col-gap-2">
           <% @diff[:metadata_changes].each do |key, change| %>
             <div class="diff-modified">
               <span class="font-medium"><%= key.humanize %>:</span>
@@ -38,7 +38,7 @@
     <% if @diff[:added].any? %>
       <div class="card p-6 mb-4">
         <h2 class="font-semibold mb-4">Added Steps (<%= @diff[:added].size %>)</h2>
-        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+        <div class="flex-col-gap-3">
           <% @diff[:added].each do |step| %>
             <div class="diff-added">
               <div class="flex items-center gap-3">
@@ -57,7 +57,7 @@
     <% if @diff[:removed].any? %>
       <div class="card p-6 mb-4">
         <h2 class="font-semibold mb-4">Removed Steps (<%= @diff[:removed].size %>)</h2>
-        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+        <div class="flex-col-gap-3">
           <% @diff[:removed].each do |step| %>
             <div class="diff-removed">
               <div class="flex items-center gap-3">
@@ -76,7 +76,7 @@
     <% if @diff[:modified].any? %>
       <div class="card p-6 mb-4">
         <h2 class="font-semibold mb-4">Modified Steps (<%= @diff[:modified].size %>)</h2>
-        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+        <div class="flex-col-gap-3">
           <% @diff[:modified].each do |change| %>
             <div class="diff-modified">
               <div class="flex items-center gap-3 mb-2">

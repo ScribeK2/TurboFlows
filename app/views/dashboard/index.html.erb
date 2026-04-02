@@ -63,7 +63,7 @@
         <p class="stat-card__label">Scenarios Run</p>
         <% if @scenario_active > 0 %>
           <p class="stat-card__detail">
-            <span class="status-dot" style="background: var(--color-positive);" aria-hidden="true"></span>
+            <span class="status-dot bg-positive" aria-hidden="true"></span>
             <%= @scenario_active %> active
           </p>
         <% end %>
@@ -126,7 +126,7 @@
                   Created <%= time_ago_in_words(workflow.created_at) %> ago
                 </div>
                 <% if workflow.tags.any? %>
-                  <div class="wf-list-item__tags" style="display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.25rem;">
+                  <div class="wf-list-item__tags flex flex-wrap gap-1 mt-0\.5">
                     <% workflow.tags.each do |tag| %>
                       <span class="tag-pill"><%= tag.name %></span>
                     <% end %>
@@ -207,7 +207,7 @@
               <div class="activity-feed__item">
                 <div class="activity-feed__dot" aria-hidden="true"></div>
                 <div class="activity-feed__body">
-                  <p class="text-sm italic truncate" style="color: var(--color-ink-muted);">Deleted workflow</p>
+                  <p class="text-sm italic truncate text-muted">Deleted workflow</p>
                   <p class="activity-feed__meta">
                     <%= scenario.status.capitalize %> &middot; <%= time_ago_in_words(scenario.created_at) %> ago
                   </p>

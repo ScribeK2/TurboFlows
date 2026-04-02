@@ -5,11 +5,11 @@
   <li class="wf-list-item wf-list-item--<%= workflow.dominant_step_type || 'default' %>" style="animation-delay: <%= local_assigns[:index].to_i * 0.05 %>s;">
     <div class="wf-list-item__body">
       <div class="flex items-center justify-between">
-        <div class="flex items-center flex-1" style="min-width: 0;">
+        <div class="flex items-center flex-1 min-w-0">
           <div class="flex-shrink-0">
             <%= workflow_list_icon(workflow) %>
           </div>
-          <div class="flex-1" style="min-width: 0;">
+          <div class="flex-1 min-w-0">
             <div class="font-semibold mb-1">
               <%= link_to workflow.title, workflow_path(workflow), class: "wf-list-item__title" %>
             </div>

@@ -24,7 +24,7 @@
 
   <div class="builder__panel-body">
     <% if levels.empty? %>
-      <p style="color: var(--color-ink-muted); text-align: center; padding: var(--space-8);">
+      <p class="text-muted text-center p-8">
         No steps yet. Add steps to see the flow diagram.
       </p>
     <% else %>
@@ -39,10 +39,10 @@
                 <span class="flow-diagram__node-number"><%= step.position + 1 %></span>
                 <span class="flow-diagram__node-title"><%= truncate(step.title.presence || "Untitled", length: 20) %></span>
                 <% if step == workflow.start_step %>
-                  <span class="step-pill step-pill--start" style="font-size: 0.625rem;">Start</span>
+                  <span class="step-pill step-pill--start text-2xs">Start</span>
                 <% end %>
                 <% if step.terminal? %>
-                  <span class="step-pill step-pill--terminal" style="font-size: 0.625rem;">End</span>
+                  <span class="step-pill step-pill--terminal text-2xs">End</span>
                 <% end %>
               </div>
             <% end %>

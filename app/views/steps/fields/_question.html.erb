@@ -39,7 +39,7 @@
   <div class="mt-4 <%= 'is-hidden' unless %w[multiple_choice dropdown].include?(step.answer_type) %>"
        data-question-form-target="optionsContainer">
     <label class="form-label">Options</label>
-    <div data-question-form-target="optionsList" style="display: flex; flex-direction: column; gap: 0.5rem;">
+    <div data-question-form-target="optionsList" class="flex-col-gap-2">
       <% if step.options.present? && step.options.is_a?(Array) %>
         <% step.options.each do |option| %>
           <div class="flex gap-2 items-center option-item">

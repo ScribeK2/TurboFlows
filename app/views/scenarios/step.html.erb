@@ -25,9 +25,9 @@
       </div>
       <div class="card__body">
         <div class="overflow-x-auto overflow-y-hidden progress-scroll" style="width: 100%; max-width: 100%; box-sizing: border-box;">
-          <div class="flex items-center gap-2 pb-2" style="display: flex; width: max-content;">
+          <div class="flex items-center gap-2 pb-2" style="width: max-content;">
             <% @scenario.execution_path.each_with_index do |path_item, index| %>
-              <div class="flex items-center flex-shrink-0" style="flex-shrink: 0;">
+              <div class="flex items-center flex-shrink-0">
                 <%
                   # All execution_path items are completed — the current step being
                   # displayed hasn't been added to the path yet (it's added on submit).
@@ -36,9 +36,8 @@
                 %>
                 <button type="button"
                         onclick="location.href='<%= step_scenario_path(@scenario) %>?step=<%= index %>'"
-                        class="<%= scenario_stepper_classes(is_completed, is_current, path_item['step_type'] || path_item['type']) %>"
-                        title="<%= path_item['step_title'] %>"
-                        style="flex-shrink: 0;">
+                        class="<%= scenario_stepper_classes(is_completed, is_current, path_item['step_type'] || path_item['type']) %> flex-shrink-0"
+                        title="<%= path_item['step_title'] %>">
                   <%= scenario_stepper_step_content(path_item, index, is_completed, is_current) %>
                   <span class="scenario-stepper__label"><%= truncate(path_item['step_title'], length: 20) %></span>
                   <% if path_item['answer'].present? && is_completed %>
@@ -46,13 +45,13 @@
                   <% end %>
                 </button>
                 <% unless index == @scenario.execution_path.length - 1 %>
-                  <div class="scenario-step-connector" style="flex-shrink: 0;"></div>
+                  <div class="scenario-step-connector flex-shrink-0"></div>
                 <% end %>
               </div>
             <% end %>
             <% unless @scenario.complete? %>
-              <div class="flex items-center flex-shrink-0 ml-2" style="flex-shrink: 0;">
-                <div class="scenario-step-current" style="flex-shrink: 0;">
+              <div class="flex items-center flex-shrink-0 ml-2">
+                <div class="scenario-step-current flex-shrink-0">
                   <span class="text-xs font-bold"><%= scenario_step_counter(@scenario, @workflow).delete_prefix("Step ") %></span>
                 </div>
               </div>

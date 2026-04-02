@@ -12,8 +12,8 @@
   </div>
 
   <div class="card mb-6">
-    <div class="card__body" style="display: flex; flex-direction: column; gap: 1.5rem;">
-      <%= form_with url: workflow_import_path, method: :post, local: true, multipart: true, html: { style: "display: flex; flex-direction: column; gap: 1.5rem;" }, data: { controller: "file-upload" } do |form| %>
+    <div class="card__body flex-col-gap-6">
+      <%= form_with url: workflow_import_path, method: :post, local: true, multipart: true, html: { class: "flex-col-gap-6" }, data: { controller: "file-upload" } do |form| %>
         <div class="form-group">
           <label class="form-label">Select File</label>
           <div class="file-dropzone"
@@ -33,7 +33,7 @@
               <p class="text-xs">JSON, CSV, YAML, or Markdown files up to 10MB</p>
             </div>
             <div class="is-hidden text-center" data-file-upload-target="fileSelected">
-              <svg class="icon icon--xl mx-auto mb-3" style="color: var(--color-emerald-500);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="icon icon--xl mx-auto mb-3 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <p class="font-medium" data-file-upload-target="fileName">No file selected</p>
@@ -47,7 +47,7 @@
 
         <div class="alert alert--info">
           <h3 class="font-medium mb-2">Supported Formats</h3>
-          <ul class="text-sm list-disc" style="padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.25rem;">
+          <ul class="text-sm list-disc pl-5 flex-col-gap-1">
             <li><strong>JSON:</strong> Native export format with full Graph Mode support (recommended)</li>
             <li><strong>CSV:</strong> Spreadsheet format with columns for step data and transitions</li>
             <li><strong>YAML:</strong> Structured configuration format with hierarchical steps</li>
@@ -57,7 +57,7 @@
 
         <div class="alert alert--info">
           <h3 class="font-medium mb-2">Graph Mode Workflows</h3>
-          <ul class="text-sm list-disc" style="padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.25rem;">
+          <ul class="text-sm list-disc pl-5 flex-col-gap-1">
             <li>All imports use Graph Mode with explicit step transitions</li>
             <li>Each step requires a unique ID and defines its outgoing transitions</li>
             <li>Supported step types: <code>question</code>, <code>action</code>, <code>message</code>, <code>escalate</code>, <code>sub_flow</code>, <code>resolve</code></li>
@@ -67,7 +67,7 @@
 
         <div class="alert alert--warning">
           <h3 class="font-medium mb-2">Import Notes</h3>
-          <ul class="text-sm list-disc" style="padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.25rem;">
+          <ul class="text-sm list-disc pl-5 flex-col-gap-1">
             <li>Steps with missing required fields will still be imported</li>
             <li>If incomplete steps or warnings are found, you'll be redirected to the edit page to review</li>
             <li>Workflows are imported as private by default</li>
@@ -87,7 +87,7 @@
     <div class="card__body">
       <h2 class="font-bold mb-4">File Format Examples</h2>
 
-      <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+      <div class="flex-col-gap-6">
         <%# JSON Format Example %>
         <div>
           <h3 class="font-medium text-sm mb-1">JSON Format (Recommended)</h3>

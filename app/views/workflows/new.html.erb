@@ -11,7 +11,7 @@
           <h3 class="font-medium mb-1">
             <%= pluralize(@workflow.errors.count, "error") %> prohibited this workflow from being saved:
           </h3>
-          <ul class="list-disc" style="padding-left: 1.25rem;">
+          <ul class="list-disc pl-5">
             <% @workflow.errors.full_messages.each do |message| %>
               <li class="text-sm"><%= message %></li>
             <% end %>
@@ -20,7 +20,7 @@
       </div>
     <% end %>
 
-    <div class="card__body" style="display: flex; flex-direction: column; gap: 1.5rem;">
+    <div class="card__body flex-col-gap-6">
       <div class="form-group">
         <%= form.label :title, class: "form-label" %>
         <%= form.text_field :title, class: "form-input" %>
@@ -56,11 +56,11 @@
       <div data-controller="workflow-builder" id="workflow-builder-container" data-workflow-builder-graph-mode-value="false" data-workflow-builder-debug-value="<%= Rails.env.development? %>">
         <div class="flex justify-between items-center mb-4">
           <label class="form-label mb-0">Workflow Steps</label>
-          <div class="flex gap-2" style="flex-wrap: wrap;">
+          <div class="flex gap-2 flex-wrap">
             <button type="button" data-action="click->workflow-builder#addStep" data-workflow-builder-type-param="question" class="btn btn--secondary btn--sm">Add Question</button>
             <button type="button" data-action="click->workflow-builder#addStep" data-workflow-builder-type-param="action" class="btn btn--positive btn--sm">Add Action</button>
-            <button type="button" data-action="click->workflow-builder#addStep" data-workflow-builder-type-param="message" class="btn btn--sm" style="background: var(--color-cyan-500); color: #fff;">Add Message</button>
-            <button type="button" data-action="click->workflow-builder#addStep" data-workflow-builder-type-param="sub_flow" data-step-type="sub_flow" class="btn btn--sm" style="background: var(--color-indigo-500); color: #fff;">Add Sub-flow</button>
+            <button type="button" data-action="click->workflow-builder#addStep" data-workflow-builder-type-param="message" class="btn btn--sm btn--step-message">Add Message</button>
+            <button type="button" data-action="click->workflow-builder#addStep" data-workflow-builder-type-param="sub_flow" data-step-type="sub_flow" class="btn btn--sm btn--step-subflow">Add Sub-flow</button>
           </div>
         </div>
         <div data-workflow-builder-target="container" class="wf-steps-container">

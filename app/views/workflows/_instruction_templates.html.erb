@@ -11,7 +11,7 @@
 
 <%# Template Panel (Initially Hidden) - relative z-20 ensures it stacks above the Live Preview sticky pane %>
 <div data-instruction-template-target="templatePanel"
-     class="is-hidden card mb-3" style="overflow: hidden; position: relative; z-index: 20;">
+     class="is-hidden card mb-3 overflow-hidden relative z-20">
 
   <%# Header %>
   <div class="card__header flex items-center justify-between">
@@ -40,7 +40,7 @@
   </div>
 
   <%# Search Bar %>
-  <div class="px-4 py-2" style="border-bottom: 1px solid var(--color-border);">
+  <div class="px-4 py-2 border-b">
     <div class="relative">
       <svg class="icon icon--sm absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -55,7 +55,7 @@
 
   <%# Category Tabs %>
   <div data-instruction-template-target="categoryTabs"
-       class="flex gap-1 px-4 py-2 overflow-x-auto" style="border-bottom: 1px solid var(--color-border);">
+       class="flex gap-1 px-4 py-2 overflow-x-auto border-b">
     <button type="button"
             data-action="click->instruction-template#selectCategory"
             data-category="greeting"
@@ -115,7 +115,7 @@
 
   <%# Template List %>
   <div data-instruction-template-target="templateList"
-       class="p-3 overflow-y-auto" style="max-height: 16rem; display: flex; flex-direction: column; gap: 0.5rem;">
+       class="p-3 overflow-y-auto max-h-64 flex-col-gap-2">
     <%# Templates will be rendered by JavaScript %>
     <div class="text-center py-6">
       <div>Loading templates...</div>
@@ -124,9 +124,9 @@
 
   <%# Preview Panel (Hidden by default) %>
   <div data-instruction-template-target="previewPanel"
-       class="is-hidden px-4 py-3" style="border-top: 1px solid var(--color-border); background: var(--color-canvas-raised);">
+       class="is-hidden px-4 py-3 border-t" style="background: var(--color-canvas-raised);">
     <div class="form-hint mb-1">Preview:</div>
-    <pre class="text-sm whitespace-pre-wrap font-mono card p-2 rounded" style="border: 1px solid var(--color-border);"></pre>
+    <pre class="text-sm whitespace-pre-wrap font-mono card p-2 rounded border"></pre>
   </div>
 
   <%# Help Text %>

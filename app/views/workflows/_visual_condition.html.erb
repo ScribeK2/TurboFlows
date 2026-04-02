@@ -28,11 +28,11 @@
          data-step-form-target="field">
 
   <%# Sentence-style condition builder %>
-  <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+  <div class="flex-col-gap-3">
 
     <%# Row 1: Variable selection %>
-    <div class="flex items-center gap-2" style="flex-wrap: wrap;">
-      <span class="text-sm font-medium" style="white-space: nowrap;">When</span>
+    <div class="flex items-center gap-2 flex-wrap">
+      <span class="text-sm font-medium whitespace-nowrap">When</span>
 
       <select data-visual-condition-target="variableSelect"
               data-action="change->visual-condition#handleVariableChange"
@@ -60,7 +60,7 @@
     </div>
 
     <%# Row 2: Operator and Value %>
-    <div class="flex items-center gap-2" style="flex-wrap: wrap;">
+    <div class="flex items-center gap-2 flex-wrap">
       <select data-visual-condition-target="operatorSelect"
               data-action="change->visual-condition#updateCondition"
               class="form-select" style="min-width: 120px;">
