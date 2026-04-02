@@ -144,6 +144,13 @@ module Admin
         .order(total_runs: :desc)
     end
 
+    # Performance note: This iterates all matching scenarios in Ruby to parse
+    # JSON execution_path data. O(n) database reads via find_each prevents
+    # memory issues, but is slow for large datasets.
+    #
+    # Future optimization: denormalize step timing data into a dedicated
+    # step_executions table (step_id, scenario_id, duration_seconds, started_at)
+    # and query with SQL aggregation instead.
     def build_step_performance(scenarios)
       step_times = Hash.new { |h, k| h[k] = [] }
 
