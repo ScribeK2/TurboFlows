@@ -16,4 +16,9 @@ class Rack::Attack
   throttle("admin_password_resets/ip", limit: 5, period: 300.seconds) do |req|
     req.ip if req.path.match?(%r{\A/admin/users/\d+/reset_password\z}) && req.post?
   end
+
+  # Throttle player scenario access by IP to prevent ID enumeration
+  throttle("player_scenarios/ip", limit: 30, period: 60.seconds) do |req|
+    req.ip if req.path.match?(%r{\A/player/scenarios/\d+}) && req.get?
+  end
 end
