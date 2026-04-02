@@ -49,7 +49,7 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
   # ============================================================================
 
   test "export JSON includes graph_mode and start_node_uuid" do
-    get export_workflow_path(@graph_workflow)
+    get workflow_export_path(@graph_workflow)
 
     assert_response :success
 
@@ -62,7 +62,7 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
   end
 
   test "export JSON includes full step structure with transitions" do
-    get export_workflow_path(@graph_workflow)
+    get workflow_export_path(@graph_workflow)
 
     assert_response :success
 
@@ -77,7 +77,7 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
   end
 
   test "export PDF includes graph mode indicator" do
-    get export_pdf_workflow_path(@graph_workflow)
+    get pdf_workflow_export_path(@graph_workflow)
 
     assert_response :success
     assert_equal 'application/pdf', response.content_type

@@ -64,7 +64,7 @@
       <% end %>
 
       <% if workflow.can_be_viewed_by?(current_user) %>
-        <%= link_to export_workflow_path(workflow), class: "btn btn--plain btn--sm" do %>
+        <%= link_to workflow_export_path(workflow), class: "btn btn--plain btn--sm" do %>
           Export
         <% end %>
       <% end %>

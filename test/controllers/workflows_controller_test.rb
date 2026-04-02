@@ -306,7 +306,7 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
 
   test "admin should be able to export any workflow" do
     sign_in @admin
-    get export_workflow_path(@workflow)
+    get workflow_export_path(@workflow)
 
     assert_response :success
     assert_match(%r{application/json}, response.content_type)
@@ -314,14 +314,14 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
 
   test "user should be able to export public workflow" do
     sign_in @user
-    get export_workflow_path(@public_workflow)
+    get workflow_export_path(@public_workflow)
 
     assert_response :success
   end
 
   test "user should not be able to export private workflow" do
     sign_in @user
-    get export_workflow_path(@workflow)
+    get workflow_export_path(@workflow)
 
     assert_redirected_to workflows_path
     assert_equal "You don't have permission to view this workflow.", flash[:alert]
@@ -329,7 +329,7 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
 
   test "should export workflow as PDF" do
     sign_in @editor
-    get export_pdf_workflow_path(@workflow)
+    get pdf_workflow_export_path(@workflow)
 
     assert_response :success
     assert_match(%r{application/pdf}, response.content_type)

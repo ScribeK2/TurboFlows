@@ -13,8 +13,6 @@ Rails.application.routes.draw do
       post :import_file
     end
     member do
-      get :export
-      get :export_pdf
       get :preview
       get :variables
       get :start
@@ -33,6 +31,9 @@ Rails.application.routes.draw do
       # Sharing
       post :generate_share
       delete :revoke_share
+    end
+    resource :export, only: [:show], controller: "workflows/exports" do
+      get :pdf, on: :member
     end
     resources :versions, only: [:show], controller: "workflow_versions" do
       collection do
