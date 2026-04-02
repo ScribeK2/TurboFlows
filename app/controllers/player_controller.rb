@@ -159,6 +159,7 @@ class PlayerController < ApplicationController
       workflow: @workflow,
       user: @workflow.user,
       purpose: "live",
+      shared_access: true,
       started_at: Time.current,
       current_step_index: 0,
       current_node_uuid: @workflow.start_node&.uuid,
@@ -177,7 +178,7 @@ class PlayerController < ApplicationController
   def set_scenario
     @scenario = Scenario.find(params[:id])
     return if current_user && @scenario.user == current_user
-    return if @scenario.workflow.shared? && !current_user
+    return if @scenario.shared_access? && !current_user
 
     head :forbidden
   end
