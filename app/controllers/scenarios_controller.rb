@@ -141,55 +141,7 @@ class ScenariosController < ApplicationController
   end
 
   def handle_back_navigation
-    return unless @scenario.execution_path.present? && @scenario.execution_path.length > 0
-
-    popped_step = pop_to_interactive_step
-    return unless popped_step
-
-    rebuild_scenario_state_from_path
-    restore_position_from_step(popped_step)
-    @scenario.status = 'active' if @scenario.status == 'completed'
-    @scenario.save
-  end
-
-  def pop_to_interactive_step
-    while @scenario.execution_path.length > 0
-      candidate = @scenario.execution_path.pop
-      next if candidate['step_type'] == 'sub_flow'
-      return candidate
-    end
-    nil
-  end
-
-  def rebuild_scenario_state_from_path
-    @scenario.results = {}
-    @scenario.inputs = {}
-    @scenario.execution_path.each do |path_entry|
-      next unless path_entry['answer'].present?
-
-      if @scenario.graph_mode? && path_entry['step_uuid'].present?
-        step = @workflow.find_step_by_uuid(path_entry['step_uuid'])
-      elsif path_entry['step_index'].present?
-        idx = path_entry['step_index'].to_i
-        step = @workflow.steps.find_by(position: idx) if idx >= 0
-      end
-
-      next unless step.is_a?(Steps::Question)
-
-      input_key = step.variable_name.presence || (path_entry['step_index'] || 0).to_s
-      @scenario.inputs[input_key] = path_entry['answer']
-      @scenario.inputs[step.title] = path_entry['answer']
-      @scenario.results[step.title] = path_entry['answer']
-      @scenario.results[step.variable_name] = path_entry['answer'] if step.variable_name.present?
-    end
-  end
-
-  def restore_position_from_step(popped_step)
-    if @scenario.graph_mode? && popped_step['step_uuid'].present?
-      @scenario.current_node_uuid = popped_step['step_uuid']
-    elsif popped_step['step_index'].present?
-      @scenario.current_step_index = popped_step['step_index'].to_i
-    end
+    ScenarioNavigator.new(@scenario, @workflow).go_back
   end
 
   def handle_jump_navigation
