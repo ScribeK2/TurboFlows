@@ -4,7 +4,7 @@
     <p class="text-sm mb-4">
       This creates a new published version. Agents running this workflow will use the new version.
     </p>
-    <%= form_with url: publish_workflow_path(workflow), method: :post, data: { turbo: false }, style: "display: flex; flex-direction: column; gap: 1rem;" do |f| %>
+    <%= form_with url: workflow_publishing_path(workflow), method: :post, data: { turbo: false }, style: "display: flex; flex-direction: column; gap: 1rem;" do |f| %>
       <div class="form-group">
         <%= f.label :changelog, "Changelog (optional)", class: "form-label" %>
         <%= f.text_area :changelog, rows: 3, placeholder: "What changed in this version?",

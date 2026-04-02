@@ -56,7 +56,7 @@
       <% end %>
 
       <% if mode == "edit" %>
-        <%= button_to publish_workflow_path(workflow), method: :post,
+        <%= button_to workflow_publishing_path(workflow), method: :post,
             class: "btn btn--positive btn--sm builder__edit-only",
             data: { turbo_stream: true } do %>
           Publish

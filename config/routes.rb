@@ -13,8 +13,6 @@ Rails.application.routes.draw do
       get :variables
       get :start
       post :begin_execution
-      # Publishing & versioning
-      post :publish
       get :versions
       # AR step persistence
       patch :sync_steps
@@ -25,6 +23,7 @@ Rails.application.routes.draw do
       post :add_tag
       delete :remove_tag
     end
+    resource :publishing, only: [:create], controller: "workflows/publishings"
     resource :share, only: %i[create destroy], controller: "workflows/shares"
     resource :export, only: [:show], controller: "workflows/exports" do
       get :pdf, on: :member

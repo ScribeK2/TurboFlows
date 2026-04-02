@@ -21,7 +21,7 @@ class WorkflowPublishingIntegrationTest < ActionDispatch::IntegrationTest
 
   test "full publishing lifecycle: publish, edit, republish, view history, restore" do
     # 1. Publish v1
-    post publish_workflow_path(@workflow), params: { changelog: "Initial release" }
+    post workflow_publishing_path(@workflow), params: { changelog: "Initial release" }
     assert_redirected_to workflow_path(@workflow)
     @workflow.reload
     assert_equal 1, @workflow.published_version.version_number
@@ -41,7 +41,7 @@ class WorkflowPublishingIntegrationTest < ActionDispatch::IntegrationTest
     assert_equal "Q1", @workflow.published_version.steps_snapshot.first["title"]
 
     # 4. Publish v2
-    post publish_workflow_path(@workflow), params: { changelog: "Changed to action step" }
+    post workflow_publishing_path(@workflow), params: { changelog: "Changed to action step" }
     @workflow.reload
     assert_equal 2, @workflow.published_version.version_number
     assert_equal "New Action", @workflow.published_version.steps_snapshot.first["title"]

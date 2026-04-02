@@ -1,9 +1,9 @@
 class WorkflowsController < ApplicationController
   before_action :set_workflow,
-                only: %i[show edit update destroy preview variables start begin_execution publish versions sync_steps flow_diagram settings add_tag remove_tag]
+                only: %i[show edit update destroy preview variables start begin_execution versions sync_steps flow_diagram settings add_tag remove_tag]
   before_action :ensure_editor_or_admin!, only: %i[new create]
   before_action :ensure_can_view_workflow!, only: %i[show start begin_execution preview variables versions flow_diagram settings]
-  before_action :ensure_can_edit_workflow!, only: %i[edit update publish sync_steps]
+  before_action :ensure_can_edit_workflow!, only: %i[edit update sync_steps]
   before_action :ensure_can_delete_workflow!, only: [:destroy]
   before_action :parse_transitions_json, only: %i[create update]
 
@@ -260,16 +260,6 @@ class WorkflowsController < ApplicationController
       redirect_to step_scenario_path(@scenario), notice: "Workflow started!"
     else
       redirect_to start_workflow_path(@workflow), alert: "Failed to start workflow: #{@scenario.errors.full_messages.join(', ')}"
-    end
-  end
-
-  def publish
-    result = WorkflowPublisher.publish(@workflow, current_user, changelog: params[:changelog])
-
-    if result.success?
-      redirect_to @workflow, notice: "Workflow published as version #{result.version.version_number}."
-    else
-      redirect_to @workflow, alert: "Failed to publish: #{result.error}"
     end
   end
 

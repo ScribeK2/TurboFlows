@@ -28,7 +28,7 @@ class WorkflowPublishingTest < ActionDispatch::IntegrationTest
     sign_in @editor
 
     assert_difference "WorkflowVersion.count", 1 do
-      post publish_workflow_path(@workflow), params: { changelog: "First publish" }
+      post workflow_publishing_path(@workflow), params: { changelog: "First publish" }
     end
 
     assert_redirected_to workflow_path(@workflow)
@@ -40,7 +40,7 @@ class WorkflowPublishingTest < ActionDispatch::IntegrationTest
     sign_in @regular_user
 
     assert_no_difference "WorkflowVersion.count" do
-      post publish_workflow_path(@workflow)
+      post workflow_publishing_path(@workflow)
     end
 
     assert_response :redirect
@@ -52,7 +52,7 @@ class WorkflowPublishingTest < ActionDispatch::IntegrationTest
     @workflow.steps.destroy_all
 
     assert_no_difference "WorkflowVersion.count" do
-      post publish_workflow_path(@workflow)
+      post workflow_publishing_path(@workflow)
     end
 
     assert_redirected_to workflow_path(@workflow)

@@ -544,7 +544,7 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
     sign_in @editor
     # @workflow already has Q1 -> Done (Resolve) from setup
     assert_difference("WorkflowVersion.count", 1) do
-      post publish_workflow_path(@workflow), params: { changelog: "Test publish" }
+      post workflow_publishing_path(@workflow), params: { changelog: "Test publish" }
     end
 
     assert_redirected_to workflow_path(@workflow)
@@ -561,7 +561,7 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
     bad_wf.update_column(:start_step_id, a.id)
 
     assert_no_difference("WorkflowVersion.count") do
-      post publish_workflow_path(bad_wf)
+      post workflow_publishing_path(bad_wf)
     end
 
     assert_redirected_to workflow_path(bad_wf)
