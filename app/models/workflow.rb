@@ -3,6 +3,8 @@ class Workflow < ApplicationRecord
   include WorkflowNormalization
   include StepTypeIcons
   include WorkflowStepValidation
+  include WorkflowSharing
+  include WorkflowGraphQueries
 
   belongs_to :user
 
@@ -293,55 +295,6 @@ class Workflow < ApplicationRecord
         display_name: "#{step.title} (#{step.variable_name})"
       }
     end
-  end
-
-  # ============================================================================
-  # Graph Mode Support
-  # ============================================================================
-
-  # All workflows are now graph mode — column kept for backward compatibility
-  def graph_mode?
-    true
-  end
-
-  # Linear mode is no longer supported
-  def linear_mode?
-    false
-  end
-
-  # Get steps as a hash keyed by UUID for graph-based operations
-  def graph_steps
-    steps.includes(:transitions).index_by(&:uuid)
-  end
-
-  # Get the starting node for graph traversal
-  def start_node
-    start_step || steps.first
-  end
-
-  # Get all terminal steps (no outgoing transitions)
-  def terminal_nodes
-    steps.where.missing(:transitions)
-  end
-
-  # ============================================================================
-  # Sharing & Embedding
-  # ============================================================================
-
-  def generate_share_token!
-    update!(share_token: SecureRandom.urlsafe_base64(18))
-  end
-
-  def revoke_share_token!
-    update!(share_token: nil)
-  end
-
-  def shared?
-    share_token.present?
-  end
-
-  def embeddable?
-    shared? && embed_enabled?
   end
 
   # Get sub-flow steps
