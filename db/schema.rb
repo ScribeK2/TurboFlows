@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_30_133149) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_02_134509) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -101,6 +101,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_30_133149) do
     t.string "purpose", default: "simulation", null: false
     t.json "results"
     t.string "resume_node_uuid"
+    t.boolean "shared_access", default: false, null: false
     t.datetime "started_at"
     t.string "status", default: "active", null: false
     t.integer "stopped_at_step_index"

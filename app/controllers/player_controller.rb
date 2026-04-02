@@ -148,11 +148,13 @@ class PlayerController < ApplicationController
   private
 
   def set_scenario
-    @scenario = Scenario.find(params[:id])
-    return if current_user && @scenario.user == current_user
-    return if @scenario.shared_access? && !current_user
-
-    head :forbidden
+    if current_user
+      @scenario = current_user.scenarios.find_by(id: params[:id])
+      head(:forbidden) and return unless @scenario
+    else
+      @scenario = Scenario.find_by(id: params[:id])
+      head(:forbidden) and return unless @scenario&.shared_access?
+    end
   end
 
   def resolve_current_step
