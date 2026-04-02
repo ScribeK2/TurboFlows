@@ -311,22 +311,6 @@ class WorkflowsController < ApplicationController
     render turbo_stream: turbo_stream.replace("workflow-tags", partial: "tags/tag_selector", locals: { workflow: @workflow })
   end
 
-  def generate_share
-    @workflow = Workflow.find(params[:id])
-    return head(:forbidden) unless @workflow.can_be_edited_by?(current_user)
-
-    @workflow.generate_share_token!
-    redirect_to @workflow, notice: "Share link generated."
-  end
-
-  def revoke_share
-    @workflow = Workflow.find(params[:id])
-    return head(:forbidden) unless @workflow.can_be_edited_by?(current_user)
-
-    @workflow.revoke_share_token!
-    redirect_to @workflow, notice: "Share link revoked."
-  end
-
   private
 
   # Generate sample variable values for preview interpolation

@@ -24,10 +24,8 @@ Rails.application.routes.draw do
       # Tag assignment
       post :add_tag
       delete :remove_tag
-      # Sharing
-      post :generate_share
-      delete :revoke_share
     end
+    resource :share, only: %i[create destroy], controller: "workflows/shares"
     resource :export, only: [:show], controller: "workflows/exports" do
       get :pdf, on: :member
     end

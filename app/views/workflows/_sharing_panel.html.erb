@@ -9,8 +9,8 @@
 %>
 <div class="form-group mt-6 pt-4" style="border-top: 1px solid var(--color-border);"
      data-controller="share-link"
-     data-share-link-generate-url-value="<%= generate_share_workflow_path(workflow) %>"
-     data-share-link-revoke-url-value="<%= revoke_share_workflow_path(workflow) %>">
+     data-share-link-generate-url-value="<%= workflow_share_path(workflow) %>"
+     data-share-link-revoke-url-value="<%= workflow_share_path(workflow) %>">
   <label class="form-label">Sharing</label>
 
   <% if workflow.shared? %>
