@@ -208,7 +208,7 @@ class Scenario < ApplicationRecord
     # Mark as completed if we've reached the end
     check_completion
 
-    save
+    save!
   end
 
   # Process completion of a sub-flow

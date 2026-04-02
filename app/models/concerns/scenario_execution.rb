@@ -51,7 +51,7 @@ module ScenarioExecution
         self.status = 'error'
         self.results = results.merge('_error' => "Exceeded maximum iterations (#{self.class::MAX_ITERATIONS})")
         self.execution_path = path
-        save
+        save!
         raise Scenario::ScenarioIterationLimit, "Scenario exceeded maximum of #{self.class::MAX_ITERATIONS} iterations"
       end
 
@@ -69,7 +69,7 @@ module ScenarioExecution
     self.current_step_index = current_idx
     self.execution_path = path
     self.results = results
-    save
+    save!
   rescue StandardError => e
     Rails.logger.error "Scenario execution failed: #{e.message}"
     Rails.logger.error e.backtrace.join("\n")
