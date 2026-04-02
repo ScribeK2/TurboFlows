@@ -1,6 +1,6 @@
 class WorkflowsController < ApplicationController
   before_action :set_workflow,
-                only: %i[show edit update destroy preview variables start begin_execution versions sync_steps flow_diagram settings add_tag remove_tag]
+                only: %i[show edit update destroy preview variables start begin_execution versions sync_steps flow_diagram settings]
   before_action :ensure_editor_or_admin!, only: %i[new create]
   before_action :ensure_can_view_workflow!, only: %i[show start begin_execution preview variables versions flow_diagram settings]
   before_action :ensure_can_edit_workflow!, only: %i[edit update sync_steps]
@@ -283,22 +283,6 @@ class WorkflowsController < ApplicationController
     render partial: "workflows/settings_panel",
            locals: { workflow: @workflow, readonly: readonly, accessible_groups: @accessible_groups },
            layout: false
-  end
-
-  def add_tag
-    return head(:forbidden) unless current_user.can_manage_tags?
-
-    tag = Tag.find(params[:tag_id])
-    @workflow.tags << tag unless @workflow.tags.include?(tag)
-    render turbo_stream: turbo_stream.replace("workflow-tags", partial: "tags/tag_selector", locals: { workflow: @workflow })
-  end
-
-  def remove_tag
-    return head(:forbidden) unless current_user.can_manage_tags?
-
-    tag = Tag.find(params[:tag_id])
-    @workflow.tags.delete(tag)
-    render turbo_stream: turbo_stream.replace("workflow-tags", partial: "tags/tag_selector", locals: { workflow: @workflow })
   end
 
   private

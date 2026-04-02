@@ -66,7 +66,7 @@ class TagsControllerTest < ActionDispatch::IntegrationTest
   test "editor can add tag to workflow" do
     sign_in @editor
     assert_difference "Tagging.count", 1 do
-      post add_tag_workflow_path(@workflow), params: { tag_id: @tag.id }, as: :turbo_stream
+      post workflow_taggings_path(@workflow), params: { tag_id: @tag.id }, as: :turbo_stream
     end
   end
 
@@ -74,14 +74,14 @@ class TagsControllerTest < ActionDispatch::IntegrationTest
     sign_in @editor
     @workflow.tags << @tag
     assert_difference "Tagging.count", -1 do
-      delete remove_tag_workflow_path(@workflow), params: { tag_id: @tag.id }, as: :turbo_stream
+      delete workflow_tagging_path(@workflow, @tag.id), as: :turbo_stream
     end
   end
 
   test "regular user cannot add tag to workflow" do
     sign_in @regular
     assert_no_difference "Tagging.count" do
-      post add_tag_workflow_path(@workflow), params: { tag_id: @tag.id }, as: :turbo_stream
+      post workflow_taggings_path(@workflow), params: { tag_id: @tag.id }, as: :turbo_stream
     end
     assert_response :forbidden
   end

@@ -19,11 +19,9 @@ Rails.application.routes.draw do
       # Builder panel routes
       get :flow_diagram
       get :settings
-      # Tag assignment
-      post :add_tag
-      delete :remove_tag
     end
     resource :publishing, only: [:create], controller: "workflows/publishings"
+    resources :taggings, only: %i[create destroy], controller: "workflows/taggings", param: :tag_id
     resource :share, only: %i[create destroy], controller: "workflows/shares"
     resource :export, only: [:show], controller: "workflows/exports" do
       get :pdf, on: :member

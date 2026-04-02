@@ -93,7 +93,7 @@ export default class extends Controller {
     if (!workflowId) return
 
     const token = document.querySelector('meta[name="csrf-token"]')?.content
-    await fetch(`/workflows/${workflowId}/add_tag`, {
+    await fetch(`/workflows/${workflowId}/taggings`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": token, Accept: "text/vnd.turbo-stream.html" },
       body: JSON.stringify({ tag_id: tagId })
@@ -110,10 +110,9 @@ export default class extends Controller {
     if (!workflowId) return
 
     const token = document.querySelector('meta[name="csrf-token"]')?.content
-    await fetch(`/workflows/${workflowId}/remove_tag`, {
+    await fetch(`/workflows/${workflowId}/taggings/${tagId}`, {
       method: "DELETE",
-      headers: { "Content-Type": "application/json", "X-CSRF-Token": token, Accept: "text/vnd.turbo-stream.html" },
-      body: JSON.stringify({ tag_id: tagId })
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": token, Accept: "text/vnd.turbo-stream.html" }
     })
 
     event.target.closest(".tag-pill")?.remove()
