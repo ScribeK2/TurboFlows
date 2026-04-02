@@ -42,7 +42,10 @@ export default class extends Controller {
     const currentWorkflowId = this.currentWorkflowIdValue
 
     // Clear existing options except the placeholder
-    select.innerHTML = '<option value="">-- Select a workflow --</option>'
+    const placeholderOpt = document.createElement('option')
+    placeholderOpt.value = ""
+    placeholderOpt.textContent = "-- Select a workflow --"
+    select.replaceChildren(placeholderOpt)
 
     // Filter out the current workflow (can't reference itself)
     const filteredWorkflows = workflows.filter(w =>

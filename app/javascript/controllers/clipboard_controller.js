@@ -45,7 +45,8 @@ export default class extends Controller {
   showSuccess() {
     if (!this.hasButtonTarget) return
 
-    // Store original HTML
+    // Trust boundary: original is the developer-authored button HTML (SVG icon).
+    // The replacement is a static checkmark SVG. No user data is interpolated.
     const original = this.buttonTarget.innerHTML
 
     // Replace with checkmark icon

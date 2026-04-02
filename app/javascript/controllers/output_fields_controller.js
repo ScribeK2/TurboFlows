@@ -41,6 +41,7 @@ export default class extends Controller {
   }
 
   addFieldToDOM(field, index) {
+    // Trust boundary: field.name and field.value are escaped via escapeHtml before interpolation.
     const fieldDiv = document.createElement("div")
     fieldDiv.className = "output-field-row"
     fieldDiv.setAttribute("data-field-index", index)

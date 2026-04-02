@@ -116,6 +116,7 @@ export default class extends Controller {
     ], { duration: 120, easing: "ease-out", fill: "forwards" })
 
     // Show spinner on submit button
+    // Trust boundary: static SVG spinner markup only, no user data interpolated.
     if (this.hasSubmitTarget) {
       this.submitTarget.disabled = true
       this.submitTarget.innerHTML = `

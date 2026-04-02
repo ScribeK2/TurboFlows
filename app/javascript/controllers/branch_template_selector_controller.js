@@ -76,10 +76,11 @@ export default class extends Controller {
     console.log('[Branch Template Selector] Found', allTemplates.length, 'templates')
     
     // Render templates
+    // Trust boundary: renderTemplateCard escapes all user-supplied values via escapeHtml.
     const templatesHtml = allTemplates.map(template => {
       return this.renderTemplateCard(template)
     }).join('')
-    
+
     this.templatesContainerTarget.innerHTML = templatesHtml
     
     // Immediately attach event listeners (don't use setTimeout)
@@ -243,11 +244,12 @@ export default class extends Controller {
     if (!this.hasCustomizationPanelTarget || !this.hasCustomizationContentTarget) return
     
     let customizationHtml = ''
-    
+
     if (template.id === 'numeric_range') {
+      // Trust boundary: renderNumericRangeCustomization escapes user values via escapeHtml.
       customizationHtml = this.renderNumericRangeCustomization(template)
     }
-    
+
     this.customizationContentTarget.innerHTML = customizationHtml
     this.customizationPanelTarget.classList.remove('is-hidden')
     

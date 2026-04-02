@@ -35,7 +35,11 @@ export default class extends Controller {
     }
     
     // dataset does NOT automatically decode HTML entities
-    // We need to decode &quot; -> " and &#39; -> ' manually
+    // We need to decode &quot; -> " and &#39; -> ' manually.
+    // Trust boundary: templatesData is a server-rendered data attribute from
+    // the Rails view (html_escape applied by ERB). Using a detached textarea
+    // for entity decoding is the standard safe pattern; nothing is rendered
+    // into the live document.
     const textarea = document.createElement('textarea')
     textarea.innerHTML = templatesData
     const decodedData = textarea.value
@@ -61,7 +65,10 @@ export default class extends Controller {
     }
     
     // Clear existing options
-    this.selectTarget.innerHTML = '<option value="">-- Select a template --</option>'
+    const defaultOpt = document.createElement('option')
+    defaultOpt.value = ""
+    defaultOpt.textContent = "-- Select a template --"
+    this.selectTarget.replaceChildren(defaultOpt)
     
     // Add template options
     templates.forEach(template => {
@@ -188,7 +195,7 @@ export default class extends Controller {
         const optionsList = questionForm.querySelector('[data-question-form-target="optionsList"]')
         if (optionsList) {
           // Clear existing options
-          optionsList.innerHTML = ''
+          optionsList.replaceChildren()
           
           // Add template options
           template.options.forEach(option => {

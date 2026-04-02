@@ -491,33 +491,43 @@ export default class extends Controller {
 
   updatePresenceDisplay(activeUsers) {
     if (!this.hasPresenceTarget) return
-    
+
     // Filter out current user
     const otherUsers = activeUsers.filter(u => u.id !== this.currentUserIdValue)
-    
+
     if (otherUsers.length === 0) {
-      this.presenceTarget.innerHTML = ""
+      this.presenceTarget.replaceChildren()
       return
     }
-    
-    const presenceHTML = `
-      <div class="collab-presence">
-        <span class="collab-presence__info">
-          <span class="collab-presence__dot" aria-hidden="true"></span>
-          ${otherUsers.length} ${otherUsers.length === 1 ? 'person' : 'people'} editing
-        </span>
-        <div class="collab-presence__avatars">
-          ${otherUsers.map(user => `
-            <div class="collab-presence__avatar" 
-                 title="${user.name || user.email}">
-              ${(user.name || user.email).charAt(0).toUpperCase()}
-            </div>
-          `).join("")}
-        </div>
-      </div>
-    `
-    
-    this.presenceTarget.innerHTML = presenceHTML
+
+    // Build presence UI via DOM API to avoid XSS from user-supplied names/emails
+    const wrapper = document.createElement("div")
+    wrapper.className = "collab-presence"
+
+    const info = document.createElement("span")
+    info.className = "collab-presence__info"
+
+    const dot = document.createElement("span")
+    dot.className = "collab-presence__dot"
+    dot.setAttribute("aria-hidden", "true")
+    info.appendChild(dot)
+    info.append(` ${otherUsers.length} ${otherUsers.length === 1 ? "person" : "people"} editing`)
+    wrapper.appendChild(info)
+
+    const avatarsDiv = document.createElement("div")
+    avatarsDiv.className = "collab-presence__avatars"
+
+    otherUsers.forEach(user => {
+      const displayName = user.name || user.email || ""
+      const avatar = document.createElement("div")
+      avatar.className = "collab-presence__avatar"
+      avatar.title = displayName
+      avatar.textContent = displayName.charAt(0).toUpperCase()
+      avatarsDiv.appendChild(avatar)
+    })
+
+    wrapper.appendChild(avatarsDiv)
+    this.presenceTarget.replaceChildren(wrapper)
   }
 
   updateConnectionStatus(connected) {
@@ -546,6 +556,12 @@ export default class extends Controller {
   // Public method to check if remote change is being applied
   isApplyingRemoteChange() {
     return this.applyingRemoteChange
+  }
+
+  escapeHtml(text) {
+    const div = document.createElement("div")
+    div.textContent = text
+    return div.innerHTML
   }
 }
 

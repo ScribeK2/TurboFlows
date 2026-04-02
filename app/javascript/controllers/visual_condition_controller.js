@@ -56,7 +56,10 @@ export default class extends Controller {
     const currentValue = this.variableSelectTarget.value
     
     // Clear existing options except placeholder
-    this.variableSelectTarget.innerHTML = '<option value="">Select a variable...</option>'
+    const placeholderOpt = document.createElement("option")
+    placeholderOpt.value = ""
+    placeholderOpt.textContent = "Select a variable..."
+    this.variableSelectTarget.replaceChildren(placeholderOpt)
     
     // Add variables with friendly labels
     variables.forEach(variable => {
@@ -196,7 +199,7 @@ export default class extends Controller {
     const operators = answerType === 'number' ? numericOperators : stringOperators
     
     // Rebuild dropdown
-    this.operatorSelectTarget.innerHTML = ''
+    this.operatorSelectTarget.replaceChildren()
     operators.forEach(op => {
       const option = document.createElement('option')
       option.value = op.value
@@ -233,8 +236,7 @@ export default class extends Controller {
     })
     
     // Replace content
-    this.valueContainerTarget.innerHTML = ''
-    this.valueContainerTarget.appendChild(select)
+    this.valueContainerTarget.replaceChildren(select)
     
     // Restore selection if valid
     const validValue = options.some(opt => opt.value === currentValue)
@@ -262,8 +264,7 @@ export default class extends Controller {
     input.value = currentValue
     
     // Replace content
-    this.valueContainerTarget.innerHTML = ''
-    this.valueContainerTarget.appendChild(input)
+    this.valueContainerTarget.replaceChildren(input)
   }
 
   /**
@@ -336,6 +337,8 @@ export default class extends Controller {
       variableDisplay = variable || 'variable'
     }
     
+    // Trust boundary: variableDisplay, operatorLabel, and valueDisplay are
+    // escaped via escapeHtml before interpolation.
     if (variable && valueDisplay) {
       this.conditionPreviewTarget.innerHTML = `
         <span class="condition-token condition-token--variable">${this.escapeHtml(variableDisplay)}</span>

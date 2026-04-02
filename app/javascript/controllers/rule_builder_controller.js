@@ -180,7 +180,7 @@ export default class extends Controller {
     if (variables.length > 0 || existingOptions.length === 0) {
       // Clear existing options (except the first placeholder)
       const placeholder = this.variableSelectTarget.querySelector('option[value=""]')
-      this.variableSelectTarget.innerHTML = ""
+      this.variableSelectTarget.replaceChildren()
       if (placeholder) {
         this.variableSelectTarget.appendChild(placeholder)
       }
@@ -426,7 +426,10 @@ export default class extends Controller {
     const operators = varType === 'numeric' ? numericOperators : stringOperators
     
     // Clear and repopulate
-    this.operatorSelectTarget.innerHTML = '<option value="">-- Select --</option>'
+    const selectPlaceholder = document.createElement("option")
+    selectPlaceholder.value = ""
+    selectPlaceholder.textContent = "-- Select --"
+    this.operatorSelectTarget.replaceChildren(selectPlaceholder)
     operators.forEach(op => {
       const option = document.createElement('option')
       option.value = op.value
@@ -483,7 +486,7 @@ export default class extends Controller {
           
           // Create datalist for autocomplete
           if (options.length > 0 && this.hasValueSuggestionsTarget) {
-            this.valueSuggestionsTarget.innerHTML = ""
+            this.valueSuggestionsTarget.replaceChildren()
             options.forEach(opt => {
               const option = document.createElement('option')
               option.value = opt.value || opt.label

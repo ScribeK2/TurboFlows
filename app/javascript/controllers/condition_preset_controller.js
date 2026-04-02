@@ -336,6 +336,7 @@ export default class extends Controller {
 
   /**
    * Populate the dropdown with presets
+   * Trust boundary: preset.id is an internal constant; preset.label is escaped via escapeHtml.
    */
   populateDropdown() {
     if (!this.hasPresetDropdownTarget) return

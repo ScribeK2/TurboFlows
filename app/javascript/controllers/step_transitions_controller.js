@@ -149,6 +149,8 @@ export default class extends Controller {
       return
     }
 
+    // Trust boundary: all user-derived values (step IDs, titles, conditions, labels)
+    // are escaped via escapeHtml before interpolation.
     const html = this.transitions.map((transition, index) => {
       const optionsHtml = otherSteps.map(step => {
         const selected = transition.target_uuid === step.id ? 'selected' : ''

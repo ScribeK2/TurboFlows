@@ -117,7 +117,7 @@ export default class extends Controller {
     
     // Clear existing branches
     if (this.hasBranchesContainerTarget) {
-      this.branchesContainerTarget.innerHTML = ''
+      this.branchesContainerTarget.replaceChildren()
     }
     
     // Add branches from template with a slight delay to ensure DOM is ready

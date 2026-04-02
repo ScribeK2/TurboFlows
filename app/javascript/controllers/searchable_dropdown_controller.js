@@ -40,6 +40,7 @@ export default class extends Controller {
     searchInput.setAttribute("autocomplete", "off")
     
     // Create dropdown arrow
+    // Trust boundary: static SVG arrow icon, no user data interpolated.
     const arrow = document.createElement("div")
     arrow.className = "searchable-dropdown-arrow"
     arrow.innerHTML = `<svg class="dropdown-arrow-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -216,7 +217,7 @@ export default class extends Controller {
     const optionsContainer = this.optionsTarget
     
     // Clear existing options
-    optionsContainer.innerHTML = ""
+    optionsContainer.replaceChildren()
     
     // Build options from select element
     Array.from(select.options).forEach(option => {

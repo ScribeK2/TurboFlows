@@ -16,7 +16,8 @@ export default class extends Controller {
   }
   
   initializeExpandIcons() {
-    // Set initial icon state for all expand buttons
+    // Set initial icon state for all expand buttons.
+    // Trust boundary: static SVG path data only, no user data interpolated.
     const expandButtons = this.treeTarget.querySelectorAll('[data-action*="toggleExpand"]')
     expandButtons.forEach(button => {
       const groupOption = button.closest(".group-option")
@@ -151,7 +152,30 @@ export default class extends Controller {
     if (this.selectedTarget.querySelector(`[data-selected-id="${groupId}"]`)) {
       return
     }
-    
+
+    // Build the remove button via DOM API (no user data interpolated into HTML)
+    const buildRemoveButton = () => {
+      const btn = document.createElement("button")
+      btn.type = "button"
+      btn.dataset.action = "click->group-selector#remove"
+      btn.dataset.groupId = groupId
+      btn.className = "group-badge__remove"
+      const svgNS = "http://www.w3.org/2000/svg"
+      const svg = document.createElementNS(svgNS, "svg")
+      svg.setAttribute("class", "group-badge__icon")
+      svg.setAttribute("fill", "none")
+      svg.setAttribute("stroke", "currentColor")
+      svg.setAttribute("viewBox", "0 0 24 24")
+      const path = document.createElementNS(svgNS, "path")
+      path.setAttribute("stroke-linecap", "round")
+      path.setAttribute("stroke-linejoin", "round")
+      path.setAttribute("stroke-width", "2")
+      path.setAttribute("d", "M6 18L18 6M6 6l12 12")
+      svg.appendChild(path)
+      btn.appendChild(svg)
+      return btn
+    }
+
     // Also check if hidden field already exists in the form
     const form = this.element.closest('form')
     if (form) {
@@ -161,41 +185,25 @@ export default class extends Controller {
         const badge = document.createElement("span")
         badge.className = "group-badge"
         badge.dataset.selectedId = groupId
-        
-        badge.innerHTML = `
-          ${groupName}
-          <button type="button" 
-                  data-action="click->group-selector#remove"
-                  data-group-id="${groupId}"
-                  class="group-badge__remove">
-            <svg class="group-badge__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        `
+        // Use text node for groupName to prevent XSS from user-created group names
+        badge.append(groupName, buildRemoveButton())
         this.selectedTarget.appendChild(badge)
         return
       }
     }
-    
+
     // Neither badge nor hidden field exists - create both
     const badge = document.createElement("span")
     badge.className = "group-badge"
     badge.dataset.selectedId = groupId
-    
-    badge.innerHTML = `
-      ${groupName}
-      <button type="button" 
-              data-action="click->group-selector#remove"
-              data-group-id="${groupId}"
-              class="group-badge__remove">
-        <svg class="group-badge__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
-      <input type="hidden" name="workflow[group_ids][]" value="${groupId}">
-    `
-    
+
+    const hiddenInput = document.createElement("input")
+    hiddenInput.type = "hidden"
+    hiddenInput.name = "workflow[group_ids][]"
+    hiddenInput.value = groupId
+
+    // Use text node for groupName to prevent XSS from user-created group names
+    badge.append(groupName, buildRemoveButton(), hiddenInput)
     this.selectedTarget.appendChild(badge)
   }
 
@@ -237,7 +245,8 @@ export default class extends Controller {
     }
   }
   
-  // Toggle expand/collapse for parent groups
+  // Toggle expand/collapse for parent groups.
+  // Trust boundary: static SVG path data only, no user data interpolated.
   toggleExpand(event) {
     event.stopPropagation()
     const button = event.currentTarget

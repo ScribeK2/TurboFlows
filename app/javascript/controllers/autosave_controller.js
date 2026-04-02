@@ -428,6 +428,7 @@ export default class extends Controller {
     if (!this.hasStatusTarget) return
 
     this.statusTarget.className = "autosave-status status--conflict"
+    // Trust boundary: renderIcon returns a static SVG string; message is escaped via escapeHtml.
     this.statusTarget.innerHTML = `${renderIcon(UI_ICON_PATHS.warning, "icon icon--sm")} ${this.escapeHtml(message)}`
   }
 

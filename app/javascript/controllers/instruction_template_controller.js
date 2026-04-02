@@ -256,7 +256,9 @@ export default class extends Controller {
       )
     }
     
-    // Render template items
+    // Render template items.
+    // Trust boundary: template.name and template.content escaped via escapeHtml;
+    // iconPaths are static SVG path strings defined in this controller.
     this.templateListTarget.innerHTML = templates.map(template => `
       <button type="button"
               class="template-list-item"
@@ -269,7 +271,7 @@ export default class extends Controller {
           </svg>
           <div class="template-list-item__content">
             <div class="template-list-item__name">
-              ${template.name}
+              ${this.escapeHtml(template.name)}
             </div>
             <div class="template-list-item__preview">
               ${this.escapeHtml(template.content.substring(0, 80))}${template.content.length > 80 ? '...' : ''}
@@ -282,7 +284,7 @@ export default class extends Controller {
       </button>
     `).join("")
 
-    // Show empty state if no templates
+    // Show empty state if no templates. Trust boundary: static markup, no user data.
     if (templates.length === 0) {
       this.templateListTarget.innerHTML = `
         <div class="empty-state">

@@ -48,6 +48,7 @@ export default class extends Controller {
 
     wrapper.classList.add("error-icon-wrapper", "error-icon-added")
 
+    // Trust boundary: static SVG error icon only, no user data interpolated.
     const icon = document.createElement("div")
     icon.className = "error-icon"
     icon.innerHTML = `

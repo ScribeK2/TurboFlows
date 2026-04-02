@@ -76,9 +76,11 @@ export default class extends Controller {
   /**
    * Render quick action buttons
    */
+  // Trust boundary: quickActions is a hardcoded constant in this controller.
+  // action.label, action.prefix, and action.placeholder are all escaped via escapeHtml.
   renderButtons() {
     if (!this.hasButtonsContainerTarget) return
-    
+
     this.buttonsContainerTarget.innerHTML = this.quickActions.map(action => `
       <button type="button"
               class="quick-action-btn"
@@ -88,7 +90,7 @@ export default class extends Controller {
               data-action="click->quick-action#insertAction"
               data-prefix="${this.escapeHtml(action.prefix)}"
               data-placeholder="${this.escapeHtml(action.placeholder)}">
-        ${action.label}
+        ${this.escapeHtml(action.label)}
       </button>
     `).join("")
   }

@@ -260,6 +260,8 @@ export default class extends Controller {
     }))
   }
 
+  // Trust boundary: all user-derived values (step.title, step.type) are escaped
+  // via escapeHtml; renderStepIcon returns static SVG; placeholder is developer-supplied.
   updateButtonText(step) {
     if (!step) {
       const placeholder = this.hasPlaceholderValue ? this.placeholderValue : "-- Select step --"
