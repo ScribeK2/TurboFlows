@@ -78,6 +78,10 @@ class Admin::UsersController < Admin::BaseController
     # Respond with JSON for AJAX requests
     respond_to do |format|
       format.json do
+        # SECURITY NOTE: Temporary password is returned in the JSON response body.
+        # This is admin-only (authenticated + role check) with Cache-Control: no-store.
+        # Acceptable trade-off for admin UX. If email-based reset becomes available,
+        # prefer that approach to avoid password transit over the wire.
         response.set_header("Cache-Control", "no-store")
         render json: {
           success: true,
