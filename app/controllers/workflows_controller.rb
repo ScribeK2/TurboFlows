@@ -471,10 +471,10 @@ class WorkflowsController < ApplicationController
     }
   end
 
-  # Parse transitions_json from form submissions into proper transitions array
-  # The frontend sends transitions and output_fields as JSON strings,
-  # but strong params expects them as nested array structures.
-  # This before_action converts the JSON strings to the expected format.
+  # Parse transitions_json from form submissions into proper transitions array.
+  # Delegates to StepParamsForm for each step, replacing JSON string fields
+  # (transitions_json, output_fields, attachments) with parsed Ruby arrays.
+  # See app/forms/step_params_form.rb — addresses audit finding C-02 (High).
   def parse_transitions_json
     return unless params[:workflow]&.dig(:steps).present?
 
@@ -485,41 +485,15 @@ class WorkflowsController < ApplicationController
 
       Rails.logger.info "[parse_transitions_json] Step #{index}: transitions_json=#{step[:transitions_json].inspect}"
 
-      # Parse transitions_json to transitions array
-      if step[:transitions_json].present?
-        begin
-          parsed = JSON.parse(step[:transitions_json])
-          step[:transitions] = parsed if parsed.is_a?(Array)
-          Rails.logger.info "[parse_transitions_json] Step #{index}: parsed #{parsed.length} transitions"
-        rescue JSON::ParserError => e
-          Rails.logger.error "[parse_transitions_json] Step #{index}: JSON parse error: #{e.message}"
-          flash[:alert] = "Invalid transitions JSON in step #{index + 1}: #{e.message}"
-          step[:transitions] = []
-        end
-        step.delete(:transitions_json)
-      else
-        Rails.logger.info "[parse_transitions_json] Step #{index}: NO transitions_json field"
-      end
+      form = StepParamsForm.new(step)
+      parsed_params = form.to_step_params
 
-      # Parse attachments if it's a JSON string
-      if step[:attachments].is_a?(String)
-        begin
-          parsed = JSON.parse(step[:attachments])
-          step[:attachments] = parsed if parsed.is_a?(Array)
-        rescue JSON::ParserError
-          step[:attachments] = []
-        end
-      end
+      step[:transitions]   = parsed_params[:transitions]
+      step[:output_fields] = parsed_params[:output_fields]
+      step[:attachments]   = parsed_params[:attachments]
+      step.delete(:transitions_json)
 
-      # Parse output_fields if it's a JSON string
-      next unless step[:output_fields].is_a?(String)
-
-      begin
-        parsed = JSON.parse(step[:output_fields])
-        step[:output_fields] = parsed if parsed.is_a?(Array)
-      rescue JSON::ParserError
-        step[:output_fields] = []
-      end
+      Rails.logger.info "[parse_transitions_json] Step #{index}: parsed #{form.transitions.length} transitions"
     end
   end
 end
