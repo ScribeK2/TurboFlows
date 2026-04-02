@@ -1,7 +1,7 @@
 class WorkflowsController < ApplicationController
   before_action :set_workflow,
                 only: %i[show edit update destroy preview variables start begin_execution publish versions sync_steps flow_diagram settings add_tag remove_tag]
-  before_action :ensure_editor_or_admin!, only: %i[new create import import_file]
+  before_action :ensure_editor_or_admin!, only: %i[new create]
   before_action :ensure_can_view_workflow!, only: %i[show start begin_execution preview variables versions flow_diagram settings]
   before_action :ensure_can_edit_workflow!, only: %i[edit update publish sync_steps]
   before_action :ensure_can_delete_workflow!, only: [:destroy]
@@ -327,52 +327,6 @@ class WorkflowsController < ApplicationController
     redirect_to @workflow, notice: "Share link revoked."
   end
 
-  def import
-    # Show import form
-  end
-
-  def import_file
-    unless params[:file].present?
-      redirect_to import_workflows_path, alert: "Please select a file to import."
-      return
-    end
-
-    uploaded_file = params[:file]
-    file_content = uploaded_file.read.force_encoding("UTF-8")
-
-    # Validate file size (max 10MB)
-    if file_content.bytesize > 10.megabytes
-      redirect_to import_workflows_path, alert: "File is too large. Maximum size is 10MB."
-      return
-    end
-
-    # Detect file format from filename/content_type
-    format = detect_file_format(uploaded_file.original_filename, uploaded_file.content_type)
-
-    unless format
-      redirect_to import_workflows_path, alert: "Unsupported file format. Please use JSON, CSV, YAML, or Markdown files."
-      return
-    end
-
-    result = WorkflowImporter.new(current_user, format: format, content: file_content).call
-
-    if result.success?
-      @workflow = result.workflow
-
-      if result.incomplete_steps? || result.warnings.any?
-        notice_parts = ["Workflow imported successfully in Graph Mode!"]
-        notice_parts << "#{result.incomplete_steps_count} incomplete step(s) need attention." if result.incomplete_steps?
-        notice_parts << "#{result.warnings.count} warning(s) occurred." if result.warnings.any?
-        redirect_to edit_workflow_path(@workflow), notice: notice_parts.join(" ")
-      else
-        redirect_to @workflow, notice: "Workflow imported successfully in Graph Mode!"
-      end
-    else
-      error_summary = truncate_for_flash(result.errors, max_items: 3)
-      redirect_to import_workflows_path, alert: "Failed to import workflow: #{error_summary}"
-    end
-  end
-
   private
 
   # Generate sample variable values for preview interpolation
@@ -557,48 +511,6 @@ class WorkflowsController < ApplicationController
       # Sub-flow fields
       "target_workflow_id" => step_params[:target_workflow_id] || ""
     }
-  end
-
-  def detect_file_format(filename, content_type)
-    extension = File.extname(filename).downcase
-
-    case extension
-    when '.json'
-      :json
-    when '.csv'
-      :csv
-    when '.yaml', '.yml'
-      :yaml
-    when '.md', '.markdown'
-      :markdown
-    else
-      # Try content type as fallback
-      case content_type
-      when 'application/json', 'text/json'
-        :json
-      when 'text/csv', 'application/csv'
-        :csv
-      when 'text/x-yaml', 'application/x-yaml'
-        :yaml
-      when 'text/markdown', 'text/x-markdown'
-        :markdown
-      end
-    end
-  end
-
-  # Truncate an array of messages to prevent cookie overflow
-  # Rails session cookies have a 4KB limit
-  def truncate_for_flash(messages, max_items: 3, max_length: 500)
-    return "" if messages.blank?
-
-    truncated = messages.first(max_items).map { |m| m.to_s.truncate(150) }
-    result = truncated.join(", ")
-
-    if messages.length > max_items
-      result += " (and #{messages.length - max_items} more...)"
-    end
-
-    result.truncate(max_length)
   end
 
   # Parse transitions_json from form submissions into proper transitions array

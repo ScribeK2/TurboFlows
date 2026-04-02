@@ -8,10 +8,6 @@ Rails.application.routes.draw do
   mount ActionCable.server => '/cable'
 
   resources :workflows do
-    collection do
-      get :import
-      post :import_file
-    end
     member do
       get :preview
       get :variables
@@ -54,6 +50,9 @@ Rails.application.routes.draw do
       end
     end
   end
+
+  # Workflow import (collection-level, not per-workflow)
+  resource :workflow_import, only: %i[new create], controller: "workflows/imports", path: "workflows/import"
 
   resources :tags, only: %i[index create destroy]
 

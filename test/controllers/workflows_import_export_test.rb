@@ -88,7 +88,7 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
   # ============================================================================
 
   test "import page shows Graph Mode information" do
-    get import_workflows_path
+    get new_workflow_import_path
 
     assert_response :success
 
@@ -133,7 +133,7 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
     )
 
     assert_difference("Workflow.count") do
-      post import_file_workflows_path, params: { file: file }
+      post workflow_import_path, params: { file: file }
     end
 
     imported = Workflow.last
@@ -160,7 +160,7 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
     )
 
     assert_difference("Workflow.count") do
-      post import_file_workflows_path, params: { file: file }
+      post workflow_import_path, params: { file: file }
     end
 
     imported = Workflow.last
@@ -208,7 +208,7 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
     )
 
     assert_difference("Workflow.count") do
-      post import_file_workflows_path, params: { file: file }
+      post workflow_import_path, params: { file: file }
     end
 
     imported = Workflow.last
@@ -246,7 +246,7 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
     )
 
     assert_difference("Workflow.count") do
-      post import_file_workflows_path, params: { file: file }
+      post workflow_import_path, params: { file: file }
     end
 
     imported = Workflow.last
@@ -274,7 +274,7 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
     )
 
     assert_difference("Workflow.count") do
-      post import_file_workflows_path, params: { file: file }
+      post workflow_import_path, params: { file: file }
     end
 
     imported = Workflow.last
@@ -298,10 +298,10 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
     )
 
     assert_no_difference("Workflow.count") do
-      post import_file_workflows_path, params: { file: file }
+      post workflow_import_path, params: { file: file }
     end
 
-    assert_redirected_to import_workflows_path
+    assert_redirected_to new_workflow_import_path
     # Either "title is required" or "failed to parse" is acceptable
     assert_predicate flash[:alert], :present?
   end
@@ -317,10 +317,10 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
     )
 
     assert_no_difference("Workflow.count") do
-      post import_file_workflows_path, params: { file: file }
+      post workflow_import_path, params: { file: file }
     end
 
-    assert_redirected_to import_workflows_path
+    assert_redirected_to new_workflow_import_path
     assert_match(/too large/i, flash[:alert])
   end
 
@@ -334,10 +334,10 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
     )
 
     assert_no_difference("Workflow.count") do
-      post import_file_workflows_path, params: { file: file }
+      post workflow_import_path, params: { file: file }
     end
 
-    assert_redirected_to import_workflows_path
+    assert_redirected_to new_workflow_import_path
     assert_match(/invalid json/i, flash[:alert].downcase)
   end
 
@@ -357,7 +357,7 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
     )
 
     assert_difference("Workflow.count") do
-      post import_file_workflows_path, params: { file: file }
+      post workflow_import_path, params: { file: file }
     end
 
     imported = Workflow.last
@@ -401,7 +401,7 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
 
     # Should import and convert to graph mode with warnings
     assert_difference("Workflow.count") do
-      post import_file_workflows_path, params: { file: file }
+      post workflow_import_path, params: { file: file }
     end
 
     imported = Workflow.last

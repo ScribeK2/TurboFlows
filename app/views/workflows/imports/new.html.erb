@@ -1,0 +1,259 @@
+<div class="page-content">
+  <div class="wf-page-header mb-6">
+    <div>
+      <h1 class="page-title">Import Workflow</h1>
+      <p class="text-sm mt-1">Upload a JSON, CSV, YAML, or Markdown file to import a workflow.</p>
+    </div>
+    <%= link_to workflows_path, class: "btn btn--plain btn--circle" do %>
+      <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    <% end %>
+  </div>
+
+  <div class="card mb-6">
+    <div class="card__body" style="display: flex; flex-direction: column; gap: 1.5rem;">
+      <%= form_with url: workflow_import_path, method: :post, local: true, multipart: true, html: { style: "display: flex; flex-direction: column; gap: 1.5rem;" }, data: { controller: "file-upload" } do |form| %>
+        <div class="form-group">
+          <label class="form-label">Select File</label>
+          <div class="file-dropzone"
+               data-file-upload-target="dropZone"
+               data-action="dragover->file-upload#dragOver dragleave->file-upload#dragLeave drop->file-upload#drop">
+            <div class="file-dropzone__empty" data-file-upload-target="emptyState">
+              <svg class="icon icon--xl mx-auto mb-3" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <div class="text-sm mb-1">
+                <label for="file" class="cursor-pointer font-medium">
+                  <span>Upload a file</span>
+                  <%= form.file_field :file, id: "file", accept: ".json,.csv,.yaml,.yml,.md,.markdown", class: "sr-only", required: true, data: { action: "change->file-upload#fileSelected", file_upload_target: "fileInput" } %>
+                </label>
+                <span> or drag and drop</span>
+              </div>
+              <p class="text-xs">JSON, CSV, YAML, or Markdown files up to 10MB</p>
+            </div>
+            <div class="is-hidden text-center" data-file-upload-target="fileSelected">
+              <svg class="icon icon--xl mx-auto mb-3" style="color: var(--color-emerald-500);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p class="font-medium" data-file-upload-target="fileName">No file selected</p>
+              <p class="text-xs" data-file-upload-target="fileSize"></p>
+              <button type="button" data-action="click->file-upload#clearFile" class="btn btn--plain btn--sm mt-2">
+                Remove file
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="alert alert--info">
+          <h3 class="font-medium mb-2">Supported Formats</h3>
+          <ul class="text-sm list-disc" style="padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.25rem;">
+            <li><strong>JSON:</strong> Native export format with full Graph Mode support (recommended)</li>
+            <li><strong>CSV:</strong> Spreadsheet format with columns for step data and transitions</li>
+            <li><strong>YAML:</strong> Structured configuration format with hierarchical steps</li>
+            <li><strong>Markdown:</strong> Documentation format with step headers and field definitions</li>
+          </ul>
+        </div>
+
+        <div class="alert alert--info">
+          <h3 class="font-medium mb-2">Graph Mode Workflows</h3>
+          <ul class="text-sm list-disc" style="padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.25rem;">
+            <li>All imports use Graph Mode with explicit step transitions</li>
+            <li>Each step requires a unique ID and defines its outgoing transitions</li>
+            <li>Supported step types: <code>question</code>, <code>action</code>, <code>message</code>, <code>escalate</code>, <code>sub_flow</code>, <code>resolve</code></li>
+            <li>Use <code>resolve</code> steps to end workflows (success, transfer, ticket, manager_escalation)</li>
+          </ul>
+        </div>
+
+        <div class="alert alert--warning">
+          <h3 class="font-medium mb-2">Import Notes</h3>
+          <ul class="text-sm list-disc" style="padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.25rem;">
+            <li>Steps with missing required fields will still be imported</li>
+            <li>If incomplete steps or warnings are found, you'll be redirected to the edit page to review</li>
+            <li>Workflows are imported as private by default</li>
+            <li>Graph structure is validated after import (cycles, unreachable steps)</li>
+          </ul>
+        </div>
+
+        <div class="flex justify-end gap-3">
+          <%= link_to "Cancel", workflows_path, class: "btn btn--plain" %>
+          <%= form.submit "Import Workflow", class: "btn btn--primary" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="card mb-6">
+    <div class="card__body">
+      <h2 class="font-bold mb-4">File Format Examples</h2>
+
+      <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <%# JSON Format Example %>
+        <div>
+          <h3 class="font-medium text-sm mb-1">JSON Format (Recommended)</h3>
+          <p class="text-xs mb-2">Full Graph Mode structure with explicit transitions between steps.</p>
+          <pre class="code-block"><code>{
+  "title": "Customer Support Flow",
+  "description": "Handle customer inquiries with routing and resolution",
+  "graph_mode": true,
+  "start_node_uuid": "step-1",
+  "steps": [
+    {
+      "id": "step-1",
+      "type": "question",
+      "title": "Get Customer Name",
+      "question": "What is your name?",
+      "answer_type": "text",
+      "variable_name": "customer_name",
+      "transitions": [
+        { "target_uuid": "step-2" }
+      ]
+    },
+    {
+      "id": "step-2",
+      "type": "question",
+      "title": "Select Issue Type",
+      "question": "What type of issue are you experiencing?",
+      "answer_type": "multiple_choice",
+      "variable_name": "issue_type",
+      "options": [
+        { "label": "Billing", "value": "billing" },
+        { "label": "Technical", "value": "technical" },
+        { "label": "Other", "value": "other" }
+      ],
+      "transitions": [
+        { "target_uuid": "step-3", "condition": "issue_type == 'billing'", "label": "Billing Issue" },
+        { "target_uuid": "step-4", "condition": "issue_type == 'technical'", "label": "Technical Issue" },
+        { "target_uuid": "step-5", "condition": "issue_type == 'other'", "label": "Other Issue" }
+      ]
+    },
+    {
+      "id": "step-6",
+      "type": "resolve",
+      "title": "Complete Interaction",
+      "resolution_type": "success"
+    }
+  ]
+}</code></pre>
+        </div>
+
+        <%# CSV Format Example %>
+        <div>
+          <h3 class="font-medium text-sm mb-1">CSV Format</h3>
+          <p class="text-xs mb-2">
+            Spreadsheet format. Use semicolons to separate multiple transitions: <code>target:condition</code>.
+            Options use format: <code>Label:value,Label2:value2</code> or JSON array.
+          </p>
+          <pre class="code-block"><code>workflow_title,id,type,title,question,answer_type,variable_name,options,instructions,content,target_type,priority,reason,resolution_type,transitions
+Customer Support,step-1,question,Get Name,What is your name?,text,customer_name,,,,,,,,step-2
+,step-2,question,Issue Type,What type of issue?,multiple_choice,issue_type,"Billing:billing,Technical:technical,Other:other",,,,,,,step-3:issue_type == 'billing';step-4:issue_type == 'technical';step-5
+,step-6,resolve,Complete,,,,,,,,,success,</code></pre>
+        </div>
+
+        <%# YAML Format Example %>
+        <div>
+          <h3 class="font-medium text-sm mb-1">YAML Format</h3>
+          <p class="text-xs mb-2">Structured format with nested arrays for options and transitions.</p>
+          <pre class="code-block"><code>title: "Customer Support Flow"
+description: "Handle customer inquiries"
+graph_mode: true
+start_node_uuid: "step-1"
+steps:
+  - id: "step-1"
+    type: question
+    title: "Get Customer Name"
+    question: "What is your name?"
+    answer_type: text
+    variable_name: customer_name
+    transitions:
+      - target_uuid: "step-2"</code></pre>
+        </div>
+
+        <%# Markdown Format Example %>
+        <div>
+          <h3 class="font-medium text-sm mb-1">Markdown Format</h3>
+          <p class="text-xs mb-2">
+            Documentation-friendly format. Options use comma-separated <code>Label:value</code> format.
+            Transitions can include conditions in parentheses.
+          </p>
+          <pre class="code-block"><code># Customer Support Flow
+
+Handle customer inquiries with routing and resolution.
+
+## Step 1: Get Customer Name
+Type: question
+Question: What is your name?
+Answer Type: text
+Variable: customer_name
+Transitions: Step 2</code></pre>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <%# Step Types Reference %>
+  <div class="card">
+    <div class="card__body">
+      <h2 class="font-bold mb-4">Step Types Reference</h2>
+      <div class="grid grid-cols-2 gap-3" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+        <div class="card card--muted p-3">
+          <h4 class="font-medium text-sm">question</h4>
+          <p class="text-xs mt-1">Collect user input.</p>
+          <p class="text-xs mt-1">
+            Required: <code>question</code><br>
+            Optional: <code>answer_type</code>, <code>variable_name</code>, <code>options</code>
+          </p>
+        </div>
+        <div class="card card--muted p-3">
+          <h4 class="font-medium text-sm">action</h4>
+          <p class="text-xs mt-1">Display instructions for the agent to follow.</p>
+          <p class="text-xs mt-1">Required: <code>instructions</code></p>
+        </div>
+        <div class="card card--muted p-3">
+          <h4 class="font-medium text-sm">message</h4>
+          <p class="text-xs mt-1">Display a message or announcement.</p>
+          <p class="text-xs mt-1">Optional: <code>content</code></p>
+        </div>
+        <div class="card card--muted p-3">
+          <h4 class="font-medium text-sm">escalate</h4>
+          <p class="text-xs mt-1">Escalate to a department, supervisor, channel, or ticket.</p>
+          <p class="text-xs mt-1">
+            Required: <code>target_type</code><br>
+            Optional: <code>target_value</code>, <code>priority</code>, <code>reason</code>
+          </p>
+        </div>
+        <div class="card card--muted p-3">
+          <h4 class="font-medium text-sm">sub_flow</h4>
+          <p class="text-xs mt-1">Execute another published workflow as a sub-flow.</p>
+          <p class="text-xs mt-1">
+            Required: <code>target_workflow_id</code> or <code>target_workflow_title</code>
+          </p>
+        </div>
+        <div class="card card--muted p-3">
+          <h4 class="font-medium text-sm">resolve</h4>
+          <p class="text-xs mt-1">End the workflow with a resolution status. Terminal step with no outgoing transitions.</p>
+          <p class="text-xs mt-1">
+            Required: <code>resolution_type</code>
+          </p>
+        </div>
+      </div>
+
+      <div class="alert alert--info mt-4">
+        <h4 class="font-medium text-sm">Transitions</h4>
+        <p class="text-xs mt-1">
+          Each step (except <code>resolve</code>) must define <code>transitions</code> to specify which step(s) come next.
+          Use conditional transitions to route based on variables: <code>"condition": "variable_name == 'value'"</code>.
+        </p>
+      </div>
+
+      <div class="alert alert--success mt-3">
+        <h4 class="font-medium text-sm">Sub-flow Title Resolution</h4>
+        <p class="text-xs mt-1">
+          Sub-flow steps can reference a target workflow by title using <code>target_workflow_title</code> instead of <code>target_workflow_id</code>.
+          The title is matched case-insensitively against published workflows only.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
