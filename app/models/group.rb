@@ -70,8 +70,15 @@ class Group < ApplicationRecord
   # Returns a flat array of all groups below this one in the hierarchy
   # Example: If Root has Child1 and Child2, and Child1 has Grandchild,
   # Root.descendants returns [Child1, Child2, Grandchild]
-  # WARNING: This method causes N+1 queries. For ID lookups, use descendant_ids instead.
+  #
+  # DEPRECATED: Causes N+1 queries — O(depth) round-trips. Use descendant_ids
+  # for ID-only lookups. If you need full records, load them with:
+  #   Group.where(id: descendant_ids)
   def descendants
+    Rails.logger.warn(
+      "[DEPRECATED] Group#descendants causes N+1 queries. " \
+      "Use Group#descendant_ids or Group.where(id: descendant_ids) instead."
+    )
     children.flat_map { |child| [child] + child.descendants }
   end
 
