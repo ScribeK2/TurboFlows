@@ -110,11 +110,12 @@ Each component references its CSS file by selector name. Read that file for exac
 | `.btn` | Base button (transparent bg, border) | Inline-flex, 1.5px border, radius-md |
 | `.btn--primary` | Primary action (submit, save, create) | Blue gradient bg, white text, shadow |
 | `.btn--secondary` | Secondary action (edit, cancel) | Canvas-alt bg, ink text |
-| `.btn--ghost` | Tertiary/inline action | Transparent, text only, hover shows bg |
-| `.btn--plain` | Minimal button (filters, pagination) | No border, subtle hover |
-| `.btn--danger` | Destructive action (delete, remove) | Red/negative color accent |
+| `.btn--plain` | Tertiary/minimal action | No border, transparent, subtle hover |
+| `.btn--negative` | Destructive action (delete, remove) | Red/negative color accent |
 | `.btn--positive` | Completion action (resolve, complete) | Green/positive color accent |
 | `.btn--sm` | Compact size modifier | Smaller padding, text-xs |
+| `.btn--lg` | Large size modifier | Larger padding, text-base |
+| `.btn--circle` | Icon-only circular button | Equal padding, border-radius-full |
 
 **Active state:** All buttons scale to 0.96 on press (`transform: scale(0.96)`).
 **Stimulus:** Buttons with confirm dialogs use `data-turbo-confirm`.
@@ -150,7 +151,7 @@ Each component references its CSS file by selector name. Read that file for exac
 |-------|----------|--------|
 | `.dialog-overlay` | Modal backdrop | Fixed, black 40% opacity, blur |
 | `.dialog` | Modal container | Centered, white bg, shadow-xl, radius-xl |
-| `.dialog--sm` | Small modal (confirm) | max-width 28rem |
+| `.dialog--sm` | Small modal (confirm) | max-width 24rem |
 | `.dialog--lg` | Large modal (forms) | max-width 48rem |
 | `.dialog__header` | Title bar | Flex, border-bottom |
 | `.dialog__body` | Content area | Padding, overflow-y auto |
@@ -188,9 +189,9 @@ Each component references its CSS file by selector name. Read that file for exac
 | `.badge--question` through `.badge--sub-flow` | Step type | Color from `--hue-*` token |
 | `.badge--draft` `.badge--published` | Workflow status | Yellow/green tint |
 | `.badge--admin` `.badge--editor` `.badge--regular` | User role | Role-specific color |
-| `.badge--alert` | Error/urgent | Red/negative tint |
-| `.badge--warning` | Warning | Yellow/warning tint |
-| `.badge--info` | Informational | Blue/primary tint |
+| `.badge--alert` | Error/urgent | Red tint (hue 25) |
+| `.badge--warning` | Warning/caution | Yellow tint (hue 75) |
+| `.badge--info` | Informational | Blue tint (hue 250) |
 
 ### Flash Messages (`flash.css`)
 
@@ -461,7 +462,7 @@ Sectioned layout with toggles, descriptions, and action buttons.
         </h2>
         <div class="flex items-center justify-between mt-3">
           <p class="text-sm">Permanently delete this item and all its data.</p>
-          <button class="btn btn--danger btn--sm">Delete</button>
+          <button class="btn btn--negative btn--sm">Delete</button>
         </div>
       </div>
     </div>
@@ -541,6 +542,8 @@ For page types not covered by a recipe, read these exemplary views. They demonst
 | `_form_step.css` | components | FormStep builder UI |
 | `_media.css` | components | Media attachments |
 | `_version_diff.css` | components | Version comparison |
+| `flow_diagram.css` | components | Flow diagram layout |
+| `session_timeout.css` | components | Session timeout UI |
 | `navigation.css` | modules | Top nav bar |
 | `layout.css` | modules | Page structure (.page-body, .page-main) |
 | `builder.css` | components | Builder-specific styles |

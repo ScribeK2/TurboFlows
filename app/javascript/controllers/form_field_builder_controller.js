@@ -23,7 +23,7 @@ export default class extends Controller {
     const positionInput = this.createHidden("step[options][][position]", this.fieldCount)
     const removeBtn = document.createElement("button")
     removeBtn.type = "button"
-    removeBtn.className = "btn btn--danger btn--sm"
+    removeBtn.className = "btn btn--negative btn--sm"
     removeBtn.textContent = "Remove"
     removeBtn.dataset.action = "form-field-builder#removeField"
 

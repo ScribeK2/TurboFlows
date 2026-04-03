@@ -101,6 +101,37 @@
   color: oklch(0.8 0.1 260);
 }
 
+/* Semantic badges */
+.badge--alert {
+  background: oklch(0.93 0.05 25);
+  color: oklch(0.4 0.15 25);
+}
+
+.badge--warning {
+  background: oklch(0.93 0.05 75);
+  color: oklch(0.45 0.1 75);
+}
+
+.badge--info {
+  background: oklch(0.93 0.05 250);
+  color: oklch(0.4 0.15 250);
+}
+
+[data-theme="dark"] .badge--alert {
+  background: oklch(0.25 0.06 25);
+  color: oklch(0.8 0.1 25);
+}
+
+[data-theme="dark"] .badge--warning {
+  background: oklch(0.25 0.04 75);
+  color: oklch(0.75 0.08 75);
+}
+
+[data-theme="dark"] .badge--info {
+  background: oklch(0.25 0.06 250);
+  color: oklch(0.8 0.1 250);
+}
+
 /* Status badges */
 .badge--draft {
   background: oklch(0.93 0.05 75);
