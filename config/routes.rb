@@ -1,7 +1,10 @@
 Rails.application.routes.draw do
   devise_for :users, controllers: {
-    registrations: 'users/registrations'
+    registrations: 'users/registrations',
+    sessions: 'users/sessions'
   }
+
+  resource :first_run, only: [:new, :create]
   root to: 'dashboard#index'
 
   # Mount ActionCable

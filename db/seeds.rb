@@ -1,15 +1,7 @@
 # Seeds file for TurboFlows
 
-# Create demo admin user for Render deployment
-admin_user = User.find_or_initialize_by(email: "admin@test.com")
-if admin_user.new_record?
-  admin_user.password = "TestAdmin123!"
-  admin_user.password_confirmation = "TestAdmin123!"
-  admin_user.role = "admin"
-  admin_user.save!
-  Rails.logger.debug "Created admin user: admin@test.com"
-else
-  # Update existing user to ensure they're an admin (only update role, not password)
-  admin_user.update!(role: "admin")
-  Rails.logger.debug "Updated user to admin: admin@test.com"
-end
+# First admin account is created via the /first_run setup page on first boot.
+# No seeded credentials needed.
+#
+# WARNING: Running `rails db:reset` in production will drop all users and
+# re-expose the first-run setup page. Use `rails db:migrate` instead.

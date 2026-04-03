@@ -1,4 +1,6 @@
 class Users::RegistrationsController < Devise::RegistrationsController
+  before_action :redirect_to_first_run_if_no_users, only: [:new, :create]
+
   # Override create to avoid Devise's respond_with calling user_url (route doesn't exist).
   # Devise 5+ with Turbo needs explicit redirect after sign-up.
   def create
@@ -69,5 +71,9 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   def after_inactive_sign_up_path_for(_resource)
     root_path
+  end
+
+  def redirect_to_first_run_if_no_users
+    redirect_to new_first_run_path if User.none?
   end
 end
