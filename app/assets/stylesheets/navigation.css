@@ -263,30 +263,36 @@
   }
 }
 
-/* --- Menu popup --- */
-.nav__menu {
-  width: min(28rem, calc(100vw - 2rem));
-  margin-inline: auto;
-  margin-block: 4rem 0;
+/* --- Menu popup (non-modal, no backdrop) --- */
+/* Anchor on .nav__brand so the menu centers under the full logo + chevron */
+.nav__brand {
+  position: relative;
 }
 
-/* Override shared .popup--animated scale for nav menu only */
+/* dialog.show() renders in normal flow, not the top layer.
+   Position below the brand, centered horizontally. */
+.nav__menu {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin: var(--space-2) 0 0 0;
+  width: min(28rem, calc(100vw - 2rem));
+  z-index: var(--z-modal);
+}
+
+/* Override shared .popup--animated scale for nav menu: slide-down + center */
 .nav__menu.popup--animated {
-  transform: translateY(-8px);
+  transform: translateX(-50%) translateY(-8px);
 }
 
 .nav__menu.popup--animated[open] {
-  transform: translateY(0);
+  transform: translateX(-50%) translateY(0);
 }
 
 @starting-style {
   .nav__menu.popup--animated[open] {
-    transform: translateY(-8px);
+    transform: translateX(-50%) translateY(-8px);
   }
-}
-
-.nav__menu.popup--animated::backdrop {
-  background: var(--color-backdrop-light);
 }
 
 .nav__menu-loading {

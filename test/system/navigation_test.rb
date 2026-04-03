@@ -37,15 +37,14 @@ class NavigationTest < ApplicationSystemTestCase
     assert_no_selector "dialog.nav__menu[open]", wait: 3
   end
 
-  test "nav menu closes on backdrop click" do
+  test "nav menu closes on click outside" do
     visit root_path
 
     find(".nav__menu-trigger").click
     assert_selector "dialog.nav__menu[open]", wait: 3
 
-    # Click the dialog backdrop (the dialog element itself, outside the content)
-    dialog = find("dialog.nav__menu[open]")
-    dialog.click(x: 0, y: 0)
+    # Click outside the menu (on the page body)
+    find("body").click
     assert_no_selector "dialog.nav__menu[open]", wait: 3
   end
 
