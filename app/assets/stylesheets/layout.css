@@ -61,13 +61,36 @@
 
 /* Auth-specific layout */
 .auth-page {
-  padding-top: 4rem;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding-block: var(--space-8);
   padding-inline: 1rem;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 35%,
+      oklch(0.93 0.03 250 / 0.5) 0%,
+      transparent 70%),
+    var(--color-canvas);
+}
+
+[data-theme="dark"] .auth-page {
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 35%,
+      oklch(0.20 0.04 250 / 0.5) 0%,
+      transparent 70%),
+    var(--color-canvas);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .auth-page {
+    background:
+      radial-gradient(ellipse 60% 50% at 50% 35%,
+        oklch(0.20 0.04 250 / 0.5) 0%,
+        transparent 70%),
+      var(--color-canvas);
+  }
 }
 
 @media (min-width: 640px) {
