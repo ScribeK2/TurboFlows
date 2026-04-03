@@ -260,7 +260,6 @@ These are the most-used controllers. Wire them via `data-controller` on the appr
 | `dialog-manager` | Single-open enforcement | Place on `<body>` |
 | `dropdown` | Toggle dropdown menus | `click->dropdown#toggle` |
 | `clipboard` | Copy text to clipboard | `click->clipboard#copy` |
-| `sortable-list` | SortableJS drag-and-drop | On the list container |
 | `tooltip` | Show/hide tooltips | `mouseenter->tooltip#show`, `mouseleave->tooltip#hide` |
 | `nav-search` | Cmd+K fuzzy search | On search input |
 | `scenario-step` | Player step interactions | On step card, handles auto-advance |

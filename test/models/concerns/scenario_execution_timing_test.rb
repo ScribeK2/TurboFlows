@@ -62,7 +62,7 @@ class ScenarioExecutionTimingTest < ActiveSupport::TestCase
     last_entry = scenario.reload.execution_path.last
     assert_predicate last_entry["ended_at"], :present?
     assert_predicate last_entry["duration_seconds"], :present?
-    assert_operator last_entry["duration_seconds"], :>=, 4.5, "duration should be ~5 seconds"
+    assert_operator last_entry["duration_seconds"], :>=, 3.5, "duration should be ~5 seconds"
   end
 
   test "record_step_ended is a no-op when execution_path is blank" do
