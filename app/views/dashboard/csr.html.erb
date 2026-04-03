@@ -1,0 +1,174 @@
+<div class="dashboard-layout">
+  <%= render "dashboard/header" %>
+
+  <%# -- Stat Cards -- %>
+  <div class="stat-grid">
+    <%# Scenarios This Week %>
+    <div class="stat-card animate-fade-in-up hover-lift" style="animation-delay: 0.1s;" aria-label="Scenarios this week: <%= @dashboard.scenarios_this_week %>">
+      <div>
+        <p class="stat-card__value"><%= @dashboard.scenarios_this_week %></p>
+        <p class="stat-card__label">This Week</p>
+      </div>
+      <div class="stat-card__icon">
+        <svg class="icon icon--xl" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      </div>
+    </div>
+
+    <%# Total Runs %>
+    <div class="stat-card animate-fade-in-up hover-lift" style="animation-delay: 0.15s;" aria-label="Total runs: <%= @dashboard.personal_scenario_total %>">
+      <div>
+        <p class="stat-card__value"><%= @dashboard.personal_scenario_total %></p>
+        <p class="stat-card__label">Total Runs</p>
+      </div>
+      <div class="stat-card__icon">
+        <svg class="icon icon--xl" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+      </div>
+    </div>
+
+    <%# Personal Completion Rate %>
+    <div class="stat-card animate-fade-in-up hover-lift" style="animation-delay: 0.2s;" aria-label="Completion rate: <%= @dashboard.personal_completion_rate %>%">
+      <div>
+        <p class="stat-card__value"><%= @dashboard.personal_completion_rate %>%</p>
+        <p class="stat-card__label">Completion Rate</p>
+      </div>
+      <div class="stat-card__progress">
+        <svg class="stat-card__progress-svg" viewBox="0 0 48 48">
+          <circle class="stat-card__progress-track" cx="24" cy="24" r="20" fill="none" stroke-width="3" />
+          <circle class="stat-card__progress-fill" cx="24" cy="24" r="20" fill="none" stroke-width="3" stroke-linecap="round" stroke-dasharray="<%= (125.66).round(2) %>" stroke-dashoffset="<%= (125.66 * (1 - @dashboard.personal_completion_rate / 100.0)).round(2) %>" />
+        </svg>
+        <div class="stat-card__progress-icon">
+          <svg class="icon icon--sm" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <%# Most Used Flow %>
+    <% most_used = @dashboard.most_used_workflow %>
+    <div class="stat-card animate-fade-in-up hover-lift" style="animation-delay: 0.25s;" aria-label="Most used flow: <%= most_used ? "#{most_used[:count]} runs" : 'None' %>">
+      <div>
+        <p class="stat-card__value"><%= most_used ? most_used[:count] : "—" %></p>
+        <p class="stat-card__label">Most Used Flow</p>
+        <% if most_used&.dig(:workflow) %>
+          <p class="stat-card__detail truncate"><%= link_to most_used[:workflow].title, workflow_path(most_used[:workflow]) %></p>
+        <% end %>
+      </div>
+      <div class="stat-card__icon">
+        <svg class="icon icon--xl" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <hr class="dashboard-divider">
+
+  <%# -- Pinned Workflows -- %>
+  <%= render "dashboard/pinned_workflows", dashboard: @dashboard %>
+
+  <hr class="dashboard-divider">
+
+  <%# -- Two-Column Content -- %>
+  <div class="dashboard-grid">
+    <%# Left: Recent Workflows %>
+    <div class="recent-section animate-fade-in-up" style="animation-delay: 0.35s;">
+      <div class="recent-section__header">
+        <div>
+          <h2 class="recent-section__title">Recent Workflows</h2>
+          <p class="recent-section__subtitle">Recently added workflows</p>
+        </div>
+        <%= link_to "View all", workflows_path, class: "btn btn--plain btn--sm", aria: { label: "View all workflows" } %>
+      </div>
+      <div class="wf-list">
+        <% if @dashboard.workflows.any? %>
+          <% @dashboard.workflows.each_with_index do |workflow, index| %>
+            <div class="wf-list-item animate-fade-in-up" style="animation-delay: <%= 0.4 + (index * 0.05) %>s;">
+              <div class="wf-list-item__info">
+                <div class="wf-list-item__title">
+                  <%= link_to workflow.title, workflow_path(workflow), aria: { label: "View workflow: #{workflow.title}" } %>
+                  <%= workflow_status_badge(workflow) %>
+                </div>
+                <div class="wf-list-item__meta">
+                  Created <%= time_ago_in_words(workflow.created_at) %> ago
+                </div>
+                <% if workflow.tags.any? %>
+                  <div class="wf-list-item__tags flex flex-wrap gap-1 mt-0\.5">
+                    <% workflow.tags.each do |tag| %>
+                      <span class="tag-pill"><%= tag.name %></span>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+              <div class="wf-list-item__actions">
+                <%= render "workflows/pin_button", workflow: workflow, pinned: @dashboard.pinned_workflow_ids.include?(workflow.id), location: "recent" %>
+                <%= button_to "Run", play_workflow_path(workflow), method: :post, class: "btn btn--positive btn--sm", aria: { label: "Start #{workflow.title}" } %>
+              </div>
+            </div>
+          <% end %>
+        <% else %>
+          <div class="dashboard-empty">
+            <div class="dashboard-empty__icon">
+              <svg class="icon icon--xl" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <p class="dashboard-empty__text">No workflows available yet</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Right: Recent Activity %>
+    <div class="recent-section animate-fade-in-up" style="animation-delay: 0.4s;">
+      <div class="recent-section__header">
+        <div>
+          <h2 class="recent-section__title">Recent Activity</h2>
+          <p class="recent-section__subtitle">Your latest scenarios</p>
+        </div>
+      </div>
+      <div class="activity-feed">
+        <% if @dashboard.recent_scenarios.any? %>
+          <% @dashboard.recent_scenarios.each do |scenario| %>
+            <% workflow = scenario.workflow %>
+            <% if workflow %>
+              <%= link_to scenario_path(scenario), class: "activity-feed__item", aria: { label: "View scenario for #{workflow.title}" } do %>
+                <div class="activity-feed__dot activity-feed__dot--<%= scenario.status %>" aria-hidden="true"></div>
+                <div class="activity-feed__body">
+                  <p class="font-medium truncate"><%= workflow.title %></p>
+                  <p class="activity-feed__meta">
+                    <%= scenario.status.capitalize %> &middot; <%= time_ago_in_words(scenario.created_at) %> ago
+                  </p>
+                </div>
+              <% end %>
+            <% else %>
+              <div class="activity-feed__item">
+                <div class="activity-feed__dot" aria-hidden="true"></div>
+                <div class="activity-feed__body">
+                  <p class="text-sm italic truncate text-muted">Deleted workflow</p>
+                  <p class="activity-feed__meta">
+                    <%= scenario.status.capitalize %> &middot; <%= time_ago_in_words(scenario.created_at) %> ago
+                  </p>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+        <% else %>
+          <div class="dashboard-empty">
+            <div class="dashboard-empty__icon">
+              <svg class="icon icon--xl" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p class="dashboard-empty__text">Start a workflow to see your activity here</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

@@ -18,6 +18,7 @@ class Workflow < ApplicationRecord
 
   # Scenario associations
   has_many :scenarios, dependent: :destroy
+  has_many :user_workflow_pins, dependent: :destroy
 
   # Set draft expiration before save (7 days from creation or update)
   before_save :set_draft_expiration, if: :draft?

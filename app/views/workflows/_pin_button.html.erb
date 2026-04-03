@@ -1,0 +1,22 @@
+<% location ||= "default" %>
+<div id="pin-<%= location %>-<%= workflow.id %>">
+  <% if pinned %>
+    <%= button_to workflow_pin_path(workflow), method: :delete,
+          class: "btn btn--plain btn--sm pin-button is-pinned",
+          data: { turbo_stream: true },
+          aria: { label: "Unpin #{workflow.title}" } do %>
+      <svg class="icon icon--sm" fill="currentColor" viewBox="0 0 24 24" stroke="none">
+        <path d="M16 4a1 1 0 00-1.6-.8L12 5.333 9.6 3.2A1 1 0 008 4v8.5l-2.7 2.7a1 1 0 00.7 1.7H11v5a1 1 0 002 0v-5h5a1 1 0 00.7-1.7L16 12.5V4z" />
+      </svg>
+    <% end %>
+  <% else %>
+    <%= button_to workflow_pin_path(workflow), method: :post,
+          class: "btn btn--plain btn--sm pin-button",
+          data: { turbo_stream: true },
+          aria: { label: "Pin #{workflow.title}" } do %>
+      <svg class="icon icon--sm" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M16 4a1 1 0 00-1.6-.8L12 5.333 9.6 3.2A1 1 0 008 4v8.5l-2.7 2.7a1 1 0 00.7 1.7H11v5a1 1 0 002 0v-5h5a1 1 0 00.7-1.7L16 12.5V4z" />
+      </svg>
+    <% end %>
+  <% end %>
+</div>

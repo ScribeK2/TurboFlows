@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_02_134509) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_03_204135) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -114,7 +114,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_02_134509) do
     t.index ["parent_scenario_id"], name: "index_scenarios_on_parent_scenario_id"
     t.index ["purpose", "started_at"], name: "index_scenarios_on_purpose_and_started_at"
     t.index ["status"], name: "index_scenarios_on_status"
-    t.index ["user_id", "purpose"], name: "index_scenarios_on_user_id_and_purpose"
+    t.index ["user_id", "purpose", "created_at"], name: "index_scenarios_on_user_id_and_purpose_and_created_at"
+    t.index ["user_id", "workflow_id"], name: "index_scenarios_on_user_id_and_workflow_id"
     t.index ["user_id"], name: "index_scenarios_on_user_id"
     t.index ["workflow_id", "purpose", "outcome"], name: "index_scenarios_on_workflow_id_and_purpose_and_outcome"
     t.index ["workflow_id"], name: "index_scenarios_on_workflow_id"
@@ -209,6 +210,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_02_134509) do
     t.index ["user_id"], name: "index_user_groups_on_user_id"
   end
 
+  create_table "user_workflow_pins", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.integer "workflow_id", null: false
+    t.index ["user_id", "workflow_id"], name: "index_user_workflow_pins_on_user_id_and_workflow_id", unique: true
+    t.index ["user_id"], name: "index_user_workflow_pins_on_user_id"
+    t.index ["workflow_id"], name: "index_user_workflow_pins_on_workflow_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "display_name", limit: 50
@@ -291,6 +302,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_02_134509) do
   add_foreign_key "transitions", "steps", column: "target_step_id"
   add_foreign_key "user_groups", "groups"
   add_foreign_key "user_groups", "users"
+  add_foreign_key "user_workflow_pins", "users"
+  add_foreign_key "user_workflow_pins", "workflows"
   add_foreign_key "workflow_versions", "users", column: "published_by_id"
   add_foreign_key "workflow_versions", "workflows"
   add_foreign_key "workflows", "steps", column: "start_step_id"

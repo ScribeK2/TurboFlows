@@ -478,4 +478,68 @@
   gap: 0.75rem;
   margin-top: 1rem;
 }
+
+/* ============================================================================
+   Pinned Workflows
+   ============================================================================ */
+
+.pinned-section {
+  margin-bottom: var(--space-4);
+}
+
+/* Pinned card grid */
+.pinned-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: var(--space-3);
+}
+
+.pinned-card {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4);
+}
+
+.pinned-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.pinned-card__title {
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+  text-decoration: none;
+  line-height: var(--line-height-tight);
+}
+
+.pinned-card__title:hover {
+  color: var(--color-primary);
+}
+
+.pinned-card__action {
+  margin-top: auto;
+}
+
+/* Pin toggle button */
+.pin-button {
+  color: var(--color-ink-muted);
+  transition: color var(--duration-fast) var(--ease-out),
+              transform var(--duration-snap) var(--ease-spring);
+}
+
+.pin-button:hover {
+  color: var(--color-primary);
+}
+
+.pin-button.is-pinned {
+  color: var(--color-primary);
+}
+
+.pin-button:active {
+  transform: scale(0.9);
+}
 }

@@ -7,6 +7,11 @@ class User < ApplicationRecord
 
   has_many :workflows, dependent: :destroy
   has_many :scenarios, dependent: :destroy
+  has_many :user_workflow_pins, dependent: :destroy
+  has_many :pinned_workflows,
+           -> { order("user_workflow_pins.created_at DESC") },
+           through: :user_workflow_pins,
+           source: :workflow
   has_many :user_groups, dependent: :destroy
   has_many :groups, through: :user_groups
 

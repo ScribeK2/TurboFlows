@@ -1,0 +1,46 @@
+<div id="pinned-workflows-section">
+  <% pinned = dashboard.pinned_workflows %>
+  <% if pinned.any? %>
+    <div class="pinned-section animate-fade-in-up">
+      <div class="recent-section__header">
+        <div>
+          <h2 class="recent-section__title">Pinned Workflows</h2>
+          <p class="recent-section__subtitle">Your quick-access flows</p>
+        </div>
+      </div>
+      <div class="pinned-grid">
+        <% pinned.each_with_index do |workflow, index| %>
+          <div class="pinned-card card animate-fade-in-up" style="animation-delay: <%= 0.05 * index %>s;">
+            <div class="pinned-card__header">
+              <%= link_to workflow.title, workflow_path(workflow), class: "pinned-card__title" %>
+              <%= render "workflows/pin_button", workflow: workflow, pinned: true, location: "pinned" %>
+            </div>
+            <% if workflow.tags.any? %>
+              <div class="flex flex-wrap gap-1 mb-2">
+                <% workflow.tags.each do |tag| %>
+                  <span class="tag-pill"><%= tag.name %></span>
+                <% end %>
+              </div>
+            <% end %>
+            <div class="pinned-card__action">
+              <%= button_to "Run", play_workflow_path(workflow), method: :post, class: "btn btn--positive btn--sm", aria: { label: "Run #{workflow.title}" } %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% else %>
+    <div class="dashboard-empty animate-fade-in-up">
+      <div class="dashboard-empty__icon">
+        <svg class="icon icon--xl" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+        </svg>
+      </div>
+      <h3 class="dashboard-empty__title">No pinned workflows</h3>
+      <p class="dashboard-empty__text">Pin your most-used flows for instant access</p>
+      <div class="empty-state__actions">
+        <%= link_to "Browse workflows", workflows_path, class: "btn btn--plain btn--sm" %>
+      </div>
+    </div>
+  <% end %>
+</div>

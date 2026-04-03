@@ -26,6 +26,7 @@ Rails.application.routes.draw do
     resource :publishing, only: [:create], controller: "workflows/publishings"
     resources :taggings, only: %i[create destroy], controller: "workflows/taggings", param: :tag_id
     resource :share, only: %i[create destroy], controller: "workflows/shares"
+    resource :pin, only: %i[create destroy], controller: "workflows/pins"
     resource :export, only: [:show], controller: "workflows/exports" do
       get :pdf, on: :member
     end
