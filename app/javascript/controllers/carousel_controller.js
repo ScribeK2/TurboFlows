@@ -13,13 +13,20 @@ export default class extends Controller {
   }
 
   scrollLeft() {
-    const cardWidth = this.trackTarget.firstElementChild?.offsetWidth || 256
-    this.trackTarget.scrollBy({ left: -cardWidth - 16, behavior: "smooth" })
+    const step = this.#cardScrollStep()
+    this.trackTarget.scrollBy({ left: -step, behavior: "smooth" })
   }
 
   scrollRight() {
+    const step = this.#cardScrollStep()
+    this.trackTarget.scrollBy({ left: step, behavior: "smooth" })
+  }
+
+  // Card width + gap (--space-4 = 1rem = 16px at default font size)
+  #cardScrollStep() {
     const cardWidth = this.trackTarget.firstElementChild?.offsetWidth || 256
-    this.trackTarget.scrollBy({ left: cardWidth + 16, behavior: "smooth" })
+    const gap = parseFloat(getComputedStyle(this.trackTarget).columnGap) || 16
+    return cardWidth + gap
   }
 
   updateArrows = () => {

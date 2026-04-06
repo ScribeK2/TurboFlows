@@ -196,6 +196,11 @@
   margin-top: var(--space-1);
 }
 
+.recent-section__header--plain {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
 /* ============================================================================
    Workflow List Inside Recent Section
    ============================================================================ */
@@ -501,7 +506,6 @@
   scroll-snap-type: x mandatory;
   scroll-behavior: smooth;
   scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
   padding-block: var(--space-2);
 }
 
@@ -615,7 +619,6 @@
   border-top: 3px dashed var(--color-border);
   background: transparent;
   box-shadow: none;
-  border-style: dashed;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
