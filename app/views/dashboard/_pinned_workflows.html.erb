@@ -2,31 +2,60 @@
   <% pinned = dashboard.pinned_workflows %>
   <% if pinned.any? %>
     <div class="pinned-section animate-fade-in-up">
-      <div class="recent-section__header">
+      <div class="recent-section__header" style="border-bottom: none; padding-bottom: 0;">
         <div>
           <h2 class="recent-section__title">Pinned Workflows</h2>
           <p class="recent-section__subtitle">Your quick-access flows</p>
         </div>
       </div>
-      <div class="pinned-grid">
-        <% pinned.each_with_index do |workflow, index| %>
-          <div class="pinned-card card animate-fade-in-up" style="animation-delay: <%= 0.05 * index %>s;">
-            <div class="pinned-card__header">
-              <%= link_to workflow.title, workflow_path(workflow), class: "pinned-card__title" %>
-              <%= render "workflows/pin_button", workflow: workflow, pinned: true, location: "pinned" %>
-            </div>
-            <% if workflow.tags.any? %>
-              <div class="flex flex-wrap gap-1 mb-2">
-                <% workflow.tags.each do |tag| %>
-                  <span class="tag-pill"><%= tag.name %></span>
-                <% end %>
-              </div>
+
+      <div class="carousel-wrapper" data-controller="carousel">
+        <button class="carousel-arrow carousel-arrow--left"
+                data-carousel-target="leftArrow"
+                data-action="click->carousel#scrollLeft"
+                aria-label="Scroll left">
+          <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
+        <div class="carousel-track" data-carousel-target="track">
+          <% pinned.each_with_index do |workflow, index| %>
+            <%= button_to play_workflow_path(workflow), method: :post,
+                  class: "carousel-card card animate-fade-in-up",
+                  style: "animation-delay: #{0.05 * index}s;",
+                  aria: { label: "Run #{workflow.title}" } do %>
+              <span class="carousel-card__title"><%= workflow.title %></span>
+              <% if workflow.description.present? %>
+                <span class="carousel-card__desc"><%= workflow.description.to_plain_text.truncate(80) %></span>
+              <% end %>
+              <span class="carousel-card__meta">
+                <svg class="icon icon--xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <%= pluralize(workflow.steps.size, "step") %>
+              </span>
             <% end %>
-            <div class="pinned-card__action">
-              <%= button_to "Run", play_workflow_path(workflow), method: :post, class: "btn btn--positive btn--sm", aria: { label: "Run #{workflow.title}" } %>
-            </div>
-          </div>
-        <% end %>
+          <% end %>
+
+          <% if pinned.size >= UserWorkflowPin::MAX_PINS %>
+            <%= link_to workflows_path, class: "carousel-card carousel-card--manage" do %>
+              <span class="carousel-card__manage-text">Manage Pinned</span>
+              <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+            <% end %>
+          <% end %>
+        </div>
+
+        <button class="carousel-arrow carousel-arrow--right"
+                data-carousel-target="rightArrow"
+                data-action="click->carousel#scrollRight"
+                aria-label="Scroll right">
+          <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
       </div>
     </div>
   <% else %>
