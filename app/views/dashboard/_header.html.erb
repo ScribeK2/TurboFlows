@@ -1,9 +1,6 @@
 <div class="page-header-section animate-fade-in">
   <div>
     <h1 class="page-header-section__title">Dashboard</h1>
-    <p class="page-header-section__subtitle">
-      Welcome back, <span class="font-medium"><%= current_user.display_label %></span>
-    </p>
   </div>
   <div class="flex items-center gap-2">
     <% if current_user.can_create_workflows? %>
