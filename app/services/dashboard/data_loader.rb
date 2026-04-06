@@ -38,7 +38,7 @@ module Dashboard
     def pinned_workflows
       @pinned_workflows ||= user.pinned_workflows
                                 .where(id: Workflow.visible_to(user).select(:id))
-                                .includes(:tags)
+                                .includes(:tags, :steps)
                                 .limit(UserWorkflowPin::MAX_PINS)
     end
 
