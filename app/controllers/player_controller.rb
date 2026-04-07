@@ -5,11 +5,11 @@ class PlayerController < ApplicationController
   before_action :set_scenario, only: %i[step next_step back show]
 
   def index
+    # Use subquery for "has steps" filter to avoid group/includes conflict
+    ids_with_steps = Step.select(:workflow_id).distinct
     @workflows = Workflow.published
                          .where(id: Workflow.visible_to(current_user).select(:id))
-                         .joins(:steps)
-                         .group("workflows.id")
-                         .having("COUNT(steps.id) > 0")
+                         .where(id: ids_with_steps)
                          .includes(:tags, :versions, :start_step, :steps)
                          .order(updated_at: :desc)
   end

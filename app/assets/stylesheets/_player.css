@@ -177,6 +177,8 @@
     left: var(--space-4);
     top: 50%;
     transform: translateY(-50%);
+    width: 1.125rem;
+    height: 1.125rem;
     color: var(--color-ink-muted);
     pointer-events: none;
   }
@@ -269,6 +271,10 @@
     justify-content: center;
     padding: var(--space-16) var(--space-4);
     text-align: center;
+  }
+
+  .player-empty[hidden] {
+    display: none;
   }
 
   .player-empty__icon {
