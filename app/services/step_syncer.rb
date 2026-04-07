@@ -157,15 +157,6 @@ class StepSyncer
   end
 
   def normalize(data)
-    if data.respond_to?(:permit)
-      data.permit(*StepBuilder::PERMITTED_STEP_PARAMS,
-                  options: [[:label, :value]], output_fields: [[:name, :value]],
-                  jumps: {}, variable_mapping: {},
-                  transitions: StepBuilder::PERMITTED_TRANSITION_PARAMS).to_h
-    elsif data.respond_to?(:stringify_keys)
-      data.stringify_keys
-    else
-      data.to_h.stringify_keys
-    end
+    StepBuilder.normalize(data)
   end
 end

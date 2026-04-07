@@ -61,19 +61,8 @@ class WorkflowPublisher
 
   # Validate graph structure from AR steps
   def validate_ar_graph!
-    graph_steps = {}
-    @workflow.steps.includes(:transitions).find_each do |step|
-      step_hash = {
-        "id" => step.uuid,
-        "type" => step.type.demodulize.underscore,
-        "title" => step.title,
-        "transitions" => step.transitions.map { |t| { "target_uuid" => t.target_step.uuid, "condition" => t.condition } }
-      }
-      graph_steps[step.uuid] = step_hash
-    end
-
     start_uuid = @workflow.start_step&.uuid || @workflow.steps.first&.uuid
-    validator = GraphValidator.new(graph_steps, start_uuid)
+    validator = GraphValidator.new(@workflow.validation_graph_hash, start_uuid)
 
     unless validator.valid?
       raise ActiveRecord::RecordInvalid.new(@workflow), validator.errors.join(", ")

@@ -33,6 +33,19 @@ class StepBuilder
     STI_MAP.fetch(type.to_s, Steps::Action)
   end
 
+  # Normalize incoming step/transition data to a stringified hash.
+  # Shared by StepBuilder and StepSyncer.
+  def self.normalize(data, permitted: PERMITTED_STEP_PARAMS)
+    if data.respond_to?(:permit)
+      data.permit(*permitted, options: [[:label, :value]], output_fields: [[:name, :value]],
+                              jumps: {}, variable_mapping: {}, transitions: PERMITTED_TRANSITION_PARAMS).to_h
+    elsif data.respond_to?(:stringify_keys)
+      data.stringify_keys
+    else
+      data.to_h.stringify_keys
+    end
+  end
+
   def self.build_attrs(step_data, position)
     attrs = { title: step_data["title"], position: position }
     attrs[:position_x] = step_data["position_x"]&.to_i if step_data.key?("position_x")
@@ -187,13 +200,6 @@ class StepBuilder
   end
 
   def normalize(data, permitted: PERMITTED_STEP_PARAMS)
-    if data.respond_to?(:permit)
-      data.permit(*permitted, options: [[:label, :value]], output_fields: [[:name, :value]],
-                              jumps: {}, variable_mapping: {}, transitions: PERMITTED_TRANSITION_PARAMS).to_h
-    elsif data.respond_to?(:stringify_keys)
-      data.stringify_keys
-    else
-      data.to_h.stringify_keys
-    end
+    self.class.normalize(data, permitted:)
   end
 end

@@ -141,7 +141,7 @@ class StepsController < ApplicationController
   # DELETE /workflows/:workflow_id/steps/:id
   def destroy
     if @workflow.start_step_id == @step.id
-      @workflow.update_columns(start_step_id: nil)
+      @workflow.update_column(:start_step_id, nil)
     end
     @step.destroy
     ensure_start_step_assigned
@@ -271,7 +271,7 @@ class StepsController < ApplicationController
     return if @workflow.start_step_id.present?
 
     first_step = @workflow.steps.first
-    @workflow.update_columns(start_step_id: first_step.id) if first_step
+    @workflow.update_column(:start_step_id, first_step.id) if first_step
   end
 
   def sync_transitions_from_json

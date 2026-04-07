@@ -277,41 +277,6 @@ class Scenario < ApplicationRecord
     true
   end
 
-  # Check for universal jumps on any step type
-  def check_jumps(step, results)
-    return nil unless step.jumps.present? && step.jumps.is_a?(Array)
-
-    step.jumps.each do |jump|
-      jump_condition = jump['condition'] || jump[:condition]
-      jump_next_step_id = jump['next_step_id'] || jump[:next_step_id]
-
-      next unless jump_condition.present? && jump_next_step_id.present?
-
-      condition_result = case step.step_type
-                         when 'question'
-                           current_answer = results[step.title] || results[step.variable_name]
-                           current_answer.to_s == jump_condition.to_s
-                         when 'action'
-                           if jump_condition == 'completed'
-                             true
-                           else
-                             evaluate_condition_string(jump_condition, results)
-                           end
-                         else
-                           evaluate_condition_string(jump_condition, results)
-                         end
-
-      next unless condition_result
-
-      target_step = workflow.steps.find_by(uuid: jump_next_step_id)
-      if target_step
-        return target_step.position
-      end
-    end
-
-    nil # No jump matched
-  end
-
   def execute
     return false unless workflow.present? && inputs.present?
 
@@ -334,11 +299,9 @@ class Scenario < ApplicationRecord
     false
   end
 
-  private
-
-  def set_started_at
-    self.started_at ||= Time.current
-  end
+  # ============================================================================
+  # Public methods used by ScenarioStepProcessor (formerly accessed via send())
+  # ============================================================================
 
   def record_completion(outcome_value)
     self.outcome = outcome_value
@@ -346,18 +309,6 @@ class Scenario < ApplicationRecord
     if started_at.present?
       self.duration_seconds = (completed_at - started_at).to_i
     end
-  end
-
-  # Build execution path entry for a step
-  def build_path_entry(step)
-    entry = {
-      step_title: step.title,
-      step_type: step.step_type,
-      step_uuid: step.uuid,
-      started_at: step_started_at_pending || Time.current.iso8601(3)
-    }
-    self.step_started_at_pending = nil
-    entry
   end
 
   # Resolve the scenario at the current step (mid-step resolution via can_resolve flag)
@@ -389,6 +340,24 @@ class Scenario < ApplicationRecord
     else
       advance_to_step_uuid(nil)
     end
+  end
+
+  private
+
+  def set_started_at
+    self.started_at ||= Time.current
+  end
+
+  # Build execution path entry for a step
+  def build_path_entry(step)
+    entry = {
+      step_title: step.title,
+      step_type: step.step_type,
+      step_uuid: step.uuid,
+      started_at: step_started_at_pending || Time.current.iso8601(3)
+    }
+    self.step_started_at_pending = nil
+    entry
   end
 
   # Advance to a specific step UUID (graph mode)
@@ -425,34 +394,4 @@ class Scenario < ApplicationRecord
     evaluate_condition_string(condition, results)
   end
 
-  # Find an AR step by UUID
-  def find_step_by_uuid(uuid)
-    return nil unless uuid.present?
-
-    workflow.steps.find_by(uuid: uuid)
-  end
-
-  # Find an AR step by title
-  def find_step_by_title(title)
-    return nil unless title.present?
-
-    # Exact match first
-    step = workflow.steps.find_by(title: title)
-    return step if step
-
-    # Case-insensitive fallback
-    workflow.steps.where("LOWER(title) = ?", title.downcase).first
-  end
-
-  # Resolve a step reference (UUID or title) to an AR Step
-  def resolve_step_reference(reference)
-    return nil if reference.blank?
-
-    # Try UUID first
-    step = find_step_by_uuid(reference)
-    return step if step
-
-    # Fallback to title
-    find_step_by_title(reference)
-  end
 end

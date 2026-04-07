@@ -302,6 +302,21 @@ class Workflow < ApplicationRecord
     steps.exists?(type: "Steps::SubFlow")
   end
 
+  # Build a hash of steps suitable for GraphValidator.
+  # Used by both validate_graph_structure and WorkflowPublisher#validate_ar_graph!.
+  def validation_graph_hash
+    hash = {}
+    steps.includes(:transitions).find_each do |step|
+      hash[step.uuid] = {
+        "id" => step.uuid,
+        "type" => step.type.demodulize.underscore,
+        "title" => step.title,
+        "transitions" => step.transitions.map { |t| { "target_uuid" => t.target_step.uuid, "condition" => t.condition } }
+      }
+    end
+    hash
+  end
+
   private
 
   def nullify_published_version
@@ -324,18 +339,8 @@ class Workflow < ApplicationRecord
   def validate_graph_structure
     return unless steps.any?
 
-    graph_steps_hash = {}
-    steps.includes(:transitions).find_each do |step|
-      graph_steps_hash[step.uuid] = {
-        "id" => step.uuid,
-        "type" => step.type.demodulize.underscore,
-        "title" => step.title,
-        "transitions" => step.transitions.map { |t| { "target_uuid" => t.target_step.uuid, "condition" => t.condition } }
-      }
-    end
-
     start_uuid = start_step&.uuid || steps.first&.uuid
-    validator = GraphValidator.new(graph_steps_hash, start_uuid)
+    validator = GraphValidator.new(validation_graph_hash, start_uuid)
 
     unless validator.valid?
       validator.errors.each do |error|

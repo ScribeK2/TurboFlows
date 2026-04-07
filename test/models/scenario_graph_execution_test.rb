@@ -187,9 +187,9 @@ class ScenarioGraphExecutionTest < ActiveSupport::TestCase
   end
 
   # ---------------------------------------------------------------------------
-  # 6. check_jumps navigates to jump target
+  # 6. StepResolver check_jumps navigates to jump target
   # ---------------------------------------------------------------------------
-  test "check_jumps returns correct position when jump condition matches" do
+  test "StepResolver check_jumps returns jump target step when condition matches" do
     wf    = Workflow.create!(title: "Jump Workflow", user: @user, graph_mode: false, status: "published")
     step1 = Steps::Question.create!(
       workflow: wf, position: 0, title: "Q Jump", question: "Jump?", variable_name: "action",
@@ -201,19 +201,12 @@ class ScenarioGraphExecutionTest < ActiveSupport::TestCase
     # Update the jump to reference step3's uuid
     step1.update!(jumps: [{ "condition" => "skip", "next_step_id" => step3.uuid }])
 
-    scenario = Scenario.create!(
-      workflow: wf,
-      user: @user,
-      current_step_index: 0,
-      inputs: {},
-      purpose: "simulation"
-    )
-
+    resolver = StepResolver.new(wf)
     results = { "Q Jump" => "skip", "action" => "skip" }
-    jumped_position = scenario.check_jumps(step1, results)
+    jump_target = resolver.send(:check_jumps, step1, results)
 
-    assert_equal step3.position, jumped_position,
-                 "check_jumps should return position of jump target when condition matches"
+    assert_equal step3, jump_target,
+                 "StepResolver check_jumps should return the jump target step when condition matches"
   end
 
   # ---------------------------------------------------------------------------

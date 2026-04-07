@@ -25,9 +25,10 @@ module ScenarioExecution
   end
 
   def determine_next_step_index(step, results)
-    # Check for universal jumps (works for all step types)
-    jump_result = check_jumps(step, results)
-    return jump_result if jump_result
+    # Delegate jump evaluation to StepResolver (the canonical implementation)
+    resolver = StepResolver.new(workflow)
+    jump_target = resolver.send(:check_jumps, step, results)
+    return jump_target.position if jump_target.is_a?(Step)
 
     # Default: move to next step
     current_step_index + 1

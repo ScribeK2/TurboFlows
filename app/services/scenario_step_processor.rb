@@ -19,7 +19,7 @@ class ScenarioStepProcessor
     when "message"  then process_message_step(step, path_entry, resolved_here: resolved_here)
     when "escalate" then process_escalate_step(step, path_entry)
     when "resolve"  then process_resolve_step(step, path_entry)
-    else            @scenario.send(:advance_to_next_step, step)
+    else            @scenario.advance_to_next_step(step)
     end
   end
 
@@ -39,7 +39,7 @@ class ScenarioStepProcessor
     path_entry[:answer] = answer
     @scenario.execution_path << path_entry
 
-    @scenario.send(:advance_to_next_step, step)
+    @scenario.advance_to_next_step(step)
   end
 
   # Process a form step — validates field responses, persists a StepResponse, and merges values into results
@@ -66,7 +66,7 @@ class ScenarioStepProcessor
     responses.each { |k, v| (@scenario.results ||= {})[k] = v }
 
     @scenario.execution_path << path_entry
-    @scenario.send(:advance_to_next_step, step)
+    @scenario.advance_to_next_step(step)
   end
 
   # Process an action step
@@ -91,9 +91,9 @@ class ScenarioStepProcessor
 
     # Handle mid-step resolution if the agent indicated this step resolved the issue
     if resolved_here && step.can_resolve
-      @scenario.send(:resolve_at_current_step, step)
+      @scenario.resolve_at_current_step(step)
     else
-      @scenario.send(:advance_to_next_step, step)
+      @scenario.advance_to_next_step(step)
     end
   end
 
@@ -114,9 +114,9 @@ class ScenarioStepProcessor
 
     # Handle mid-step resolution if the agent indicated this step resolved the issue
     if resolved_here && step.can_resolve
-      @scenario.send(:resolve_at_current_step, step)
+      @scenario.resolve_at_current_step(step)
     else
-      @scenario.send(:advance_to_next_step, step)
+      @scenario.advance_to_next_step(step)
     end
   end
 
@@ -137,8 +137,8 @@ class ScenarioStepProcessor
     }.compact
 
     @scenario.execution_path << path_entry
-    @scenario.send(:record_completion, "escalated")
-    @scenario.send(:advance_to_next_step, step)
+    @scenario.record_completion("escalated")
+    @scenario.advance_to_next_step(step)
   end
 
   # Process a resolve step (Graph Mode)
@@ -158,7 +158,7 @@ class ScenarioStepProcessor
 
     @scenario.execution_path << path_entry
 
-    @scenario.send(:record_completion, "resolved")
+    @scenario.record_completion("resolved")
     # Resolve steps are always terminal - complete the scenario
     @scenario.status = 'completed'
     @scenario.current_node_uuid = nil

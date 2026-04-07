@@ -156,13 +156,13 @@ class ScenariosController < ApplicationController
     @scenario.execution_path = @scenario.execution_path[0..step_index]
 
     # Rebuild results and inputs from execution path up to this point
+    ordered_steps = @workflow.steps.order(:position).to_a
     @scenario.results = {}
     @scenario.inputs = {}
     @scenario.execution_path.each do |path_entry|
       next unless path_entry['answer'].present?
 
       entry_step_index = path_entry['step_index'].to_i
-      ordered_steps = @workflow.steps.order(:position)
       next unless entry_step_index >= 0 && entry_step_index < ordered_steps.size
 
       step = ordered_steps[entry_step_index]
