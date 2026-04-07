@@ -156,6 +156,53 @@
     box-shadow: var(--shadow-sm);
   }
 
+  /* ─── Step-Type Accent Borders ─── */
+  .player-workflow-card--question  { border-top: 3.5px solid oklch(0.55 0.20 var(--hue-question)); }
+  .player-workflow-card--action    { border-top: 3.5px solid oklch(0.60 0.19 var(--hue-action)); }
+  .player-workflow-card--message   { border-top: 3.5px solid oklch(0.55 0.18 var(--hue-message)); }
+  .player-workflow-card--escalate  { border-top: 3.5px solid oklch(0.55 0.22 var(--hue-escalate)); }
+  .player-workflow-card--resolve   { border-top: 3.5px solid oklch(0.60 0.19 var(--hue-resolve)); }
+  .player-workflow-card--sub_flow  { border-top: 3.5px solid oklch(0.55 0.18 var(--hue-subflow)); }
+  .player-workflow-card--form      { border-top: 3.5px solid oklch(0.55 0.20 var(--hue-question)); }
+
+  /* ─── Search Filter ─── */
+  .player-search {
+    position: relative;
+    margin-bottom: var(--space-6);
+    width: 100%;
+  }
+
+  .player-search__icon {
+    position: absolute;
+    left: var(--space-4);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-ink-muted);
+    pointer-events: none;
+  }
+
+  .player-search__input {
+    width: 100%;
+    padding: var(--space-3) var(--space-4) var(--space-3) var(--space-10);
+    font-size: var(--text-base);
+    font-family: var(--font-sans);
+    background: var(--color-canvas-raised);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    color: var(--color-ink);
+    outline: none;
+    transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+  }
+
+  .player-search__input::placeholder {
+    color: var(--color-ink-muted);
+  }
+
+  .player-search__input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px oklch(0.55 0.20 250 / 0.15);
+  }
+
   .player-workflow-card__body {
     flex: 1;
     min-width: 0;
