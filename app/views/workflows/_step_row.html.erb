@@ -46,7 +46,7 @@
     <% if step.transitions.loaded? ? step.transitions.any? : step.transitions.exists? %>
       <% targets = step.transitions.map { |t| t.target_step }.compact %>
       <% if targets.any? %>
-        &rarr; <%= targets.map { |t| "Step #{t.position + 1}" }.join(", ") %>
+        &rarr; <%= targets.map { |t| "Step #{t.position}" }.join(", ") %>
       <% end %>
     <% elsif !step.is_a?(Steps::Resolve) && !step.terminal? %>
       <span class="step-pill step-pill--warning">No connections</span>

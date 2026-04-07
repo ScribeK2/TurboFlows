@@ -25,7 +25,13 @@ class NavController < ApplicationController
         description: w.description_text.to_s.truncate(120),
         tags: w.tags.pluck(:name),
         status: w.status,
-        path: can_edit ? workflow_path(w) : start_workflow_path(w)
+        path: if current_user.regular?
+                play_path # Regular users go to Player index
+              elsif can_edit
+                workflow_path(w)
+              else
+                start_workflow_path(w)
+              end
       }
     end
     render json: data

@@ -1,4 +1,5 @@
 class WorkflowsController < ApplicationController
+  before_action :ensure_can_manage_workflows!
   before_action :set_workflow,
                 only: %i[show edit update destroy preview variables start begin_execution versions sync_steps flow_diagram settings]
   before_action :ensure_editor_or_admin!, only: %i[new create]

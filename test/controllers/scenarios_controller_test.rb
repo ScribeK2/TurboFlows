@@ -99,7 +99,7 @@ class ScenariosControllerTest < ActionDispatch::IntegrationTest
     assert_equal "You don't have permission to view this workflow.", flash[:alert]
   end
 
-  test "user should be able to run scenario on public workflow" do
+  test "user should be redirected to play from scenario on public workflow" do
     regular_user = User.create!(
       email: "user-sim-#{SecureRandom.hex(4)}@example.com",
       password: "password123!",
@@ -112,7 +112,7 @@ class ScenariosControllerTest < ActionDispatch::IntegrationTest
 
     get new_workflow_scenario_path(public_workflow)
 
-    assert_response :success
+    assert_redirected_to play_path
   end
 
   test "user should not be able to run scenario on private workflow" do
@@ -128,8 +128,7 @@ class ScenariosControllerTest < ActionDispatch::IntegrationTest
 
     get new_workflow_scenario_path(private_workflow)
 
-    assert_redirected_to workflows_path
-    assert_equal "You don't have permission to view this workflow.", flash[:alert]
+    assert_redirected_to play_path
   end
 
   # IDOR Tests — users cannot access other users' scenarios

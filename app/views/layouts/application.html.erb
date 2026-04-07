@@ -81,9 +81,12 @@
                     <input data-nav-search-target="input"
                            data-action="input->nav-search#search keydown->nav-search#navigate"
                            type="text"
+                           id="nav-search-input"
+                           name="nav_search"
                            class="nav__search-input"
                            placeholder="Search workflows..."
-                           autocomplete="off">
+                           autocomplete="off"
+                           aria-label="Search workflows">
                     <kbd class="nav__search-esc">Esc</kbd>
                   </div>
                   <div data-nav-search-target="results" class="nav__search-results"></div>

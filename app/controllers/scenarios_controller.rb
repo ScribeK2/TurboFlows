@@ -1,4 +1,5 @@
 class ScenariosController < ApplicationController
+  before_action :ensure_can_manage_workflows!
   before_action :set_workflow, only: %i[new create]
 
   def show

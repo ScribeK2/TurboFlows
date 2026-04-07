@@ -78,8 +78,7 @@ class Workflow < ApplicationRecord
   # Access Control Rules:
   # - Admins: See all workflows regardless of group assignment
   # - Editors: See their own workflows + all public workflows + workflows in assigned groups
-  # - Users: See public workflows + workflows in assigned groups
-  # - Workflows without groups: Accessible to all users (backward compatibility)
+  # - Regular users: See public workflows + workflows in assigned groups only
   # - Drafts: Excluded from main workflow list (only accessible via wizard routes)
   #
   # Group Access:
@@ -108,23 +107,15 @@ class Workflow < ApplicationRecord
         base_scope.where(user: user).or(base_scope.where(is_public: true))
       end
     elsif user&.groups&.any?
-      # Users: See public workflows + workflows in assigned groups + workflows without groups
+      # Regular users: See public workflows + workflows in assigned groups only
       accessible_group_ids = Group.accessible_group_ids_for(user)
-      # Public workflows OR workflows in user's groups OR workflows without groups
       public_workflows = base_scope.where(is_public: true)
       group_workflows = base_scope.joins(:groups).where(groups: { id: accessible_group_ids })
-      workflows_without_groups = base_scope.where.missing(:groups)
       base_scope.where(id: public_workflows.select(:id))
                 .or(base_scope.where(id: group_workflows.select(:id)))
-                .or(base_scope.where(id: workflows_without_groups.select(:id)))
-    # Use optimized single-query method to get all accessible group IDs
     else
-      # No group assignments: only public workflows + workflows without groups (backward compatibility)
-      # Note: Workflows in Uncategorized group are NOT included for users without group assignments
-      public_workflows = base_scope.where(is_public: true)
-      workflows_without_groups = base_scope.where.missing(:groups)
-      base_scope.where(id: public_workflows.select(:id))
-                .or(base_scope.where(id: workflows_without_groups.select(:id)))
+      # No group assignments: only public workflows
+      base_scope.where(is_public: true)
     end
   }
 

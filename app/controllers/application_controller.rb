@@ -36,6 +36,14 @@ class ApplicationController < ActionController::Base
     end
   end
 
+  # Ensure user can access the builder/workflows area (editors and admins only).
+  # Regular users are redirected to the Player.
+  def ensure_can_manage_workflows!
+    unless current_user&.can_edit_workflows? || current_user&.admin?
+      redirect_to play_path, alert: "You don't have permission to access this page."
+    end
+  end
+
   # Check if user can view a workflow
   def ensure_can_view_workflow!(workflow)
     unless workflow.can_be_viewed_by?(current_user)

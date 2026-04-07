@@ -153,14 +153,11 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
     # Verify editor sees their workflow
     assert_match @workflow.title, response.body
 
-    # User should see only public workflows
+    # Regular user is redirected to /play
     sign_in @user
     get workflows_path
 
-    assert_response :success
-    assert_select "h1", text: /Workflows/
-    # Verify user sees public workflow
-    assert_match @public_workflow.title, response.body
+    assert_redirected_to play_path
   end
 
   test "admin should be able to view any workflow" do
@@ -184,19 +181,18 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
-  test "user should be able to view public workflow" do
+  test "user should be redirected to play from public workflow" do
     sign_in @user
     get workflow_path(@public_workflow)
 
-    assert_response :success
+    assert_redirected_to play_path
   end
 
   test "user should not be able to view private workflow" do
     sign_in @user
     get workflow_path(@workflow)
 
-    assert_redirected_to workflows_path
-    assert_equal "You don't have permission to view this workflow.", flash[:alert]
+    assert_redirected_to play_path
   end
 
   test "admin should be able to create workflows" do
@@ -219,8 +215,7 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
     sign_in @user
     get new_workflow_path
 
-    assert_redirected_to root_path
-    assert_equal "You don't have permission to perform this action.", flash[:alert]
+    assert_redirected_to play_path
   end
 
   test "admin should be able to edit any workflow" do
@@ -258,8 +253,7 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
     sign_in @user
     get edit_workflow_path(@public_workflow)
 
-    assert_redirected_to workflows_path
-    assert_equal "You don't have permission to edit this workflow.", flash[:alert]
+    assert_redirected_to play_path
   end
 
   test "admin should be able to delete any workflow" do
@@ -300,8 +294,7 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
     assert_no_difference("Workflow.count") do
       delete workflow_path(@public_workflow)
     end
-    assert_redirected_to workflows_path
-    assert_equal "You don't have permission to delete this workflow.", flash[:alert]
+    assert_redirected_to play_path
   end
 
   test "admin should be able to export any workflow" do
@@ -424,10 +417,11 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should not show workflows from inaccessible groups" do
-    user = User.create!(
-      email: "user-#{SecureRandom.hex(4)}@test.com",
+    editor2 = User.create!(
+      email: "editor2-#{SecureRandom.hex(4)}@test.com",
       password: "password123!",
-      password_confirmation: "password123!"
+      password_confirmation: "password123!",
+      role: "editor"
     )
     accessible_group = Group.create!(name: "Accessible")
     inaccessible_group = Group.create!(name: "Inaccessible")
@@ -442,9 +436,9 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
     GroupWorkflow.create!(group: accessible_group, workflow: workflow1, is_primary: true)
     GroupWorkflow.create!(group: inaccessible_group, workflow: workflow2, is_primary: true)
 
-    UserGroup.create!(group: accessible_group, user: user)
+    UserGroup.create!(group: accessible_group, user: editor2)
 
-    sign_in user
+    sign_in editor2
     get workflows_path
 
     assert_response :success

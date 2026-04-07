@@ -8,7 +8,7 @@ module WorkflowAuthorization
   # Access rules:
   # - Admins: can view all workflows
   # - Editors: can view own workflows, public workflows, or workflows in assigned groups
-  # - Users: can view public workflows, workflows in assigned groups, or workflows without groups
+  # - Users: can view public workflows or workflows in assigned groups
   #
   # @param user [User] The user to check access for
   # @return [Boolean] True if user can view this workflow
@@ -33,17 +33,12 @@ module WorkflowAuthorization
       return false
     end
 
-    # Users: can view public workflows + workflows in assigned groups + workflows without groups
+    # Regular users: can view public workflows + workflows in assigned groups only
     return true if is_public?
 
     # Check if workflow is in user's assigned groups
     group_ids = cached_accessible_group_ids(user)
-    if group_ids.any?
-      return true if workflow_in_groups?(group_ids)
-    end
-
-    # Workflows without groups are accessible to all users (backward compatibility)
-    return true if workflow_has_no_groups?
+    return true if group_ids.any? && workflow_in_groups?(group_ids)
 
     false
   end

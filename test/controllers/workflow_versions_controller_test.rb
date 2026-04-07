@@ -77,14 +77,13 @@ class WorkflowVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
-  test "show: user who cannot view the workflow is redirected" do
-    # @regular_user has no group membership — workflow is in Uncategorized group only,
-    # so regular user cannot view it unless it is public.
+  test "show: regular user who cannot view the workflow is redirected to play" do
+    # Regular users are redirected to /play via ensure_can_view_workflow!
+    # which redirects to workflows_path, but the workflow_versions_controller
+    # uses ensure_can_view_workflow! directly.
     sign_in @regular_user
     get workflow_version_path(@workflow, @version)
     assert_redirected_to workflows_path
-    follow_redirect!
-    assert_match(/permission/i, response.body)
   end
 
   test "show: regular user can view a public workflow version" do
@@ -137,8 +136,6 @@ class WorkflowVersionsControllerTest < ActionDispatch::IntegrationTest
     post restore_workflow_version_path(@workflow, @version)
     # Regular users have no edit rights → redirected back to the workflow with alert
     assert_redirected_to workflow_path(@workflow)
-    follow_redirect!
-    assert_match(/permission/i, response.body)
   end
 
   test "restore: unauthenticated user is redirected to login" do

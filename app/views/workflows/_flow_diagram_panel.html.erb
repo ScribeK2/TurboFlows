@@ -36,7 +36,7 @@
                    data-action="click->builder#openStep"
                    data-builder-url-param="<%= panel_edit_workflow_step_path(workflow, step) %>"
                    title="<%= step.title %>">
-                <span class="flow-diagram__node-number"><%= step.position + 1 %></span>
+                <span class="flow-diagram__node-number"><%= step.position %></span>
                 <span class="flow-diagram__node-title"><%= truncate(step.title.presence || "Untitled", length: 20) %></span>
                 <% if step == workflow.start_step %>
                   <span class="step-pill step-pill--start text-2xs">Start</span>
@@ -51,9 +51,23 @@
             <div class="flow-diagram__connector">
               <% level_steps.each do |step| %>
                 <% step.transitions.each do |t| %>
-                  <span class="flow-diagram__edge-label" title="<%= t.condition %>">
-                    <%= t.label.presence || t.condition.to_s.truncate(15) %>
-                  </span>
+                  <%
+                    # Extract readable label: use explicit label, or pull the value from condition expressions
+                    # e.g. "variable == 'Yes'" → "Yes"
+                    edge_label = t.label.presence
+                    unless edge_label
+                      if t.condition.present? && t.condition =~ /==\s*'([^']+)'/
+                        edge_label = $1
+                      elsif t.condition.present?
+                        edge_label = t.condition.truncate(15)
+                      end
+                    end
+                  %>
+                  <% if edge_label %>
+                    <span class="flow-diagram__edge-label" title="<%= t.condition %>">
+                      <%= edge_label %>
+                    </span>
+                  <% end %>
                 <% end %>
               <% end %>
             </div>

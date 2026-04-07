@@ -98,9 +98,9 @@ export default class extends Controller {
     }
 
     const results = this.fuse.search(query)
-    this.selectedIndex = -1
 
     if (results.length === 0) {
+      this.selectedIndex = -1
       this.clearResults()
       const el = document.createElement("div")
       el.className = "nav__search-empty"
@@ -122,6 +122,10 @@ export default class extends Controller {
     results.forEach((r, i) => {
       this.resultsTarget.appendChild(this.buildResult(r, i))
     })
+
+    // Auto-select the first result so Enter works immediately
+    this.selectedIndex = 0
+    this.updateSelection(this.resultsTarget.querySelectorAll(".nav__search-result"))
   }
 
   buildResult(result, index) {

@@ -433,8 +433,9 @@
   </div>
 <% else %>
   <div class="card">
-    <div class="card__body text-center p-8">
-      <p class="text-muted">No step available.</p>
+    <div class="card__body" style="padding: var(--space-8); text-align: center;">
+      <p style="color: var(--color-ink-muted); margin-bottom: var(--space-4);">This workflow has no steps available.</p>
+      <%= link_to "Back to Workflows", play_path, class: "btn btn--primary btn--sm" %>
     </div>
   </div>
 <% end %>

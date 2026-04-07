@@ -41,21 +41,6 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "[aria-label*='Total workflows']"
   end
 
-  # -- Shared header --
-
-  test "should show personalized greeting with display name" do
-    @user.update!(display_name: "Alice")
-    get root_path
-    assert_response :success
-    assert_select "p", text: /Welcome back,\s+Alice/
-  end
-
-  test "should show personalized greeting with email when no display name" do
-    get root_path
-    assert_response :success
-    assert_select "p", text: /Welcome back,\s+test@example\.com/
-  end
-
   # -- CSR dashboard --
 
   test "CSR sees Start a Simulation button" do

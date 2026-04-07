@@ -457,7 +457,7 @@ class WorkflowTest < ActiveSupport::TestCase
     assert_includes visible.map(&:id), workflow.id
   end
 
-  test "visible_to scope should include workflows without groups for backward compatibility" do
+  test "visible_to scope should not include ungrouped private workflows for regular users" do
     user = User.create!(
       email: "user@test.com",
       password: "password123!",
@@ -470,7 +470,7 @@ class WorkflowTest < ActiveSupport::TestCase
 
     visible = Workflow.visible_to(user)
 
-    assert_includes visible.map(&:id), workflow.id
+    assert_not_includes visible.map(&:id), workflow.id
   end
 
   test "visible_to scope should always include public workflows regardless of groups" do
