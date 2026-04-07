@@ -46,7 +46,7 @@ module SubflowOrchestration
 
   # After processing a step, redirect to the active child if awaiting subflow,
   # or return false so the caller can handle the non-subflow case.
-  def redirect_to_subflow_if_awaiting(scenario)
+  def redirect_to_subflow_if_awaiting?(scenario)
     return false unless scenario.awaiting_subflow?
 
     active_child = scenario.active_child_scenario

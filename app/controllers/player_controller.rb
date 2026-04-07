@@ -1,5 +1,6 @@
 class PlayerController < ApplicationController
   include SubflowOrchestration
+
   layout "player"
 
   before_action :authenticate_user!, except: %i[show_shared step next_step back show]
@@ -53,7 +54,7 @@ class PlayerController < ApplicationController
     # Auto-advance sub_flow steps (they don't need user interaction)
     if @current_step&.step_type == "sub_flow"
       @scenario.process_step(nil)
-      return if redirect_to_subflow_if_awaiting(@scenario)
+      return if redirect_to_subflow_if_awaiting?(@scenario)
 
       redirect_to @scenario.complete? ? subflow_completion_path(@scenario) : subflow_step_path(@scenario)
       return
@@ -78,7 +79,7 @@ class PlayerController < ApplicationController
     @scenario.record_step_ended
     @scenario.process_step(answer, resolved_here: params[:resolved].present?)
 
-    return if redirect_to_subflow_if_awaiting(@scenario)
+    return if redirect_to_subflow_if_awaiting?(@scenario)
 
     if @scenario.completed? || @scenario.stopped?
       handle_child_completion(@scenario)

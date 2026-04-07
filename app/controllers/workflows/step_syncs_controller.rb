@@ -7,7 +7,7 @@ module Workflows
     def update
       client_lock_version = params[:lock_version].to_i
 
-      if client_lock_version > 0 && @workflow.lock_version != client_lock_version
+      if client_lock_version.positive? && @workflow.lock_version != client_lock_version
         render json: { error: "This workflow was modified by another user. Please refresh and try again." },
                status: :conflict
         return

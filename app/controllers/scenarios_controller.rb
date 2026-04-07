@@ -1,5 +1,6 @@
 class ScenariosController < ApplicationController
   include SubflowOrchestration
+
   before_action :ensure_can_manage_workflows!
   before_action :set_workflow, only: %i[new create]
 
@@ -85,7 +86,7 @@ class ScenariosController < ApplicationController
     # Process the current step
     # Note: checkpoint steps won't process here - they use resolve_checkpoint instead
     if @scenario.process_step(answer, resolved_here: resolved_here)
-      return if redirect_to_subflow_if_awaiting(@scenario)
+      return if redirect_to_subflow_if_awaiting?(@scenario)
 
       if @scenario.complete?
         handle_child_completion(@scenario)
@@ -187,7 +188,7 @@ class ScenariosController < ApplicationController
 
     @scenario.process_step(nil)
 
-    return true if redirect_to_subflow_if_awaiting(@scenario)
+    return true if redirect_to_subflow_if_awaiting?(@scenario)
 
     if @scenario.complete?
       handle_child_completion(@scenario)

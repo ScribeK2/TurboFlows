@@ -226,12 +226,12 @@ class WorkflowsController < ApplicationController
   def parse_transitions_json
     return unless params[:workflow]&.dig(:steps).present?
 
-    Rails.logger.debug "[parse_transitions_json] Processing #{params[:workflow][:steps].length} steps"
+    Rails.logger.debug { "[parse_transitions_json] Processing #{params[:workflow][:steps].length} steps" }
 
     params[:workflow][:steps].each_with_index do |step, index|
       next unless step.is_a?(ActionController::Parameters) || step.is_a?(Hash)
 
-      Rails.logger.debug "[parse_transitions_json] Step #{index}: transitions_json=#{step[:transitions_json].inspect}"
+      Rails.logger.debug { "[parse_transitions_json] Step #{index}: transitions_json=#{step[:transitions_json].inspect}" }
 
       form = StepParamsForm.new(step)
       parsed_params = form.to_step_params
@@ -241,7 +241,7 @@ class WorkflowsController < ApplicationController
       step[:attachments]   = parsed_params[:attachments]
       step.delete(:transitions_json)
 
-      Rails.logger.debug "[parse_transitions_json] Step #{index}: parsed #{form.transitions.length} transitions"
+      Rails.logger.debug { "[parse_transitions_json] Step #{index}: parsed #{form.transitions.length} transitions" }
     end
   end
 end
