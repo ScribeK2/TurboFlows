@@ -39,10 +39,10 @@ jobs:
           bundler-cache: true
 
       - name: Set up database
-        run: bin/rails db:schema:load
+        run: bundle exec rails db:schema:load
 
       - name: Run tests
-        run: bin/rails test
+        run: bundle exec rails test
 
       - name: Run RuboCop
         run: bundle exec rubocop --format github
