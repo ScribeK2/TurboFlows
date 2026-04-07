@@ -60,11 +60,11 @@ Kamal: `kamal deploy` (see `config/deploy.yml`). Required env: `RAILS_MASTER_KEY
 
 **Core Domain Models**
 
-- `Workflow` — container with versions (`workflow_version.rb`), autosave, optimistic locking (`lock_version`)
+- `Workflow` — container with versions (`workflow_version.rb`), autosave, optimistic locking (`lock_version`). Key methods: `sample_variables_for_preview` (preview interpolation), `replace_groups!` (atomic group assignment), `validation_graph_hash` (shared graph validation hash)
 - `Step` — STI base class (`app/models/step.rb`); subclasses in `app/models/steps/` (Question, Action, SubFlow, Message, Escalate, Resolve, Form). UUID-based identification (immutable via `attr_readonly`). Includes `Step::Positionable` concern for ordering.
 - `Tag` / `Tagging` — workflow categorization (polymorphic tagging)
 - `Transition` — directed edges between steps (same workflow only). Supports conditional expressions via `ConditionEvaluator`, simple value matching, and position-ordered evaluation (first match wins).
-- `Scenario` — simulation runner. Always uses graph traversal via `StepResolver` and `current_node_uuid` tracking. Spawns child scenarios for sub-flows, enforces iteration limits on circular graphs.
+- `Scenario` — simulation runner. Always uses graph traversal via `StepResolver` and `current_node_uuid` tracking. Spawns child scenarios for sub-flows, enforces iteration limits on circular graphs. Step processing methods (`advance_to_next_step`, `resolve_at_current_step`, `record_completion`) are public API used by `ScenarioStepProcessor`.
 - `Group` / `Folder` — hierarchical org (recursive membership, cascade permissions)
 - `User` — Devise model with roles (Administrator / Editor / User)
 - `WorkflowTemplate` — YAML-driven workflow archetypes loaded from `config/templates.yml`; `StepTemplate` — step-level template definitions
@@ -93,10 +93,26 @@ The unified builder lives at `workflows/:id` — one URL for both viewing and ed
 
 **Mode:** `data-builder-mode-value="view|edit"` on the builder container. CSS hides drag handles, add/delete buttons, and edit-only elements in view mode.
 
+## Controller Architecture
+
+`WorkflowsController` handles CRUD only (index, show, new, create, edit, update, destroy). All other workflow actions are extracted into namespace controllers under `Workflows::`:
+
+- `Workflows::BaseController` — shared `set_workflow`, `eager_load_steps`, `preload_subflow_targets`, and authorization filters. All namespace controllers inherit from it.
+- `Workflows::PreviewsController` — step preview with variable interpolation
+- `Workflows::VariablesController` — JSON workflow variables endpoint
+- `Workflows::FlowDiagramsController` — BFS flow diagram panel
+- `Workflows::SettingsController` — workflow metadata panel
+- `Workflows::VersionsController` — version history
+- `Workflows::StepSyncsController` — step sync with optimistic locking (builder autosave)
+- `Workflows::ExecutionsController` — start landing page (`new`) + scenario creation (`create`)
+- Plus existing: `Exports`, `Imports`, `Shares`, `Publishings`, `Taggings`, `Pins`
+
+**Key concern:** `SubflowOrchestration` (`app/controllers/concerns/subflow_orchestration.rb`) — shared subflow redirect logic for `PlayerController` and `ScenariosController`. Uses template method pattern: each controller implements `subflow_step_path` and `subflow_completion_path`.
+
 ## Real-Time & Collaboration
 
 - WorkflowChannel (Action Cable) — presence (who's editing), live updates
-- In-memory cable in dev; Redis in production
+- In-memory cable in dev; Redis or Solid Cable in production
 - Optimistic locking prevents save conflicts
 
 ## Workflow Engine
@@ -104,12 +120,13 @@ The unified builder lives at `workflows/:id` — one URL for both viewing and ed
 All workflows are graphs. There is no separate "linear mode" — a sequential flow is just a graph where each step has one transition to the next.
 
 **Key services:**
-- `StepResolver` — graph traversal engine. Evaluates transitions in position order, handles conditional branching (via `ConditionEvaluator`), simple value matching for Question answers, and SubFlow markers.
-- `StepBuilder` — creates AR steps from hash data. Auto-creates sequential transitions when no explicit transitions provided. Validates at least one Resolve step exists.
-- `StepSyncer` — incremental sync for step persistence. Upserts, deletes, and reconciles transitions atomically.
+- `StepResolver` — graph traversal engine. Evaluates transitions in position order, handles conditional branching (via `ConditionEvaluator`), simple value matching for Question answers, SubFlow markers, and jump evaluation (`check_jumps`).
+- `StepBuilder` — creates AR steps from hash data. Auto-creates sequential transitions when no explicit transitions provided. Validates at least one Resolve step exists. Also provides `StepBuilder.normalize` (class method) used by `StepSyncer`.
+- `StepSyncer` — incremental sync for step persistence. Upserts, deletes, and reconciles transitions atomically. Delegates normalization to `StepBuilder.normalize`.
+- `ScenarioStepProcessor` — extracted step-processing logic for Scenario. Calls public methods on Scenario (`advance_to_next_step`, `resolve_at_current_step`, `record_completion`).
 - `GraphValidator` — DAG validation (cycle detection, reachability from start_step, terminal nodes must be Resolve steps).
 - `SubflowValidator` — prevents circular sub-flow references (max depth: 10).
-- `WorkflowPublisher` — publishes workflow versions with full graph validation.
+- `WorkflowPublisher` — publishes workflow versions with full graph validation. Uses `Workflow#validation_graph_hash`.
 - `FlowDiagramService` — BFS layout for the builder's flow diagram panel.
 
 **Constraints enforced:**
@@ -171,4 +188,5 @@ Playwright MCP (for UI/system testing). Point agent to running app at `http://lo
 
 - Branch: `main`
 - Tool: Kamal + Puma + PostgreSQL
-- Pre-deploy: RuboCop + full test suite
+- CI: GitHub Actions (`.github/workflows/ci.yml`) — runs tests + RuboCop on push to main and PRs
+- Pre-deploy: RuboCop + full test suite (automated via CI)

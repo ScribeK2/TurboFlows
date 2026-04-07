@@ -6,14 +6,14 @@ Follow these conventions for every change. RuboCop (with rails, minitest, perfor
 - Explicit > implicit.
 - Thin controllers (ideally <10-15 lines per action; move logic to models/services).
 - Models can be rich — use app/models/concerns/ for shared behavior.
-- One Stimulus controller per logical feature (60 controllers — maintain this granularity).
+- One Stimulus controller per logical feature (62 controllers — maintain this granularity).
 - Turbo Streams for all dynamic UI updates (avoid full reloads).
 
 ## Ruby / Rails
 - Public → protected → private method order in classes.
 - Liberal use of safe navigation (&.).
 - Prefer positive `if` over complex `unless`.
-- Complex workflow/execution logic → app/services/ (e.g. ScenarioExecutor).
+- Complex workflow/execution logic → app/services/ (e.g. ScenarioStepProcessor, StepResolver).
 - No business logic in controllers.
 
 ## Hotwire & Frontend
@@ -39,7 +39,7 @@ Follow these conventions for every change. RuboCop (with rails, minitest, perfor
 - Components: app/components/ (if using ViewComponent later)
 - Snake_case filenames, singular where logical.
 
-Match style of existing files: app/models/workflow.rb, app/models/scenario.rb, Stimulus controllers, recent commits (vanilla CSS shift, optimistic locking).
+Match style of existing files: app/models/workflow.rb, app/models/scenario.rb, app/controllers/workflows/base_controller.rb (namespace controller pattern), Stimulus controllers, recent commits (vanilla CSS shift, optimistic locking).
 
 ## Maintenance
 - When modifying CSS component files in `app/assets/stylesheets/`, verify that `UIGUIDE.md` references are still accurate (class names, file references, component descriptions).
