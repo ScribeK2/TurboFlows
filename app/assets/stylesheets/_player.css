@@ -132,7 +132,7 @@
 
   .player-workflow-card {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     padding: var(--space-5) var(--space-6);
     background: var(--color-canvas-raised);
     border: 1px solid var(--color-border);
@@ -143,6 +143,7 @@
     cursor: pointer;
     transition: border-color 0.15s ease, box-shadow 0.2s ease, transform 0.15s ease;
     width: 100%;
+    min-height: 10rem;
   }
 
   .player-workflow-card:hover {
@@ -208,6 +209,9 @@
   .player-workflow-card__body {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
   }
 
   .player-workflow-card__title {
@@ -234,6 +238,7 @@
     align-items: center;
     gap: var(--space-3);
     flex-wrap: wrap;
+    margin-top: auto;
   }
 
   .player-workflow-card__meta {
@@ -242,6 +247,7 @@
     gap: var(--space-1);
     font-size: var(--text-sm);
     color: var(--color-ink-subtle);
+    white-space: nowrap;
   }
 
   .player-workflow-card__tags {
