@@ -10,7 +10,7 @@ class PlayerController < ApplicationController
                          .joins(:steps)
                          .group("workflows.id")
                          .having("COUNT(steps.id) > 0")
-                         .includes(:tags, :versions)
+                         .includes(:tags, :versions, :start_step, :steps)
                          .order(updated_at: :desc)
   end
 

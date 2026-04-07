@@ -1,16 +1,45 @@
 <% content_for(:title) { "Play — TurboFlows" } %>
 
-<div class="player-index">
+<div class="player-index" data-controller="player-filter">
   <div class="player-index__header">
     <h1 class="player-index__title">Workflows</h1>
     <p class="player-index__subtitle">Choose a workflow to begin</p>
   </div>
 
   <% if @workflows.any? %>
+    <%# ── Search Filter ── %>
+    <div class="player-search">
+      <svg class="player-search__icon icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+        <circle cx="11" cy="11" r="8" />
+        <path stroke-linecap="round" d="m21 21-4.35-4.35" />
+      </svg>
+      <input type="text"
+             class="player-search__input"
+             placeholder="Search workflows..."
+             autocomplete="off"
+             aria-label="Search workflows"
+             data-player-filter-target="input"
+             data-action="input->player-filter#filter">
+    </div>
+
+    <%# ── Workflow Grid ── %>
     <div class="player-workflow-grid">
       <% @workflows.each do |workflow| %>
-        <%= button_to play_workflow_path(workflow), method: :post, class: "player-workflow-card" do %>
+        <%
+          first_step = workflow.start_step || workflow.steps.first
+          step_type = first_step&.step_type || "question"
+        %>
+        <%= button_to play_workflow_path(workflow), method: :post,
+              class: "player-workflow-card player-workflow-card--#{step_type}",
+              data: {
+                player_filter_target: "card",
+                title: workflow.title,
+                description: workflow.description_text.to_s
+              } do %>
           <div class="player-workflow-card__body">
+            <div style="margin-bottom: var(--space-2);">
+              <span class="badge badge--<%= step_type %>"><%= step_type.titleize.gsub("Sub Flow", "Sub-Flow") %></span>
+            </div>
             <div class="player-workflow-card__title"><%= workflow.title %></div>
             <% if workflow.description.present? %>
               <p class="player-workflow-card__desc"><%= truncate(strip_tags(workflow.description.to_s), length: 120) %></p>
@@ -45,6 +74,15 @@
         <% end %>
       <% end %>
     </div>
+
+    <%# ── No Results (hidden by default, shown by filter controller) ── %>
+    <div class="player-empty" hidden data-player-filter-target="empty">
+      <svg class="player-empty__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+      <p class="player-empty__text">No workflows match your search.</p>
+    </div>
+
   <% else %>
     <div class="player-empty">
       <svg class="player-empty__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
