@@ -26,6 +26,7 @@ class Step < ApplicationRecord
 
   STEP_TYPE_MAP = {
     "question" => "Steps::Question",
+    "action"   => "Steps::Action",
     "message"  => "Steps::Message",
     "escalate" => "Steps::Escalate",
     "resolve"  => "Steps::Resolve",
@@ -34,7 +35,7 @@ class Step < ApplicationRecord
   }.freeze
 
   def self.class_for_type(type)
-    STEP_TYPE_MAP.fetch(type.to_s, "Steps::Action").constantize
+    STEP_TYPE_MAP.fetch(type.to_s) { "Steps::Action" }.constantize
   end
 
   # Short step type name (e.g., "question", "action", "sub_flow")

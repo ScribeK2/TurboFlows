@@ -17,7 +17,6 @@ pin "lexxy", to: "lexxy.js"
 # Third-party libraries (vendored locally for reliability)
 pin "sortablejs", to: "sortablejs.js"
 pin "fuse.js", to: "fuse.js"
-pin "spark-md5", to: "spark-md5.js"
 
 # Pin all Stimulus controllers
 pin_all_from "app/javascript/controllers", under: "controllers"

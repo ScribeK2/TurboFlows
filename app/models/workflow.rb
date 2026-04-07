@@ -50,9 +50,7 @@ class Workflow < ApplicationRecord
   validate :validate_subflow_circular_references, if: :has_subflow_steps?
 
   # Valid step types for workflows
-  # Note: sub_flow is used for calling other workflows as sub-routines
-  # Note: message, escalate, resolve are Graph Mode step types
-  VALID_STEP_TYPES = %w[question action sub_flow message escalate resolve].freeze
+  VALID_STEP_TYPES = %w[question action message escalate resolve sub_flow form].freeze
 
   # Size limits to prevent DoS and ensure performance
   # These can be overridden via environment variables if needed

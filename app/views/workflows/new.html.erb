@@ -35,23 +35,7 @@
         <%= render partial: "workflows/group_selector", locals: { selected_group_ids: [] } %>
       <% end %>
 
-      <%# Graph Mode Toggle - Hidden when graph mode is the default %>
-      <% if show_graph_mode_toggle? %>
-        <div class="card card--muted p-4">
-          <div class="flex items-center gap-2">
-            <%= form.check_box :graph_mode, class: "form-checkbox", id: "workflow_graph_mode", data: { action: "change->workflow-builder#toggleGraphMode" } %>
-            <%= form.label :graph_mode, class: "form-label mb-0" do %>
-              Enable Graph Mode
-              <span class="badge ml-1">Beta</span>
-            <% end %>
-          </div>
-          <p class="form-hint mt-2">
-            Graph mode enables advanced DAG-based workflows with complex branching, sub-flows, and visual connection editing.
-          </p>
-        </div>
-      <% else %>
-        <%= form.hidden_field :graph_mode, value: @workflow.graph_mode? %>
-      <% end %>
+      <%= form.hidden_field :graph_mode, value: true %>
 
       <div data-controller="workflow-builder" id="workflow-builder-container" data-workflow-builder-graph-mode-value="false" data-workflow-builder-debug-value="<%= Rails.env.development? %>">
         <div class="flex justify-between items-center mb-4">

@@ -27,6 +27,9 @@ test:
   <% else %>
   <<: *default
   database: db/test.sqlite3
+  timeout: 15000
+  pragma:
+    journal_mode: wal
   <% end %>
 
 # -------------------------------------------------

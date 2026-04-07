@@ -361,11 +361,6 @@ class WorkflowsController < ApplicationController
     @subflow_targets = Workflow.where(id: subflow_ids).index_by(&:id) if subflow_ids.any?
   end
 
-  # All workflows are graph mode — linear mode is no longer supported
-  def determine_graph_mode_for_new
-    true
-  end
-
   # Override parent methods to use @workflow instance variable
   def ensure_can_view_workflow!
     unless @workflow.can_be_viewed_by?(current_user)
