@@ -504,7 +504,7 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
     sign_in @editor
     draft = Workflow.create!(title: "Sync Draft", user: @editor, status: "draft")
 
-    patch sync_steps_workflow_path(draft), params: {
+    patch workflow_step_sync_path(draft), params: {
       steps: [
         { id: "u1", type: "question", title: "Q1", question: "What?", position: 0, transitions: [] },
         { id: "u2", type: "resolve", title: "Done", resolution_type: "success", position: 1, transitions: [] }
@@ -523,7 +523,7 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
     sign_in @editor
     draft = Workflow.create!(title: "Stale Sync", user: @editor, status: "draft")
 
-    patch sync_steps_workflow_path(draft), params: {
+    patch workflow_step_sync_path(draft), params: {
       steps: [{ id: "u1", type: "action", title: "A1", transitions: [] }],
       start_node_uuid: "u1",
       lock_version: draft.lock_version + 99
@@ -564,7 +564,7 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
 
   test "variables returns Question step variables" do
     sign_in @editor
-    get variables_workflow_path(@workflow), as: :json
+    get workflow_variables_path(@workflow), as: :json
 
     assert_response :success
     json = response.parsed_body

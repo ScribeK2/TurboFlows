@@ -28,25 +28,25 @@ class WorkflowVersionsDiffTest < ActionDispatch::IntegrationTest
   end
 
   test "diff page renders with two valid versions" do
-    get diff_workflow_versions_path(@workflow, v1: @v1.id, v2: @v2.id)
+    get workflow_diff_versions_path(@workflow, v1: @v1.id, v2: @v2.id)
     assert_response :success
     assert_select ".diff-added", minimum: 1
     assert_select ".diff-modified", minimum: 1
   end
 
   test "diff with missing version param redirects" do
-    get diff_workflow_versions_path(@workflow, v1: @v1.id)
-    assert_redirected_to versions_workflow_path(@workflow)
+    get workflow_diff_versions_path(@workflow, v1: @v1.id)
+    assert_redirected_to workflow_versions_path(@workflow)
   end
 
   test "diff with same version shows no changes" do
-    get diff_workflow_versions_path(@workflow, v1: @v1.id, v2: @v1.id)
+    get workflow_diff_versions_path(@workflow, v1: @v1.id, v2: @v1.id)
     assert_response :success
   end
 
   test "non-authenticated user is redirected" do
     sign_out @user
-    get diff_workflow_versions_path(@workflow, v1: @v1.id, v2: @v2.id)
+    get workflow_diff_versions_path(@workflow, v1: @v1.id, v2: @v2.id)
     assert_response :redirect
   end
 end

@@ -65,7 +65,7 @@ class WorkflowPublishingTest < ActionDispatch::IntegrationTest
     WorkflowPublisher.publish(@workflow, @editor, changelog: "v1")
     WorkflowPublisher.publish(@workflow, @editor, changelog: "v2")
 
-    get versions_workflow_path(@workflow)
+    get workflow_versions_path(@workflow)
 
     assert_response :success
     assert_match "v1", response.body
@@ -91,7 +91,7 @@ class WorkflowPublishingTest < ActionDispatch::IntegrationTest
     Steps::Action.create!(workflow: @workflow, position: 0, title: "Changed")
     version = @workflow.versions.last # version 1 (oldest)
 
-    post restore_workflow_version_path(@workflow, version)
+    post workflow_restore_version_path(@workflow, version)
 
     assert_redirected_to edit_workflow_path(@workflow)
     @workflow.reload

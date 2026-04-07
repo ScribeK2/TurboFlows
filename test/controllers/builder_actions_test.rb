@@ -16,12 +16,12 @@ class BuilderActionsRoutingTest < ActionDispatch::IntegrationTest
   end
 
   test "flow_diagram route responds" do
-    get flow_diagram_workflow_path(@workflow)
+    get workflow_flow_diagram_path(@workflow)
     assert_response :success
   end
 
   test "settings route responds" do
-    get settings_workflow_path(@workflow)
+    get workflow_settings_path(@workflow)
     assert_response :success
   end
 end

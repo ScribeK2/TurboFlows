@@ -13,12 +13,12 @@
     </div>
     <div class="flex gap-3">
       <% if @workflow.can_be_edited_by?(current_user) && @version != @workflow.published_version %>
-        <%= button_to "Restore This Version", restore_workflow_version_path(@workflow, @version),
+        <%= button_to "Restore This Version", workflow_restore_version_path(@workflow, @version),
             method: :post,
             class: "btn btn--secondary",
             data: { turbo_confirm: "Restore this version? This will overwrite the current draft steps." } %>
       <% end %>
-      <%= link_to "All Versions", versions_workflow_path(@workflow),
+      <%= link_to "All Versions", workflow_versions_path(@workflow),
           class: "btn btn--plain" %>
     </div>
   </div>

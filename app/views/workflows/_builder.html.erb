@@ -79,7 +79,7 @@
     <div class="builder__toolbar-right">
       <button class="builder__toolbar-btn"
               data-action="click->builder#openFlowDiagram"
-              data-builder-flow-url-value="<%= flow_diagram_workflow_path(workflow) %>">
+              data-builder-flow-url-value="<%= workflow_flow_diagram_path(workflow) %>">
         &#9724; View Flow
       </button>
       <div class="builder__toolbar-item builder__edit-only"
@@ -110,7 +110,7 @@
       </div>
       <button class="builder__toolbar-btn"
               data-action="click->builder#openSettings"
-              data-builder-settings-url-value="<%= settings_workflow_path(workflow) %>">
+              data-builder-settings-url-value="<%= workflow_settings_path(workflow) %>">
         &#9881; Details
       </button>
     </div>

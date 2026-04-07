@@ -7,7 +7,7 @@
   <% if @versions.size >= 2 %>
     <div class="card p-4 mb-4">
       <h2 class="font-semibold mb-3">Compare Versions</h2>
-      <%= form_tag diff_workflow_versions_path(@workflow), method: :get, class: "flex items-center gap-3 flex-wrap" do %>
+      <%= form_tag workflow_diff_versions_path(@workflow), method: :get, class: "flex items-center gap-3 flex-wrap" do %>
         <label class="text-sm">From:</label>
         <%= select_tag :v1, options_from_collection_for_select(@versions, :id, ->(v) { "v#{v.version_number}" }), class: "input input--sm" %>
         <label class="text-sm">To:</label>
@@ -45,7 +45,7 @@
                 <div class="flex gap-3">
                   <%= link_to "View", workflow_version_path(@workflow, version), class: "btn btn--plain btn--sm" %>
                   <% if @workflow.can_be_edited_by?(current_user) && version != @workflow.published_version %>
-                    <%= button_to "Restore", restore_workflow_version_path(@workflow, version),
+                    <%= button_to "Restore", workflow_restore_version_path(@workflow, version),
                         method: :post,
                         class: "btn btn--warning btn--sm",
                         data: { turbo_confirm: "Restore version #{version.version_number}? This will overwrite the current draft steps." } %>

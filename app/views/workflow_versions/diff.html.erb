@@ -6,7 +6,7 @@
       </h1>
       <p class="text-sm mt-1"><%= @workflow.title %></p>
     </div>
-    <%= link_to "Back to Versions", versions_workflow_path(@workflow), class: "btn btn--plain" %>
+    <%= link_to "Back to Versions", workflow_versions_path(@workflow), class: "btn btn--plain" %>
   </div>
 
   <% has_changes = @diff[:added].any? || @diff[:removed].any? || @diff[:modified].any? || @diff[:metadata_changes].any? %>

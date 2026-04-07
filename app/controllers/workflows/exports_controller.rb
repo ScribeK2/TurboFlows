@@ -1,7 +1,5 @@
 module Workflows
-  class ExportsController < ApplicationController
-    before_action :authenticate_user!
-    before_action :set_workflow
+  class ExportsController < BaseController
     before_action :ensure_can_view_workflow!
 
     # GET /workflows/:workflow_id/export
@@ -43,16 +41,6 @@ module Workflows
     end
 
     private
-
-    def set_workflow
-      @workflow = Workflow.find(params[:workflow_id])
-    end
-
-    def ensure_can_view_workflow!
-      unless @workflow.can_be_viewed_by?(current_user)
-        redirect_to workflows_path, alert: "You don't have permission to view this workflow."
-      end
-    end
 
     def serialize_ar_steps_for_export(workflow)
       StepSerializer.call(workflow)

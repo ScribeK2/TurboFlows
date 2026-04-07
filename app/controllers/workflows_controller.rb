@@ -1,10 +1,9 @@
 class WorkflowsController < ApplicationController
   before_action :ensure_can_manage_workflows!
-  before_action :set_workflow,
-                only: %i[show edit update destroy preview variables start begin_execution versions sync_steps flow_diagram settings]
+  before_action :set_workflow, only: %i[show edit update destroy]
   before_action :ensure_editor_or_admin!, only: %i[new create]
-  before_action :ensure_can_view_workflow!, only: %i[show start begin_execution preview variables versions flow_diagram settings]
-  before_action :ensure_can_edit_workflow!, only: %i[edit update sync_steps]
+  before_action :ensure_can_view_workflow!, only: %i[show]
+  before_action :ensure_can_edit_workflow!, only: %i[edit update]
   before_action :ensure_can_delete_workflow!, only: [:destroy]
   before_action :parse_transitions_json, only: %i[create update]
 
@@ -83,16 +82,7 @@ class WorkflowsController < ApplicationController
     @workflow = current_user.workflows.build(workflow_params)
 
     if @workflow.save
-      # Assign groups if provided
-      if params[:workflow][:group_ids].present?
-        group_ids = Array(params[:workflow][:group_ids]).reject(&:blank?).uniq
-        group_ids.each_with_index do |group_id, index|
-          @workflow.group_workflows.create!(
-            group_id: group_id,
-            is_primary: index == 0 # First group is primary
-          )
-        end
-      end
+      @workflow.replace_groups!(params[:workflow][:group_ids]) if params[:workflow][:group_ids].present?
 
       redirect_to @workflow, notice: "Workflow was successfully created."
     else
@@ -121,19 +111,10 @@ class WorkflowsController < ApplicationController
         end
 
         if @workflow.update(permitted_params)
-          # Update group assignments
           if params[:workflow][:group_ids].present?
-            @workflow.group_workflows.destroy_all
-            group_ids = Array(params[:workflow][:group_ids]).reject(&:blank?).uniq
-            group_ids.each_with_index do |group_id, index|
-              @workflow.group_workflows.create!(
-                group_id: group_id,
-                is_primary: index == 0
-              )
-            end
+            @workflow.replace_groups!(params[:workflow][:group_ids])
           elsif params[:workflow].key?(:group_ids)
-            # Explicitly clear groups if group_ids is present but empty
-            @workflow.group_workflows.destroy_all
+            @workflow.replace_groups!([])
           end
 
           respond_to do |format|
@@ -153,64 +134,14 @@ class WorkflowsController < ApplicationController
       end
     rescue ActiveRecord::StaleObjectError
       @workflow.reload
-      @accessible_groups = Group.visible_to(current_user).includes(:children).order(:name)
-      @selected_group_ids = @workflow.group_ids
       @conflict_detected = true
       flash.now[:alert] = "This workflow was modified by another user. Your changes could not be saved. Please review the current version and try again."
-      respond_to do |format|
-        format.turbo_stream do
-          render turbo_stream: turbo_stream.replace(
-            "autosave-status",
-            partial: "workflows/autosave_status",
-            locals: { status: :error, errors: @workflow.errors }
-          ), status: :unprocessable_content
-        end
-        format.json { render json: { status: "error", errors: @workflow.errors.full_messages }, status: :conflict }
-        format.html { render :edit, status: :conflict }
-      end
+      render_update_error(status: :conflict)
       return
     end
 
     # Handle validation errors (when update returns false)
-    unless performed?
-      @accessible_groups = Group.visible_to(current_user).order(:name)
-      @selected_group_ids = @workflow.group_ids
-      respond_to do |format|
-        format.turbo_stream do
-          render turbo_stream: turbo_stream.replace(
-            "autosave-status",
-            partial: "workflows/autosave_status",
-            locals: { status: :error, errors: @workflow.errors }
-          ), status: :unprocessable_content
-        end
-        format.json { render json: { status: "error", errors: @workflow.errors.full_messages }, status: :unprocessable_content }
-        format.html { render :edit, status: :unprocessable_content }
-      end
-    end
-  end
-
-  def sync_steps
-    client_lock_version = params[:lock_version].to_i
-
-    if client_lock_version > 0 && @workflow.lock_version != client_lock_version
-      render json: { error: "This workflow was modified by another user. Please refresh and try again." },
-             status: :conflict
-      return
-    end
-
-    result = StepSyncer.call(
-      @workflow,
-      params[:steps] || [],
-      start_node_uuid: params[:start_node_uuid],
-      title: params[:title].presence,
-      description: params.key?(:description) ? params[:description] : nil
-    )
-
-    if result.success?
-      render json: { success: true, lock_version: result.lock_version }
-    else
-      render json: { error: result.error }, status: :unprocessable_content
-    end
+    render_update_error(status: :unprocessable_content) unless performed?
   end
 
   def destroy
@@ -218,123 +149,7 @@ class WorkflowsController < ApplicationController
     redirect_to workflows_path, notice: "Workflow was successfully deleted."
   end
 
-  def preview
-    # Parse step data from params
-    step_data = parse_step_from_params
-    step_index = params[:step_index].to_i
-
-    # Generate sample variables for interpolation preview
-    # This allows users to see what variables will look like when interpolated
-    sample_variables = generate_sample_variables(@workflow)
-
-    # Render preview partial wrapped in matching Turbo Frame for src-driven updates
-    render partial: "workflows/preview_frame",
-           locals: { step: step_data, index: step_index, sample_variables: sample_variables },
-           formats: [:html]
-  end
-
-  def variables
-    # Return available variables from workflow
-    variables = @workflow.variables
-
-    render json: { variables: variables }
-  end
-
-  def start
-    # Shows landing page for starting workflow
-  end
-
-  def begin_execution
-    # Create scenario and start workflow execution
-    @scenario = Scenario.new(
-      workflow: @workflow,
-      user: current_user,
-      current_step_index: 0,
-      current_node_uuid: @workflow.start_node&.uuid,
-      execution_path: [],
-      results: {},
-      inputs: {},
-      status: 'active'
-    )
-
-    if @scenario.save
-      redirect_to step_scenario_path(@scenario), notice: "Workflow started!"
-    else
-      redirect_to start_workflow_path(@workflow), alert: "Failed to start workflow: #{@scenario.errors.full_messages.join(', ')}"
-    end
-  end
-
-  def versions
-    @versions = @workflow.versions.newest_first.includes(:published_by)
-  end
-
-  # GET /workflows/:id/flow_diagram
-  def flow_diagram
-    eager_load_steps
-    levels = FlowDiagramService.call(@workflow)
-    render partial: "workflows/flow_diagram_panel",
-           locals: { workflow: @workflow, levels: levels },
-           layout: false
-  end
-
-  # GET /workflows/:id/settings
-  def settings
-    @accessible_groups = Group.visible_to(current_user).includes(:children).order(:name)
-    readonly = !@workflow.can_be_edited_by?(current_user)
-    render partial: "workflows/settings_panel",
-           locals: { workflow: @workflow, readonly: readonly, accessible_groups: @accessible_groups },
-           layout: false
-  end
-
   private
-
-  # Generate sample variable values for preview interpolation
-  # This creates realistic sample data so users can see what interpolated text looks like
-  def generate_sample_variables(workflow)
-    return {} unless workflow&.steps&.any?
-
-    sample_vars = {}
-
-    workflow.steps.each do |step|
-      # Get variables from question steps
-      if step.is_a?(Steps::Question) && step.variable_name.present?
-        sample_vars[step.variable_name] = case step.answer_type
-                                          when 'yes_no'
-                                            'yes'
-                                          when 'number'
-                                            '42'
-                                          when 'date'
-                                            Date.today.strftime('%Y-%m-%d')
-                                          when 'multiple_choice', 'dropdown'
-                                            opts = step.options
-                                            if opts.present? && opts.is_a?(Array) && opts.first
-                                              opt = opts.first
-                                              opt.is_a?(Hash) ? (opt['value'] || opt['label'] || 'option1') : opt.to_s
-                                            else
-                                              'option1'
-                                            end
-                                          else
-                                            step.title.present? ? step.title.split(' ').first : 'sample_value'
-                                          end
-      end
-
-      # Get variables from action step output_fields
-      next unless step.is_a?(Steps::Action) && step.output_fields.present? && step.output_fields.is_a?(Array)
-
-      step.output_fields.each do |output_field|
-        next unless output_field.is_a?(Hash) && output_field['name'].present?
-
-        var_name = output_field['name']
-        sample_vars[var_name] = if output_field['value'].present?
-                                  output_field['value'].include?('{{') ? '[interpolated]' : output_field['value']
-                                else
-                                  'completed'
-                                end
-      end
-    end
-
-    sample_vars
-  end
 
   def set_workflow
     @workflow = Workflow.find(params[:id])
@@ -361,7 +176,22 @@ class WorkflowsController < ApplicationController
     @subflow_targets = Workflow.where(id: subflow_ids).index_by(&:id) if subflow_ids.any?
   end
 
-  # Override parent methods to use @workflow instance variable
+  def render_update_error(status:)
+    @accessible_groups = Group.visible_to(current_user).includes(:children).order(:name)
+    @selected_group_ids = @workflow.group_ids
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.replace(
+          "autosave-status",
+          partial: "workflows/autosave_status",
+          locals: { status: :error, errors: @workflow.errors }
+        ), status: status
+      end
+      format.json { render json: { status: "error", errors: @workflow.errors.full_messages }, status: status }
+      format.html { render :edit, status: status }
+    end
+  end
+
   def ensure_can_view_workflow!
     unless @workflow.can_be_viewed_by?(current_user)
       redirect_to workflows_path, alert: "You don't have permission to view this workflow."
@@ -387,84 +217,6 @@ class WorkflowsController < ApplicationController
     params.require(:workflow).permit(:title, :description, :is_public, :lock_version,
                                      :graph_mode, :embed_enabled,
                                      :visual_editor_steps_json, :editor_mode)
-  end
-
-  def parse_step_from_params
-    step_params = params[:step] || {}
-
-    # Parse options if provided as JSON string or array
-    options = step_params[:options]
-    if options.is_a?(String)
-      begin
-        options = JSON.parse(options)
-      rescue JSON::ParserError
-        options = []
-      end
-    elsif options.is_a?(Array)
-      # Options is already an array, process it
-      options = options.map do |opt|
-        if opt.is_a?(Hash)
-          { 'label' => opt['label'] || opt[:label], 'value' => opt['value'] || opt[:value] }
-        else
-          { 'label' => opt.to_s, 'value' => opt.to_s }
-        end
-      end
-    elsif options.is_a?(ActionController::Parameters)
-      # Handle Rails strong parameters
-      options = options.values.map do |opt|
-        { 'label' => opt['label'] || opt[:label], 'value' => opt['value'] || opt[:value] }
-      end
-    else
-      options = []
-    end
-
-    # Parse attachments if provided
-    attachments = step_params[:attachments]
-    if attachments.is_a?(String)
-      begin
-        attachments = JSON.parse(attachments)
-      rescue JSON::ParserError
-        attachments = []
-      end
-    elsif attachments.is_a?(Array)
-      attachments = attachments.compact
-    else
-      attachments = []
-    end
-
-    {
-      "type" => step_params[:type] || "",
-      "title" => step_params[:title] || "",
-      "description" => step_params[:description] || "",
-      # Question fields
-      "question" => step_params[:question] || "",
-      "answer_type" => step_params[:answer_type] || "",
-      "variable_name" => step_params[:variable_name] || "",
-      "options" => options || [],
-      # Decision fields
-      "condition" => step_params[:condition] || "",
-      "true_path" => step_params[:true_path] || "",
-      "false_path" => step_params[:false_path] || "",
-      # Action fields
-      "action_type" => step_params[:action_type] || "",
-      "instructions" => step_params[:instructions] || "",
-      "attachments" => attachments || [],
-      # Message fields
-      "content" => step_params[:content] || "",
-      # Escalate fields
-      "target_type" => step_params[:target_type] || "",
-      "target_value" => step_params[:target_value] || "",
-      "priority" => step_params[:priority] || "",
-      "reason_required" => step_params[:reason_required] || "",
-      "notes" => step_params[:notes] || "",
-      # Resolve fields
-      "resolution_type" => step_params[:resolution_type] || "",
-      "resolution_code" => step_params[:resolution_code] || "",
-      "notes_required" => step_params[:notes_required] || "",
-      "survey_trigger" => step_params[:survey_trigger] || "",
-      # Sub-flow fields
-      "target_workflow_id" => step_params[:target_workflow_id] || ""
-    }
   end
 
   # Parse transitions_json from form submissions into proper transitions array.

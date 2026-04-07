@@ -104,7 +104,7 @@ class WorkflowVersionsControllerTest < ActionDispatch::IntegrationTest
     @workflow.steps.destroy_all
     Steps::Action.create!(workflow: @workflow, position: 0, title: "New Step")
 
-    post restore_workflow_version_path(@workflow, @version)
+    post workflow_restore_version_path(@workflow, @version)
 
     # edit_workflow redirects → workflow_path with edit:true
     assert_redirected_to edit_workflow_path(@workflow)
@@ -116,7 +116,7 @@ class WorkflowVersionsControllerTest < ActionDispatch::IntegrationTest
 
   test "restore: admin can restore any workflow version" do
     sign_in @admin
-    post restore_workflow_version_path(@workflow, @version)
+    post workflow_restore_version_path(@workflow, @version)
     assert_redirected_to edit_workflow_path(@workflow)
   end
 
@@ -124,7 +124,7 @@ class WorkflowVersionsControllerTest < ActionDispatch::IntegrationTest
     # Regular users cannot view the workflow (not public, not in an accessible group),
     # so ensure_can_view_workflow! fires before the edit-permission check.
     sign_in @regular_user
-    post restore_workflow_version_path(@workflow, @version)
+    post workflow_restore_version_path(@workflow, @version)
     assert_redirected_to workflows_path
   end
 
@@ -133,13 +133,13 @@ class WorkflowVersionsControllerTest < ActionDispatch::IntegrationTest
     # then confirm the restore action's edit-permission guard kicks in.
     @workflow.update!(is_public: true)
     sign_in @regular_user
-    post restore_workflow_version_path(@workflow, @version)
+    post workflow_restore_version_path(@workflow, @version)
     # Regular users have no edit rights → redirected back to the workflow with alert
     assert_redirected_to workflow_path(@workflow)
   end
 
   test "restore: unauthenticated user is redirected to login" do
-    post restore_workflow_version_path(@workflow, @version)
+    post workflow_restore_version_path(@workflow, @version)
     assert_response :redirect
     assert_redirected_to new_user_session_path
   end
@@ -153,7 +153,7 @@ class WorkflowVersionsControllerTest < ActionDispatch::IntegrationTest
     @workflow.steps.destroy_all
     Steps::Escalate.create!(workflow: @workflow, position: 0, title: "Escalate!")
 
-    post restore_workflow_version_path(@workflow, @version)
+    post workflow_restore_version_path(@workflow, @version)
     assert_redirected_to edit_workflow_path(@workflow)
 
     @workflow.reload
@@ -173,7 +173,7 @@ class WorkflowVersionsControllerTest < ActionDispatch::IntegrationTest
     @workflow.update_column(:start_step_id, nil)
     @workflow.steps.destroy_all
 
-    post restore_workflow_version_path(@workflow, @version)
+    post workflow_restore_version_path(@workflow, @version)
     assert_redirected_to edit_workflow_path(@workflow)
     @workflow.reload
     assert_equal "Start Question", @workflow.steps.order(:position).first.title

@@ -11,18 +11,13 @@ Rails.application.routes.draw do
   mount ActionCable.server => '/cable'
 
   resources :workflows do
-    member do
-      get :preview
-      get :variables
-      get :start
-      post :begin_execution
-      get :versions
-      # AR step persistence
-      patch :sync_steps
-      # Builder panel routes
-      get :flow_diagram
-      get :settings
-    end
+    resource :preview, only: [:show], controller: "workflows/previews"
+    resource :variables, only: [:show], controller: "workflows/variables"
+    resource :flow_diagram, only: [:show], controller: "workflows/flow_diagrams"
+    resource :settings, only: [:show], controller: "workflows/settings"
+    resources :versions, only: [:index], controller: "workflows/versions"
+    resource :step_sync, only: [:update], controller: "workflows/step_syncs"
+    resource :execution, only: %i[new create], controller: "workflows/executions"
     resource :publishing, only: [:create], controller: "workflows/publishings"
     resources :taggings, only: %i[create destroy], controller: "workflows/taggings", param: :tag_id
     resource :share, only: %i[create destroy], controller: "workflows/shares"
@@ -30,14 +25,10 @@ Rails.application.routes.draw do
     resource :export, only: [:show], controller: "workflows/exports" do
       get :pdf, on: :member
     end
-    resources :versions, only: [:show], controller: "workflow_versions" do
-      collection do
-        get :diff
-      end
-      member do
-        post :restore
-      end
-    end
+    # WorkflowVersionsController handles show/diff/restore (versioned snapshots)
+    get "versions/diff", to: "workflow_versions#diff", as: :diff_versions
+    get "versions/:id", to: "workflow_versions#show", as: :version
+    post "versions/:id/restore", to: "workflow_versions#restore", as: :restore_version
     resources :scenarios, only: %i[new create]
     resources :steps, except: [:index] do
       collection do

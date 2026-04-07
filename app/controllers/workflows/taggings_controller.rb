@@ -1,7 +1,5 @@
 module Workflows
-  class TaggingsController < ApplicationController
-    before_action :authenticate_user!
-    before_action :set_workflow
+  class TaggingsController < BaseController
     before_action :require_tag_management!
 
     # POST /workflows/:workflow_id/taggings
@@ -19,10 +17,6 @@ module Workflows
     end
 
     private
-
-    def set_workflow
-      @workflow = Workflow.find(params[:workflow_id])
-    end
 
     def require_tag_management!
       head :forbidden unless current_user.can_manage_tags?

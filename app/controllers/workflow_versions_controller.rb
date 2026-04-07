@@ -49,7 +49,7 @@ class WorkflowVersionsController < ApplicationController
 
   def set_diff_versions
     if params[:v1].blank? || params[:v2].blank?
-      redirect_to versions_workflow_path(@workflow), alert: "Select two versions to compare."
+      redirect_to workflow_versions_path(@workflow), alert: "Select two versions to compare."
       return
     end
 

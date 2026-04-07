@@ -39,7 +39,7 @@ class WorkflowsSyncStepsTest < ActionDispatch::IntegrationTest
       }
     ]
 
-    patch sync_steps_workflow_path(@workflow), params: {
+    patch workflow_step_sync_path(@workflow), params: {
       steps: steps_json,
       start_node_uuid: "uuid-1",
       lock_version: @workflow.lock_version
@@ -74,7 +74,7 @@ class WorkflowsSyncStepsTest < ActionDispatch::IntegrationTest
       }
     ]
 
-    patch sync_steps_workflow_path(@workflow), params: {
+    patch workflow_step_sync_path(@workflow), params: {
       steps: steps_json,
       start_node_uuid: "uuid-1",
       lock_version: @workflow.lock_version
@@ -102,7 +102,7 @@ class WorkflowsSyncStepsTest < ActionDispatch::IntegrationTest
         answer_type: "yes_no", position: 0, transitions: [] }
     ]
 
-    patch sync_steps_workflow_path(@workflow), params: {
+    patch workflow_step_sync_path(@workflow), params: {
       steps: steps_json,
       start_node_uuid: "uuid-1",
       lock_version: @workflow.lock_version
@@ -134,7 +134,7 @@ class WorkflowsSyncStepsTest < ActionDispatch::IntegrationTest
       { id: "uuid-2", type: "action", title: "A1", position: 1, transitions: [] }
     ]
 
-    patch sync_steps_workflow_path(@workflow), params: {
+    patch workflow_step_sync_path(@workflow), params: {
       steps: steps_json,
       start_node_uuid: "uuid-1",
       lock_version: @workflow.lock_version
@@ -155,7 +155,7 @@ class WorkflowsSyncStepsTest < ActionDispatch::IntegrationTest
     # Send a lock_version that doesn't match the current one
     stale_version = @workflow.lock_version + 99
 
-    patch sync_steps_workflow_path(@workflow), params: {
+    patch workflow_step_sync_path(@workflow), params: {
       steps: steps_json,
       start_node_uuid: "uuid-1",
       lock_version: stale_version
@@ -171,7 +171,7 @@ class WorkflowsSyncStepsTest < ActionDispatch::IntegrationTest
     )
     @workflow.reload
 
-    patch sync_steps_workflow_path(@workflow), params: {
+    patch workflow_step_sync_path(@workflow), params: {
       steps: [],
       start_node_uuid: nil,
       lock_version: @workflow.lock_version
@@ -183,7 +183,7 @@ class WorkflowsSyncStepsTest < ActionDispatch::IntegrationTest
   end
 
   test "sync_steps handles stale lock_version with conflict response" do
-    patch sync_steps_workflow_path(@workflow), params: {
+    patch workflow_step_sync_path(@workflow), params: {
       steps: [{ id: "uuid-1", type: "action", title: "A1", transitions: [] }],
       start_node_uuid: "uuid-1",
       lock_version: 999
@@ -195,7 +195,7 @@ class WorkflowsSyncStepsTest < ActionDispatch::IntegrationTest
   test "sync_steps requires authentication" do
     sign_out @user
 
-    patch sync_steps_workflow_path(@workflow), params: {
+    patch workflow_step_sync_path(@workflow), params: {
       steps: [], lock_version: 0
     }, as: :json
 
@@ -234,7 +234,7 @@ class WorkflowsSyncStepsTest < ActionDispatch::IntegrationTest
       }
     ]
 
-    patch sync_steps_workflow_path(@workflow), params: {
+    patch workflow_step_sync_path(@workflow), params: {
       steps: steps_json,
       start_node_uuid: "start-uuid",
       lock_version: @workflow.lock_version
@@ -271,7 +271,7 @@ class WorkflowsSyncStepsTest < ActionDispatch::IntegrationTest
       }
     ]
 
-    patch sync_steps_workflow_path(@workflow), params: {
+    patch workflow_step_sync_path(@workflow), params: {
       steps: steps_json,
       start_node_uuid: "q-uuid",
       lock_version: @workflow.lock_version

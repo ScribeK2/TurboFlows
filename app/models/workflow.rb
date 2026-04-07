@@ -302,6 +302,54 @@ class Workflow < ApplicationRecord
     steps.exists?(type: "Steps::SubFlow")
   end
 
+  # Generate sample variable values for preview interpolation.
+  def sample_variables_for_preview
+    return {} unless steps.any?
+
+    sample_vars = {}
+
+    steps.each do |step|
+      if step.is_a?(Steps::Question) && step.variable_name.present?
+        sample_vars[step.variable_name] = case step.answer_type
+                                          when 'yes_no'
+                                            'yes'
+                                          when 'number'
+                                            '42'
+                                          when 'date'
+                                            Date.today.strftime('%Y-%m-%d')
+                                          when 'multiple_choice', 'dropdown'
+                                            first_option_value(step.options)
+                                          else
+                                            step.title.present? ? step.title.split(' ').first : 'sample_value'
+                                          end
+      end
+
+      next unless step.is_a?(Steps::Action) && step.output_fields.present? && step.output_fields.is_a?(Array)
+
+      step.output_fields.each do |output_field|
+        next unless output_field.is_a?(Hash) && output_field['name'].present?
+
+        var_name = output_field['name']
+        sample_vars[var_name] = if output_field['value'].present?
+                                  output_field['value'].include?('{{') ? '[interpolated]' : output_field['value']
+                                else
+                                  'completed'
+                                end
+      end
+    end
+
+    sample_vars
+  end
+
+  # Deduplicate group assignment — replace all groups atomically.
+  def replace_groups!(group_ids)
+    ids = Array(group_ids).reject(&:blank?).uniq
+    group_workflows.destroy_all
+    ids.each_with_index do |group_id, index|
+      group_workflows.create!(group_id: group_id, is_primary: index == 0)
+    end
+  end
+
   # Build a hash of steps suitable for GraphValidator.
   # Used by both validate_graph_structure and WorkflowPublisher#validate_ar_graph!.
   def validation_graph_hash
@@ -318,6 +366,15 @@ class Workflow < ApplicationRecord
   end
 
   private
+
+  def first_option_value(opts)
+    if opts.present? && opts.is_a?(Array) && opts.first
+      opt = opts.first
+      opt.is_a?(Hash) ? (opt['value'] || opt['label'] || 'option1') : opt.to_s
+    else
+      'option1'
+    end
+  end
 
   def nullify_published_version
     update_columns(published_version_id: nil) if published_version_id.present?

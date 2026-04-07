@@ -30,7 +30,7 @@ class NavController < ApplicationController
               elsif can_edit
                 workflow_path(w)
               else
-                start_workflow_path(w)
+                new_workflow_execution_path(w)
               end
       }
     end

@@ -47,14 +47,14 @@ class WorkflowPublishingIntegrationTest < ActionDispatch::IntegrationTest
     assert_equal "New Action", @workflow.published_version.steps_snapshot.first["title"]
 
     # 5. View version history
-    get versions_workflow_path(@workflow)
+    get workflow_versions_path(@workflow)
     assert_response :success
     assert_match "Initial release", response.body
     assert_match "Changed to action step", response.body
 
     # 6. Restore v1
     v1 = @workflow.versions.find_by(version_number: 1)
-    post restore_workflow_version_path(@workflow, v1)
+    post workflow_restore_version_path(@workflow, v1)
     assert_redirected_to edit_workflow_path(@workflow)
     @workflow.reload
     assert_equal "Q1", @workflow.steps.order(:position).first.title
