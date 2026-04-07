@@ -1,4 +1,5 @@
 class PlayerController < ApplicationController
+  include SubflowOrchestration
   layout "player"
 
   before_action :authenticate_user!, except: %i[show_shared step next_step back show]
@@ -44,29 +45,17 @@ class PlayerController < ApplicationController
       return
     end
 
-    # Handle awaiting_subflow: redirect to the active child scenario
     if @scenario.awaiting_subflow?
-      active_child = @scenario.active_child_scenario
-      if active_child && !active_child.complete?
-        redirect_to player_scenario_step_path(active_child)
-      else
-        @scenario.process_subflow_completion
-        redirect_to @scenario.complete? ? player_scenario_show_path(@scenario) : player_scenario_step_path(@scenario)
-      end
+      handle_awaiting_subflow(@scenario)
       return
     end
 
     # Auto-advance sub_flow steps (they don't need user interaction)
     if @current_step&.step_type == "sub_flow"
       @scenario.process_step(nil)
-      if @scenario.awaiting_subflow?
-        active_child = @scenario.active_child_scenario
-        redirect_to player_scenario_step_path(active_child || @scenario)
-      elsif @scenario.complete?
-        redirect_to player_scenario_show_path(@scenario)
-      else
-        redirect_to player_scenario_step_path(@scenario)
-      end
+      return if redirect_to_subflow_if_awaiting(@scenario)
+
+      redirect_to @scenario.complete? ? subflow_completion_path(@scenario) : subflow_step_path(@scenario)
       return
     end
 
@@ -74,11 +63,9 @@ class PlayerController < ApplicationController
     if @scenario.parent_scenario.present? && @current_step&.step_type == "resolve"
       @scenario.process_step(nil)
       if @scenario.complete?
-        parent = @scenario.parent_scenario
-        parent.process_subflow_completion
-        redirect_to parent.complete? ? player_scenario_show_path(parent) : player_scenario_step_path(parent)
+        handle_child_completion(@scenario)
       else
-        redirect_to player_scenario_step_path(@scenario)
+        redirect_to subflow_step_path(@scenario)
       end
       return
     end
@@ -91,28 +78,12 @@ class PlayerController < ApplicationController
     @scenario.record_step_ended
     @scenario.process_step(answer, resolved_here: params[:resolved].present?)
 
-    # Handle sub-flow creation after processing
-    if @scenario.awaiting_subflow?
-      active_child = @scenario.active_child_scenario
-      if active_child
-        redirect_to player_scenario_step_path(active_child)
-      else
-        redirect_to player_scenario_step_path(@scenario)
-      end
-      return
-    end
+    return if redirect_to_subflow_if_awaiting(@scenario)
 
     if @scenario.completed? || @scenario.stopped?
-      # If this is a child scenario completing, return to parent
-      if @scenario.parent_scenario.present?
-        parent = @scenario.parent_scenario
-        parent.process_subflow_completion
-        redirect_to parent.complete? ? player_scenario_show_path(parent) : player_scenario_step_path(parent)
-      else
-        redirect_to player_scenario_show_path(@scenario)
-      end
+      handle_child_completion(@scenario)
     else
-      redirect_to player_scenario_step_path(@scenario)
+      redirect_to subflow_step_path(@scenario)
     end
   end
 
@@ -149,6 +120,15 @@ class PlayerController < ApplicationController
   end
 
   private
+
+  # SubflowOrchestration template methods
+  def subflow_step_path(scenario)
+    player_scenario_step_path(scenario)
+  end
+
+  def subflow_completion_path(scenario)
+    player_scenario_show_path(scenario)
+  end
 
   def set_scenario
     if current_user

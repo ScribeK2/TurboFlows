@@ -1,4 +1,5 @@
 class ScenariosController < ApplicationController
+  include SubflowOrchestration
   before_action :ensure_can_manage_workflows!
   before_action :set_workflow, only: %i[new create]
 
@@ -84,21 +85,12 @@ class ScenariosController < ApplicationController
     # Process the current step
     # Note: checkpoint steps won't process here - they use resolve_checkpoint instead
     if @scenario.process_step(answer, resolved_here: resolved_here)
-      # After processing a sub_flow step, parent may now be awaiting_subflow
-      if @scenario.awaiting_subflow?
-        active_child = @scenario.active_child_scenario
-        if active_child
-          redirect_to step_scenario_path(active_child)
-        else
-          redirect_to step_scenario_path(@scenario)
-        end
-        return
-      end
+      return if redirect_to_subflow_if_awaiting(@scenario)
 
       if @scenario.complete?
-        redirect_after_child_completion(@scenario)
+        handle_child_completion(@scenario)
       else
-        redirect_to step_scenario_path(@scenario)
+        redirect_to subflow_step_path(@scenario)
       end
     else
       redirect_to step_scenario_path(@scenario), alert: "Failed to process step."
@@ -115,30 +107,25 @@ class ScenariosController < ApplicationController
     end
 
     if @scenario.complete?
-      redirect_after_child_completion(@scenario)
+      handle_child_completion(@scenario)
       return true
     end
 
     if @scenario.awaiting_subflow?
-      handle_awaiting_subflow_redirect
+      handle_awaiting_subflow(@scenario)
       return true
     end
 
     false
   end
 
-  def handle_awaiting_subflow_redirect
-    active_child = @scenario.active_child_scenario
-    if active_child && !active_child.complete?
-      redirect_to step_scenario_path(active_child)
-    else
-      @scenario.process_subflow_completion
-      if @scenario.complete?
-        redirect_to scenario_path(@scenario), notice: "Scenario completed!"
-      else
-        redirect_to step_scenario_path(@scenario)
-      end
-    end
+  # SubflowOrchestration template methods
+  def subflow_step_path(scenario)
+    step_scenario_path(scenario)
+  end
+
+  def subflow_completion_path(scenario)
+    scenario_path(scenario)
   end
 
   def handle_back_navigation
@@ -200,35 +187,14 @@ class ScenariosController < ApplicationController
 
     @scenario.process_step(nil)
 
-    if @scenario.awaiting_subflow?
-      active_child = @scenario.active_child_scenario
-      redirect_to step_scenario_path(active_child || @scenario)
-      return true
-    end
+    return true if redirect_to_subflow_if_awaiting(@scenario)
 
     if @scenario.complete?
-      redirect_after_child_completion(@scenario)
+      handle_child_completion(@scenario)
     else
-      redirect_to step_scenario_path(@scenario)
+      redirect_to subflow_step_path(@scenario)
     end
     true
-  end
-
-  # Process completion of a scenario that may be a child sub-flow.
-  # If child: completes parent sub-flow and redirects to parent's next step.
-  # If root: redirects to results page.
-  def redirect_after_child_completion(scenario)
-    if scenario.parent_scenario.present?
-      parent = scenario.parent_scenario
-      parent.process_subflow_completion
-      if parent.complete?
-        redirect_to_completion(parent)
-      else
-        redirect_to step_scenario_path(parent)
-      end
-    else
-      redirect_to_completion(scenario)
-    end
   end
 
   # Redirect to the appropriate completion destination for a scenario.
