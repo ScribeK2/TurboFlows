@@ -38,7 +38,8 @@
               } do %>
           <div class="player-workflow-card__body">
             <div style="margin-bottom: var(--space-2);">
-              <span class="badge badge--<%= step_type %>"><%= step_type.titleize.gsub("Sub Flow", "Sub-Flow") %></span>
+              <% primary_group = workflow.groups.first %>
+              <span class="badge badge--info"><%= primary_group&.name || "Uncategorized" %></span>
             </div>
             <div class="player-workflow-card__title"><%= workflow.title %></div>
             <% if workflow.description.present? %>
