@@ -16,7 +16,7 @@
   <div class="flex flex-wrap gap-2 mb-2"
        data-controller="selection-group"
        data-selection-group-active-class="is-active">
-    <% %w[department supervisor channel ticket].each do |target_type| %>
+    <% %w[team queue department supervisor channel ticket].each do |target_type| %>
       <button type="button"
               data-selection-group-target="button"
               data-action="click->selection-group#select"
@@ -38,7 +38,7 @@
 
 <div class="form-group">
   <%= form.label :priority, class: "form-label" %>
-  <%= form.select :priority, [["Low", "low"], ["Medium", "medium"], ["High", "high"], ["Critical", "critical"]],
+  <%= form.select :priority, [["Low", "low"], ["Medium", "medium"], ["High", "high"], ["Urgent", "urgent"], ["Critical", "critical"]],
       {}, class: "form-select", data: { action: "change->inline-autosave#schedule" } %>
 </div>
 

@@ -79,6 +79,11 @@ class ScenariosController < ApplicationController
     # Record end time for the step the user is leaving
     @scenario.record_step_ended
 
+    # Store escalation_reason/resolution_notes in scenario inputs for ScenarioStepProcessor
+    @scenario.inputs ||= {}
+    @scenario.inputs["escalation_reason"] = params[:escalation_reason] if params[:escalation_reason].present?
+    @scenario.inputs["resolution_notes"] = params[:resolution_notes] if params[:resolution_notes].present?
+
     # Get answer from params
     answer = params[:answer]
     resolved_here = ActiveModel::Type::Boolean.new.cast(params[:resolved_here]) || false

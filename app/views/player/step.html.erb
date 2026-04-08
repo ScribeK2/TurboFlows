@@ -59,9 +59,25 @@
               <%= step_type_svg_icon(stype, css_classes: "icon icon--xs") %>
               <%= step_type_label(stype) %>
             </span>
+            <% if @current_step.reference_url.present? %>
+              <a href="<%= @current_step.reference_url %>" target="_blank" rel="noopener"
+                 class="step-reference-link">
+                <svg class="icon icon--xs" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                More info
+              </a>
+            <% end %>
           </div>
         </div>
       </div>
+
+      <%# ── Help Text (coaching callout) ── %>
+      <% if @current_step.help_text.present? %>
+        <div class="step-help-text" role="note">
+          <%= @current_step.help_text %>
+        </div>
+      <% end %>
 
       <%# ── Description ── %>
       <% if stype != "message" && @current_step.respond_to?(:description) && @current_step.description.present? %>
@@ -317,25 +333,37 @@
                     <span class="badge <%= priority_mod %>"><%= @current_step.priority&.titleize %></span>
                   </p>
                 <% end %>
-                <% if @current_step.respond_to?(:reason_required) && @current_step.reason_required %>
-                  <p class="text-sm italic text-muted">A reason must be documented for this escalation.</p>
+                <% if @current_step.respond_to?(:notes) && @current_step.notes.present? %>
+                  <div class="text-sm mt-2"><%= render_step_content(@current_step, 'notes', @scenario.results || {}) %></div>
                 <% end %>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="scenario-button-bar">
-          <div>
-            <%= player_back_button(@scenario) %>
+        <%= form_with url: player_scenario_next_path(@scenario), method: :post do |f| %>
+          <% if @current_step.respond_to?(:reason_required) && @current_step.reason_required %>
+            <div class="form-group mb-3">
+              <label class="form-label is-required">Escalation Reason</label>
+              <%= f.text_area :escalation_reason, class: "form-input", rows: 3,
+                  required: true, aria: { required: true, describedby: "escalation-reason-error" },
+                  placeholder: "Describe why this is being escalated..." %>
+              <span id="escalation-reason-error" class="form-error" style="display: none;">Escalation reason is required</span>
+            </div>
+          <% end %>
+          <input type="hidden" name="answer" value="">
+          <div class="scenario-button-bar">
+            <div>
+              <%= player_back_button(@scenario) %>
+            </div>
+            <div class="scenario-btn-group">
+              <% if current_user %>
+                <%= link_to "Cancel", play_path, class: "scenario-btn-cancel", data: { turbo_confirm: "Are you sure you want to cancel? Your progress will be lost." } %>
+              <% end %>
+              <%= f.submit "Continue", class: "btn btn--primary" %>
+            </div>
           </div>
-          <div class="scenario-btn-group">
-            <% if current_user %>
-              <%= link_to "Cancel", play_path, class: "scenario-btn-cancel", data: { turbo_confirm: "Are you sure you want to cancel? Your progress will be lost." } %>
-            <% end %>
-            <%= button_to "Continue", player_scenario_next_path(@scenario), method: :post, params: { answer: "" }, class: "btn btn--primary" %>
-          </div>
-        </div>
+        <% end %>
 
       <% when "resolve" %>
         <div class="step-content-box step-content-box--resolve mb-4">
@@ -370,25 +398,34 @@
                 <% if @current_step.respond_to?(:notes) && @current_step.notes.present? %>
                   <div class="text-sm mb-2"><%= render_step_content(@current_step, 'notes', @scenario.results || {}) %></div>
                 <% end %>
-                <% if @current_step.respond_to?(:notes_required) && @current_step.notes_required %>
-                  <p class="text-sm italic text-muted">Notes are required for this resolution.</p>
-                <% end %>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="scenario-button-bar">
-          <div>
-            <%= player_back_button(@scenario) %>
+        <%= form_with url: player_scenario_next_path(@scenario), method: :post do |f| %>
+          <% if @current_step.respond_to?(:notes_required) && @current_step.notes_required %>
+            <div class="form-group mb-3">
+              <label class="form-label is-required">Resolution Notes</label>
+              <%= f.text_area :resolution_notes, class: "form-input", rows: 3,
+                  required: true, aria: { required: true, describedby: "resolution-notes-error" },
+                  placeholder: "Add notes about this resolution..." %>
+              <span id="resolution-notes-error" class="form-error" style="display: none;">Resolution notes are required</span>
+            </div>
+          <% end %>
+          <input type="hidden" name="answer" value="">
+          <div class="scenario-button-bar">
+            <div>
+              <%= player_back_button(@scenario) %>
+            </div>
+            <div class="scenario-btn-group">
+              <% if current_user %>
+                <%= link_to "Cancel", play_path, class: "scenario-btn-cancel", data: { turbo_confirm: "Are you sure you want to cancel? Your progress will be lost." } %>
+              <% end %>
+              <%= f.submit "Complete Workflow", class: "btn btn--positive" %>
+            </div>
           </div>
-          <div class="scenario-btn-group">
-            <% if current_user %>
-              <%= link_to "Cancel", play_path, class: "scenario-btn-cancel", data: { turbo_confirm: "Are you sure you want to cancel? Your progress will be lost." } %>
-            <% end %>
-            <%= button_to "Complete Workflow", player_scenario_next_path(@scenario), method: :post, params: { answer: "" }, class: "btn btn--positive" %>
-          </div>
-        </div>
+        <% end %>
 
       <% when "sub_flow" %>
         <%= form_with url: player_scenario_next_path(@scenario), method: :post, data: { controller: "auto-advance" } do |form| %>

@@ -1,7 +1,7 @@
 module Steps
   class Escalate < Step
     VALID_TARGET_TYPES = %w[team queue supervisor channel department ticket].freeze
-    VALID_PRIORITIES = %w[low medium normal high urgent critical].freeze
+    VALID_PRIORITIES = %w[low medium high urgent critical].freeze
 
     has_rich_text :notes
 

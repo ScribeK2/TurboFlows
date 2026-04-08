@@ -119,6 +119,24 @@
             </div>
           </div>
 
+          <%# ── Help Text (coaching callout) ── %>
+          <% if step['help_text'].present? %>
+            <div class="step-help-text" role="note">
+              <%= step['help_text'] %>
+            </div>
+          <% end %>
+
+          <%# ── Reference URL ── %>
+          <% if step['reference_url'].present? %>
+            <a href="<%= step['reference_url'] %>" target="_blank" rel="noopener"
+               class="step-reference-link mb-3">
+              <svg class="icon icon--xs" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              More info
+            </a>
+          <% end %>
+
           <% unless stype == 'message' %>
             <% if step['description'].present? %>
               <div class="text-sm mb-4"><%= render_step_content(step, 'description', @scenario.results || {}) %></div>
@@ -362,6 +380,14 @@
             </div>
 
             <%= form_with url: next_step_scenario_path(@scenario), method: :post, data: { scenario_step_target: "form" } do |form| %>
+              <% if step['reason_required'] %>
+                <div class="form-group mb-3">
+                  <label class="form-label is-required">Escalation Reason</label>
+                  <%= form.text_area :escalation_reason, class: "form-input scenario-input", rows: 3,
+                      required: true, aria: { required: true },
+                      placeholder: "Describe why this is being escalated..." %>
+                </div>
+              <% end %>
               <%= form.hidden_field :answer, value: "" %>
               <div class="scenario-button-bar">
                 <div>
@@ -407,6 +433,14 @@
             </div>
 
             <%= form_with url: next_step_scenario_path(@scenario), method: :post, data: { scenario_step_target: "form" } do |form| %>
+              <% if step['notes_required'] %>
+                <div class="form-group mb-3">
+                  <label class="form-label is-required">Resolution Notes</label>
+                  <%= form.text_area :resolution_notes, class: "form-input scenario-input", rows: 3,
+                      required: true, aria: { required: true },
+                      placeholder: "Add notes about this resolution..." %>
+                </div>
+              <% end %>
               <%= form.hidden_field :answer, value: "" %>
               <div class="scenario-button-bar">
                 <div>

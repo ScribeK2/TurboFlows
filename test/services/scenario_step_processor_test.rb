@@ -153,4 +153,59 @@ class ScenarioStepProcessorTest < ActiveSupport::TestCase
     assert result, "Expected process_step to return truthy"
     assert_equal "Maybe", @scenario.results[@question.title]
   end
+
+  # --- escalate reason_required server-side validation ---
+
+  test "escalate step with reason_required rejects missing reason" do
+    escalate = Steps::Escalate.create!(workflow: @workflow, title: "Esc", position: 2,
+                                       reason_required: true, target_type: "supervisor")
+    scenario = Scenario.create!(workflow: @workflow, user: @user, purpose: "simulation",
+                                current_node_uuid: escalate.uuid, execution_path: [],
+                                results: {}, inputs: {})
+    processor = ScenarioStepProcessor.new(scenario)
+    path_entry = scenario.send(:build_path_entry, escalate)
+    result = processor.process(escalate, "", path_entry)
+    assert_equal false, result
+    assert_includes path_entry["escalation_errors"], "Escalation reason is required"
+  end
+
+  test "escalate step with reason_required stores reason in metadata" do
+    escalate = Steps::Escalate.create!(workflow: @workflow, title: "Esc", position: 2,
+                                       reason_required: true, target_type: "supervisor")
+    Transition.create!(step: escalate, target_step: @resolve, position: 0)
+    scenario = Scenario.create!(workflow: @workflow, user: @user, purpose: "simulation",
+                                current_node_uuid: escalate.uuid, execution_path: [],
+                                results: {}, inputs: { "escalation_reason" => "Customer waiting 15 min" })
+    processor = ScenarioStepProcessor.new(scenario)
+    path_entry = scenario.send(:build_path_entry, escalate)
+    processor.process(escalate, "", path_entry)
+    assert_equal "Customer waiting 15 min", scenario.results["_escalation"]["reason"]
+  end
+
+  # --- resolve notes_required server-side validation ---
+
+  test "resolve step with notes_required rejects missing notes" do
+    resolve = Steps::Resolve.create!(workflow: @workflow, title: "Res", position: 3,
+                                     notes_required: true, resolution_type: "success")
+    scenario = Scenario.create!(workflow: @workflow, user: @user, purpose: "simulation",
+                                current_node_uuid: resolve.uuid, execution_path: [],
+                                results: {}, inputs: {})
+    processor = ScenarioStepProcessor.new(scenario)
+    path_entry = scenario.send(:build_path_entry, resolve)
+    result = processor.process(resolve, "", path_entry)
+    assert_equal false, result
+    assert_includes path_entry["resolution_errors"], "Resolution notes are required"
+  end
+
+  test "resolve step with notes_required stores notes in metadata" do
+    resolve = Steps::Resolve.create!(workflow: @workflow, title: "Res", position: 3,
+                                     notes_required: true, resolution_type: "success")
+    scenario = Scenario.create!(workflow: @workflow, user: @user, purpose: "simulation",
+                                current_node_uuid: resolve.uuid, execution_path: [],
+                                results: {}, inputs: { "resolution_notes" => "Issue fully resolved" })
+    processor = ScenarioStepProcessor.new(scenario)
+    path_entry = scenario.send(:build_path_entry, resolve)
+    processor.process(resolve, "", path_entry)
+    assert_equal "Issue fully resolved", scenario.results["_resolution"]["notes"]
+  end
 end

@@ -64,5 +64,26 @@ module Steps
       step = Steps::Escalate.create!(workflow: @workflow, title: "E1", position: 0)
       assert_equal "escalate", step.step_type
     end
+
+    test "rejects removed priority 'normal'" do
+      step = Steps::Escalate.new(workflow: @workflow, title: "E", position: 0, priority: "normal")
+      assert_not step.valid?
+      assert_includes step.errors[:priority], "is not included in the list"
+    end
+
+    test "accepts new priority 'urgent'" do
+      step = Steps::Escalate.new(workflow: @workflow, title: "E", position: 0, priority: "urgent")
+      assert_predicate step, :valid?
+    end
+
+    test "accepts target_type 'team'" do
+      step = Steps::Escalate.new(workflow: @workflow, title: "E", position: 0, target_type: "team")
+      assert_predicate step, :valid?
+    end
+
+    test "accepts target_type 'queue'" do
+      step = Steps::Escalate.new(workflow: @workflow, title: "E", position: 0, target_type: "queue")
+      assert_predicate step, :valid?
+    end
   end
 end

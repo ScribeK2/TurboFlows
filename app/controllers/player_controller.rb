@@ -76,6 +76,9 @@ class PlayerController < ApplicationController
 
   def next_step
     answer = params[:answer] || params[:selected_option]
+    @scenario.inputs ||= {}
+    @scenario.inputs["escalation_reason"] = params[:escalation_reason] if params[:escalation_reason].present?
+    @scenario.inputs["resolution_notes"] = params[:resolution_notes] if params[:resolution_notes].present?
     @scenario.record_step_ended
     @scenario.process_step(answer, resolved_here: params[:resolved].present?)
 

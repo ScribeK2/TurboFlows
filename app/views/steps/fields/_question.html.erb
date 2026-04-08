@@ -18,8 +18,7 @@
       { value: 'multiple_choice', label: 'Multiple Choice' },
       { value: 'dropdown', label: 'Dropdown' },
       { value: 'date', label: 'Date' },
-      { value: 'number', label: 'Number' },
-      { value: 'file', label: 'File Upload' }
+      { value: 'number', label: 'Number' }
     ].each do |at| %>
       <label class="answer-type-option <%= 'is-selected' if step.answer_type == at[:value] %>">
         <input type="radio"

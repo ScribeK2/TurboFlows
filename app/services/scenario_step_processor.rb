@@ -123,16 +123,27 @@ class ScenarioStepProcessor
   # Process an escalate step (Graph Mode)
   # Escalate steps record escalation metadata and can either be terminal or continue
   def process_escalate_step(step, path_entry)
+    # Server-side validation: require escalation reason when flag is set
+    if step.reason_required
+      reason = (@scenario.inputs || {})["escalation_reason"]
+      if reason.blank?
+        path_entry["escalation_errors"] = ["Escalation reason is required"]
+        return false
+      end
+    end
+
     path_entry[:escalated] = true
     @scenario.results ||= {}
     @scenario.results[step.title] = "Escalated"
 
     # Store escalation metadata in results
+    escalation_reason = (@scenario.inputs || {})["escalation_reason"]
     @scenario.results['_escalation'] = {
       'type' => step.target_type,
       'value' => step.target_value,
-      'priority' => step.priority || 'normal',
+      'priority' => step.priority || 'medium',
       'reason_required' => step.reason_required || false,
+      'reason' => escalation_reason,
       'notes' => step.respond_to?(:notes) ? step.notes&.to_plain_text : nil
     }.compact
 
@@ -144,22 +155,32 @@ class ScenarioStepProcessor
   # Process a resolve step (Graph Mode)
   # Resolve steps are always terminal and complete the scenario
   def process_resolve_step(step, path_entry)
+    # Server-side validation: require resolution notes when flag is set
+    if step.notes_required
+      notes = (@scenario.inputs || {})["resolution_notes"]
+      if notes.blank?
+        path_entry["resolution_errors"] = ["Resolution notes are required"]
+        return false
+      end
+    end
+
     path_entry[:resolved] = true
     @scenario.results ||= {}
     @scenario.results[step.title] = "Issue resolved"
 
     # Store resolution metadata in results
+    resolution_notes = (@scenario.inputs || {})["resolution_notes"]
     @scenario.results['_resolution'] = {
       'type' => step.resolution_type || 'success',
       'code' => step.resolution_code,
       'notes_required' => step.notes_required || false,
+      'notes' => resolution_notes,
       'survey_trigger' => step.survey_trigger || false
     }.compact
 
     @scenario.execution_path << path_entry
 
     @scenario.record_completion("resolved")
-    # Resolve steps are always terminal - complete the scenario
     @scenario.status = 'completed'
     @scenario.current_node_uuid = nil
   end
