@@ -544,6 +544,7 @@
 .stepper-pill--escalate  { background: oklch(0.55 0.22 var(--color-step-escalate)); border-color: oklch(0.55 0.22 var(--color-step-escalate)); color: oklch(1 0 0); }
 .stepper-pill--resolve   { background: oklch(0.6 0.19 var(--color-step-resolve)); border-color: oklch(0.6 0.19 var(--color-step-resolve)); color: oklch(1 0 0); }
 .stepper-pill--sub-flow  { background: oklch(0.55 0.18 var(--color-step-subflow)); border-color: oklch(0.55 0.18 var(--color-step-subflow)); color: oklch(1 0 0); }
+.stepper-pill--form      { background: oklch(0.55 0.18 var(--color-step-form)); border-color: oklch(0.55 0.18 var(--color-step-form)); color: oklch(1 0 0); }
 
 /* ============================================================================
    Scenario Step Connector

@@ -47,6 +47,7 @@ class WorkflowsHelperTest < ActionView::TestCase
   test "step_type_badge_classes returns correct classes" do
     assert_equal "badge badge--question", step_type_badge_classes("question")
     assert_equal "badge badge--action", step_type_badge_classes("action")
+    assert_equal "badge badge--form", step_type_badge_classes("form")
     assert_equal "badge badge--default", step_type_badge_classes("unknown")
   end
 

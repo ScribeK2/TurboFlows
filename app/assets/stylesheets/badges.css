@@ -44,6 +44,11 @@
   color: oklch(0.4 0.15 var(--color-step-subflow));
 }
 
+.badge--form {
+  background: oklch(0.93 0.05 var(--color-step-form));
+  color: oklch(0.4 0.15 var(--color-step-form));
+}
+
 /* Dark mode step badges */
 [data-theme="dark"] .badge--question {
   background: oklch(0.25 0.06 var(--color-step-question));
@@ -73,6 +78,11 @@
 [data-theme="dark"] .badge--sub-flow {
   background: oklch(0.25 0.06 var(--color-step-subflow));
   color: oklch(0.8 0.1 var(--color-step-subflow));
+}
+
+[data-theme="dark"] .badge--form {
+  background: oklch(0.25 0.06 var(--color-step-form));
+  color: oklch(0.8 0.1 var(--color-step-form));
 }
 
 /* Role badges */

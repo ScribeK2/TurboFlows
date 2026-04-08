@@ -138,6 +138,12 @@
     color: oklch(0.35 0.10 var(--step-hue));
   }
 
+  .flow-diagram__node--form {
+    --step-hue: var(--hue-form, 45);
+    border-color: oklch(0.65 0.12 var(--step-hue));
+    color: oklch(0.35 0.10 var(--step-hue));
+  }
+
   /* Ghost class for SortableJS drag */
   .step-card--ghost {
     opacity: 0.4;

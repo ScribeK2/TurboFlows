@@ -79,6 +79,7 @@
 .step-card--resolve   { --step-hue: var(--hue-resolve); }
 .step-card--sub-flow  { --step-hue: var(--hue-subflow); }
 .step-card--sub_flow  { --step-hue: var(--hue-subflow); }
+.step-card--form      { --step-hue: var(--hue-form); }
 
 /* ─── State Classes ─── */
 .step-card.is-selected .step-card__inner {

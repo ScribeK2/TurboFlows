@@ -13,7 +13,8 @@ module WorkflowsHelper
     'sub_flow' => "M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1",
     'message' => "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z",
     'escalate' => "M5 10l7-7m0 0l7 7m-7-7v18",
-    'resolve' => "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+    'resolve' => "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z",
+    'form' => "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
   }.freeze
 
   DEFAULT_STEP_SVG_PATH = "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
@@ -35,7 +36,8 @@ module WorkflowsHelper
     'message' => 'Message',
     'sub_flow' => 'Sub-flow',
     'escalate' => 'Escalate',
-    'resolve' => 'Resolve'
+    'resolve' => 'Resolve',
+    'form' => 'Form'
   }.freeze
 
   STEP_TYPE_BADGE_CLASSES = {
@@ -44,7 +46,8 @@ module WorkflowsHelper
     'message' => 'badge--message',
     'sub_flow' => 'badge--sub-flow',
     'escalate' => 'badge--escalate',
-    'resolve' => 'badge--resolve'
+    'resolve' => 'badge--resolve',
+    'form' => 'badge--form'
   }.freeze
 
   ANSWER_TYPE_LABELS = {

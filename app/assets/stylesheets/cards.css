@@ -18,6 +18,11 @@
   overflow: hidden;
 }
 
+.card--bordered-top:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
 .card--bordered-top::after {
   content: "";
   position: absolute;
@@ -36,6 +41,7 @@
 .card--escalate  { border-top-color: oklch(0.55 0.22 var(--hue-escalate)); --step-hue: var(--hue-escalate); }
 .card--resolve   { border-top-color: oklch(0.60 0.19 var(--hue-resolve));  --step-hue: var(--hue-resolve); }
 .card--sub-flow  { border-top-color: oklch(0.55 0.18 var(--hue-subflow));  --step-hue: var(--hue-subflow); }
+.card--form      { border-top-color: oklch(0.55 0.18 var(--hue-form));     --step-hue: var(--hue-form); }
 
 /* ─── Card with Left Accent ─── */
 .card--accent-left {
@@ -328,4 +334,10 @@
 [data-theme="dark"] .step-outline__type-icon {
   color: oklch(0.65 0.14 var(--step-hue));
 }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card--bordered-top:hover {
+    transform: none;
+  }
 }

@@ -49,7 +49,8 @@ module ScenariosHelper
     'message' => 'badge badge--message',
     'sub_flow' => 'badge badge--sub-flow',
     'escalate' => 'badge badge--escalate',
-    'resolve' => 'badge badge--resolve'
+    'resolve' => 'badge badge--resolve',
+    'form' => 'badge badge--form'
   }.freeze
 
   def scenario_step_number_classes(step_type)
@@ -63,7 +64,8 @@ module ScenariosHelper
     'message' => 'stepper-pill--message',
     'sub_flow' => 'stepper-pill--sub-flow',
     'escalate' => 'stepper-pill--escalate',
-    'resolve' => 'stepper-pill--resolve'
+    'resolve' => 'stepper-pill--resolve',
+    'form' => 'stepper-pill--form'
   }.freeze
 
   def scenario_stepper_classes(is_completed, is_current, step_type = nil)
