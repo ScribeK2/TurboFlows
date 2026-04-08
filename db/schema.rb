@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_03_204135) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_08_130000) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -139,6 +139,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_03_204135) do
     t.string "answer_type"
     t.boolean "can_resolve", default: false
     t.datetime "created_at", null: false
+    t.string "help_text", limit: 500
     t.json "jumps"
     t.integer "lock_version", default: 0, null: false
     t.boolean "notes_required", default: false
@@ -150,6 +151,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_03_204135) do
     t.string "priority"
     t.string "question"
     t.boolean "reason_required", default: false
+    t.string "reference_url"
     t.string "resolution_code"
     t.string "resolution_type"
     t.integer "sub_flow_workflow_id"

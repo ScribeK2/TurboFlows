@@ -17,6 +17,25 @@
           data: { action: "input->inline-autosave#schedule" } %>
     </div>
 
+    <div class="form-group">
+      <%= f.label :help_text, "Guidance Note", class: "form-label" %>
+      <%= f.text_field :help_text, class: "form-input",
+          maxlength: 500,
+          placeholder: "Optional coaching note for CSRs (e.g., 'Ask this verbatim')",
+          data: { action: "input->inline-autosave#schedule input->inline-autosave#updateCharCount",
+                  inline_autosave_target: "charCountInput",
+                  char_count_max: 500 } %>
+      <p class="form-hint" data-inline-autosave-target="charCount"><%= step.help_text&.length || 0 %>/500</p>
+    </div>
+
+    <div class="form-group">
+      <%= f.label :reference_url, "Reference Link", class: "form-label" %>
+      <%= f.text_field :reference_url, class: "form-input",
+          placeholder: "https://kb.example.com/article or internal path",
+          data: { action: "input->inline-autosave#schedule" } %>
+      <p class="form-hint">Optional link to a knowledge base article or external resource</p>
+    </div>
+
     <%# Type-specific fields %>
     <%= render "steps/fields/#{step.step_type}", form: f, step: step, workflow: workflow %>
 

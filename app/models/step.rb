@@ -15,8 +15,11 @@ class Step < ApplicationRecord
 
   MAX_MEDIA_SIZE = 10.megabytes
 
+  ALLOWED_URL_PROTOCOLS = %w[http https tel mailto].freeze
+
   validates :uuid, presence: true, uniqueness: { scope: :workflow_id }
   validates :position, presence: true
+  validate :validate_reference_url_protocol
 
   attr_readonly :uuid
 
@@ -90,6 +93,18 @@ class Step < ApplicationRecord
 
   def generate_uuid
     self.uuid = SecureRandom.uuid
+  end
+
+  def validate_reference_url_protocol
+    return if reference_url.blank?
+    return if reference_url.start_with?("/")
+
+    uri = URI.parse(reference_url)
+    unless ALLOWED_URL_PROTOCOLS.include?(uri.scheme&.downcase)
+      errors.add(:reference_url, "must use http, https, tel, or mailto protocol")
+    end
+  rescue URI::InvalidURIError
+    errors.add(:reference_url, "is not a valid URL")
   end
 
   def validate_media_attachments

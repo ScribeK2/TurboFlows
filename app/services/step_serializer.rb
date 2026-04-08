@@ -20,6 +20,8 @@ class StepSerializer
       "title" => step.title,
       "position" => step.position
     }
+    data["help_text"] = step.help_text if step.help_text.present?
+    data["reference_url"] = step.reference_url if step.reference_url.present?
 
     merge_type_specific_fields(data, step)
     data["transitions"] = serialize_transitions(step)

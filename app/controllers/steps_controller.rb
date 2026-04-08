@@ -241,6 +241,7 @@ class StepsController < ApplicationController
       :action_type, :target_type, :target_value, :priority, :reason_required,
       :resolution_type, :resolution_code, :notes_required, :survey_trigger,
       :sub_flow_workflow_id, :instructions, :content, :notes, :lock_version,
+      :help_text, :reference_url,
       :transitions_json,
       media_attachments: [],
       options: [[:label, :value]],

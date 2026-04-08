@@ -134,4 +134,42 @@ class StepTest < ActiveSupport::TestCase
     steps = @workflow.steps.to_a
     assert_equal [step1, step2, step3], steps
   end
+
+  # --- reference_url protocol validation ---
+
+  test "allows http reference_url" do
+    step = Steps::Action.new(workflow: @workflow, title: "A", position: 0, reference_url: "https://kb.example.com/article")
+    assert_predicate step, :valid?
+  end
+
+  test "allows tel reference_url" do
+    step = Steps::Action.new(workflow: @workflow, title: "A", position: 0, reference_url: "tel:+15551234567")
+    assert_predicate step, :valid?
+  end
+
+  test "allows mailto reference_url" do
+    step = Steps::Action.new(workflow: @workflow, title: "A", position: 0, reference_url: "mailto:support@example.com")
+    assert_predicate step, :valid?
+  end
+
+  test "allows relative path reference_url" do
+    step = Steps::Action.new(workflow: @workflow, title: "A", position: 0, reference_url: "/internal/tool")
+    assert_predicate step, :valid?
+  end
+
+  test "rejects javascript reference_url" do
+    step = Steps::Action.new(workflow: @workflow, title: "A", position: 0, reference_url: "javascript:alert(1)")
+    assert_not step.valid?
+    assert_includes step.errors[:reference_url], "must use http, https, tel, or mailto protocol"
+  end
+
+  test "rejects data reference_url" do
+    step = Steps::Action.new(workflow: @workflow, title: "A", position: 0, reference_url: "data:text/html,<script>alert(1)</script>")
+    assert_not step.valid?
+  end
+
+  test "allows blank reference_url" do
+    step = Steps::Action.new(workflow: @workflow, title: "A", position: 0, reference_url: "")
+    assert_predicate step, :valid?
+  end
 end

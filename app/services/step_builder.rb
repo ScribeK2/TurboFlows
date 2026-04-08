@@ -21,6 +21,7 @@ class StepBuilder
     target_type target_value priority reason_required
     resolution_type resolution_code notes_required survey_trigger
     sub_flow_workflow_id target_workflow_id instructions content notes
+    help_text reference_url
   ].freeze
 
   PERMITTED_TRANSITION_PARAMS = %i[target_uuid condition label position].freeze
@@ -50,6 +51,8 @@ class StepBuilder
     attrs = { title: step_data["title"], position: position }
     attrs[:position_x] = step_data["position_x"]&.to_i if step_data.key?("position_x")
     attrs[:position_y] = step_data["position_y"]&.to_i if step_data.key?("position_y")
+    attrs[:help_text] = step_data["help_text"] if step_data.key?("help_text")
+    attrs[:reference_url] = step_data["reference_url"] if step_data.key?("reference_url")
 
     case step_data["type"].to_s
     when "question"

@@ -86,7 +86,9 @@ class WorkflowImporter
         workflow: workflow,
         uuid: step_hash["id"] || SecureRandom.uuid,
         position: index,
-        title: step_hash["title"].presence || "Untitled Step"
+        title: step_hash["title"].presence || "Untitled Step",
+        help_text: step_hash["help_text"],
+        reference_url: step_hash["reference_url"]
       }
 
       # Type-specific attributes
