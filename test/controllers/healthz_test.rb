@@ -1,9 +1,12 @@
-require "test_helper"
+# frozen_string_literal: true
+
+require 'test_helper'
 
 class HealthzTest < ActionDispatch::IntegrationTest
-  test "healthz returns 200 OK without authentication" do
-    get "/healthz"
+  test 'healthz returns 200 OK without authentication' do
+    get '/healthz'
+
     assert_response :success
-    assert_equal "OK", response.body
+    assert_equal 'OK', response.body
   end
 end

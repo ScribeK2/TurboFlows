@@ -1,4 +1,6 @@
-require "test_helper"
+# frozen_string_literal: true
+
+require 'test_helper'
 
 class WorkflowStepValidationTest < ActiveSupport::TestCase
   setup do
@@ -6,26 +8,27 @@ class WorkflowStepValidationTest < ActiveSupport::TestCase
 
     @user = User.create!(
       email: "stepval-#{SecureRandom.hex(4)}@test.com",
-      password: "password123!",
-      password_confirmation: "password123!",
-      role: "editor"
+      password: 'password123!',
+      password_confirmation: 'password123!',
+      role: 'editor'
     )
-    @workflow = Workflow.create!(title: "Step Validation WF", user: @user, status: "draft")
+    @workflow = Workflow.create!(title: 'Step Validation WF', user: @user, status: 'draft')
   end
 
   teardown do
     Bullet.enable = true if defined?(Bullet)
   end
 
-  test "workflow with fewer than MAX_STEPS steps is valid" do
+  test 'workflow with fewer than MAX_STEPS steps is valid' do
     3.times do |i|
       Steps::Action.create!(workflow: @workflow, title: "Step #{i}", position: i)
     end
     @workflow.reload
-    assert @workflow.valid?
+
+    assert_predicate @workflow, :valid?
   end
 
-  test "workflow exceeding MAX_STEPS is invalid" do
+  test 'workflow exceeding MAX_STEPS is invalid' do
     max = Workflow::MAX_STEPS
     now = Time.current
     step_attrs = (0..max).map do |i|
@@ -34,8 +37,8 @@ class WorkflowStepValidationTest < ActiveSupport::TestCase
         title: "Step #{i}",
         position: i,
         uuid: SecureRandom.uuid,
-        type: "Steps::Action",
-        action_type: "Instruction",
+        type: 'Steps::Action',
+        action_type: 'Instruction',
         created_at: now,
         updated_at: now
       }
@@ -46,11 +49,11 @@ class WorkflowStepValidationTest < ActiveSupport::TestCase
     workflow = Workflow.find(@workflow.id)
 
     assert_operator workflow.steps_count, :>, max
-    refute workflow.valid?
-    assert workflow.errors[:steps].any? { |e| e.include?("cannot exceed") }
+    assert_not workflow.valid?
+    assert(workflow.errors[:steps].any? { |e| e.include?('cannot exceed') })
   end
 
-  test "workflow with exactly MAX_STEPS steps is valid" do
+  test 'workflow with exactly MAX_STEPS steps is valid' do
     max = Workflow::MAX_STEPS
     now = Time.current
     step_attrs = (0...max).map do |i|
@@ -59,8 +62,8 @@ class WorkflowStepValidationTest < ActiveSupport::TestCase
         title: "Step #{i}",
         position: i,
         uuid: SecureRandom.uuid,
-        type: "Steps::Action",
-        action_type: "Instruction",
+        type: 'Steps::Action',
+        action_type: 'Instruction',
         created_at: now,
         updated_at: now
       }
@@ -71,6 +74,7 @@ class WorkflowStepValidationTest < ActiveSupport::TestCase
 
     assert_equal max, workflow.steps_count
     workflow.valid?
-    refute workflow.errors[:steps].any? { |e| e.include?("cannot exceed") }
+
+    assert_not(workflow.errors[:steps].any? { |e| e.include?('cannot exceed') })
   end
 end

@@ -1,47 +1,52 @@
-require "test_helper"
+# frozen_string_literal: true
 
-class Workflows::SharesControllerTest < ActionDispatch::IntegrationTest
-  def setup
-    Bullet.enable = false
-    @editor = User.create!(
-      email: "editor-#{SecureRandom.hex(4)}@example.com",
-      password: "password123!",
-      password_confirmation: "password123!",
-      role: "editor"
-    )
-    @workflow = Workflow.create!(title: "Shareable Flow", user: @editor)
-    sign_in @editor
-  end
+require 'test_helper'
 
-  def teardown
-    Bullet.enable = true
-  end
+module Workflows
+  class SharesControllerTest < ActionDispatch::IntegrationTest
+    def setup
+      Bullet.enable = false
+      @editor = User.create!(
+        email: "editor-#{SecureRandom.hex(4)}@example.com",
+        password: 'password123!',
+        password_confirmation: 'password123!',
+        role: 'editor'
+      )
+      @workflow = Workflow.create!(title: 'Shareable Flow', user: @editor)
+      sign_in @editor
+    end
 
-  test "create generates share token" do
-    assert_nil @workflow.share_token
+    def teardown
+      Bullet.enable = true
+    end
 
-    post workflow_share_path(@workflow)
+    test 'create generates share token' do
+      assert_nil @workflow.share_token
 
-    assert_redirected_to workflow_path(@workflow)
-    assert_match(/share link generated/i, flash[:notice])
-    assert @workflow.reload.share_token.present?
-  end
+      post workflow_share_path(@workflow)
 
-  test "destroy revokes share token" do
-    @workflow.generate_share_token!
-    assert @workflow.share_token.present?
+      assert_redirected_to workflow_path(@workflow)
+      assert_match(/share link generated/i, flash[:notice])
+      assert_predicate @workflow.reload.share_token, :present?
+    end
 
-    delete workflow_share_path(@workflow)
+    test 'destroy revokes share token' do
+      @workflow.generate_share_token!
 
-    assert_redirected_to workflow_path(@workflow)
-    assert_match(/share link revoked/i, flash[:notice])
-    assert_nil @workflow.reload.share_token
-  end
+      assert_predicate @workflow.share_token, :present?
 
-  test "create requires authentication" do
-    sign_out @editor
-    post workflow_share_path(@workflow)
+      delete workflow_share_path(@workflow)
 
-    assert_redirected_to new_user_session_path
+      assert_redirected_to workflow_path(@workflow)
+      assert_match(/share link revoked/i, flash[:notice])
+      assert_nil @workflow.reload.share_token
+    end
+
+    test 'create requires authentication' do
+      sign_out @editor
+      post workflow_share_path(@workflow)
+
+      assert_redirected_to new_user_session_path
+    end
   end
 end

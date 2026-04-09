@@ -1,4 +1,4 @@
-# rubocop:disable Style/ClassAndModuleChildren -- compact form required because Step is a class, not a module
+# -- compact form required because Step is a class, not a module
 module Step::Positionable
   extend ActiveSupport::Concern
 
