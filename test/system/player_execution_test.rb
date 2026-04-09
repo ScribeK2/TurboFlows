@@ -45,4 +45,48 @@ class PlayerExecutionTest < ApplicationSystemTestCase
     assert_selector ".player-completion__title", text: "Workflow Complete", wait: 5
     assert_selector ".player-completion__stat-label", text: /steps completed/i
   end
+
+  test "shared workflow link works without authentication" do
+    # Generate a share token
+    @workflow.generate_share_token!
+
+    # Sign out (visit sign_out path) by resetting session
+    Capybara.reset_sessions!
+
+    # Visit the shared link — no login needed
+    visit shared_player_path(share_token: @workflow.share_token)
+
+    # Should see the question step without being redirected to login
+    assert_selector ".player-step-card__title", text: "Do you need help?", wait: 5
+  end
+
+  test "back navigation works in Player mode" do
+    # Add an intermediate step so we have 3 steps
+    @action = Steps::Action.create!(
+      workflow: @workflow, title: "Perform action", position: 1,
+      action_type: "Instruction"
+    )
+    # Re-wire transitions: question -> action -> resolve
+    Transition.where(step: @question).destroy_all
+    Transition.create!(step: @question, target_step: @action, position: 0)
+    Transition.create!(step: @action, target_step: @resolve, position: 0)
+
+    visit play_path
+
+    # Start the workflow
+    find(".player-workflow-card", text: "Player E2E Workflow").click
+
+    # Answer the question to advance
+    assert_selector ".player-step-card__title", text: "Do you need help?", wait: 5
+    find(".radio-card", text: "Yes").click
+
+    # Should be on the action step
+    assert_selector ".player-step-card__title", text: "Perform action", wait: 5
+
+    # Click back
+    click_on "Back"
+
+    # Should return to the question step
+    assert_selector ".player-step-card__title", text: "Do you need help?", wait: 5
+  end
 end
