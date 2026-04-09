@@ -46,3 +46,6 @@ jobs:
 
       - name: Run RuboCop
         run: bundle exec rubocop --format github
+
+      - name: Brakeman security scan
+        run: bundle exec brakeman --no-pager -q

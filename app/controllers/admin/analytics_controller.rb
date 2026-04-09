@@ -42,6 +42,10 @@ module Admin
       @users_for_filter = User.joins(:scenarios).distinct.order(:email)
       @groups_for_filter = Group.order(:name)
 
+      if @step_performance_capped || @dropoff_capped
+        flash.now[:notice] = "Analytics showing most recent 5,000 scenarios. Export CSV for full dataset."
+      end
+
       respond_to do |format|
         format.html
         format.csv { send_csv_export }
@@ -144,9 +148,8 @@ module Admin
         .order(total_runs: :desc)
     end
 
-    # Performance note: This iterates all matching scenarios in Ruby to parse
-    # JSON execution_path data. O(n) database reads via find_each prevents
-    # memory issues, but is slow for large datasets.
+    # Performance note: This iterates matching scenarios in Ruby to parse
+    # JSON execution_path data. Capped at 5,000 to prevent memory/time issues.
     #
     # Future optimization: denormalize step timing data into a dedicated
     # step_executions table (step_id, scenario_id, duration_seconds, started_at)
@@ -154,7 +157,10 @@ module Admin
     def build_step_performance(scenarios)
       step_times = Hash.new { |h, k| h[k] = [] }
 
-      scenarios.where.not(execution_path: nil).find_each do |scenario|
+      scope = scenarios.where.not(execution_path: nil)
+      @step_performance_capped = scope.count > 5000
+
+      scope.order(:id).limit(5000).each do |scenario|
         Array(scenario.execution_path).each do |entry|
           next if entry["duration_seconds"].blank?
 
@@ -176,9 +182,10 @@ module Admin
 
     def build_dropoff_points
       abandoned = @base_scope.where(outcome: "abandoned")
+      @dropoff_capped = abandoned.count > 5000
       dropoffs = Hash.new { |h, k| h[k] = { count: 0, workflow_title: "" } }
 
-      abandoned.includes(:workflow).find_each do |scenario|
+      abandoned.includes(:workflow).order(:id).limit(5000).each do |scenario|
         next if scenario.execution_path.blank?
 
         last_step = scenario.execution_path.last
