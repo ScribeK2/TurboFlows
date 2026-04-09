@@ -212,7 +212,7 @@ class Scenario < ApplicationRecord
       save!
     rescue ActiveRecord::StaleObjectError
       Rails.logger.warn "[Scenario ##{id}] Stale object on process_step — concurrent modification detected"
-      return false
+      false
     end
   end
 

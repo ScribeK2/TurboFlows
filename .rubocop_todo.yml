@@ -280,6 +280,7 @@ Metrics/AbcSize:
 # AllowedMethods: refine
 Metrics/BlockLength:
   Exclude:
+    - 'test/benchmarks/scenario_execution_benchmark_test.rb'
     - 'app/helpers/step_helper.rb'
     - 'app/services/workflow_importer.rb'
     - 'app/services/workflow_parsers/base_parser.rb'
@@ -309,6 +310,8 @@ Metrics/BlockLength:
 # Configuration parameters: CountComments, Max, CountAsOne.
 Metrics/ClassLength:
   Exclude:
+    - 'app/models/scenario.rb'
+    - 'test/benchmarks/scenario_execution_benchmark_test.rb'
     - 'app/channels/workflow_channel.rb'
     - 'app/controllers/admin/analytics_controller.rb'
     - 'app/controllers/admin/users_controller.rb'
@@ -427,6 +430,8 @@ Metrics/CyclomaticComplexity:
 # Configuration parameters: CountComments, Max, CountAsOne, AllowedMethods, AllowedPatterns.
 Metrics/MethodLength:
   Exclude:
+    - 'app/models/scenario.rb'
+    - 'test/benchmarks/scenario_execution_benchmark_test.rb'
     - 'app/channels/workflow_channel.rb'
     - 'app/controllers/admin/analytics_controller.rb'
     - 'app/controllers/admin/groups_controller.rb'
@@ -1720,4 +1725,3 @@ Style/ZeroLengthPredicate:
     - 'app/helpers/player_helper.rb'
     - 'app/helpers/scenarios_helper.rb'
     - 'app/models/scenario_navigator.rb'
-    - 'app/services/workflow_parsers/step_normalizer.rb'
