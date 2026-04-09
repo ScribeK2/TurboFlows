@@ -188,5 +188,4 @@ Playwright MCP (for UI/system testing). Point agent to running app at `http://lo
 
 - Branch: `main`
 - Tool: Kamal + Puma + PostgreSQL
-- CI: GitHub Actions (`.github/workflows/ci.yml`) — runs tests + RuboCop on push to main and PRs
-- Pre-deploy: RuboCop + full test suite (automated via CI)
+- Pre-deploy: RuboCop + full test suite (run locally before deploy)
