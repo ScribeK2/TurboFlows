@@ -59,4 +59,11 @@ Rails.application.configure do
   # Configure Action Cable for test environment
   config.action_cable.disable_request_forgery_protection = true
 
+  # ==========================================================================
+  # Bullet Configuration - N+1 Query Detection in Tests
+  # ==========================================================================
+  config.after_initialize do
+    Bullet.enable = true
+    Bullet.raise = true
+  end
 end

@@ -22,15 +22,21 @@ export default class extends Controller {
       this.loadVariables()
     }
     
+    // Store bound references so removeEventListener works correctly
+    this.boundHandleInput = this.handleInput.bind(this)
+    this.boundHandleKeydown = this.handleKeydown.bind(this)
+    this.boundHandleBlur = this.handleBlur.bind(this)
+    this.boundHandleDocumentClick = this.handleDocumentClick.bind(this)
+
     // Set up input listeners
     this.inputTargets.forEach(input => {
-      input.addEventListener("input", this.handleInput.bind(this))
-      input.addEventListener("keydown", this.handleKeydown.bind(this))
-      input.addEventListener("blur", this.handleBlur.bind(this), true) // Use capture phase
+      input.addEventListener("input", this.boundHandleInput)
+      input.addEventListener("keydown", this.boundHandleKeydown)
+      input.addEventListener("blur", this.boundHandleBlur, true) // Use capture phase
     })
-    
+
     // Hide dropdown when clicking outside
-    document.addEventListener("click", this.handleDocumentClick.bind(this))
+    document.addEventListener("click", this.boundHandleDocumentClick)
     
     // Reload variables when steps are added/removed
     this.boundStepChangeHandler = () => {
@@ -50,11 +56,11 @@ export default class extends Controller {
 
   disconnect() {
     this.inputTargets.forEach(input => {
-      input.removeEventListener("input", this.handleInput.bind(this))
-      input.removeEventListener("keydown", this.handleKeydown.bind(this))
-      input.removeEventListener("blur", this.handleBlur.bind(this), true)
+      input.removeEventListener("input", this.boundHandleInput)
+      input.removeEventListener("keydown", this.boundHandleKeydown)
+      input.removeEventListener("blur", this.boundHandleBlur, true)
     })
-    document.removeEventListener("click", this.handleDocumentClick.bind(this))
+    document.removeEventListener("click", this.boundHandleDocumentClick)
     document.removeEventListener("workflow-builder:step-added", this.boundStepChangeHandler)
     document.removeEventListener("workflow-builder:step-removed", this.boundStepChangeHandler)
     if (this.reloadDebounceTimer) {

@@ -69,6 +69,7 @@ export default class extends Controller {
         img.alt = file.name
         img.src = URL.createObjectURL(file)
         img.onload = () => URL.revokeObjectURL(img.src)
+        img.onerror = () => URL.revokeObjectURL(img.src)
         item.appendChild(img)
       } else if (file.type.startsWith("video/")) {
         const icon = document.createElement("span")
