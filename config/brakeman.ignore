@@ -1,0 +1,16 @@
+{
+  "ignored_warnings": [
+    {
+      "fingerprint": "01a88a0a17848e70999c17f6438a636b00e01da39a2c0aa0c46f20f0685c7202",
+      "code": "params.require(:user).permit(:role)",
+      "note": "Admin-only controller protected by ensure_admin! before_action"
+    },
+    {
+      "fingerprint": "1e0f5d064415ca2cffc322aa1101132910b072c15201cd8d7a22b9e0a26f9e83",
+      "code": "params.permit(:q, :role, :group, :sort, :page, :per_page)",
+      "note": "Admin-only controller protected by ensure_admin! before_action"
+    }
+  ],
+  "updated": "2026-04-09",
+  "brakeman_version": "8.0.4"
+}
