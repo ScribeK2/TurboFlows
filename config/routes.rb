@@ -1,4 +1,6 @@
 Rails.application.routes.draw do
+  get "healthz", to: proc { [200, {}, ["OK"]] }
+
   devise_for :users, controllers: {
     registrations: 'users/registrations',
     sessions: 'users/sessions'
