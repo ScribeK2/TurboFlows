@@ -146,6 +146,34 @@ class PlayerControllerTest < ActionDispatch::IntegrationTest
     assert_select "select.scenario-select"
   end
 
+  # === Concurrency / Stale Scenario ===
+
+  test "next_step with stale scenario redirects to step instead of raising" do
+    resolve = @workflow.steps.find_by(title: "Done")
+    question = Steps::Question.create!(
+      workflow: @workflow,
+      title: "Stale Q",
+      uuid: SecureRandom.uuid,
+      position: 0,
+      answer_type: "text",
+      variable_name: "stale_v"
+    )
+    Transition.create!(step: question, target_step: resolve, position: 0)
+    @workflow.update!(start_step: question)
+    WorkflowPublisher.publish(@workflow, @admin)
+
+    sign_in @regular
+    post play_workflow_path(@workflow)
+    scenario = Scenario.last
+
+    # Simulate a concurrent modification by bumping lock_version directly
+    Scenario.where(id: scenario.id).update_all(lock_version: scenario.lock_version + 1)
+
+    # next_step should handle the stale object gracefully (redirect, not 500)
+    post player_scenario_next_path(scenario), params: { answer: "test" }
+    assert_response :redirect
+  end
+
   test "player step renders number input for number answer type" do
     resolve = @workflow.steps.find_by(title: "Done")
     question = Steps::Question.create!(

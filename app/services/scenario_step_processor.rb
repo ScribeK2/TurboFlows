@@ -194,7 +194,11 @@ class ScenarioStepProcessor
       @scenario.results ||= {}
       @scenario.results['_error'] = "Sub-flow target workflow #{target_workflow_id} not found"
       @scenario.status = 'error'
-      @scenario.save
+      begin
+        @scenario.save
+      rescue ActiveRecord::StaleObjectError
+        Rails.logger.warn "[Scenario ##{@scenario.id}] Stale object on subflow error save — concurrent modification detected"
+      end
       return false
     end
 
@@ -246,7 +250,12 @@ class ScenarioStepProcessor
 
     # Mark parent as awaiting sub-flow
     @scenario.status = 'awaiting_subflow'
-    @scenario.save
+    begin
+      @scenario.save
+    rescue ActiveRecord::StaleObjectError
+      Rails.logger.warn "[Scenario ##{@scenario.id}] Stale object on subflow await save — concurrent modification detected"
+      return false
+    end
 
     true
   end

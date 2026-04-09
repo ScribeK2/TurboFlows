@@ -208,7 +208,12 @@ class Scenario < ApplicationRecord
     # Mark as completed if we've reached the end
     check_completion
 
-    save!
+    begin
+      save!
+    rescue ActiveRecord::StaleObjectError
+      Rails.logger.warn "[Scenario ##{id}] Stale object on process_step — concurrent modification detected"
+      return false
+    end
   end
 
   # Process completion of a sub-flow
@@ -272,7 +277,13 @@ class Scenario < ApplicationRecord
 
     self.resume_node_uuid = nil
     check_completion
-    save
+
+    begin
+      save
+    rescue ActiveRecord::StaleObjectError
+      Rails.logger.warn "[Scenario ##{id}] Stale object on process_subflow_completion — concurrent modification detected"
+      return false
+    end
 
     true
   end

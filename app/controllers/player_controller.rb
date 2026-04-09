@@ -53,7 +53,10 @@ class PlayerController < ApplicationController
 
     # Auto-advance sub_flow steps (they don't need user interaction)
     if @current_step&.step_type == "sub_flow"
-      @scenario.process_step(nil)
+      unless @scenario.process_step(nil)
+        @scenario.reload
+        redirect_to player_scenario_step_path(@scenario) and return
+      end
       return if redirect_to_subflow_if_awaiting?(@scenario)
 
       redirect_to @scenario.complete? ? subflow_completion_path(@scenario) : subflow_step_path(@scenario)
@@ -62,7 +65,10 @@ class PlayerController < ApplicationController
 
     # Auto-advance resolve steps in child scenarios (so sub-flows complete seamlessly)
     if @scenario.parent_scenario.present? && @current_step&.step_type == "resolve"
-      @scenario.process_step(nil)
+      unless @scenario.process_step(nil)
+        @scenario.reload
+        redirect_to player_scenario_step_path(@scenario) and return
+      end
       if @scenario.complete?
         handle_child_completion(@scenario)
       else
@@ -80,7 +86,10 @@ class PlayerController < ApplicationController
     @scenario.inputs["escalation_reason"] = params[:escalation_reason] if params[:escalation_reason].present?
     @scenario.inputs["resolution_notes"] = params[:resolution_notes] if params[:resolution_notes].present?
     @scenario.record_step_ended
-    @scenario.process_step(answer, resolved_here: params[:resolved].present?)
+    unless @scenario.process_step(answer, resolved_here: params[:resolved].present?)
+      @scenario.reload
+      redirect_to player_scenario_step_path(@scenario) and return
+    end
 
     return if redirect_to_subflow_if_awaiting?(@scenario)
 

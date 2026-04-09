@@ -191,7 +191,11 @@ class ScenariosController < ApplicationController
 
     return false unless is_subflow_step || is_child_resolve
 
-    @scenario.process_step(nil)
+    unless @scenario.process_step(nil)
+      @scenario.reload
+      redirect_to step_scenario_path(@scenario)
+      return true
+    end
 
     return true if redirect_to_subflow_if_awaiting?(@scenario)
 

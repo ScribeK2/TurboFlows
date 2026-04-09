@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_08_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_09_125447) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -96,6 +96,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_08_130000) do
     t.integer "duration_seconds"
     t.json "execution_path"
     t.json "inputs"
+    t.integer "lock_version", default: 0, null: false
     t.string "outcome"
     t.integer "parent_scenario_id"
     t.string "purpose", default: "simulation", null: false

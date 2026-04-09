@@ -21,7 +21,11 @@ module ScenarioExecution
     last_entry["ended_at"] = now.iso8601(3)
     started = Time.zone.parse(last_entry["started_at"])
     last_entry["duration_seconds"] = (now - started).round(1)
-    save!(touch: false)
+    begin
+      save!(touch: false)
+    rescue ActiveRecord::StaleObjectError
+      Rails.logger.warn "[Scenario ##{id}] Stale object on record_step_ended — timing data lost (non-critical)"
+    end
   end
 
   def determine_next_step_index(step, results)
