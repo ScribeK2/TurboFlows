@@ -39,6 +39,7 @@ All colors use OKLCH (Oklch Lightness Chroma Hue). Never hardcode hex, rgb, or h
 - `var(--hue-question)` (250, blue), `var(--hue-action)` (145, green)
 - `var(--hue-message)` (290, purple), `var(--hue-escalate)` (25, red/orange)
 - `var(--hue-resolve)` (160, teal), `var(--hue-subflow)` (310, magenta)
+- `var(--hue-form)` (45, amber/yellow)
 
 ### Typography
 
@@ -186,7 +187,7 @@ Each component references its CSS file by selector name. Read that file for exac
 | Class | Use when | Visual |
 |-------|----------|--------|
 | `.badge` | Generic label | Inline-flex, text-xs, radius-full, pill shape |
-| `.badge--question` through `.badge--sub-flow` | Step type | Color from `--hue-*` token |
+| `.badge--question` `.badge--action` `.badge--message` `.badge--escalate` `.badge--resolve` `.badge--sub-flow` `.badge--form` | Step type | Color from `--hue-*` token |
 | `.badge--draft` `.badge--published` | Workflow status | Yellow/green tint |
 | `.badge--admin` `.badge--editor` `.badge--regular` | User role | Role-specific color |
 | `.badge--alert` | Error/urgent | Red tint (hue 25) |

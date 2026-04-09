@@ -4,4 +4,4 @@ Hotwire/Turbo + Stimulus rules (TurboFlows style):
 - Vendored libs (SortableJS, Fuse.js) stay in vendor/javascript/.
 - No Node build — everything must work with importmap-rails + Propshaft.
 - Real-time presence and graph mode updates via Action Cable.
-- Match the 62 existing Stimulus controllers exactly.
+- Match the 60 existing Stimulus controllers exactly.

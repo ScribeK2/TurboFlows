@@ -6,7 +6,7 @@ Follow these conventions for every change. RuboCop (with rails, minitest, perfor
 - Explicit > implicit.
 - Thin controllers (ideally <10-15 lines per action; move logic to models/services).
 - Models can be rich — use app/models/concerns/ for shared behavior.
-- One Stimulus controller per logical feature (62 controllers — maintain this granularity).
+- One Stimulus controller per logical feature (60 controllers — maintain this granularity).
 - Turbo Streams for all dynamic UI updates (avoid full reloads).
 
 ## Ruby / Rails
@@ -34,7 +34,7 @@ Follow these conventions for every change. RuboCop (with rails, minitest, perfor
 - Use request-local storage (Current attributes) instead of globals, when needed.
 
 ## Naming & Files
-- STI Step subclasses: app/models/steps/QuestionStep.rb etc.
+- STI Step subclasses: app/models/steps/question.rb, action.rb, sub_flow.rb, etc.
 - Channels: app/channels/workflow_channel.rb
 - Components: app/components/ (if using ViewComponent later)
 - Snake_case filenames, singular where logical.
