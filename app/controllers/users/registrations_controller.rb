@@ -1,5 +1,5 @@
 class Users::RegistrationsController < Devise::RegistrationsController
-  before_action :redirect_to_first_run_if_no_users, only: [:new, :create]
+  before_action :redirect_to_first_run_if_no_users, only: %i[new create]
 
   # Override create to avoid Devise's respond_with calling user_url (route doesn't exist).
   # Devise 5+ with Turbo needs explicit redirect after sign-up.
@@ -56,12 +56,12 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   # Permit parameters for account updates (including password change)
   def account_update_params
-    params.require(:user).permit(
-      :display_name,
-      :email,
-      :password,
-      :password_confirmation,
-      :current_password
+    params.expect(
+      user: %i[display_name
+               email
+               password
+               password_confirmation
+               current_password]
     )
   end
 

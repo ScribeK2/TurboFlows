@@ -59,7 +59,7 @@ class GraphValidator
 
       cycle_path = cycle.map { |id| step_title(id) }.join(' -> ')
       @errors << "Cycle detected: #{cycle_path}"
-      return # Stop at first cycle found
+      break # Stop at first cycle found
     end
   end
 
@@ -179,7 +179,7 @@ class GraphValidator
       transitions = step['transitions'] || []
       transitions.each do |transition|
         target_uuid = transition['target_uuid']
-        queue.push(target_uuid) if target_uuid.present? && !visited.include?(target_uuid)
+        queue.push(target_uuid) if target_uuid.present? && visited.exclude?(target_uuid)
       end
     end
 

@@ -23,8 +23,7 @@ class NavigationTest < ApplicationSystemTestCase
     menu_top = menu.evaluate_script("this.getBoundingClientRect().top")
     header_bottom = header.evaluate_script("this.getBoundingClientRect().bottom")
 
-    assert menu_top >= header_bottom - 1,
-      "Menu top (#{menu_top}) should be at or below header bottom (#{header_bottom})"
+    assert_operator menu_top, :>=, header_bottom - 1, "Menu top (#{menu_top}) should be at or below header bottom (#{header_bottom})"
   end
 
   test "nav menu closes on Escape key" do
@@ -59,7 +58,6 @@ class NavigationTest < ApplicationSystemTestCase
     viewport_height = evaluate_script("window.innerHeight")
 
     # Search dialog should be roughly vertically centered (within the middle 60% of viewport)
-    assert search_top > viewport_height * 0.1,
-      "Search dialog should not be pinned to top like nav menu"
+    assert_operator search_top, :>, viewport_height * 0.1, "Search dialog should not be pinned to top like nav menu"
   end
 end

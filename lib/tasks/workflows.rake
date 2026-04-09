@@ -106,7 +106,7 @@ namespace :workflows do
       end
 
       # Skip if no steps
-      unless workflow.steps.present?
+      if workflow.steps.blank?
         puts "  [SKIP] Workflow #{workflow.id}: No steps"
         skipped_count += 1
         next
@@ -144,7 +144,7 @@ namespace :workflows do
       error_count += 1
     end
 
-    puts "\n" + ("=" * 60)
+    puts "\n#{'=' * 60}"
     puts "Graph conversion complete!"
     puts "  Converted: #{converted_count} workflows"
     puts "  Skipped:   #{skipped_count} workflows"
@@ -233,7 +233,7 @@ namespace :workflows do
     puts "  Graph mode:       #{graph}"
     puts ""
 
-    if linear == 0
+    if linear.zero?
       puts "All workflows are already in graph mode. Nothing to do."
       exit 0
     end
@@ -243,7 +243,7 @@ namespace :workflows do
       puts "Auto-confirmed (production/CI environment)"
     else
       print "Proceed with migration? (yes/no): "
-      response = STDIN.gets&.chomp&.downcase
+      response = $stdin.gets&.chomp&.downcase
       unless response == 'yes'
         puts "Migration cancelled."
         exit 0
@@ -271,7 +271,7 @@ namespace :workflows do
     puts "  Graph mode:       #{graph}"
     puts ""
 
-    if linear == 0
+    if linear.zero?
       puts "All workflows are already in graph mode."
       exit 0
     end
@@ -282,7 +282,7 @@ namespace :workflows do
     failures = []
 
     Workflow.where(graph_mode: false).find_each do |workflow|
-      unless workflow.steps.present?
+      if workflow.steps.blank?
         empty_count += 1
         next
       end

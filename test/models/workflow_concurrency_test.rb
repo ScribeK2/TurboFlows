@@ -127,6 +127,6 @@ class WorkflowConcurrencyTest < ActiveSupport::TestCase
     @workflow.reload
 
     assert_equal "Locked update", @workflow.title
-    assert @workflow.lock_version >= 1, "lock_version should have incremented"
+    assert_operator @workflow.lock_version, :>=, 1, "lock_version should have incremented"
   end
 end

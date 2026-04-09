@@ -153,7 +153,7 @@ class ScenariosController < ApplicationController
     @scenario.results = {}
     @scenario.inputs = {}
     @scenario.execution_path.each do |path_entry|
-      next unless path_entry['answer'].present?
+      next if path_entry['answer'].blank?
 
       entry_step_index = path_entry['step_index'].to_i
       next unless entry_step_index >= 0 && entry_step_index < ordered_steps.size
@@ -222,6 +222,6 @@ class ScenariosController < ApplicationController
 
   def scenario_params
     # Permit workflow_id, inputs are optional (will be built up step by step)
-    params.require(:scenario).permit(:workflow_id, inputs: {})
+    params.expect(scenario: [:workflow_id, { inputs: {} }])
   end
 end

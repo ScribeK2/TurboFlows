@@ -14,8 +14,8 @@ class FirstRunTest < ActiveSupport::TestCase
       password_confirmation: "password123!"
     )
 
-    assert user.persisted?
-    assert user.admin?
+    assert_predicate user, :persisted?
+    assert_predicate user, :admin?
     assert_equal "admin@example.com", user.email
   end
 

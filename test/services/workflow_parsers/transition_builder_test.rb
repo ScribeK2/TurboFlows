@@ -19,18 +19,18 @@ module WorkflowParsers
     end
 
     test "graph_format? returns false when no step has transitions" do
-      steps = [ { "type" => "action", "title" => "A" } ]
+      steps = [{ "type" => "action", "title" => "A" }]
       assert_not builder.graph_format?(steps)
     end
 
     test "graph_format? returns false when transitions arrays are empty" do
-      steps = [ { "type" => "action", "transitions" => [] } ]
+      steps = [{ "type" => "action", "transitions" => [] }]
       assert_not builder.graph_format?(steps)
     end
 
     test "graph_format? returns true when at least one step has non-empty transitions" do
       steps = [
-        { "type" => "action",  "title" => "A", "transitions" => [ { "target_uuid" => "u2" } ] },
+        { "type" => "action",  "title" => "A", "transitions" => [{ "target_uuid" => "u2" }] },
         { "type" => "resolve", "title" => "End" }
       ]
       assert builder.graph_format?(steps)
@@ -41,7 +41,7 @@ module WorkflowParsers
     # =========================================================================
 
     test "ensure_uuids assigns UUIDs to steps without one" do
-      steps = [ { "type" => "action" }, { "id" => "existing", "type" => "resolve" } ]
+      steps = [{ "type" => "action" }, { "id" => "existing", "type" => "resolve" }]
       builder.ensure_uuids(steps)
 
       assert_match(/\A[0-9a-f-]{36}\z/, steps[0]["id"])
@@ -53,7 +53,7 @@ module WorkflowParsers
     end
 
     test "ensure_uuids skips non-hash elements" do
-      steps = [ "not a hash", nil, { "type" => "action" } ]
+      steps = ["not a hash", nil, { "type" => "action" }]
       assert_nothing_raised { builder.ensure_uuids(steps) }
     end
 
@@ -96,7 +96,7 @@ module WorkflowParsers
     test "convert_to_graph does not add default transition when one already exists" do
       steps = [
         { "id" => "u1", "type" => "action", "title" => "A",
-          "transitions" => [ { "target_uuid" => "u2", "condition" => nil } ] },
+          "transitions" => [{ "target_uuid" => "u2", "condition" => nil }] },
         { "id" => "u2", "type" => "resolve", "title" => "End", "transitions" => [] }
       ]
       result = builder.convert_to_graph(steps)
@@ -109,12 +109,12 @@ module WorkflowParsers
       steps = [
         { "id" => "u1", "type" => "question", "title" => "Ask",
           "transitions" => [],
-          "jumps" => [ { "condition" => "answer == yes", "next_step_id" => "Resolve Step" } ] },
+          "jumps" => [{ "condition" => "answer == yes", "next_step_id" => "Resolve Step" }] },
         { "id" => "u2", "type" => "resolve", "title" => "Resolve Step", "transitions" => [] }
       ]
       result     = builder.convert_to_graph(steps)
       first      = result.find { |s| s["id"] == "u1" }
-      conditions = first["transitions"].map { |t| t["condition"] }.compact
+      conditions = first["transitions"].pluck("condition").compact
 
       assert_includes conditions, "answer == yes"
     end
@@ -123,7 +123,7 @@ module WorkflowParsers
       steps = [
         { "id" => "u1", "type" => "action", "title" => "A",
           "transitions" => [],
-          "jumps" => [ { "condition" => "x", "next_step_id" => "" } ] },
+          "jumps" => [{ "condition" => "x", "next_step_id" => "" }] },
         { "id" => "u2", "type" => "resolve", "title" => "End", "transitions" => [] }
       ]
       result = builder.convert_to_graph(steps)
@@ -156,11 +156,11 @@ module WorkflowParsers
     end
 
     test "normalize_transitions skips non-hash elements" do
-      assert_equal [], builder.normalize_transitions([ "bad", nil, 42 ])
+      assert_equal [], builder.normalize_transitions(["bad", nil, 42])
     end
 
     test "normalize_transitions normalises string and symbol keys" do
-      transitions = [ { "target_uuid" => "u1", "condition" => "ok", "label" => "Yes" } ]
+      transitions = [{ "target_uuid" => "u1", "condition" => "ok", "label" => "Yes" }]
       result      = builder.normalize_transitions(transitions)
 
       assert_equal "u1",  result.first["target_uuid"]
@@ -169,7 +169,7 @@ module WorkflowParsers
     end
 
     test "normalize_transitions works with symbol keys" do
-      result = builder.normalize_transitions([ { target_uuid: "u2", condition: nil } ])
+      result = builder.normalize_transitions([{ target_uuid: "u2", condition: nil }])
       assert_equal "u2", result.first["target_uuid"]
     end
 
@@ -216,7 +216,7 @@ module WorkflowParsers
       # The method must rescue NameError gracefully.
       assert_nothing_raised do
         builder.validate_graph_structure(
-          [ { "id" => "u1", "type" => "resolve", "title" => "End" } ],
+          [{ "id" => "u1", "type" => "resolve", "title" => "End" }],
           "u1"
         )
       end

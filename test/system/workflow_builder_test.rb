@@ -39,13 +39,13 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
 
     # Initial state: 3 steps numbered 1, 2, 3
     badges = all(".rounded-full.bg-white\\/20")
-    assert_equal ["1", "2", "3"], badges.map(&:text)
+    assert_equal %w[1 2 3], badges.map(&:text)
 
     find("button[data-step-type='action']").click
     assert_selector ".step-item", count: 4, wait: 5
 
     updated_badges = all(".rounded-full.bg-white\\/20")
-    assert_equal ["1", "2", "3", "4"], updated_badges.map(&:text)
+    assert_equal %w[1 2 3 4], updated_badges.map(&:text)
   end
 
   # ─── Test 3: Step number badges update after removing a step ─────────────────
@@ -62,7 +62,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
     assert_selector ".step-item", count: 2, wait: 5
 
     updated_badges = all(".rounded-full.bg-white\\/20")
-    assert_equal ["1", "2"], updated_badges.map(&:text)
+    assert_equal %w[1 2], updated_badges.map(&:text)
   end
 
   # ─── Test 4: Cannot double-add while one is loading (buttons disabled) ────────

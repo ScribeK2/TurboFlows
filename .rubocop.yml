@@ -1,5 +1,3 @@
-inherit_from: .rubocop_todo.yml
-
 plugins:
   - rubocop-rails
   - rubocop-minitest
@@ -23,18 +21,29 @@ AllCops:
     - "node_modules/**/*"
     - "tmp/**/*"
 
-# --- Layout ---
+# =============================================================================
+# Layout
+# =============================================================================
+
 Layout/LineLength:
   Max: 200
+  Exclude:
+    - "lib/tasks/create_gmail_imap_workflow.rake" # seed data with long inline strings
 
-# --- Lint: Disabled (callbacks need signatures) ---
+# =============================================================================
+# Lint: Disabled (callbacks need signatures)
+# =============================================================================
+
 Lint/UnusedMethodArgument:
   Enabled: false
 
 Lint/UnusedBlockArgument:
   Enabled: false
 
-# --- Style: Disabled (noise or readability preference) ---
+# =============================================================================
+# Style: Disabled (noise or readability preference)
+# =============================================================================
+
 Style/Documentation:
   Enabled: false
 
@@ -44,7 +53,46 @@ Style/GuardClause:
 Style/IfUnlessModifier:
   Enabled: false
 
-# --- Rails: Disabled (intentional usage) ---
+# Project uses double quotes consistently
+Style/StringLiterals:
+  Enabled: false
+
+# Project uses compact module nesting (Steps::QuestionStep)
+Style/ClassAndModuleChildren:
+  Enabled: false
+
+# Ruby 4 makes strings frozen by default
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+# =============================================================================
+# Minitest
+# =============================================================================
+
+# Too noisy: empty lines before every assert adds vertical bloat to tests
+Minitest/EmptyLineBeforeAssertionMethods:
+  Enabled: false
+
+# =============================================================================
+# Naming: Excluded false positives
+# =============================================================================
+
+# These methods do work (convert, process, validate) and return success/failure.
+# They are not predicates; renaming them would be misleading.
+Naming/PredicateMethod:
+  Exclude:
+    - "app/controllers/scenarios_controller.rb"
+    - "app/models/concerns/workflow_step_validation.rb"
+    - "app/models/scenario.rb"
+    - "app/services/condition_evaluator.rb"
+    - "app/services/scenario_step_processor.rb"
+    - "app/services/workflow_graph_converter.rb"
+    - "app/services/workflow_parsers/base_parser.rb"
+
+# =============================================================================
+# Rails: Disabled (intentional usage)
+# =============================================================================
+
 Rails/OutputSafety:
   Enabled: false
 
@@ -53,3 +101,58 @@ Rails/SkipsModelValidations:
 
 Rails/I18nLocaleTexts:
   Enabled: false
+
+# WorkflowTemplate is a plain Ruby class, not AR — .each is correct
+Rails/FindEach:
+  Exclude:
+    - "test/models/workflow_template_test.rb"
+
+# WorkflowTemplate delegates to a constant, not a method
+Rails/Delegate:
+  Exclude:
+    - "app/models/workflow_template.rb"
+
+# Devise controller inherits `new` from parent class
+Rails/LexicallyScopedActionFilter:
+  Exclude:
+    - "app/controllers/users/registrations_controller.rb"
+
+# Needs a DB migration, not a code change (tracked separately)
+Rails/UniqueValidationWithoutIndex:
+  Exclude:
+    - "app/models/group.rb"
+
+# =============================================================================
+# Metrics: Raised thresholds for existing code (lower over time)
+# =============================================================================
+
+Metrics/AbcSize:
+  Max: 171
+
+Metrics/BlockLength:
+  Max: 1153
+
+Metrics/ClassLength:
+  Max: 581
+
+Metrics/CyclomaticComplexity:
+  Max: 69
+
+Metrics/MethodLength:
+  Max: 105
+
+Metrics/PerceivedComplexity:
+  Max: 71
+
+Metrics/ModuleLength:
+  Exclude:
+    - "app/helpers/scenarios_helper.rb"
+    - "app/helpers/workflows_helper.rb"
+    - "test/support/performance_helper.rb"
+
+Metrics/ParameterLists:
+  Exclude:
+    - "app/helpers/application_helper.rb"
+
+Minitest/MultipleAssertions:
+  Max: 15

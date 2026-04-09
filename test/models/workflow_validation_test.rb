@@ -53,7 +53,7 @@ class WorkflowValidationTest < ActiveSupport::TestCase
   test "requires user" do
     wf = Workflow.new(title: "No user", status: "published")
     assert_not wf.valid?
-    assert_includes wf.errors[:user_id], "can't be blank"
+    assert_includes wf.errors[:user], "must exist"
   end
 
   test "title length max 255" do

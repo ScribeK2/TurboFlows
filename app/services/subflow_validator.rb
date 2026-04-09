@@ -17,6 +17,7 @@ class SubflowValidator
   attr_reader :errors
 
   MAX_DEPTH = 10 # Maximum sub-flow nesting depth
+  SUBFLOW_TYPES = %w[sub_flow sub-flow].freeze
 
   # Initialize with the workflow ID to validate
   # @param workflow_id [Integer] The ID of the workflow to validate
@@ -93,8 +94,8 @@ class SubflowValidator
   def extract_subflow_target_ids(workflow)
     if workflow.read_attribute(:steps).is_a?(Array)
       workflow.read_attribute(:steps)
-        .select { |s| (s["type"] == "sub_flow" || s["type"] == "sub-flow") && s["target_workflow_id"].present? }
-        .map { |s| s["target_workflow_id"].to_i }
+              .select { |s| SUBFLOW_TYPES.include?(s["type"]) && s["target_workflow_id"].present? }
+              .map { |s| s["target_workflow_id"].to_i }
     else
       Steps::SubFlow.where(workflow_id: workflow.id).pluck(:sub_flow_workflow_id).compact
     end

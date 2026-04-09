@@ -6,7 +6,7 @@ Rails.application.routes.draw do
     sessions: 'users/sessions'
   }
 
-  resource :first_run, only: [:new, :create]
+  resource :first_run, only: %i[new create]
   root to: 'dashboard#index'
 
   # Mount ActionCable

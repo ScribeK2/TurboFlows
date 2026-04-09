@@ -1,12 +1,11 @@
 class WorkflowVersionsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_workflow
-  before_action :set_version, only: [:show, :restore]
+  before_action :set_version, only: %i[show restore]
   before_action :set_diff_versions, only: [:diff]
   before_action :ensure_can_view_workflow!
 
-  def show
-  end
+  def show; end
 
   def diff
     @diff = VersionDiffService.call(

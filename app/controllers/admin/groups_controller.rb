@@ -12,7 +12,7 @@ class Admin::GroupsController < Admin::BaseController
   def new
     @group = Group.new
     @group.parent_id = params[:parent_id] if params[:parent_id]
-    @available_parents = Group.all.order(:name)
+    @available_parents = Group.order(:name)
   end
 
   def edit
@@ -24,7 +24,7 @@ class Admin::GroupsController < Admin::BaseController
     if @group.save
       redirect_to admin_groups_path, notice: "Group created successfully."
     else
-      @available_parents = Group.all.order(:name)
+      @available_parents = Group.order(:name)
       render :new, status: :unprocessable_content
     end
   end
@@ -61,6 +61,6 @@ class Admin::GroupsController < Admin::BaseController
   end
 
   def group_params
-    params.require(:group).permit(:name, :description, :parent_id, :position)
+    params.expect(group: %i[name description parent_id position])
   end
 end

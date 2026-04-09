@@ -17,7 +17,7 @@ module WorkflowParsers
            :ensure_step_uuids,
            :convert_to_graph_format,
            :resolve_path_to_uuid,
-           :is_step_incomplete?,
+           :step_incomplete?,
            :step_errors
   end
 
@@ -85,7 +85,7 @@ module WorkflowParsers
 
     test "normalize_steps skips non-hash elements" do
       parser = TestableParser.new("")
-      result = parser.normalize_steps([ nil, "string", 42 ])
+      result = parser.normalize_steps([nil, "string", 42])
       assert_equal [], result
     end
 
@@ -123,7 +123,7 @@ module WorkflowParsers
         "question" => "What is your name?",
         "answer_type" => "text",
         "variable_name" => "customer_name",
-        "options" => [ { "label" => "Yes", "value" => "yes" } ]
+        "options" => [{ "label" => "Yes", "value" => "yes" }]
       }
       result = parser.normalize_single_step(step, 0)
 
@@ -217,7 +217,7 @@ module WorkflowParsers
       assert_equal "question", result["type"]
       assert result["_import_converted"], "Should flag as converted"
       assert_equal "decision", result["_import_converted_from"]
-      assert parser.warnings.any? { |w| w.include?("decision") }
+      assert(parser.warnings.any? { |w| w.include?("decision") })
     end
 
     test "normalize_single_step converts checkpoint to message and adds warning" do
@@ -229,42 +229,42 @@ module WorkflowParsers
       assert_equal "Please review", result["content"]
       assert result["_import_converted"]
       assert_equal "checkpoint", result["_import_converted_from"]
-      assert parser.warnings.any? { |w| w.include?("checkpoint") }
+      assert(parser.warnings.any? { |w| w.include?("checkpoint") })
     end
 
     # ============================================================================
-    # Test 8: is_step_incomplete? and step_errors
+    # Test 8: step_incomplete? and step_errors
     # ============================================================================
 
-    test "is_step_incomplete? returns true for question missing question text" do
+    test "step_incomplete? returns true for question missing question text" do
       parser = TestableParser.new("")
       step = { "type" => "question", "question" => "" }
-      assert parser.is_step_incomplete?(step)
+      assert parser.step_incomplete?(step)
     end
 
-    test "is_step_incomplete? returns false for complete question step" do
+    test "step_incomplete? returns false for complete question step" do
       parser = TestableParser.new("")
       step = { "type" => "question", "question" => "What?" }
-      assert_not parser.is_step_incomplete?(step)
+      assert_not parser.step_incomplete?(step)
     end
 
-    test "is_step_incomplete? returns true for action missing instructions" do
+    test "step_incomplete? returns true for action missing instructions" do
       parser = TestableParser.new("")
       step = { "type" => "action", "instructions" => "" }
-      assert parser.is_step_incomplete?(step)
+      assert parser.step_incomplete?(step)
     end
 
-    test "is_step_incomplete? returns true for resolve missing resolution_type" do
+    test "step_incomplete? returns true for resolve missing resolution_type" do
       parser = TestableParser.new("")
       step = { "type" => "resolve", "resolution_type" => "" }
-      assert parser.is_step_incomplete?(step)
+      assert parser.step_incomplete?(step)
     end
 
-    test "is_step_incomplete? returns false for step types with no required fields" do
+    test "step_incomplete? returns false for step types with no required fields" do
       parser = TestableParser.new("")
-      assert_not parser.is_step_incomplete?({ "type" => "message" })
-      assert_not parser.is_step_incomplete?({ "type" => "escalate" })
-      assert_not parser.is_step_incomplete?({ "type" => "sub_flow" })
+      assert_not parser.step_incomplete?({ "type" => "message" })
+      assert_not parser.step_incomplete?({ "type" => "escalate" })
+      assert_not parser.step_incomplete?({ "type" => "sub_flow" })
     end
 
     test "step_errors returns descriptive error message" do
@@ -285,7 +285,7 @@ module WorkflowParsers
 
     test "normalize_transitions skips non-hash elements" do
       parser = TestableParser.new("")
-      result = parser.normalize_transitions([ "bad", nil, 42 ])
+      result = parser.normalize_transitions(["bad", nil, 42])
       assert_equal [], result
     end
 
@@ -304,7 +304,7 @@ module WorkflowParsers
 
     test "normalize_transitions works with symbol keys" do
       parser = TestableParser.new("")
-      transitions = [ { target_uuid: "uuid-1", condition: nil, label: nil } ]
+      transitions = [{ target_uuid: "uuid-1", condition: nil, label: nil }]
       result = parser.normalize_transitions(transitions)
 
       assert_equal "uuid-1", result.first["target_uuid"]
@@ -321,7 +321,7 @@ module WorkflowParsers
 
     test "normalize_options converts string elements to label/value pairs" do
       parser = TestableParser.new("")
-      result = parser.normalize_options([ "Yes", "No" ])
+      result = parser.normalize_options(%w[Yes No])
 
       assert_equal 2, result.length
       assert_equal({ "label" => "Yes", "value" => "Yes" }, result.first)
@@ -330,7 +330,7 @@ module WorkflowParsers
 
     test "normalize_options normalises hash elements using label and value keys" do
       parser = TestableParser.new("")
-      opts = [ { "label" => "Billing", "value" => "billing" }, { label: "Tech", value: "tech" } ]
+      opts = [{ "label" => "Billing", "value" => "billing" }, { label: "Tech", value: "tech" }]
       result = parser.normalize_options(opts)
 
       assert_equal 2, result.length
@@ -350,14 +350,14 @@ module WorkflowParsers
 
     test "detect_graph_format returns false when no step has transitions" do
       parser = TestableParser.new("")
-      steps = [ { "type" => "action", "title" => "A" } ]
+      steps = [{ "type" => "action", "title" => "A" }]
       assert_not parser.detect_graph_format(steps)
     end
 
     test "detect_graph_format returns true when at least one step has transitions" do
       parser = TestableParser.new("")
       steps = [
-        { "type" => "action", "title" => "A", "transitions" => [ { "target_uuid" => "uuid-2" } ] },
+        { "type" => "action", "title" => "A", "transitions" => [{ "target_uuid" => "uuid-2" }] },
         { "type" => "resolve", "title" => "End" }
       ]
       assert parser.detect_graph_format(steps)
@@ -369,7 +369,7 @@ module WorkflowParsers
 
     test "ensure_step_uuids assigns UUIDs to steps without one" do
       parser = TestableParser.new("")
-      steps = [ { "type" => "action", "title" => "A" }, { "type" => "resolve", "title" => "End", "id" => "existing-uuid" } ]
+      steps = [{ "type" => "action", "title" => "A" }, { "type" => "resolve", "title" => "End", "id" => "existing-uuid" }]
       parser.ensure_step_uuids(steps)
 
       assert_predicate steps[0]["id"], :present?, "Should assign a UUID"
@@ -384,8 +384,8 @@ module WorkflowParsers
     test "convert_to_graph_format adds sequential transitions between non-resolve steps" do
       parser = TestableParser.new("")
       steps = [
-        { "id" => "uuid-1", "type" => "action",  "title" => "Step A", "transitions" => [] },
-        { "id" => "uuid-2", "type" => "resolve",  "title" => "End",    "transitions" => [] }
+        { "id" => "uuid-1", "type" => "action", "title" => "Step A", "transitions" => [] },
+        { "id" => "uuid-2", "type" => "resolve", "title" => "End", "transitions" => [] }
       ]
       result = parser.convert_to_graph_format(steps)
 
@@ -397,8 +397,8 @@ module WorkflowParsers
     test "convert_to_graph_format gives resolve steps no transitions" do
       parser = TestableParser.new("")
       steps = [
-        { "id" => "uuid-1", "type" => "action",  "title" => "A", "transitions" => [] },
-        { "id" => "uuid-2", "type" => "resolve",  "title" => "End", "transitions" => [] }
+        { "id" => "uuid-1", "type" => "action", "title" => "A", "transitions" => [] },
+        { "id" => "uuid-2", "type" => "resolve", "title" => "End", "transitions" => [] }
       ]
       result = parser.convert_to_graph_format(steps)
 
@@ -451,7 +451,7 @@ module WorkflowParsers
       assert result.key?(:steps)
       assert result.key?(:graph_mode)
       assert result.key?(:import_metadata)
-      assert_equal true, result[:graph_mode]
+      assert result[:graph_mode]
     end
 
     test "to_workflow_data sets import_metadata with source_format and timestamps" do
@@ -478,14 +478,14 @@ module WorkflowParsers
     test "to_workflow_data adds warning when converting linear to graph format" do
       parser = TestableParser.new("")
       result = parser.send(:to_workflow_data, {
-        title: "Linear",
-        steps: [
-          { "id" => "u1", "type" => "action",  "title" => "A" },
-          { "id" => "u2", "type" => "resolve", "title" => "End" }
-        ]
-      })
+                             title: "Linear",
+                             steps: [
+                               { "id" => "u1", "type" => "action", "title" => "A" },
+                               { "id" => "u2", "type" => "resolve", "title" => "End" }
+                             ]
+                           })
       assert_not_nil result
-      assert result[:import_metadata][:warnings].any? { |w| w.include?("Graph Mode") }
+      assert(result[:import_metadata][:warnings].any? { |w| w.include?("Graph Mode") })
     end
   end
 end

@@ -17,12 +17,14 @@ module WorkflowsHelper
     'form' => "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
   }.freeze
 
-  DEFAULT_STEP_SVG_PATH = "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+  DEFAULT_STEP_SVG_PATH = "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z".freeze
 
   # SVG path data for UI icons
   UI_SVG_PATHS = {
     'sparkles' => "M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z",
-    'lightbulb' => "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z",
+    'lightbulb' => "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707" \
+                   "m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531" \
+                   "c0-.895-.356-1.754-.988-2.386l-.548-.547z",
     'warning' => "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z",
     'paperclip' => "M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13",
     'question' => "M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
@@ -121,7 +123,7 @@ module WorkflowsHelper
     return 'Not set' if condition.blank?
 
     # Parse the condition
-    if match = condition.match(/^(\w+)\s*(==|!=|>|>=|<|<=)\s*['"]?([^'"]*?)['"]?$/)
+    if (match = condition.match(/^(\w+)\s*(==|!=|>|>=|<|<=)\s*['"]?([^'"]*?)['"]?$/))
       variable, operator, value = match.captures
 
       operator_text = case operator
@@ -167,7 +169,7 @@ module WorkflowsHelper
     return [] unless workflow&.steps&.any?
 
     workflow.steps.order(:position).map.with_index do |step, index|
-      next nil unless step.title.present?
+      next nil if step.title.blank?
       next nil if exclude_step_id && step.uuid == exclude_step_id
 
       [
@@ -184,7 +186,7 @@ module WorkflowsHelper
   # Get variable options for a select dropdown
   # Returns an array of [display_name, value] pairs
   def variable_options_for_select(workflow)
-    return [] unless workflow&.respond_to?(:variables_with_metadata)
+    return [] unless workflow.respond_to?(:variables_with_metadata)
 
     workflow.variables_with_metadata.map do |var|
       [var[:display_name], var[:name]]
@@ -193,7 +195,7 @@ module WorkflowsHelper
 
   # Get the answer type for a variable
   def variable_answer_type(workflow, variable_name)
-    return nil unless workflow&.respond_to?(:variables_with_metadata)
+    return nil unless workflow.respond_to?(:variables_with_metadata)
 
     var = workflow.variables_with_metadata.find { |v| v[:name] == variable_name }
     var&.dig(:answer_type)

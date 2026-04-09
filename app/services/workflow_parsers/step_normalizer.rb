@@ -6,8 +6,8 @@ module WorkflowParsers
   class StepNormalizer
     REQUIRED_STEP_FIELDS = {
       'question' => { field: 'question', message: 'Question text is required' },
-      'action'   => { field: 'instructions', message: 'Instructions are required' },
-      'resolve'  => { field: 'resolution_type', message: 'Resolution type is required' }
+      'action' => { field: 'instructions', message: 'Instructions are required' },
+      'resolve' => { field: 'resolution_type', message: 'Resolution type is required' }
     }.freeze
 
     attr_reader :warnings
@@ -44,9 +44,9 @@ module WorkflowParsers
       return nil unless step.is_a?(Hash)
 
       normalized = {
-        'id'          => step['id'] || step[:id],
-        'type'        => step[:type] || step['type'] || 'action',
-        'title'       => step[:title] || step['title'] || "Step #{index + 1}",
+        'id' => step['id'] || step[:id],
+        'type' => step[:type] || step['type'] || 'action',
+        'title' => step[:title] || step['title'] || "Step #{index + 1}",
         'description' => step[:description] || step['description'] || ''
       }
 
@@ -70,8 +70,8 @@ module WorkflowParsers
 
         {
           'target_uuid' => t['target_uuid'] || t[:target_uuid],
-          'condition'   => t['condition']   || t[:condition],
-          'label'       => t['label']       || t[:label]
+          'condition' => t['condition'] || t[:condition],
+          'label' => t['label'] || t[:label]
         }.compact
       end
     end
@@ -99,7 +99,7 @@ module WorkflowParsers
       branches.map do |branch|
         {
           'condition' => branch[:condition] || branch['condition'] || '',
-          'path'      => branch[:path]      || branch['path']      || ''
+          'path' => branch[:path] || branch['path'] || ''
         }
       end
     end
@@ -130,7 +130,7 @@ module WorkflowParsers
     # Resolve "Step N" / title references in transitions, branches, and
     # else_path fields.  Used only for Markdown imports.
     def resolve_step_references(normalized_steps)
-      return normalized_steps unless normalized_steps.is_a?(Array) && normalized_steps.length > 0
+      return normalized_steps unless normalized_steps.is_a?(Array) && normalized_steps.length.positive?
 
       step_title_map, step_id_map, title_to_id = build_reference_maps(normalized_steps)
       resolve_references_in_steps(normalized_steps, step_title_map, step_id_map, title_to_id)
@@ -166,7 +166,7 @@ module WorkflowParsers
         normalized['target_type'] = step[:target_type] || step['target_type'] || ''
         normalized['priority']    = step[:priority]    || step['priority']    || 'normal'
         normalized['target_id']   = step[:target_id]   || step['target_id']
-        normalized['reason']      = step[:reason]      || step['reason']      || ''
+        normalized['reason']      = step[:reason]      || step['reason'] || ''
       when 'resolve'
         normalized['resolution_type']  = step[:resolution_type]  || step['resolution_type']  || 'success'
         normalized['resolution_notes'] = step[:resolution_notes] || step['resolution_notes'] || ''
@@ -232,7 +232,7 @@ module WorkflowParsers
       title_to_id    = {}
 
       normalized_steps.each_with_index do |step, index|
-        step_num  = index + 1
+        step_num = index + 1
         step_title = step['title'] || "Step #{step_num}"
         step_id    = step['id']
 
@@ -305,7 +305,7 @@ module WorkflowParsers
 
       if path =~ /step\s+(\d+)/i
         step_num = ::Regexp.last_match(1).to_i
-        if step_num > 0 && step_num <= normalized_steps.length
+        if step_num.positive? && step_num <= normalized_steps.length
           return step_title_map["Step #{step_num}"]
         end
       end
@@ -328,7 +328,7 @@ module WorkflowParsers
 
       if ref =~ /step\s+(\d+)/i
         step_num = ::Regexp.last_match(1).to_i
-        if step_num > 0 && step_num <= normalized_steps.length
+        if step_num.positive? && step_num <= normalized_steps.length
           return step_id_map["Step #{step_num}"]
         end
       end

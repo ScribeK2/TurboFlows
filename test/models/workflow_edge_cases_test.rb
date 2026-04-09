@@ -128,7 +128,7 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
 
     result = scenario.process_step("answer")
 
-    assert_equal false, result
+    assert_not result
     # Should not have processed the step
     assert_nil scenario.results["Question"]
   end
@@ -148,7 +148,7 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
 
     result = scenario.process_step("answer")
 
-    assert_equal false, result
+    assert_not result
   end
 
   test "process_step returns false on timeout status scenario" do
@@ -166,7 +166,7 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
 
     result = scenario.process_step("answer")
 
-    assert_equal false, result
+    assert_not result
   end
 
   # ==========================================================================

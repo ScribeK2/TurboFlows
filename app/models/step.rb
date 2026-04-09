@@ -29,12 +29,12 @@ class Step < ApplicationRecord
 
   STEP_TYPE_MAP = {
     "question" => "Steps::Question",
-    "action"   => "Steps::Action",
-    "message"  => "Steps::Message",
+    "action" => "Steps::Action",
+    "message" => "Steps::Message",
     "escalate" => "Steps::Escalate",
-    "resolve"  => "Steps::Resolve",
+    "resolve" => "Steps::Resolve",
     "sub_flow" => "Steps::SubFlow",
-    "form"     => "Steps::Form"
+    "form" => "Steps::Form"
   }.freeze
 
   def self.class_for_type(type)

@@ -14,7 +14,7 @@ class TaggingTest < ActiveSupport::TestCase
   # Validations
   test "valid with tag and workflow" do
     tagging = Tagging.new(tag: @tag, workflow: @workflow)
-    assert tagging.valid?
+    assert_predicate tagging, :valid?
   end
 
   test "enforces uniqueness of tag_id scoped to workflow_id" do
@@ -28,14 +28,14 @@ class TaggingTest < ActiveSupport::TestCase
     workflow2 = Workflow.create!(title: "Tagging WF 2", user: @user)
     Tagging.create!(tag: @tag, workflow: @workflow)
     tagging2 = Tagging.new(tag: @tag, workflow: workflow2)
-    assert tagging2.valid?
+    assert_predicate tagging2, :valid?
   end
 
   test "allows same workflow with different tags" do
     tag2 = Tag.create!(name: "Urgent Tag")
     Tagging.create!(tag: @tag, workflow: @workflow)
     tagging2 = Tagging.new(tag: tag2, workflow: @workflow)
-    assert tagging2.valid?
+    assert_predicate tagging2, :valid?
   end
 
   test "requires tag_id" do
@@ -97,9 +97,9 @@ class TaggingTest < ActiveSupport::TestCase
     workflow2 = Workflow.create!(title: "Tagging WF 2", user: @user)
     workflow3 = Workflow.create!(title: "Tagging WF 3", user: @user)
 
-    tagging1 = Tagging.create!(tag: @tag, workflow: @workflow)
-    tagging2 = Tagging.create!(tag: @tag, workflow: workflow2)
-    tagging3 = Tagging.create!(tag: @tag, workflow: workflow3)
+    Tagging.create!(tag: @tag, workflow: @workflow)
+    Tagging.create!(tag: @tag, workflow: workflow2)
+    Tagging.create!(tag: @tag, workflow: workflow3)
 
     assert_equal 3, Tagging.where(tag: @tag).count
   end
@@ -108,9 +108,9 @@ class TaggingTest < ActiveSupport::TestCase
     tag2 = Tag.create!(name: "Urgent Tag")
     tag3 = Tag.create!(name: "High Priority Tag")
 
-    tagging1 = Tagging.create!(tag: @tag, workflow: @workflow)
-    tagging2 = Tagging.create!(tag: tag2, workflow: @workflow)
-    tagging3 = Tagging.create!(tag: tag3, workflow: @workflow)
+    Tagging.create!(tag: @tag, workflow: @workflow)
+    Tagging.create!(tag: tag2, workflow: @workflow)
+    Tagging.create!(tag: tag3, workflow: @workflow)
 
     assert_equal 3, Tagging.where(workflow: @workflow).count
   end

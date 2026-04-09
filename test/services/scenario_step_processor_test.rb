@@ -131,7 +131,7 @@ class ScenarioStepProcessorTest < ActiveSupport::TestCase
     processor  = ScenarioStepProcessor.new(@scenario)
     path_entry = @scenario.send(:build_path_entry, sub)
     result = processor.process(sub, nil, path_entry)
-    assert_equal false, result
+    assert_not result
     assert_predicate @scenario, :errored?
   end
 
@@ -139,7 +139,6 @@ class ScenarioStepProcessorTest < ActiveSupport::TestCase
 
   test "unknown step type falls back to advance_to_next_step without raising" do
     # Use a plain step double-like object — just a question step with a fake type
-    step = @question
     # We can't easily fake the step_type without subclassing, so just verify the
     # 'resolve' dispatch path doesn't break the processor interface for known types.
     processor = ScenarioStepProcessor.new(@scenario)
@@ -165,7 +164,7 @@ class ScenarioStepProcessorTest < ActiveSupport::TestCase
     processor = ScenarioStepProcessor.new(scenario)
     path_entry = scenario.send(:build_path_entry, escalate)
     result = processor.process(escalate, "", path_entry)
-    assert_equal false, result
+    assert_not result
     assert_includes path_entry["escalation_errors"], "Escalation reason is required"
   end
 
@@ -193,7 +192,7 @@ class ScenarioStepProcessorTest < ActiveSupport::TestCase
     processor = ScenarioStepProcessor.new(scenario)
     path_entry = scenario.send(:build_path_entry, resolve)
     result = processor.process(resolve, "", path_entry)
-    assert_equal false, result
+    assert_not result
     assert_includes path_entry["resolution_errors"], "Resolution notes are required"
   end
 

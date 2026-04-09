@@ -12,7 +12,7 @@ class UserWorkflowPinTest < ActiveSupport::TestCase
 
   test "valid pin" do
     pin = UserWorkflowPin.new(user: @user, workflow: @workflow)
-    assert pin.valid?
+    assert_predicate pin, :valid?
   end
 
   test "belongs to user" do
@@ -40,7 +40,7 @@ class UserWorkflowPinTest < ActiveSupport::TestCase
     )
     UserWorkflowPin.create!(user: @user, workflow: @workflow)
     pin = UserWorkflowPin.new(user: other_user, workflow: @workflow)
-    assert pin.valid?
+    assert_predicate pin, :valid?
   end
 
   test "enforces pin limit of #{UserWorkflowPin::MAX_PINS}" do

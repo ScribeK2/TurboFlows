@@ -1,7 +1,7 @@
 class WorkflowImporter
   Result = Data.define(:success, :workflow, :errors, :warnings, :incomplete_steps_count) do
     def success? = success
-    def incomplete_steps? = incomplete_steps_count.to_i > 0
+    def incomplete_steps? = incomplete_steps_count.to_i.positive?
   end
 
   def initialize(user, format:, content:)
@@ -177,13 +177,12 @@ class WorkflowImporter
 
   def step_class_for(type)
     case type
-    when "question"  then Steps::Question
-    when "action"    then Steps::Action
-    when "message"   then Steps::Message
-    when "escalate"  then Steps::Escalate
-    when "resolve"   then Steps::Resolve
-    when "sub_flow"  then Steps::SubFlow
-    else                  Steps::Action
+    when "question" then Steps::Question
+    when "message"  then Steps::Message
+    when "escalate" then Steps::Escalate
+    when "resolve"  then Steps::Resolve
+    when "sub_flow" then Steps::SubFlow
+    else Steps::Action
     end
   end
 

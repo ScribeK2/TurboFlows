@@ -244,8 +244,8 @@ class StepsController < ApplicationController
       :help_text, :reference_url,
       :transitions_json,
       media_attachments: [],
-      options: [[:label, :value]],
-      output_fields: [[:name, :value]],
+      options: [%i[label value]],
+      output_fields: [%i[name value]],
       jumps: {},
       variable_mapping: {}
     )

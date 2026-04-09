@@ -14,7 +14,7 @@ class GroupWorkflowTest < ActiveSupport::TestCase
   # Validations
   test "valid with group and workflow" do
     gw = GroupWorkflow.new(group: @group, workflow: @workflow)
-    assert gw.valid?
+    assert_predicate gw, :valid?
   end
 
   test "enforces uniqueness of group_id scoped to workflow_id" do
@@ -28,14 +28,14 @@ class GroupWorkflowTest < ActiveSupport::TestCase
     workflow2 = Workflow.create!(title: "GW WF 2", user: @user)
     GroupWorkflow.create!(group: @group, workflow: @workflow)
     gw2 = GroupWorkflow.new(group: @group, workflow: workflow2)
-    assert gw2.valid?
+    assert_predicate gw2, :valid?
   end
 
   test "allows same workflow with different groups" do
     group2 = Group.create!(name: "GW Group 2")
     GroupWorkflow.create!(group: @group, workflow: @workflow)
     gw2 = GroupWorkflow.new(group: group2, workflow: @workflow)
-    assert gw2.valid?
+    assert_predicate gw2, :valid?
   end
 
   test "requires group_id" do
@@ -110,9 +110,9 @@ class GroupWorkflowTest < ActiveSupport::TestCase
     workflow2 = Workflow.create!(title: "GW WF 2", user: @user)
     workflow3 = Workflow.create!(title: "GW WF 3", user: @user)
 
-    gw1 = GroupWorkflow.create!(group: @group, workflow: @workflow)
-    gw2 = GroupWorkflow.create!(group: @group, workflow: workflow2)
-    gw3 = GroupWorkflow.create!(group: @group, workflow: workflow3)
+    GroupWorkflow.create!(group: @group, workflow: @workflow)
+    GroupWorkflow.create!(group: @group, workflow: workflow2)
+    GroupWorkflow.create!(group: @group, workflow: workflow3)
 
     assert_equal 3, GroupWorkflow.where(group: @group).count
   end

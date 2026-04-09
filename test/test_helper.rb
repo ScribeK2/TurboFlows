@@ -31,7 +31,6 @@ ActionDispatch::IntegrationTest.class_eval do
       scope = resource.is_a?(User) ? :user : Devise::Mapping.find_scope!(resource.class)
     else
       scope = resource_or_scope
-      resource = resource
     end
     login_as(resource, scope: scope)
   end

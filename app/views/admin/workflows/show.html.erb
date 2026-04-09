@@ -11,7 +11,7 @@
       <p class="text-sm mb-2">
         by <%= @workflow.user.email %> &bull; Created <%= time_ago_in_words(@workflow.created_at) %> ago
       </p>
-      <% if @workflow.has_description? %>
+      <% if @workflow.description? %>
         <div class="prose prose-sm mt-3">
           <%= @workflow.description %>
         </div>

@@ -7,7 +7,7 @@ class SubflowValidationTest < ActiveSupport::TestCase
     @data = seed_performance_data
 
     # Create a chain of 10 workflows with sub-flow references
-    @subflow_workflows = 10.times.map do |i|
+    @subflow_workflows = Array.new(10) do |i|
       Workflow.create!(
         title: "Subflow Chain #{i}",
         status: "published",

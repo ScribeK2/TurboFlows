@@ -39,7 +39,7 @@ class ConditionEvaluator
   def evaluate(results)
     return false if condition.blank? || !results.is_a?(Hash)
 
-    if condition.include?('==') && !condition.include?('!=')
+    if condition.include?('==') && condition.exclude?('!=')
       evaluate_equality(results)
     elsif condition.include?('!=')
       evaluate_inequality(results)
@@ -110,7 +110,7 @@ class ConditionEvaluator
     expected_value = parts[1].gsub(/['"]/, '').strip
 
     result_value = lookup_value(key, results)
-    return (operator == '!=') if result_value.nil?
+    return operator == '!=' if result_value.nil?
 
     # Case-insensitive comparison for strings
     values_equal = result_value.to_s.downcase == expected_value.to_s.downcase

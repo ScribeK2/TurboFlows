@@ -1,5 +1,6 @@
 class FirstRun
-  AlreadyCompleted = Class.new(StandardError)
+  class AlreadyCompleted < StandardError
+  end
 
   def self.create!(user_params)
     # Wrap in transaction to guard against concurrent first requests
@@ -7,6 +8,7 @@ class FirstRun
     # but belt-and-suspenders).
     User.transaction do
       raise AlreadyCompleted if User.exists?
+
       User.create!(user_params.merge(role: "admin"))
     end
   end

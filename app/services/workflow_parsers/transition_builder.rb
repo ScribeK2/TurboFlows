@@ -64,8 +64,8 @@ module WorkflowParsers
 
         {
           'target_uuid' => t['target_uuid'] || t[:target_uuid],
-          'condition'   => t['condition']   || t[:condition],
-          'label'       => t['label']       || t[:label]
+          'condition' => t['condition'] || t[:condition],
+          'label' => t['label'] || t[:label]
         }.compact
       end
     end
@@ -76,7 +76,7 @@ module WorkflowParsers
       return nil if path.blank?
 
       if path.match?(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i) &&
-         title_to_id.values.include?(path)
+         title_to_id.value?(path)
         return path
       end
 
@@ -115,15 +115,15 @@ module WorkflowParsers
           condition    = jump['condition'] || jump[:condition]
           next_step_id = jump['next_step_id'] || jump[:next_step_id]
 
-          next unless next_step_id.present?
+          next if next_step_id.blank?
 
           target_uuid = resolve_path_to_uuid(next_step_id, title_to_id)
           next unless target_uuid
 
           transitions << {
             'target_uuid' => target_uuid,
-            'condition'   => condition.presence,
-            'label'       => condition.present? ? "Jump: #{condition}" : nil
+            'condition' => condition.presence,
+            'label' => condition.present? ? "Jump: #{condition}" : nil
           }
         end
       end
@@ -134,8 +134,8 @@ module WorkflowParsers
         unless has_default
           transitions << {
             'target_uuid' => next_step['id'],
-            'condition'   => nil,
-            'label'       => nil
+            'condition' => nil,
+            'label' => nil
           }
         end
       end

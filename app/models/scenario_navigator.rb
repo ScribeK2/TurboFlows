@@ -5,7 +5,7 @@ class ScenarioNavigator
   end
 
   def go_back
-    return unless @scenario.execution_path.present? && @scenario.execution_path.size > 0
+    return unless @scenario.execution_path.present? && @scenario.execution_path.size.positive?
 
     popped_step = pop_to_interactive_step
     return unless popped_step
@@ -19,9 +19,10 @@ class ScenarioNavigator
   private
 
   def pop_to_interactive_step
-    while @scenario.execution_path.size > 0
+    while @scenario.execution_path.size.positive?
       candidate = @scenario.execution_path.pop
       next if candidate["step_type"] == "sub_flow"
+
       return candidate
     end
     nil
@@ -31,7 +32,7 @@ class ScenarioNavigator
     @scenario.results = {}
     @scenario.inputs = {}
     @scenario.execution_path.each do |entry|
-      next unless entry["answer"].present?
+      next if entry["answer"].blank?
 
       step = resolve_step_from_entry(entry)
       next unless step.is_a?(Steps::Question)

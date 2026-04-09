@@ -161,7 +161,7 @@ class WorkflowVersionsControllerTest < ActionDispatch::IntegrationTest
     restored_titles = @workflow.steps.pluck(:title)
     assert_includes restored_titles, "Start Question"
     assert_includes restored_titles, "All Done"
-    refute_includes restored_titles, "Escalate!"
+    assert_not_includes restored_titles, "Escalate!"
   end
 
   test "restore: increments version count after publishing a new version" do

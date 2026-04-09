@@ -169,7 +169,7 @@ module Admin
         end
       end
 
-      step_times.map do |title, durations|
+      results = step_times.map do |title, durations|
         {
           title: title,
           count: durations.size,
@@ -177,7 +177,8 @@ module Admin
           max_duration: durations.max.round(1),
           min_duration: durations.min.round(1)
         }
-      end.sort_by { |s| -s[:avg_duration] }
+      end
+      results.sort_by { |s| -s[:avg_duration] }
     end
 
     def build_dropoff_points

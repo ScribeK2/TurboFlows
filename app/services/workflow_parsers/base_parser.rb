@@ -55,17 +55,17 @@ module WorkflowParsers
       validate_graph_structure(steps, start_node_uuid) if steps.any?
 
       {
-        title:          parsed_data[:title] || "Imported Workflow",
-        description:    parsed_data[:description] || "",
-        graph_mode:     true,
+        title: parsed_data[:title] || "Imported Workflow",
+        description: parsed_data[:description] || "",
+        graph_mode: true,
         start_node_uuid: start_node_uuid,
-        steps:          steps,
+        steps: steps,
         import_metadata: {
-          source_format:   self.class.name.demodulize.downcase.gsub('parser', ''),
-          imported_at:     Time.current.iso8601,
+          source_format: self.class.name.demodulize.downcase.gsub('parser', ''),
+          imported_at: Time.current.iso8601,
           original_format: is_graph_format ? 'graph' : 'linear',
-          warnings:        @warnings,
-          errors:          @errors
+          warnings: @warnings,
+          errors: @errors
         }
       }
     end
@@ -98,7 +98,7 @@ module WorkflowParsers
       @step_normalizer.normalize_branches(branches)
     end
 
-    def is_step_incomplete?(step)
+    def step_incomplete?(step)
       @step_normalizer.incomplete?(step)
     end
 
@@ -107,8 +107,7 @@ module WorkflowParsers
     end
 
     # No-op: decision step branches are no longer supported
-    def validate_branch_references(_steps)
-    end
+    def validate_branch_references(_steps); end
 
     # Resolve step number references (e.g., "Step 3" → actual step title or ID)
     def resolve_step_references(normalized_steps)
@@ -190,10 +189,10 @@ module WorkflowParsers
 
         matches = Workflow.where(status: 'published').where('LOWER(title) = LOWER(?)', title)
 
-        if matches.count == 1
+        if matches.one?
           step['target_workflow_id'] = matches.first.id
           add_warning("Sub-flow step '#{step['title']}': Resolved target workflow title '#{title}' to workflow ##{matches.first.id}")
-        elsif matches.count == 0
+        elsif matches.none?
           step['_import_incomplete'] = true
           step['_import_errors'] ||= []
           step['_import_errors'] << "Target workflow '#{title}' not found among published workflows"

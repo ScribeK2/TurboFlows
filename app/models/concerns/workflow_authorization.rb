@@ -25,8 +25,8 @@ module WorkflowAuthorization
 
       # Check if workflow is in user's assigned groups
       group_ids = cached_accessible_group_ids(user)
-      if group_ids.any?
-        return true if workflow_in_groups?(group_ids)
+      if group_ids.any? && workflow_in_groups?(group_ids)
+        return true
       end
       return true if workflow_has_no_groups? # Workflows without groups (backward compatibility)
 

@@ -20,18 +20,18 @@ module WorkflowParsers
     end
 
     test "normalize skips non-hash elements" do
-      result = normalizer.normalize([ nil, "string", 42 ])
+      result = normalizer.normalize([nil, "string", 42])
       assert_equal [], result
     end
 
     test "normalize assigns UUIDs to all steps" do
-      steps = [ { "type" => "action", "title" => "A" }, { "type" => "resolve", "title" => "End" } ]
+      steps = [{ "type" => "action", "title" => "A" }, { "type" => "resolve", "title" => "End" }]
       result = normalizer.normalize(steps)
       result.each { |s| assert_match(/\A[0-9a-f-]{36}\z/, s["id"]) }
     end
 
     test "normalize does not overwrite existing step ids" do
-      steps = [ { "id" => "existing-uuid", "type" => "action", "title" => "A" } ]
+      steps = [{ "id" => "existing-uuid", "type" => "action", "title" => "A" }]
       result = normalizer.normalize(steps)
       assert_equal "existing-uuid", result.first["id"]
     end
@@ -66,16 +66,16 @@ module WorkflowParsers
 
     test "normalize_single_step extracts question fields" do
       step = {
-        "type"          => "question",
-        "title"         => "Ask Name",
-        "question"      => "What is your name?",
-        "answer_type"   => "text",
+        "type" => "question",
+        "title" => "Ask Name",
+        "question" => "What is your name?",
+        "answer_type" => "text",
         "variable_name" => "customer_name",
-        "options"       => [ { "label" => "Yes", "value" => "yes" } ]
+        "options" => [{ "label" => "Yes", "value" => "yes" }]
       }
       result = normalizer.normalize_single_step(step, 0)
 
-      assert_equal "question",         result["type"]
+      assert_equal "question", result["type"]
       assert_equal "What is your name?", result["question"]
       assert_equal "text",             result["answer_type"]
       assert_equal "customer_name",    result["variable_name"]
@@ -86,9 +86,9 @@ module WorkflowParsers
       step = { "type" => "action", "title" => "Do Work", "instructions" => "Perform the task", "action_type" => "manual" }
       result = normalizer.normalize_single_step(step, 0)
 
-      assert_equal "action",         result["type"]
+      assert_equal "action", result["type"]
       assert_equal "Perform the task", result["instructions"]
-      assert_equal "manual",         result["action_type"]
+      assert_equal "manual", result["action_type"]
     end
 
     test "normalize_single_step extracts message fields" do
@@ -101,11 +101,11 @@ module WorkflowParsers
 
     test "normalize_single_step extracts escalate fields" do
       step = {
-        "type"        => "escalate",
-        "title"       => "Escalate",
+        "type" => "escalate",
+        "title" => "Escalate",
         "target_type" => "team",
-        "priority"    => "high",
-        "reason"      => "Needs attention"
+        "priority" => "high",
+        "reason" => "Needs attention"
       }
       result = normalizer.normalize_single_step(step, 0)
 
@@ -131,10 +131,10 @@ module WorkflowParsers
 
     test "normalize_single_step extracts sub_flow fields" do
       step = {
-        "type"               => "sub_flow",
-        "title"              => "Sub",
+        "type" => "sub_flow",
+        "title" => "Sub",
         "target_workflow_id" => 42,
-        "variable_mapping"   => { "in" => "out" }
+        "variable_mapping" => { "in" => "out" }
       }
       result = normalizer.normalize_single_step(step, 0)
 
@@ -151,17 +151,17 @@ module WorkflowParsers
       step   = { "type" => "decision", "title" => "Choose" }
       result = normalizer.normalize_single_step(step, 0)
 
-      assert_equal "question",  result["type"]
+      assert_equal "question", result["type"]
       assert result["_import_converted"], "Should flag as converted"
-      assert_equal "decision",  result["_import_converted_from"]
-      assert normalizer.warnings.any? { |w| w.include?("decision") }
+      assert_equal "decision", result["_import_converted_from"]
+      assert(normalizer.warnings.any? { |w| w.include?("decision") })
     end
 
     test "normalize_single_step converts simple_decision to question and adds warning" do
       step   = { "type" => "simple_decision", "title" => "Simple Choose" }
       result = normalizer.normalize_single_step(step, 0)
 
-      assert_equal "question",       result["type"]
+      assert_equal "question", result["type"]
       assert_equal "simple_decision", result["_import_converted_from"]
     end
 
@@ -169,11 +169,11 @@ module WorkflowParsers
       step   = { "type" => "checkpoint", "title" => "Review", "checkpoint_message" => "Please review" }
       result = normalizer.normalize_single_step(step, 0)
 
-      assert_equal "message",    result["type"]
+      assert_equal "message", result["type"]
       assert_equal "Please review", result["content"]
       assert result["_import_converted"]
       assert_equal "checkpoint", result["_import_converted_from"]
-      assert normalizer.warnings.any? { |w| w.include?("checkpoint") }
+      assert(normalizer.warnings.any? { |w| w.include?("checkpoint") })
     end
 
     # =========================================================================
@@ -181,16 +181,16 @@ module WorkflowParsers
     # =========================================================================
 
     test "normalize_single_step preserves transitions array" do
-      transitions = [ { "target_uuid" => "uuid-2", "condition" => nil } ]
+      transitions = [{ "target_uuid" => "uuid-2", "condition" => nil }]
       step        = { "type" => "action", "transitions" => transitions }
       result      = normalizer.normalize_single_step(step, 0)
 
-      assert_equal 1,       result["transitions"].length
+      assert_equal 1, result["transitions"].length
       assert_equal "uuid-2", result["transitions"].first["target_uuid"]
     end
 
     test "normalize_single_step preserves jumps array" do
-      jumps  = [ { "condition" => "x == 1", "next_step_id" => "uuid-3" } ]
+      jumps  = [{ "condition" => "x == 1", "next_step_id" => "uuid-3" }]
       step   = { "type" => "action", "jumps" => jumps }
       result = normalizer.normalize_single_step(step, 0)
 
@@ -242,11 +242,11 @@ module WorkflowParsers
     end
 
     test "normalize_transitions skips non-hash elements" do
-      assert_equal [], normalizer.normalize_transitions([ "bad", nil, 42 ])
+      assert_equal [], normalizer.normalize_transitions(["bad", nil, 42])
     end
 
     test "normalize_transitions normalizes target_uuid and condition" do
-      transitions = [ { "target_uuid" => "abc-123", "condition" => "x == 1", "label" => "Yes" } ]
+      transitions = [{ "target_uuid" => "abc-123", "condition" => "x == 1", "label" => "Yes" }]
       result      = normalizer.normalize_transitions(transitions)
 
       assert_equal 1,         result.length
@@ -256,7 +256,7 @@ module WorkflowParsers
     end
 
     test "normalize_transitions works with symbol keys" do
-      result = normalizer.normalize_transitions([ { target_uuid: "uuid-1", condition: nil } ])
+      result = normalizer.normalize_transitions([{ target_uuid: "uuid-1", condition: nil }])
       assert_equal "uuid-1", result.first["target_uuid"]
     end
 
@@ -269,20 +269,20 @@ module WorkflowParsers
     end
 
     test "normalize_options converts string elements to label/value pairs" do
-      result = normalizer.normalize_options([ "Yes", "No" ])
+      result = normalizer.normalize_options(%w[Yes No])
       assert_equal 2, result.length
       assert_equal({ "label" => "Yes", "value" => "Yes" }, result.first)
       assert_equal({ "label" => "No",  "value" => "No" },  result.last)
     end
 
     test "normalize_options normalises hash elements using label and value keys" do
-      opts   = [ { "label" => "Billing", "value" => "billing" }, { label: "Tech", value: "tech" } ]
+      opts   = [{ "label" => "Billing", "value" => "billing" }, { label: "Tech", value: "tech" }]
       result = normalizer.normalize_options(opts)
 
-      assert_equal 2,        result.length
+      assert_equal 2, result.length
       assert_equal "Billing", result[0]["label"]
       assert_equal "billing", result[0]["value"]
-      assert_equal "Tech",   result[1]["label"]
+      assert_equal "Tech", result[1]["label"]
     end
 
     # =========================================================================
@@ -294,7 +294,7 @@ module WorkflowParsers
     end
 
     test "normalize_branches normalizes condition and path keys" do
-      branches = [ { "condition" => "x > 0", "path" => "Step 2" } ]
+      branches = [{ "condition" => "x > 0", "path" => "Step 2" }]
       result   = normalizer.normalize_branches(branches)
 
       assert_equal "x > 0",  result.first["condition"]
@@ -302,7 +302,7 @@ module WorkflowParsers
     end
 
     test "normalize_branches works with symbol keys" do
-      branches = [ { condition: "yes", path: "End" } ]
+      branches = [{ condition: "yes", path: "End" }]
       result   = normalizer.normalize_branches(branches)
 
       assert_equal "yes", result.first["condition"]
@@ -314,7 +314,7 @@ module WorkflowParsers
     # =========================================================================
 
     test "ensure_uuids assigns UUIDs to steps without one" do
-      steps = [ { "type" => "action" }, { "id" => "keep-me", "type" => "resolve" } ]
+      steps = [{ "type" => "action" }, { "id" => "keep-me", "type" => "resolve" }]
       normalizer.ensure_uuids(steps)
 
       assert_match(/\A[0-9a-f-]{36}\z/, steps[0]["id"])
@@ -341,7 +341,7 @@ module WorkflowParsers
     test "resolve_step_references resolves Step N references in transition target_uuid" do
       steps = [
         { "id" => "u1", "type" => "action",  "title" => "Step 1: Greet",
-          "transitions" => [ { "target_uuid" => "Step 2", "condition" => nil } ] },
+          "transitions" => [{ "target_uuid" => "Step 2", "condition" => nil }] },
         { "id" => "u2", "type" => "resolve", "title" => "Step 2: Done", "transitions" => [] }
       ]
       result = normalizer.resolve_step_references(steps)

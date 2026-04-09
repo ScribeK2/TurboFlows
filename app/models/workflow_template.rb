@@ -5,13 +5,10 @@ class WorkflowTemplate
       case obj
       when Hash
         obj.each_value { |v| deep_freeze.call(v) }
-        obj.freeze
       when Array
         obj.each { |v| deep_freeze.call(v) }
-        obj.freeze
-      else
-        obj.freeze
       end
+      obj.freeze
     end
     deep_freeze.call(raw)
   end

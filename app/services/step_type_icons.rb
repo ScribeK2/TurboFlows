@@ -11,7 +11,7 @@ module StepTypeIcons
     'form' => 'f'
   }.freeze
 
-  DEFAULT_ICON = '#'
+  DEFAULT_ICON = '#'.freeze
 
   def step_type_icon(type)
     ICONS.fetch(type, DEFAULT_ICON)

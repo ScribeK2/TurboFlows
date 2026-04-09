@@ -2,7 +2,7 @@
   <!-- Header Section -->
   <div class="wizard-page__header text-center">
     <h1 class="page-title"><%= @workflow.title %></h1>
-    <% if @workflow.has_description? %>
+    <% if @workflow.description? %>
       <div class="mt-3 text-left">
         <%= @workflow.description %>
       </div>

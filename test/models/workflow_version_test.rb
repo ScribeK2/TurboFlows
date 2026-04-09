@@ -25,7 +25,7 @@ class WorkflowVersionTest < ActiveSupport::TestCase
       published_by: @user,
       published_at: Time.current
     )
-    assert version.valid?, version.errors.full_messages.join(", ")
+    assert_predicate version, :valid?, version.errors.full_messages.join(", ")
   end
 
   test "invalid without workflow" do
@@ -119,7 +119,7 @@ class WorkflowVersionTest < ActiveSupport::TestCase
       published_by: @user,
       published_at: Time.current
     )
-    assert version.valid?
+    assert_predicate version, :valid?
   end
 
   test "stores steps_snapshot as deep copy" do

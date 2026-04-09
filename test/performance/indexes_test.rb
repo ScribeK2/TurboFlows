@@ -23,7 +23,7 @@ class IndexesTest < ActiveSupport::TestCase
     workflow = @data[:workflows].first
     expected = workflow.steps.count
     assert_equal expected, workflow.steps_count,
-      "steps_count should match actual AR steps count"
+                 "steps_count should match actual AR steps count"
   end
 
   test "sorting by steps_count uses cached column instead of json function" do

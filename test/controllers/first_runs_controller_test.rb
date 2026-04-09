@@ -41,7 +41,7 @@ class FirstRunsControllerTest < ActionDispatch::IntegrationTest
     end
 
     user = User.last
-    assert user.admin?
+    assert_predicate user, :admin?
     assert_equal "admin@example.com", user.email
     assert_redirected_to root_path
     follow_redirect!
@@ -95,7 +95,7 @@ class FirstRunsControllerTest < ActionDispatch::IntegrationTest
       password: "password123!",
       password_confirmation: "password123!"
     )
-    assert user.admin?
+    assert_predicate user, :admin?
 
     # Now a second attempt raises AlreadyCompleted
     assert_raises(FirstRun::AlreadyCompleted) do

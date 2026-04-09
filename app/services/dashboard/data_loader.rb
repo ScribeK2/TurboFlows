@@ -14,13 +14,13 @@ module Dashboard
 
     def workflows
       @workflows ||= if user.can_create_workflows?
-        visible_ids = Workflow.visible_to(user).select(:id)
-        draft_ids = user.workflows.drafts.select(:id)
-        Workflow.where(id: visible_ids).or(Workflow.where(id: draft_ids))
-                .includes(:tags).order(created_at: :desc).limit(5)
-      else
-        Workflow.visible_to(user).includes(:tags).recent.limit(5)
-      end
+                       visible_ids = Workflow.visible_to(user).select(:id)
+                       draft_ids = user.workflows.drafts.select(:id)
+                       Workflow.where(id: visible_ids).or(Workflow.where(id: draft_ids))
+                               .includes(:tags).order(created_at: :desc).limit(5)
+                     else
+                       Workflow.visible_to(user).includes(:tags).recent.limit(5)
+                     end
     end
 
     def recent_scenarios
@@ -44,8 +44,8 @@ module Dashboard
 
     def scenarios_this_week
       @scenarios_this_week ||= live_scenarios
-                                 .where(created_at: Time.current.beginning_of_week..)
-                                 .count
+                               .where(created_at: Time.current.beginning_of_week..)
+                               .count
     end
 
     def personal_scenario_total
@@ -55,6 +55,7 @@ module Dashboard
     def personal_completion_rate
       total = live_scenarios.count
       return 0 if total.zero?
+
       completed = live_scenarios.where(status: "completed").count
       ((completed * 100.0) / total).round
     end
@@ -88,14 +89,15 @@ module Dashboard
     def company_completion_rate
       total = company_scenario_total
       return 0 if total.zero?
+
       completed = Scenario.where(status: "completed").count
       ((completed * 100.0) / total).round
     end
 
     def company_scenarios_this_week
       @company_scenarios_this_week ||= Scenario
-                                         .where(created_at: Time.current.beginning_of_week..)
-                                         .count
+                                       .where(created_at: Time.current.beginning_of_week..)
+                                       .count
     end
 
     def scenario_active

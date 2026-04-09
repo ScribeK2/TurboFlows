@@ -143,7 +143,7 @@ class Admin::UsersController < Admin::BaseController
   private
 
   def user_params
-    params.require(:user).permit(:role)
+    params.expect(user: [:role])
   end
 
   helper_method :filter_params

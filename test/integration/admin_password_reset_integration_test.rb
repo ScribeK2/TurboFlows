@@ -59,7 +59,7 @@ class AdminPasswordResetIntegrationTest < ActionDispatch::IntegrationTest
 
     assert_response :success
 
-    json_response = JSON.parse(response.body)
+    json_response = response.parsed_body
 
     assert json_response['success']
     assert_not_nil json_response['password']
@@ -87,9 +87,9 @@ class AdminPasswordResetIntegrationTest < ActionDispatch::IntegrationTest
 
     assert_response :forbidden
 
-    json_response = JSON.parse(response.body)
+    json_response = response.parsed_body
 
-    assert_equal false, json_response['success']
+    assert_not json_response['success']
     assert_match(/Cannot reset your own password/, json_response['error'])
   end
 
@@ -112,11 +112,11 @@ class AdminPasswordResetIntegrationTest < ActionDispatch::IntegrationTest
 
     # Reset password for first user
     post reset_password_admin_user_path(@user), as: :json
-    first_password = JSON.parse(response.body)['password']
+    first_password = response.parsed_body['password']
 
     # Reset password for same user again
     post reset_password_admin_user_path(@user), as: :json
-    second_password = JSON.parse(response.body)['password']
+    second_password = response.parsed_body['password']
 
     # Passwords should be different each time
     assert_not_equal first_password, second_password
@@ -153,7 +153,7 @@ class AdminPasswordResetIntegrationTest < ActionDispatch::IntegrationTest
     sign_in @admin
 
     post reset_password_admin_user_path(@user), as: :json
-    password = JSON.parse(response.body)['password']
+    password = response.parsed_body['password']
 
     # Should be at least 12 characters (as defined in User model)
     assert_operator password.length, :>=, 12, "Password should be at least 12 characters"
@@ -170,7 +170,7 @@ class AdminPasswordResetIntegrationTest < ActionDispatch::IntegrationTest
 
     # Generate temporary password
     post reset_password_admin_user_path(@user), as: :json
-    temp_password = JSON.parse(response.body)['password']
+    temp_password = response.parsed_body['password']
 
     # Sign out admin
     sign_out @admin

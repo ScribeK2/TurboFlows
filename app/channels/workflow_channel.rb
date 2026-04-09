@@ -1,4 +1,11 @@
 class WorkflowChannel < ApplicationCable::Channel
+  @memory_presence_store = {}
+  @presence_mutex = Mutex.new
+
+  class << self
+    attr_reader :memory_presence_store, :presence_mutex
+  end
+
   def subscribed
     workflow = find_workflow
 
@@ -38,7 +45,7 @@ class WorkflowChannel < ApplicationCable::Channel
   private
 
   def find_workflow
-    @workflow ||= Workflow.find(params[:workflow_id])
+    @find_workflow ||= Workflow.find(params[:workflow_id])
   end
 
   def user_info
@@ -123,11 +130,11 @@ class WorkflowChannel < ApplicationCable::Channel
   end
 
   def memory_presence_store
-    @@memory_presence_store ||= {}
+    self.class.memory_presence_store
   end
 
   def presence_mutex
-    @@presence_mutex ||= Mutex.new
+    self.class.presence_mutex
   end
 
   def broadcast_presence_update(workflow, message)

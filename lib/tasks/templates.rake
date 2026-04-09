@@ -23,7 +23,7 @@ namespace :templates do
     puts "   Total templates: #{total_count}"
     puts ""
 
-    if public_count > 0
+    if public_count.positive?
       puts "Available templates:"
       Template.public_templates.order(:category, :name).each do |template|
         step_count = template.workflow_data&.length || 0
@@ -39,7 +39,7 @@ namespace :templates do
     puts ""
     print "Continue? (yes/no): "
 
-    if STDIN.gets.chomp.downcase == 'yes'
+    if $stdin.gets.chomp.downcase == 'yes'
       public_count = Template.public_templates.count
       Template.public_templates.destroy_all
       puts "✅ Deleted #{public_count} public templates"

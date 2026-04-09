@@ -21,9 +21,9 @@ class StepParamsForm
   # service objects that expect step data with parsed arrays.
   def to_step_params
     @raw.merge(
-      transitions:   @transitions,
+      transitions: @transitions,
       output_fields: @output_fields,
-      attachments:   @attachments
+      attachments: @attachments
     )
   end
 

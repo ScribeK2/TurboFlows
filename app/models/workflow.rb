@@ -29,7 +29,7 @@ class Workflow < ApplicationRecord
   # to avoid circular FK constraint (workflows.start_step_id → steps.id)
   before_destroy :nullify_published_version, prepend: true
   before_destroy :nullify_start_step, prepend: true
-  has_many :steps, -> { order(:position) }, class_name: "Step", dependent: :destroy
+  has_many :steps, -> { order(:position) }, class_name: "Step", inverse_of: :workflow, dependent: :destroy
   belongs_to :start_step, class_name: "Step", optional: true
   has_rich_text :description
 
@@ -44,10 +44,9 @@ class Workflow < ApplicationRecord
 
   # Steps stored as JSON - automatically serialized/deserialized
   validates :title, presence: true, length: { maximum: 255 }
-  validates :user_id, presence: true
   validate :validate_graph_structure, if: :should_validate_graph_structure?
   validate :validate_subflow_steps
-  validate :validate_subflow_circular_references, if: :has_subflow_steps?
+  validate :validate_subflow_circular_references, if: :subflow_steps?
 
   # Valid step types for workflows
   VALID_STEP_TYPES = %w[question action message escalate resolve sub_flow form].freeze
@@ -66,7 +65,7 @@ class Workflow < ApplicationRecord
 
   # Draft workflow scopes
   scope :drafts, -> { draft }
-  scope :expired_drafts, -> { draft.where('draft_expires_at < ?', Time.current) }
+  scope :expired_drafts, -> { draft.where(draft_expires_at: ...Time.current) }
 
   # Get workflows visible to a specific user
   # Admins see all, Editors see own + public, Users see only public
@@ -159,11 +158,12 @@ class Workflow < ApplicationRecord
   # Helper method to get description as plain text
   def description_text
     return nil if description.blank?
+
     description.to_plain_text.squish
   end
 
   # Helper method to check if description exists
-  def has_description?
+  def description?
     description.present?
   end
 
@@ -208,7 +208,8 @@ class Workflow < ApplicationRecord
   def primary_group
     if group_workflows.loaded?
       return nil if group_workflows.empty?
-      group_workflows.detect { |gw| gw.is_primary? }&.group || group_workflows.first&.group
+
+      group_workflows.detect(&:is_primary?)&.group || group_workflows.first&.group
     else
       group_workflows.find_by(is_primary: true)&.group || groups.first
     end
@@ -224,13 +225,15 @@ class Workflow < ApplicationRecord
 
   # Find a step by its UUID
   def find_step_by_uuid(uuid)
-    return nil unless uuid.present?
+    return nil if uuid.blank?
+
     steps.find_by(uuid: uuid)
   end
 
   # Find a step by its title (case-insensitive fallback)
   def find_step_by_title(title)
-    return nil unless title.present?
+    return nil if title.blank?
+
     steps.find_by(title: title) ||
       steps.where("LOWER(title) = ?", title.downcase).first
   end
@@ -238,6 +241,7 @@ class Workflow < ApplicationRecord
   # Resolve a step reference (UUID or title) to a UUID
   def resolve_step_reference_to_id(reference)
     return nil if reference.blank?
+
     step = find_step_by_uuid(reference) || find_step_by_title(reference)
     step&.uuid
   end
@@ -245,6 +249,7 @@ class Workflow < ApplicationRecord
   # Resolve a step reference (UUID or title) to a title for display
   def resolve_step_reference_to_title(reference)
     return nil if reference.blank?
+
     step = find_step_by_uuid(reference) || find_step_by_title(reference)
     step&.title
   end
@@ -252,7 +257,8 @@ class Workflow < ApplicationRecord
   # Get step options for select dropdowns
   def step_options_for_select
     steps.map.with_index do |step, index|
-      next nil unless step.title.present?
+      next nil if step.title.blank?
+
       {
         id: step.uuid,
         title: step.title,
@@ -298,7 +304,7 @@ class Workflow < ApplicationRecord
   end
 
   # Check if this workflow has any sub-flow steps
-  def has_subflow_steps?
+  def subflow_steps?
     steps.exists?(type: "Steps::SubFlow")
   end
 
@@ -316,11 +322,11 @@ class Workflow < ApplicationRecord
                                           when 'number'
                                             '42'
                                           when 'date'
-                                            Date.today.strftime('%Y-%m-%d')
+                                            Time.zone.today.strftime('%Y-%m-%d')
                                           when 'multiple_choice', 'dropdown'
                                             first_option_value(step.options)
                                           else
-                                            step.title.present? ? step.title.split(' ').first : 'sample_value'
+                                            step.title.present? ? step.title.split.first : 'sample_value'
                                           end
       end
 
@@ -343,10 +349,10 @@ class Workflow < ApplicationRecord
 
   # Deduplicate group assignment — replace all groups atomically.
   def replace_groups!(group_ids)
-    ids = Array(group_ids).reject(&:blank?).uniq
+    ids = Array(group_ids).compact_blank.uniq
     group_workflows.destroy_all
     ids.each_with_index do |group_id, index|
-      group_workflows.create!(group_id: group_id, is_primary: index == 0)
+      group_workflows.create!(group_id: group_id, is_primary: index.zero?)
     end
   end
 
@@ -449,5 +455,4 @@ class Workflow < ApplicationRecord
       end
     end
   end
-
 end

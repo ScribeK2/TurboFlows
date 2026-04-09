@@ -232,7 +232,7 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
 
-    json_response = JSON.parse(response.body)
+    json_response = response.parsed_body
 
     assert json_response['success']
     assert_not_nil json_response['password']
@@ -243,10 +243,10 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
     sign_in @admin
 
     post reset_password_admin_user_path(@user), as: :json
-    first_password = JSON.parse(response.body)['password']
+    first_password = response.parsed_body['password']
 
     post reset_password_admin_user_path(@user), as: :json
-    second_password = JSON.parse(response.body)['password']
+    second_password = response.parsed_body['password']
 
     # Passwords should be different
     assert_not_equal first_password, second_password
@@ -261,7 +261,7 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
 
     # Generate temporary password
     post reset_password_admin_user_path(@user), as: :json
-    temp_password = JSON.parse(response.body)['password']
+    temp_password = response.parsed_body['password']
 
     # User should be able to sign in with temporary password
     sign_out @user

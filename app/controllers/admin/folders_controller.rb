@@ -10,6 +10,8 @@ class Admin::FoldersController < Admin::BaseController
     @folder = @group.folders.build
   end
 
+  def edit; end
+
   def create
     @folder = @group.folders.build(folder_params)
 
@@ -19,8 +21,6 @@ class Admin::FoldersController < Admin::BaseController
       render :new, status: :unprocessable_content
     end
   end
-
-  def edit; end
 
   def update
     if @folder.update(folder_params)
@@ -60,6 +60,6 @@ class Admin::FoldersController < Admin::BaseController
   end
 
   def folder_params
-    params.require(:folder).permit(:name, :description, :position)
+    params.expect(folder: %i[name description position])
   end
 end

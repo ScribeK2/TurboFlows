@@ -10,7 +10,7 @@ module Workflows
 
     # POST /workflows/import
     def create
-      unless params[:file].present?
+      if params[:file].blank?
         redirect_to new_workflow_import_path, alert: "Please select a file to import."
         return
       end

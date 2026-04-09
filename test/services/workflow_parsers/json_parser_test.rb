@@ -8,12 +8,12 @@ module WorkflowParsers
 
     test "parses minimal valid JSON with title and steps" do
       json = JSON.generate({
-        title: "My Workflow",
-        steps: [
-          { type: "action", title: "Do Something", instructions: "Just do it" },
-          { type: "resolve", title: "Done", resolution_type: "success" }
-        ]
-      })
+                             title: "My Workflow",
+                             steps: [
+                               { type: "action", title: "Do Something", instructions: "Just do it" },
+                               { type: "resolve", title: "Done", resolution_type: "success" }
+                             ]
+                           })
 
       parser = WorkflowParsers::JsonParser.new(json)
       result = parser.parse
@@ -29,14 +29,14 @@ module WorkflowParsers
 
     test "parses wrapped JSON format with top-level 'workflow' key" do
       json = JSON.generate({
-        workflow: {
-          title: "Wrapped Workflow",
-          description: "A wrapped import",
-          steps: [
-            { type: "resolve", title: "End", resolution_type: "success" }
-          ]
-        }
-      })
+                             workflow: {
+                               title: "Wrapped Workflow",
+                               description: "A wrapped import",
+                               steps: [
+                                 { type: "resolve", title: "End", resolution_type: "success" }
+                               ]
+                             }
+                           })
 
       parser = WorkflowParsers::JsonParser.new(json)
       result = parser.parse
@@ -52,22 +52,22 @@ module WorkflowParsers
 
     test "parses JSON with all supported step types" do
       json = JSON.generate({
-        title: "All Types",
-        steps: [
-          { type: "question",  title: "Ask",      question: "What?", answer_type: "text" },
-          { type: "action",    title: "Act",       instructions: "Do it" },
-          { type: "message",   title: "Msg",       content: "Hello" },
-          { type: "escalate",  title: "Esc",       target_type: "team", priority: "high", reason: "Help" },
-          { type: "sub_flow",  title: "Sub",       target_workflow_id: 99 },
-          { type: "resolve",   title: "Done",      resolution_type: "success" }
-        ]
-      })
+                             title: "All Types",
+                             steps: [
+                               { type: "question", title: "Ask", question: "What?", answer_type: "text" },
+                               { type: "action",    title: "Act",       instructions: "Do it" },
+                               { type: "message",   title: "Msg",       content: "Hello" },
+                               { type: "escalate",  title: "Esc",       target_type: "team", priority: "high", reason: "Help" },
+                               { type: "sub_flow",  title: "Sub",       target_workflow_id: 99 },
+                               { type: "resolve",   title: "Done",      resolution_type: "success" }
+                             ]
+                           })
 
       parser = WorkflowParsers::JsonParser.new(json)
       result = parser.parse
 
       assert_not_nil result
-      types = result[:steps].map { |s| s["type"] }
+      types = result[:steps].pluck("type")
       assert_includes types, "question"
       assert_includes types, "action"
       assert_includes types, "message"
@@ -85,31 +85,31 @@ module WorkflowParsers
       step2_id = SecureRandom.uuid
 
       json = JSON.generate({
-        title: "Graph Workflow",
-        graph_mode: true,
-        start_node_uuid: step1_id,
-        steps: [
-          {
-            id: step1_id,
-            type: "question",
-            title: "Which path?",
-            question: "Yes or no?",
-            transitions: [ { target_uuid: step2_id, condition: "answer == 'yes'" } ]
-          },
-          {
-            id: step2_id,
-            type: "resolve",
-            title: "Done",
-            resolution_type: "success"
-          }
-        ]
-      })
+                             title: "Graph Workflow",
+                             graph_mode: true,
+                             start_node_uuid: step1_id,
+                             steps: [
+                               {
+                                 id: step1_id,
+                                 type: "question",
+                                 title: "Which path?",
+                                 question: "Yes or no?",
+                                 transitions: [{ target_uuid: step2_id, condition: "answer == 'yes'" }]
+                               },
+                               {
+                                 id: step2_id,
+                                 type: "resolve",
+                                 title: "Done",
+                                 resolution_type: "success"
+                               }
+                             ]
+                           })
 
       parser = WorkflowParsers::JsonParser.new(json)
       result = parser.parse
 
       assert_not_nil result
-      assert_equal true, result[:graph_mode]
+      assert result[:graph_mode]
       assert_equal step1_id, result[:start_node_uuid]
 
       first_step = result[:steps].find { |s| s["id"] == step1_id }
@@ -123,17 +123,17 @@ module WorkflowParsers
 
     test "normalises options array inside question steps" do
       json = JSON.generate({
-        title: "With Options",
-        steps: [
-          {
-            type: "question",
-            title: "Choose",
-            question: "Which?",
-            options: [ { label: "Billing", value: "billing" }, { label: "Tech", value: "tech" } ]
-          },
-          { type: "resolve", title: "End", resolution_type: "success" }
-        ]
-      })
+                             title: "With Options",
+                             steps: [
+                               {
+                                 type: "question",
+                                 title: "Choose",
+                                 question: "Which?",
+                                 options: [{ label: "Billing", value: "billing" }, { label: "Tech", value: "tech" }]
+                               },
+                               { type: "resolve", title: "End", resolution_type: "success" }
+                             ]
+                           })
 
       parser = WorkflowParsers::JsonParser.new(json)
       result = parser.parse
@@ -170,7 +170,7 @@ module WorkflowParsers
     # ============================================================================
 
     test "returns nil when title is missing" do
-      json = JSON.generate({ steps: [ { type: "resolve", title: "End", resolution_type: "success" } ] })
+      json = JSON.generate({ steps: [{ type: "resolve", title: "End", resolution_type: "success" }] })
 
       parser = WorkflowParsers::JsonParser.new(json)
       result = parser.parse
@@ -187,7 +187,7 @@ module WorkflowParsers
       result = parser.parse
 
       assert_nil result
-      assert parser.errors.any? { |e| e.downcase.include?("title") }
+      assert(parser.errors.any? { |e| e.downcase.include?("title") })
     end
 
     # ============================================================================
@@ -225,12 +225,12 @@ module WorkflowParsers
 
     test "auto-converts deprecated decision type to question with warning" do
       json = JSON.generate({
-        title: "Deprecated Test",
-        steps: [
-          { type: "decision", title: "Choose", question: "Yes or no?" },
-          { type: "resolve",  title: "Done",   resolution_type: "success" }
-        ]
-      })
+                             title: "Deprecated Test",
+                             steps: [
+                               { type: "decision", title: "Choose", question: "Yes or no?" },
+                               { type: "resolve", title: "Done", resolution_type: "success" }
+                             ]
+                           })
 
       parser = WorkflowParsers::JsonParser.new(json)
       result = parser.parse
@@ -240,17 +240,17 @@ module WorkflowParsers
       assert_equal "question", converted["type"]
       assert converted["_import_converted"]
       assert_equal "decision", converted["_import_converted_from"]
-      assert parser.warnings.any? { |w| w.downcase.include?("decision") }
+      assert(parser.warnings.any? { |w| w.downcase.include?("decision") })
     end
 
     test "auto-converts deprecated checkpoint type to message with warning" do
       json = JSON.generate({
-        title: "Checkpoint Test",
-        steps: [
-          { type: "checkpoint", title: "Review", checkpoint_message: "Please review" },
-          { type: "resolve",    title: "Done",   resolution_type: "success" }
-        ]
-      })
+                             title: "Checkpoint Test",
+                             steps: [
+                               { type: "checkpoint", title: "Review", checkpoint_message: "Please review" },
+                               { type: "resolve", title: "Done", resolution_type: "success" }
+                             ]
+                           })
 
       parser = WorkflowParsers::JsonParser.new(json)
       result = parser.parse
@@ -259,7 +259,7 @@ module WorkflowParsers
       converted = result[:steps].find { |s| s["title"] == "Review" }
       assert_equal "message", converted["type"]
       assert converted["_import_converted"]
-      assert parser.warnings.any? { |w| w.downcase.include?("checkpoint") }
+      assert(parser.warnings.any? { |w| w.downcase.include?("checkpoint") })
     end
 
     # ============================================================================
@@ -268,12 +268,12 @@ module WorkflowParsers
 
     test "assigns UUIDs to steps that lack an id field" do
       json = JSON.generate({
-        title: "UUID Test",
-        steps: [
-          { type: "action", title: "Do It", instructions: "Go" },
-          { type: "resolve", title: "End", resolution_type: "success" }
-        ]
-      })
+                             title: "UUID Test",
+                             steps: [
+                               { type: "action", title: "Do It", instructions: "Go" },
+                               { type: "resolve", title: "End", resolution_type: "success" }
+                             ]
+                           })
 
       parser = WorkflowParsers::JsonParser.new(json)
       result = parser.parse
@@ -296,7 +296,7 @@ module WorkflowParsers
     end
 
     test "valid? returns true after successful parse" do
-      json = JSON.generate({ title: "OK", steps: [ { type: "resolve", title: "End", resolution_type: "success" } ] })
+      json = JSON.generate({ title: "OK", steps: [{ type: "resolve", title: "End", resolution_type: "success" }] })
       parser = WorkflowParsers::JsonParser.new(json)
       parser.parse
       assert_predicate parser, :valid?
@@ -308,18 +308,18 @@ module WorkflowParsers
 
     test "adds warning when converting linear format to graph mode" do
       json = JSON.generate({
-        title: "Linear",
-        steps: [
-          { type: "action",  title: "A", instructions: "Do it" },
-          { type: "resolve", title: "End", resolution_type: "success" }
-        ]
-      })
+                             title: "Linear",
+                             steps: [
+                               { type: "action", title: "A", instructions: "Do it" },
+                               { type: "resolve", title: "End", resolution_type: "success" }
+                             ]
+                           })
 
       parser = WorkflowParsers::JsonParser.new(json)
       result = parser.parse
 
       assert_not_nil result
-      assert result[:import_metadata][:warnings].any? { |w| w.include?("Graph Mode") }
+      assert(result[:import_metadata][:warnings].any? { |w| w.include?("Graph Mode") })
     end
   end
 end

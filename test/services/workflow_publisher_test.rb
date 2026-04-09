@@ -26,7 +26,7 @@ class WorkflowPublisherTest < ActiveSupport::TestCase
   test "publishes a workflow and creates a version" do
     result = WorkflowPublisher.publish(@workflow, @user)
 
-    assert result.success?, result.error
+    assert_predicate result, :success?, result.error
     version = result.version
     assert_equal 1, version.version_number
     assert_equal "Q1", version.steps_snapshot.first["title"]
@@ -39,7 +39,7 @@ class WorkflowPublisherTest < ActiveSupport::TestCase
 
     metadata = result.version.metadata_snapshot
     assert_equal "Publishable Workflow", metadata["title"]
-    assert_equal true, metadata["graph_mode"]
+    assert metadata["graph_mode"]
     assert_equal @q_step.uuid, metadata["start_node_uuid"]
   end
 
@@ -78,12 +78,12 @@ class WorkflowPublisherTest < ActiveSupport::TestCase
     # Create transition to non-existent step to trigger graph validation failure
     Transition.create!(step: @q_step, target_step: r_step, position: 0)
     # Add an orphaned step with no incoming transitions and no outgoing
-    orphan = Steps::Action.create!(workflow: @workflow, position: 2, title: "Orphan")
+    Steps::Action.create!(workflow: @workflow, position: 2, title: "Orphan")
 
     result = WorkflowPublisher.publish(@workflow, @user)
 
     assert_not result.success?
-    assert result.error.present?
+    assert_predicate result.error, :present?
   end
 
   test "does not create version on failure" do
@@ -110,7 +110,7 @@ class WorkflowPublisherTest < ActiveSupport::TestCase
     orphan_wf = Workflow.create!(title: "Orphan WF", user: @user, graph_mode: true, status: "draft")
     q = Steps::Question.create!(workflow: orphan_wf, position: 0, title: "Q", question: "What?")
     r = Steps::Resolve.create!(workflow: orphan_wf, position: 1, title: "Done", resolution_type: "success")
-    orphan = Steps::Action.create!(workflow: orphan_wf, position: 2, title: "Orphan")
+    Steps::Action.create!(workflow: orphan_wf, position: 2, title: "Orphan")
     Transition.create!(step: q, target_step: r, position: 0)
     orphan_wf.update_column(:start_step_id, q.id)
 
@@ -129,7 +129,7 @@ class WorkflowPublisherTest < ActiveSupport::TestCase
 
     result = WorkflowPublisher.publish(valid_wf, @user)
 
-    assert result.success?, "Expected success, got: #{result.error}"
+    assert_predicate result, :success?, "Expected success, got: #{result.error}"
     assert_equal 1, result.version.version_number
   end
 
@@ -143,7 +143,7 @@ class WorkflowPublisherTest < ActiveSupport::TestCase
     @q_step.transitions.destroy_all
     Transition.create!(step: @q_step, target_step: new_step, position: 0)
     Transition.create!(step: new_step, target_step: @r_step, position: 0)
-    result = WorkflowPublisher.publish(@workflow, @user, changelog: "v2")
+    WorkflowPublisher.publish(@workflow, @user, changelog: "v2")
 
     @workflow.reload
     assert_equal 2, @workflow.published_version.version_number

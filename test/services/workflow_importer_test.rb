@@ -19,7 +19,7 @@ class WorkflowImporterTest < ActiveSupport::TestCase
 
     result = WorkflowImporter.new(@user, format: :json, content: json_data).call
 
-    assert result.success?
+    assert_predicate result, :success?
     assert_equal "Test Import", result.workflow.title
     assert_equal "published", result.workflow.status
     assert_not_nil result.workflow.id
@@ -29,15 +29,15 @@ class WorkflowImporterTest < ActiveSupport::TestCase
     result = WorkflowImporter.new(@user, format: :json, content: "not json { at all").call
 
     assert_not result.success?
-    assert result.errors.any?
-    assert result.errors.any? { |e| e.match?(/invalid/i) }
+    assert_predicate result.errors, :any?
+    assert(result.errors.any? { |e| e.match?(/invalid/i) })
   end
 
   test "returns error for unsupported format" do
     result = WorkflowImporter.new(@user, format: :xlsx, content: "content").call
 
     assert_not result.success?
-    assert result.errors.any?
+    assert_predicate result.errors, :any?
   end
 
   test "imports JSON with steps and preserves step data" do
@@ -50,9 +50,9 @@ class WorkflowImporterTest < ActiveSupport::TestCase
 
     result = WorkflowImporter.new(@user, format: :json, content: json_data).call
 
-    assert result.success?
+    assert_predicate result, :success?
     assert_equal "Multi-step Workflow", result.workflow.title
-    assert result.workflow.steps.count >= 1
+    assert_operator result.workflow.steps.count, :>=, 1
     assert_equal "Steps::Action", result.workflow.steps.first.type
   end
 
@@ -68,9 +68,9 @@ class WorkflowImporterTest < ActiveSupport::TestCase
     result = WorkflowImporter.new(@user, format: :json, content: json_data).call
 
     # Incomplete steps don't block saving — they're flagged for follow-up editing
-    assert result.success?
-    assert result.incomplete_steps?
-    assert result.incomplete_steps_count > 0
+    assert_predicate result, :success?
+    assert_predicate result, :incomplete_steps?
+    assert_predicate result.incomplete_steps_count, :positive?
   end
 
   test "returns warnings from parser" do
@@ -85,7 +85,7 @@ class WorkflowImporterTest < ActiveSupport::TestCase
 
     result = WorkflowImporter.new(@user, format: :json, content: json_data).call
 
-    assert result.success?
+    assert_predicate result, :success?
     # Parser may add conversion warnings; warnings is always an array
     assert_kind_of Array, result.warnings
   end

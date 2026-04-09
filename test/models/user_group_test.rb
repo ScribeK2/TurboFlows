@@ -13,7 +13,7 @@ class UserGroupTest < ActiveSupport::TestCase
   # Validations
   test "valid with user and group" do
     ug = UserGroup.new(user: @user, group: @group)
-    assert ug.valid?
+    assert_predicate ug, :valid?
   end
 
   test "enforces uniqueness of user_id scoped to group_id" do
@@ -27,7 +27,7 @@ class UserGroupTest < ActiveSupport::TestCase
     group2 = Group.create!(name: "UG Group 2")
     UserGroup.create!(user: @user, group: @group)
     ug2 = UserGroup.new(user: @user, group: group2)
-    assert ug2.valid?
+    assert_predicate ug2, :valid?
   end
 
   test "allows same group with different users" do
@@ -38,7 +38,7 @@ class UserGroupTest < ActiveSupport::TestCase
     )
     UserGroup.create!(user: @user, group: @group)
     ug2 = UserGroup.new(user: user2, group: @group)
-    assert ug2.valid?
+    assert_predicate ug2, :valid?
   end
 
   test "requires user_id" do
@@ -109,9 +109,9 @@ class UserGroupTest < ActiveSupport::TestCase
     group2 = Group.create!(name: "UG Group 2")
     group3 = Group.create!(name: "UG Group 3")
 
-    ug1 = UserGroup.create!(user: @user, group: @group)
-    ug2 = UserGroup.create!(user: @user, group: group2)
-    ug3 = UserGroup.create!(user: @user, group: group3)
+    UserGroup.create!(user: @user, group: @group)
+    UserGroup.create!(user: @user, group: group2)
+    UserGroup.create!(user: @user, group: group3)
 
     assert_equal 3, UserGroup.where(user: @user).count
   end
@@ -128,9 +128,9 @@ class UserGroupTest < ActiveSupport::TestCase
       password_confirmation: "password123456"
     )
 
-    ug1 = UserGroup.create!(user: @user, group: @group)
-    ug2 = UserGroup.create!(user: user2, group: @group)
-    ug3 = UserGroup.create!(user: user3, group: @group)
+    UserGroup.create!(user: @user, group: @group)
+    UserGroup.create!(user: user2, group: @group)
+    UserGroup.create!(user: user3, group: @group)
 
     assert_equal 3, UserGroup.where(group: @group).count
   end

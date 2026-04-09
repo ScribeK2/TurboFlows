@@ -38,7 +38,7 @@ class StepBuilder
   # Shared by StepBuilder and StepSyncer.
   def self.normalize(data, permitted: PERMITTED_STEP_PARAMS)
     if data.respond_to?(:permit)
-      data.permit(*permitted, options: [[:label, :value]], output_fields: [[:name, :value]],
+      data.permit(*permitted, options: [%i[label value]], output_fields: [%i[name value]],
                               jumps: {}, variable_mapping: {}, transitions: PERMITTED_TRANSITION_PARAMS).to_h
     elsif data.respond_to?(:stringify_keys)
       data.stringify_keys

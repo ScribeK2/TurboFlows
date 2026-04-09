@@ -53,9 +53,9 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
 
     assert_response :success
 
-    exported = JSON.parse(response.body)
+    exported = response.parsed_body
 
-    assert_equal true, exported['graph_mode']
+    assert exported['graph_mode']
     assert_equal 'step-1-uuid', exported['start_node_uuid']
     assert_equal 4, exported['steps'].length
     assert_equal '2.0', exported['export_version']
@@ -66,7 +66,7 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
 
     assert_response :success
 
-    exported = JSON.parse(response.body)
+    exported = response.parsed_body
     first_step = exported['steps'][0]
 
     assert_equal 'step-1-uuid', first_step['id']

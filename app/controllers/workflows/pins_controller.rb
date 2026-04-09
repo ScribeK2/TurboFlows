@@ -39,11 +39,11 @@ module Workflows
 
       render turbo_stream: [
         turbo_stream.replace("pinned-workflows-section",
-          partial: "dashboard/pinned_workflows",
-          locals: { dashboard: dashboard }),
+                             partial: "dashboard/pinned_workflows",
+                             locals: { dashboard: dashboard }),
         turbo_stream.replace("pin-recent-#{@workflow.id}",
-          partial: "workflows/pin_button",
-          locals: { workflow: @workflow, pinned: pinned, location: "recent" })
+                             partial: "workflows/pin_button",
+                             locals: { workflow: @workflow, pinned: pinned, location: "recent" })
       ]
     end
   end

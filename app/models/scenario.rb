@@ -8,7 +8,7 @@ class Scenario < ApplicationRecord
 
   # Parent/child scenario associations for sub-flows
   belongs_to :parent_scenario, class_name: 'Scenario', optional: true
-  has_many :child_scenarios, class_name: 'Scenario', foreign_key: 'parent_scenario_id', dependent: :destroy
+  has_many :child_scenarios, class_name: 'Scenario', foreign_key: 'parent_scenario_id', inverse_of: :parent_scenario, dependent: :destroy
   has_many :step_responses, dependent: :destroy
 
   # String-backed enum — maps to existing column values with no migration needed.
@@ -112,7 +112,7 @@ class Scenario < ApplicationRecord
   # Returns an AR Step object or nil
   def current_step
     return nil unless workflow&.steps&.any?
-    return nil unless current_node_uuid.present?
+    return nil if current_node_uuid.blank?
 
     workflow.steps.find_by(uuid: current_node_uuid)
   end
@@ -381,12 +381,12 @@ class Scenario < ApplicationRecord
     return if %w[stopped awaiting_subflow].include?(status)
 
     if current_node_uuid.nil?
-      record_completion("completed") unless outcome.present?
+      record_completion("completed") if outcome.blank?
       self.status = 'completed'
     else
       step = current_step
       if step.nil?
-        record_completion("completed") unless outcome.present?
+        record_completion("completed") if outcome.blank?
         self.status = 'completed'
       elsif StepResolver.new(workflow).terminal?(step) && step.step_type != 'sub_flow'
         # Terminal node that's not a sub-flow - will complete after processing
@@ -400,9 +400,8 @@ class Scenario < ApplicationRecord
 
   def evaluate_condition(step, results)
     condition = step.respond_to?(:condition) ? step.condition : nil
-    return false unless condition.present?
+    return false if condition.blank?
 
     evaluate_condition_string(condition, results)
   end
-
 end

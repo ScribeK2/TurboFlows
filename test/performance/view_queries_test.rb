@@ -5,8 +5,8 @@ class ViewQueriesTest < ActiveSupport::TestCase
     partial_path = Rails.root.join("app/views/steps/fields/_sub_flow.html.erb")
     content = File.read(partial_path)
 
-    refute_match(/Workflow\.find_by/, content,
-      "steps/fields/_sub_flow.html.erb should not query the database directly. " \
-      "Preload target workflows in the controller and pass via locals.")
+    assert_no_match(/Workflow\.find_by/, content,
+                    "steps/fields/_sub_flow.html.erb should not query the database directly. " \
+                    "Preload target workflows in the controller and pass via locals.")
   end
 end

@@ -1,53 +1,53 @@
 module PerformanceHelper
   # Counts SQL queries executed within a block
-  def count_queries(&block)
+  def count_queries(&)
     queries = []
     counter = lambda { |_name, _start, _finish, _id, payload|
       queries << payload[:sql] unless payload[:sql].match?(/\A(BEGIN|COMMIT|ROLLBACK|SAVEPOINT|RELEASE)/i)
     }
-    ActiveSupport::Notifications.subscribed(counter, "sql.active_record", &block)
+    ActiveSupport::Notifications.subscribed(counter, "sql.active_record", &)
     queries
   end
 
-  def assert_max_queries(max, message = nil, &block)
-    queries = count_queries(&block)
+  def assert_max_queries(max, message = nil, &)
+    queries = count_queries(&)
     msg = message || "Expected at most #{max} queries, got #{queries.size}"
     if queries.size > max
       details = queries.each_with_index.map { |q, i| "  #{i + 1}. #{q}" }.join("\n")
       msg += "\nQueries:\n#{details}"
     end
-    assert queries.size <= max, msg
+    assert_operator queries.size, :<=, max, msg
   end
 
-  def assert_completes_within(seconds, message = nil, &block)
+  def assert_completes_within(seconds, message = nil, &)
     start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    block.call
+    yield
     elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
-    assert elapsed <= seconds, message || "Expected to complete within #{seconds}s, took #{elapsed.round(3)}s"
+    assert_operator elapsed, :<=, seconds, message || "Expected to complete within #{seconds}s, took #{elapsed.round(3)}s"
   end
 
   # Seeds realistic data volumes for performance testing
   # Returns a hash of created records for test use
   def seed_performance_data
     admin = User.create!(email: "perf_admin@test.com", password: "password123456", role: "admin")
-    editors = 5.times.map do |i|
+    editors = Array.new(5) do |i|
       User.create!(email: "perf_editor#{i}@test.com", password: "password123456", role: "editor")
     end
-    users = 14.times.map do |i|
+    users = Array.new(14) do |i|
       User.create!(email: "perf_user#{i}@test.com", password: "password123456", role: "user")
     end
 
     # 30 groups in 4-level hierarchy
-    root_groups = 6.times.map do |i|
+    root_groups = Array.new(6) do |i|
       Group.create!(name: "Root Group #{i}")
     end
     level2_groups = root_groups.flat_map do |root|
-      2.times.map do |i|
+      Array.new(2) do |i|
         Group.create!(name: "#{root.name} > L2-#{i}", parent: root)
       end
     end
     level3_groups = level2_groups.first(6).flat_map do |parent|
-      1.times.map do |i|
+      Array.new(1) do |i|
         Group.create!(name: "#{parent.name} > L3-#{i}", parent: parent)
       end
     end
@@ -61,7 +61,7 @@ module PerformanceHelper
     end
 
     # 200 workflows spread across groups
-    workflows = 200.times.map do |i|
+    workflows = Array.new(200) do |i|
       creator = editors[i % editors.size]
       w = Workflow.create!(
         title: "Performance Test Workflow #{i}",
@@ -74,8 +74,8 @@ module PerformanceHelper
       # Assign to 1-2 groups
       group = all_groups[i % all_groups.size]
       GroupWorkflow.create!(group: group, workflow: w, is_primary: true) unless w.groups.include?(group)
-      if i % 3 == 0 && (second_group = all_groups[(i + 7) % all_groups.size]) != group
-        GroupWorkflow.create!(group: second_group, workflow: w) unless w.groups.include?(second_group)
+      if (i % 3).zero? && (second_group = all_groups[(i + 7) % all_groups.size]) != group && w.groups.exclude?(second_group)
+        GroupWorkflow.create!(group: second_group, workflow: w)
       end
       w
     end

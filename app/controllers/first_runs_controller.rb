@@ -6,8 +6,8 @@ class FirstRunsController < ApplicationController
   def new
     @user = User.new
     @minimum_password_length = User.validators_on(:password)
-      .detect { |v| v.is_a?(ActiveModel::Validations::LengthValidator) }
-      &.options&.dig(:minimum) || 6
+                                   .detect { |v| v.is_a?(ActiveModel::Validations::LengthValidator) }
+                                   &.options&.dig(:minimum) || 6
   end
 
   def create
@@ -16,7 +16,7 @@ class FirstRunsController < ApplicationController
     redirect_to root_path, notice: "Welcome! Your admin account has been created."
   rescue ActiveRecord::RecordInvalid => e
     @user = e.record
-    render :new, status: :unprocessable_entity
+    render :new, status: :unprocessable_content
   rescue FirstRun::AlreadyCompleted
     redirect_to root_path
   end
@@ -28,6 +28,6 @@ class FirstRunsController < ApplicationController
   end
 
   def first_run_params
-    params.require(:user).permit(:email, :password, :password_confirmation)
+    params.expect(user: %i[email password password_confirmation])
   end
 end

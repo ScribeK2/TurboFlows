@@ -26,7 +26,7 @@ class Dashboard::DataLoaderTest < ActiveSupport::TestCase
 
   test "csr? is true for regular users" do
     loader = Dashboard::DataLoader.new(@regular)
-    assert loader.csr?
+    assert_predicate loader, :csr?
   end
 
   test "csr? is false for editors" do
@@ -99,7 +99,7 @@ class Dashboard::DataLoaderTest < ActiveSupport::TestCase
   test "most_used_workflow returns hash with workflow and count" do
     other_wf = Workflow.create!(title: "Other Flow", user: @editor, is_public: true)
     3.times { Scenario.create!(workflow: @workflow, user: @regular, purpose: "live", status: "completed") }
-    1.times { Scenario.create!(workflow: other_wf, user: @regular, purpose: "live", status: "completed") }
+    Scenario.create!(workflow: other_wf, user: @regular, purpose: "live", status: "completed")
 
     loader = Dashboard::DataLoader.new(@regular)
     result = loader.most_used_workflow
@@ -148,7 +148,7 @@ class Dashboard::DataLoaderTest < ActiveSupport::TestCase
 
   test "workflow_count returns visible workflows count" do
     loader = Dashboard::DataLoader.new(@editor)
-    assert loader.workflow_count >= 1, "Expected at least 1 visible workflow"
+    assert_operator loader.workflow_count, :>=, 1, "Expected at least 1 visible workflow"
   end
 
   test "draft_count returns user drafts only" do

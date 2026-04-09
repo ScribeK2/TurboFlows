@@ -1,6 +1,6 @@
 class TagsController < ApplicationController
   before_action :authenticate_user!
-  before_action :ensure_can_manage_tags!, only: [:create, :destroy]
+  before_action :ensure_can_manage_tags!, only: %i[create destroy]
 
   def index
     tags = Tag.alphabetical

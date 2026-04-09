@@ -105,7 +105,7 @@ class WorkflowsController < ApplicationController
     begin
       Workflow.transaction do
         # Check for version conflict if client sent a lock_version
-        if client_lock_version.present? && client_lock_version > 0 && (@workflow.lock_version != client_lock_version)
+        if client_lock_version.present? && client_lock_version.positive? && (@workflow.lock_version != client_lock_version)
           @workflow.errors.add(:base, "This workflow was modified by another user. Please refresh and try again.")
           raise ActiveRecord::StaleObjectError.new(@workflow, "update")
         end
@@ -214,9 +214,9 @@ class WorkflowsController < ApplicationController
     # lock_version is used for optimistic locking to prevent race conditions
     # graph_mode is for DAG-based workflows
     # Steps are managed via AR Step records, not workflow params
-    params.require(:workflow).permit(:title, :description, :is_public, :lock_version,
-                                     :graph_mode, :embed_enabled,
-                                     :visual_editor_steps_json, :editor_mode)
+    params.expect(workflow: %i[title description is_public lock_version
+                               graph_mode embed_enabled
+                               visual_editor_steps_json editor_mode])
   end
 
   # Parse transitions_json from form submissions into proper transitions array.
@@ -224,7 +224,7 @@ class WorkflowsController < ApplicationController
   # (transitions_json, output_fields, attachments) with parsed Ruby arrays.
   # See app/forms/step_params_form.rb — addresses audit finding C-02 (High).
   def parse_transitions_json
-    return unless params[:workflow]&.dig(:steps).present?
+    return if params[:workflow]&.dig(:steps).blank?
 
     Rails.logger.debug { "[parse_transitions_json] Processing #{params[:workflow][:steps].length} steps" }
 

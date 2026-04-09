@@ -23,7 +23,7 @@ class FoldersController < ApplicationController
     group_workflow = GroupWorkflow.find_by!(group: @group, workflow: @workflow)
     group_workflow.update!(folder: @folder)
 
-    redirect_to workflows_path(group_id: @group.id), notice: "Workflow moved#{@folder ? " to #{@folder.name}" : " to Uncategorized"}."
+    redirect_to workflows_path(group_id: @group.id), notice: "Workflow moved#{@folder ? " to #{@folder.name}" : ' to Uncategorized'}."
   end
 
   private

@@ -35,7 +35,7 @@ class WorkflowTest < ActiveSupport::TestCase
     )
 
     assert_not workflow.valid?
-    assert_includes workflow.errors[:user_id], "can't be blank"
+    assert_includes workflow.errors[:user], "must exist"
   end
 
   test "should belong to user" do

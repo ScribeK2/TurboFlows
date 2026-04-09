@@ -114,5 +114,4 @@ module ScenarioExecution
     path.last[:answer] = answer
     current_step_index + 1
   end
-
 end

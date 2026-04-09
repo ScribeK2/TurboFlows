@@ -1,10 +1,12 @@
 module ScenariosHelper
   def scenario_back_button(scenario)
-    return nil unless scenario.execution_path.present? && scenario.execution_path.length > 0
+    return nil unless scenario.execution_path.present? && scenario.execution_path.length.positive?
 
     link_to step_scenario_path(scenario, back: true),
             class: "scenario-btn-cancel" do
-      raw('<svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>') + "Back"
+      back_icon = '<svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">' \
+                  '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>'
+      raw(back_icon) + "Back" # rubocop:disable Style/StringConcatenation -- SafeBuffer#+ preserves html_safe
     end
   end
 
@@ -103,8 +105,8 @@ module ScenariosHelper
     # Counts by step type
     type_counts = path.each_with_object(Hash.new(0)) { |item, counts| counts[item['step_type']] += 1 }
     type_parts = []
-    type_parts << "#{type_counts['question']} #{'question'.pluralize(type_counts['question'])} answered" if type_counts['question'] > 0
-    type_parts << "#{type_counts['action']} #{'action'.pluralize(type_counts['action'])} performed" if type_counts['action'] > 0
+    type_parts << "#{type_counts['question']} #{'question'.pluralize(type_counts['question'])} answered" if type_counts['question'].positive?
+    type_parts << "#{type_counts['action']} #{'action'.pluralize(type_counts['action'])} performed" if type_counts['action'].positive?
     parts << type_parts.join(", ") if type_parts.any?
 
     # Resolution/escalation info
@@ -145,8 +147,7 @@ module ScenariosHelper
 
     input_keys = (scenario.inputs || {}).keys.map(&:to_s)
 
-    user_inputs = results.select { |k, _| input_keys.include?(k.to_s) }
-    outcomes = results.reject { |k, _| input_keys.include?(k.to_s) }
+    user_inputs, outcomes = results.partition { |k, _| input_keys.include?(k.to_s) }.map(&:to_h)
 
     groups = []
     groups << { label: "User Inputs", results: user_inputs } if user_inputs.any?

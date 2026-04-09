@@ -1,7 +1,7 @@
 class Group < ApplicationRecord
   # Associations
   belongs_to :parent, class_name: 'Group', optional: true
-  has_many :children, class_name: 'Group', foreign_key: 'parent_id', dependent: :nullify
+  has_many :children, class_name: 'Group', foreign_key: 'parent_id', inverse_of: :parent, dependent: :nullify
   has_many :group_workflows, dependent: :destroy
   has_many :workflows, through: :group_workflows
   has_many :user_groups, dependent: :destroy
@@ -63,7 +63,7 @@ class Group < ApplicationRecord
     return [] if ids.empty?
 
     ancestors_by_id = Group.where(id: ids).index_by(&:id)
-    ids.map { |aid| ancestors_by_id[aid] }.compact
+    ids.filter_map { |aid| ancestors_by_id[aid] }
   end
 
   # Get all descendant groups (children, grandchildren, etc.) recursively
@@ -97,11 +97,11 @@ class Group < ApplicationRecord
     return [] if parent_ids.blank?
 
     # Sanitize parent_ids to ensure they're all integers and valid
-    sanitized_parent_ids = parent_ids.map do |id|
+    sanitized_parent_ids = parent_ids.filter_map do |id|
       Integer(id)
     rescue StandardError
       nil
-    end.compact.uniq
+    end.uniq
     return [] if sanitized_parent_ids.blank?
 
     if connection.adapter_name.downcase.include?('postgresql')
@@ -152,7 +152,7 @@ class Group < ApplicationRecord
   # @return [Array<Integer>] Array of ancestor group IDs, ordered from immediate parent to root
   def self.ancestor_ids_for(group_id)
     if connection.adapter_name.downcase.include?("postgresql")
-      sql = <<~SQL
+      sql = <<~SQL.squish
         WITH RECURSIVE ancestor_tree AS (
           SELECT parent_id FROM groups WHERE id = #{connection.quote(group_id)}
           UNION ALL
@@ -168,7 +168,7 @@ class Group < ApplicationRecord
       ids = []
       current_id = connection.select_value("SELECT parent_id FROM groups WHERE id = #{connection.quote(group_id)}")
       seen = Set.new
-      while current_id && !seen.include?(current_id) && ids.size < 10
+      while current_id && seen.exclude?(current_id) && ids.size < 10
         seen.add(current_id)
         ids << current_id.to_i
         current_id = connection.select_value("SELECT parent_id FROM groups WHERE id = #{connection.quote(current_id)}")

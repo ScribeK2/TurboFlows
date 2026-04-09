@@ -6,7 +6,7 @@ class StepTypeIconsTest < ActiveSupport::TestCase
   test "returns icon for each known step type" do
     %w[question action sub_flow message escalate resolve form].each do |type|
       icon = step_type_icon(type)
-      assert icon.present?, "Expected icon for step type '#{type}'"
+      assert_predicate icon, :present?, "Expected icon for step type '#{type}'"
       assert_not_equal StepTypeIcons::DEFAULT_ICON, icon, "Expected dedicated icon for '#{type}', got default"
     end
   end

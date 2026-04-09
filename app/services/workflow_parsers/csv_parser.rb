@@ -4,10 +4,13 @@ require 'csv'
 
 module WorkflowParsers
   class CsvParser < BaseParser
+    # Valid step types for CSV import
+    VALID_CSV_TYPES = %w[question action sub_flow message escalate resolve].freeze
+
     def parse
       csv = CSV.parse(@file_content, headers: true, header_converters: :symbol)
 
-      if csv.headers.nil? || csv.headers.empty?
+      if csv.headers.blank?
         add_error("CSV file must have a header row")
         return nil
       end
@@ -61,15 +64,12 @@ module WorkflowParsers
 
     private
 
-    # Valid step types for CSV import
-    VALID_CSV_TYPES = %w[question action sub_flow message escalate resolve].freeze
-
     def parse_csv_row(row, row_number)
       step_type = (row[:type] || row[:step_type] || 'action').to_s.downcase.strip
 
       # Auto-convert deprecated types
       converted_from = nil
-      if step_type == 'decision' || step_type == 'simple_decision'
+      if %w[decision simple_decision].include?(step_type)
         converted_from = step_type
         add_warning("Row #{row_number}: Converting deprecated '#{step_type}' to 'question'")
         step_type = 'question'
@@ -232,7 +232,7 @@ module WorkflowParsers
       end
 
       # Parse as semicolon-separated format
-      transitions_string.split(';').map do |transition|
+      transitions_string.split(';').filter_map do |transition|
         transition = transition.strip
         next nil if transition.blank?
 
@@ -271,7 +271,7 @@ module WorkflowParsers
         result['condition'] = condition if condition.present?
         result['label'] = label if label.present?
         result
-      end.compact
+      end
     end
   end
 end

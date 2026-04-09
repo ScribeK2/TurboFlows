@@ -109,7 +109,7 @@ class StepParamsFormTest < ActiveSupport::TestCase
     result = form.to_step_params
 
     assert_equal "Q1", result[:title]
-    refute result.key?(:transitions_json), "transitions_json should not be present in to_step_params output"
+    assert_not result.key?(:transitions_json), "transitions_json should not be present in to_step_params output"
     assert_kind_of Array, result[:transitions]
     assert_equal "uuid-1", result[:transitions].first["target_step_id"]
   end

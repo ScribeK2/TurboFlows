@@ -84,7 +84,7 @@ module WorkflowParsers
       result = parser.parse
 
       assert_not_nil result
-      types = result[:steps].map { |s| s["type"] }
+      types = result[:steps].pluck("type")
       assert_includes types, "question"
       assert_includes types, "action"
       assert_includes types, "message"
@@ -123,7 +123,7 @@ module WorkflowParsers
       result = parser.parse
 
       assert_not_nil result
-      assert_equal true, result[:graph_mode]
+      assert result[:graph_mode]
       assert_equal step1_id, result[:start_node_uuid]
 
       first_step = result[:steps].find { |s| s["id"] == step1_id }
@@ -218,7 +218,7 @@ module WorkflowParsers
       result = parser.parse
 
       assert_nil result
-      assert parser.errors.any? { |e| e.downcase.include?("title") }
+      assert(parser.errors.any? { |e| e.downcase.include?("title") })
     end
 
     # ============================================================================
@@ -276,7 +276,7 @@ module WorkflowParsers
       assert_equal "question", converted["type"]
       assert converted["_import_converted"]
       assert_equal "decision", converted["_import_converted_from"]
-      assert parser.warnings.any? { |w| w.downcase.include?("decision") }
+      assert(parser.warnings.any? { |w| w.downcase.include?("decision") })
     end
 
     test "auto-converts deprecated checkpoint type to message with warning" do
@@ -299,7 +299,7 @@ module WorkflowParsers
       assert_equal "message", converted["type"]
       assert converted["_import_converted"]
       assert_equal "checkpoint", converted["_import_converted_from"]
-      assert parser.warnings.any? { |w| w.downcase.include?("checkpoint") }
+      assert(parser.warnings.any? { |w| w.downcase.include?("checkpoint") })
     end
 
     # ============================================================================
@@ -365,7 +365,7 @@ module WorkflowParsers
       result = parser.parse
 
       assert_not_nil result
-      assert result[:import_metadata][:warnings].any? { |w| w.include?("Graph Mode") }
+      assert(result[:import_metadata][:warnings].any? { |w| w.include?("Graph Mode") })
     end
 
     # ============================================================================
