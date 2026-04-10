@@ -12,6 +12,7 @@ gem "puma", ">= 5.0"
 gem "rails", "~> 8.1.0"
 gem "redis", "~> 5.0"
 gem "sqlite3", ">= 2.1", group: %i[development test]
+gem "solid_queue"
 gem "stimulus-rails"
 gem "turbo-rails"
 gem "tzinfo-data", platforms: %i[mingw mswin x64_mingw jruby]

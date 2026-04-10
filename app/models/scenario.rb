@@ -64,29 +64,31 @@ class Scenario < ApplicationRecord
 
   scope :stale_simulations, lambda {
     terminal.where(purpose: "simulation")
-            .where("COALESCE(completed_at, updated_at) < ?", simulation_retention_days.days.ago)
+            .where(completed_at: ...simulation_retention_days.days.ago)
   }
 
   scope :stale_live, lambda {
     terminal.where(purpose: "live")
-            .where("COALESCE(completed_at, updated_at) < ?", live_retention_days.days.ago)
+            .where(completed_at: ...live_retention_days.days.ago)
   }
 
-  # Deletes stale scenarios and their children. Returns the number of stale
-  # parent scenarios removed (excludes cascaded children from the count).
+  # Deletes stale scenarios in batches of 5,000. Returns the total count removed.
   # Uses delete_all for performance — bypasses callbacks and dependent: :destroy.
-  # If Scenario gains destroy callbacks, revisit this approach.
+  # step_responses are cascade-deleted at the DB level (FK ON DELETE CASCADE).
+  # Child scenarios are deleted explicitly (parent FK is ON DELETE NULLIFY).
   def self.cleanup_stale
-    stale_ids = (stale_simulations.pluck(:id) + stale_live.pluck(:id)).uniq
-    return 0 if stale_ids.empty?
+    total = 0
+    [stale_simulations, stale_live].each do |scope|
+      loop do
+        batch_ids = scope.limit(5000).pluck(:id)
+        break if batch_ids.empty?
 
-    # Delete ALL children of stale parents first (including active/stuck ones —
-    # if the parent is terminal and past retention, any remaining child is orphaned).
-    # FK is ON DELETE NULLIFY, not CASCADE, so this must be explicit.
-    where(parent_scenario_id: stale_ids).delete_all
-    where(id: stale_ids).delete_all
-
-    stale_ids.size
+        where(parent_scenario_id: batch_ids).delete_all
+        where(id: batch_ids).delete_all
+        total += batch_ids.size
+      end
+    end
+    total
   end
 
   # Enum handles status validation automatically

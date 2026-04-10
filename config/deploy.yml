@@ -16,11 +16,6 @@ env:
 volumes:
   - storage:/rails/storage
 
-accessories:
-  scheduler:
-    image: your-registry/turboflows
-    host: your-server.com
-    cmd: bash -c "bin/rails cleanup:scenarios cleanup:drafts && while true; do sleep 86400; bin/rails cleanup:scenarios cleanup:drafts; done"
-    volumes:
-      - storage:/rails/storage
+# Scheduler accessory removed — cleanup jobs now run via Solid Queue
+# (in-process via puma plugin, configured in config/recurring.yml)
 

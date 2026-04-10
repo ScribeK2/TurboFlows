@@ -1,0 +1,75 @@
+<div class="page-content">
+  <div class="page-header-section">
+    <div>
+      <h1 class="page-header-section__title">Data Health</h1>
+      <p class="page-header-section__subtitle">
+        Database table sizes, record counts, and retention configuration.
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <%= link_to admin_root_path, class: "btn btn--plain btn--sm" do %>
+        &larr; Dashboard
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Table Sizes -->
+  <div class="card mb-4">
+    <div class="card__body">
+      <h2 class="font-semibold mb-3" style="font-size: var(--text-lg);">Table Sizes</h2>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Table</th>
+              <th>Size (incl. indexes)</th>
+              <th>Record Count</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% %w[scenarios step_responses workflow_versions active_storage_blobs].each do |table| %>
+              <tr>
+                <td class="font-semibold"><%= table %></td>
+                <td><%= @table_sizes[table] %></td>
+                <td><%= number_with_delimiter(@record_counts[table.to_sym] || @record_counts[table.singularize.to_sym] || 0) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Retention Configuration -->
+  <div class="card mb-4">
+    <div class="card__body">
+      <h2 class="font-semibold mb-3" style="font-size: var(--text-lg);">Retention Policy</h2>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
+        <div>
+          <dt class="form-label">Simulation Scenarios</dt>
+          <dd class="text-sm"><%= @retention_config[:simulation_days] %> days</dd>
+        </div>
+        <div>
+          <dt class="form-label">Live Scenarios</dt>
+          <dd class="text-sm"><%= @retention_config[:live_days] %> days</dd>
+        </div>
+      </div>
+      <p class="text-xs mt-3" style="color: var(--color-ink-muted);">
+        Configure via SCENARIO_RETENTION_SIMULATION_DAYS and SCENARIO_RETENTION_LIVE_DAYS environment variables.
+      </p>
+    </div>
+  </div>
+
+  <!-- Cleanup Status -->
+  <div class="card">
+    <div class="card__body">
+      <h2 class="font-semibold mb-3" style="font-size: var(--text-lg);">Cleanup Schedule</h2>
+      <p class="text-sm" style="color: var(--color-ink-subtle);">
+        Cleanup runs daily at 3:00 AM via Solid Queue (configured in config/recurring.yml).
+      </p>
+      <p class="text-xs mt-2" style="color: var(--color-ink-muted);">
+        Manual cleanup: <code style="font-family: var(--font-mono); font-size: var(--text-xs);">bin/rails cleanup:scenarios cleanup:drafts</code>
+      </p>
+    </div>
+  </div>
+</div>

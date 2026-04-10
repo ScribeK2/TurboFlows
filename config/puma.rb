@@ -75,6 +75,9 @@ end
 # Allow Puma to be restarted by `bin/rails restart`
 plugin :tmp_restart
 
+# Run Solid Queue in-process for background job scheduling
+plugin :solid_queue
+
 # Logging
 if ENV["RAILS_ENV"] == "production"
   # Structured logging in production

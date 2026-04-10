@@ -100,5 +100,6 @@ Rails.application.routes.draw do
       resources :folders, except: [:show]
     end
     get "analytics", to: "analytics#index", as: :analytics
+    get "data_health", to: "data_health#index", as: :data_health
   end
 end

@@ -4,15 +4,20 @@
 # -------------------------------------------------
 default: &default
   adapter: sqlite3
-  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 4 } %>
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
   timeout: 5000
 
 # -------------------------------------------------
 # 2. Development – uses SQLite (local file)
 # -------------------------------------------------
 development:
-  <<: *default
-  database: db/development.sqlite3
+  primary:
+    <<: *default
+    database: db/development.sqlite3
+  queue:
+    <<: *default
+    database: db/development_queue.sqlite3
+    migrations_paths: db/queue_migrate
 
 # -------------------------------------------------
 # 3. Test – uses SQLite locally, PostgreSQL in CI
@@ -21,15 +26,26 @@ development:
 # Otherwise, use SQLite for fast local development
 test:
   <% if ENV["DATABASE_URL"] %>
-  adapter: postgresql
-  url: <%= ENV["DATABASE_URL"] %>
-  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 4 } %>
+  primary:
+    adapter: postgresql
+    url: <%= ENV["DATABASE_URL"] %>
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 4 } %>
+  queue:
+    adapter: postgresql
+    url: <%= ENV["DATABASE_URL"] %>
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 4 } %>
+    migrations_paths: db/queue_migrate
   <% else %>
-  <<: *default
-  database: db/test.sqlite3
-  timeout: 15000
-  pragma:
-    journal_mode: wal
+  primary:
+    <<: *default
+    database: db/test.sqlite3
+    timeout: 15000
+    pragma:
+      journal_mode: wal
+  queue:
+    <<: *default
+    database: db/test_queue.sqlite3
+    migrations_paths: db/queue_migrate
   <% end %>
 
 # -------------------------------------------------
@@ -45,14 +61,18 @@ test:
 # - With 2 workers that's 20 total connections needed
 # - Database should have at least 25-30 max_connections
 production:
-  adapter: postgresql
-  url: <%= ENV["DATABASE_URL"] %>
-  pool: <%= ENV.fetch("RAILS_MAX_THREADS", 5).to_i * ENV.fetch("WEB_CONCURRENCY", 2).to_i + 2 %>
-  # Connection timeout in milliseconds
-  connect_timeout: 5
-  # Use prepared statements for better performance
-  prepared_statements: true
-  # Advisory locks for migrations (safe with multiple workers)
-  advisory_locks: true
-  # Reaping frequency - how often to check for dead connections (seconds)
-  reaping_frequency: 10
+  primary:
+    adapter: postgresql
+    url: <%= ENV["DATABASE_URL"] %>
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS", 5).to_i * ENV.fetch("WEB_CONCURRENCY", 2).to_i + 2 %>
+    connect_timeout: 5
+    prepared_statements: true
+    advisory_locks: true
+    reaping_frequency: 10
+  queue:
+    adapter: postgresql
+    url: <%= ENV["DATABASE_URL"] %>
+    pool: <%= ENV.fetch("RAILS_MAX_THREADS", 5).to_i * ENV.fetch("WEB_CONCURRENCY", 2).to_i + 2 %>
+    connect_timeout: 5
+    prepared_statements: true
+    migrations_paths: db/queue_migrate

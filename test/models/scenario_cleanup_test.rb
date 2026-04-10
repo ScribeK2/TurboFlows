@@ -156,20 +156,42 @@ class ScenarioCleanupTest < ActiveSupport::TestCase
     assert_not_includes Scenario.stale_live.pluck(:id), awaiting.id
   end
 
-  # --- NULL completed_at fallback ---
+  # --- NULL completed_at (post-backfill behavior) ---
 
-  test "terminal scenario with NULL completed_at uses updated_at for retention" do
+  test "terminal scenario with NULL completed_at is excluded from stale scopes" do
+    # After backfill migration, terminal scenarios always have completed_at.
+    # If one somehow has NULL, it should be excluded (not cleaned up prematurely).
     scenario = create_scenario(status: "error", completed_at: nil)
-    scenario.update_columns(updated_at: 8.days.ago)
-
-    assert_includes Scenario.stale_simulations.pluck(:id), scenario.id
-  end
-
-  test "terminal scenario with NULL completed_at and recent updated_at is not stale" do
-    scenario = create_scenario(status: "error", completed_at: nil)
-    scenario.update_columns(updated_at: 1.day.ago)
+    scenario.update_columns(completed_at: nil, updated_at: 8.days.ago)
 
     assert_not_includes Scenario.stale_simulations.pluck(:id), scenario.id
+  end
+
+  # --- FK cascade (step_responses) ---
+
+  test "delete_all on scenarios cascades to step_responses via FK" do
+    scenario = create_scenario(purpose: "simulation", status: "completed", completed_at: 8.days.ago)
+    step = @workflow.steps.first || Steps::Action.create!(
+      workflow: @workflow, title: "Test Step", uuid: SecureRandom.uuid
+    )
+    StepResponse.create!(scenario: scenario, step: step, submitted_at: Time.current)
+
+    assert_equal 1, StepResponse.where(scenario_id: scenario.id).count
+    Scenario.where(id: scenario.id).delete_all
+    assert_equal 0, StepResponse.where(scenario_id: scenario.id).count
+  end
+
+  test "cleanup_stale cascades step_response deletion" do
+    scenario = create_scenario(purpose: "simulation", status: "completed", completed_at: 8.days.ago)
+    step = @workflow.steps.first || Steps::Action.create!(
+      workflow: @workflow, title: "Test Step", uuid: SecureRandom.uuid
+    )
+    StepResponse.create!(scenario: scenario, step: step, submitted_at: Time.current)
+
+    Scenario.cleanup_stale
+
+    assert_not Scenario.exists?(scenario.id)
+    assert_equal 0, StepResponse.where(scenario_id: scenario.id).count
   end
 
   # --- cleanup_stale class method ---

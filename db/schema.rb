@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_09_125447) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_10_130000) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -114,6 +114,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_09_125447) do
     t.index ["outcome"], name: "index_scenarios_on_outcome"
     t.index ["parent_scenario_id"], name: "index_scenarios_on_parent_scenario_id"
     t.index ["purpose", "started_at"], name: "index_scenarios_on_purpose_and_started_at"
+    t.index ["status", "purpose", "completed_at"], name: "index_scenarios_on_cleanup_scope"
     t.index ["status"], name: "index_scenarios_on_status"
     t.index ["user_id", "purpose", "created_at"], name: "index_scenarios_on_user_id_and_purpose_and_created_at"
     t.index ["user_id", "workflow_id"], name: "index_scenarios_on_user_id_and_workflow_id"
@@ -296,7 +297,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_09_125447) do
   add_foreign_key "scenarios", "users"
   add_foreign_key "scenarios", "workflow_versions", on_delete: :nullify
   add_foreign_key "scenarios", "workflows"
-  add_foreign_key "step_responses", "scenarios"
+  add_foreign_key "step_responses", "scenarios", on_delete: :cascade
   add_foreign_key "step_responses", "steps"
   add_foreign_key "steps", "workflows"
   add_foreign_key "taggings", "tags"

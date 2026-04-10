@@ -22,5 +22,8 @@ module TurboFlows
 
     # JavaScript via importmap-rails (no Node.js required)
     # CSS via Propshaft + vanilla CSS (no Tailwind)
+
+    # Solid Queue uses a separate database for job storage
+    config.solid_queue.connects_to = { database: { writing: :queue } }
   end
 end
