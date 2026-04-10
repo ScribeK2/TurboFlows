@@ -172,7 +172,8 @@ The Player is the user-facing workflow execution UI, separate from the builder's
 - Global search: Fuse.js (Cmd+K via `nav_search_controller.js`)
 - Drag-and-drop: SortableJS
 - No multi-tenancy (single install/org), but strong group-based access
-- Background jobs: Active Job (expandable to Solid Queue)
+- Background jobs: Solid Queue (in-process via Puma plugin, `config/recurring.yml` for schedules)
+- Data lifecycle: tiered scenario retention (7-day simulation, 90-day live), batched cleanup via `CleanupScenariosJob` + `CleanupDraftsJob` (daily at 3 AM), admin visibility at `/admin/data_health`
 - Security: Rack::Attack, Bullet (N+1), Brakeman
 
 ## UI Guide
@@ -187,5 +188,8 @@ Playwright MCP (for UI/system testing). Point agent to running app at `http://lo
 ## Deployment Notes
 
 - Branch: `main`
-- Tool: Kamal + Puma + PostgreSQL
+- Tool: Kamal + Puma + PostgreSQL + Solid Queue (in-process)
+- Solid Queue runs inside Puma via `plugin :solid_queue` (no separate container)
+- Recurring jobs configured in `config/recurring.yml` (cleanup scenarios + drafts daily at 3 AM)
+- Retention configurable via ENV: `SCENARIO_RETENTION_SIMULATION_DAYS` (default 7), `SCENARIO_RETENTION_LIVE_DAYS` (default 90)
 - Pre-deploy: RuboCop + full test suite (run locally before deploy)
