@@ -645,11 +645,13 @@
 .step-content-box--message .step-content-box__accent   { background: oklch(0.55 0.18 var(--color-step-message)); }
 .step-content-box--escalate .step-content-box__accent  { background: oklch(0.55 0.22 var(--color-step-escalate)); }
 .step-content-box--resolve .step-content-box__accent   { background: oklch(0.6 0.19 var(--color-step-resolve)); }
+.step-content-box--form .step-content-box__accent      { background: oklch(0.55 0.18 var(--color-step-form)); }
 
 .step-content-box--action .step-content-box__icon-wrap    { background: oklch(0.95 0.06 var(--color-step-action)); color: oklch(0.45 0.15 var(--color-step-action)); }
 .step-content-box--message .step-content-box__icon-wrap   { background: oklch(0.95 0.06 var(--color-step-message)); color: oklch(0.45 0.15 var(--color-step-message)); }
 .step-content-box--escalate .step-content-box__icon-wrap  { background: oklch(0.95 0.08 var(--color-step-escalate)); color: oklch(0.45 0.2 var(--color-step-escalate)); }
 .step-content-box--resolve .step-content-box__icon-wrap   { background: oklch(0.95 0.06 var(--color-step-resolve)); color: oklch(0.45 0.17 var(--color-step-resolve)); }
+.step-content-box--form .step-content-box__icon-wrap      { background: oklch(0.95 0.06 var(--color-step-form)); color: oklch(0.45 0.15 var(--color-step-form)); }
 
 [data-theme="dark"] .step-content-box {
   background: var(--color-canvas-raised);
@@ -659,6 +661,7 @@
 [data-theme="dark"] .step-content-box--message .step-content-box__icon-wrap   { background: oklch(0.22 0.06 var(--color-step-message)); color: oklch(0.7 0.14 var(--color-step-message)); }
 [data-theme="dark"] .step-content-box--escalate .step-content-box__icon-wrap  { background: oklch(0.22 0.08 var(--color-step-escalate)); color: oklch(0.7 0.16 var(--color-step-escalate)); }
 [data-theme="dark"] .step-content-box--resolve .step-content-box__icon-wrap   { background: oklch(0.22 0.06 var(--color-step-resolve)); color: oklch(0.7 0.14 var(--color-step-resolve)); }
+[data-theme="dark"] .step-content-box--form .step-content-box__icon-wrap      { background: oklch(0.22 0.06 var(--color-step-form)); color: oklch(0.7 0.14 var(--color-step-form)); }
 
 /* ============================================================================
    Scenario Result Badge (icon circle in results list)

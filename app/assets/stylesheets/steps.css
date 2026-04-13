@@ -333,4 +333,75 @@
   color: var(--color-primary-hover);
   text-decoration: underline;
 }
+
+/* ─── Step Disclosure (collapsible advanced fields) ─── */
+.step-disclosure {
+  margin-top: var(--space-2);
+}
+
+.step-disclosure__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  list-style: none;
+  padding: var(--space-2) 0;
+  user-select: none;
+}
+
+.step-disclosure__summary::-webkit-details-marker {
+  display: none;
+}
+
+.step-disclosure__summary::before {
+  content: '▸';
+  font-size: var(--text-sm);
+  color: var(--color-ink-muted);
+  transition: transform var(--duration-fast) var(--ease-out);
+  flex-shrink: 0;
+}
+
+.step-disclosure[open] > .step-disclosure__summary::before {
+  transform: rotate(90deg);
+}
+
+.step-disclosure__label {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-ink-subtle);
+}
+
+.step-disclosure__sep {
+  color: var(--color-ink-muted);
+}
+
+.step-disclosure__value {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  padding: 0.0625rem var(--space-1);
+  background: oklch(0.93 0.06 250);
+  color: oklch(0.40 0.15 250);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 12rem;
+}
+
+.step-disclosure__value--auto {
+  font-family: var(--font-sans);
+  font-style: italic;
+  background: none;
+  color: var(--color-ink-muted);
+  padding: 0;
+}
+
+[data-theme="dark"] .step-disclosure__value:not(.step-disclosure__value--auto) {
+  background: oklch(0.25 0.06 250);
+  color: oklch(0.75 0.12 250);
+}
+
+.step-disclosure__body {
+  padding: var(--space-2) 0 0 var(--space-4);
+}
 }

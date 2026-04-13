@@ -148,8 +148,8 @@ class StepSyncer
   end
 
   def assign_rich_text_fields(step_record, step_data)
-    StepBuilder::RICH_TEXT_FIELDS.each do |field, klass|
-      if step_record.is_a?(klass) && step_data[field].present?
+    StepBuilder::RICH_TEXT_FIELDS.each do |field, klasses|
+      if Array(klasses).any? { |k| step_record.is_a?(k) } && step_data[field].present?
         step_record.send(:"#{field}=", step_data[field])
         step_record.save!
       end

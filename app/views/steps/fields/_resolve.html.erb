@@ -39,10 +39,26 @@
 </div>
 
 <div class="form-group">
-  <%= form.label :resolution_code, class: "form-label" %>
-  <%= form.text_field :resolution_code, class: "form-input",
-      placeholder: "Optional resolution code",
-      data: { action: "input->inline-autosave#schedule" } %>
+  <label class="form-label">Resolution Description</label>
+  <% default_desc = Steps::Resolve.default_description_for(step.resolution_type.presence || "success") %>
+  <div class="card card--muted" style="padding: var(--space-3);">
+    <p class="text-xs font-semibold mb-1" style="color: var(--color-ink-muted); text-transform: uppercase; letter-spacing: 0.04em;">Default for <%= (step.resolution_type.presence || "success").titleize %></p>
+    <p class="text-sm" style="color: var(--color-ink-subtle);"><%= default_desc %></p>
+  </div>
+  <details class="step-disclosure mt-2">
+    <summary class="step-disclosure__summary">
+      <span class="step-disclosure__label">Custom description</span>
+      <% if step.description.present? %>
+        <span class="step-disclosure__sep" aria-hidden="true">&middot;</span>
+        <span class="badge badge--info" style="font-size: var(--text-xs);">customized</span>
+      <% end %>
+    </summary>
+    <div class="step-disclosure__body">
+      <%= form.rich_text_area :description,
+          data: { variable_autocomplete_target: "input" } %>
+      <p class="form-hint">Leave empty to use the default description above</p>
+    </div>
+  </details>
 </div>
 
 <div class="form-group">

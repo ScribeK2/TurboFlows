@@ -10,9 +10,10 @@ class StepBuilder
   }.freeze
 
   RICH_TEXT_FIELDS = {
-    "instructions" => Steps::Action,
-    "content" => Steps::Message,
-    "notes" => Steps::Escalate
+    "instructions" => [ Steps::Action, Steps::Form ],
+    "content" => [ Steps::Message ],
+    "notes" => [ Steps::Escalate ],
+    "description" => [ Steps::Resolve ]
   }.freeze
 
   PERMITTED_STEP_PARAMS = %i[
@@ -194,8 +195,8 @@ class StepBuilder
   end
 
   def assign_rich_text_fields(step_record, step_data)
-    RICH_TEXT_FIELDS.each do |field, klass|
-      if step_record.is_a?(klass) && step_data[field].present?
+    RICH_TEXT_FIELDS.each do |field, klasses|
+      if Array(klasses).any? { |k| step_record.is_a?(k) } && step_data[field].present?
         step_record.send(:"#{field}=", step_data[field])
         step_record.save!
       end

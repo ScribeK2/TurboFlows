@@ -233,13 +233,6 @@
               <span class="font-medium"><%= (res_type || "success").titleize %></span>
             </div>
 
-            <% res_code = step.is_a?(Step) ? step.resolution_code : step["resolution_code"] %>
-            <% if res_code.present? %>
-              <div class="flex items-center gap-2">
-                <span>Code:</span>
-                <code class="badge"><%= res_code %></code>
-              </div>
-            <% end %>
 
             <% notes_req = step.is_a?(Step) ? step.notes_required : step["notes_required"] %>
             <% survey = step.is_a?(Step) ? step.survey_trigger : step["survey_trigger"] %>

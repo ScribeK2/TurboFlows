@@ -41,7 +41,7 @@
     <div data-question-form-target="optionsList" class="flex-col-gap-2">
       <% if step.options.present? && step.options.is_a?(Array) %>
         <% step.options.each do |option| %>
-          <div class="flex gap-2 items-center option-item">
+          <div class="option-item">
             <span class="drag-handle" title="Drag to reorder">&#9776;</span>
             <input type="text" name="step[options][][label]"
                    value="<%= option.is_a?(Hash) ? option['label'] : option %>"
@@ -49,8 +49,13 @@
             <input type="text" name="step[options][][value]"
                    value="<%= option.is_a?(Hash) ? option['value'] : option %>"
                    placeholder="Option value" class="form-input flex-1">
-            <button type="button" class="btn btn--negative btn--sm flex-shrink-0"
-                    data-action="click->question-form#removeOption">Remove</button>
+            <button type="button" class="btn btn--plain btn--sm option-item__delete"
+                    data-action="click->question-form#removeOption"
+                    title="Remove option">
+              <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
           </div>
         <% end %>
       <% end %>
@@ -60,10 +65,20 @@
   </div>
 </div>
 
-<div class="form-group">
-  <%= form.label :variable_name, class: "form-label" %>
-  <%= form.text_field :variable_name, class: "form-input",
-      placeholder: "e.g., user_name, age, etc.",
-      data: { action: "input->inline-autosave#schedule" } %>
-  <p class="form-hint">Optional: Name this answer for use in transition conditions</p>
-</div>
+<details class="step-disclosure">
+  <summary class="step-disclosure__summary">
+    <span class="step-disclosure__label">Variable name</span>
+    <span class="step-disclosure__sep" aria-hidden="true">&middot;</span>
+    <% if step.variable_name.present? %>
+      <code class="step-disclosure__value"><%= step.variable_name %></code>
+    <% else %>
+      <span class="step-disclosure__value step-disclosure__value--auto">auto from title</span>
+    <% end %>
+  </summary>
+  <div class="step-disclosure__body">
+    <%= form.text_field :variable_name, class: "form-input",
+        placeholder: "e.g., user_name, age, etc.",
+        data: { action: "input->inline-autosave#schedule" } %>
+    <p class="form-hint">Optional: Name this answer for use in transition conditions</p>
+  </div>
+</details>

@@ -32,11 +32,10 @@ module Steps
       assert_predicate step1, :terminal?, "Resolve step should always be terminal"
     end
 
-    test "outcome_summary includes resolution_type and code" do
-      step = Steps::Resolve.create!(workflow: @workflow, title: "R1", position: 0, resolution_type: "success", resolution_code: "DONE-001")
+    test "outcome_summary includes resolution_type" do
+      step = Steps::Resolve.create!(workflow: @workflow, title: "R1", position: 0, resolution_type: "success")
       summary = step.outcome_summary
       assert_includes summary, "Success"
-      assert_includes summary, "DONE-001"
     end
 
     test "step_type returns resolve" do

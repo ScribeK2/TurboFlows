@@ -2,6 +2,13 @@
   Form step fields.
   Local variables: form (FormBuilder), step (Steps::Form), workflow
 %>
+<div class="form-group">
+  <label class="form-label">Instructions</label>
+  <%= form.rich_text_area :instructions,
+      data: { variable_autocomplete_target: "input" } %>
+  <p class="form-hint">Explain what information the CSR should collect and why</p>
+</div>
+
 <div data-controller="form-field-builder">
   <label class="form-label">Form Fields</label>
 

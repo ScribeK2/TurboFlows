@@ -1,5 +1,7 @@
 module Steps
   class Form < Step
+    has_rich_text :instructions
+
     # Fields are stored in the `options` JSON column as an array of hashes:
     #   [{ "name" => "phone", "label" => "Phone", "field_type" => "text", "required" => true, "position" => 0 }]
 

@@ -392,11 +392,11 @@
                     <span class="badge <%= res_mod %>"><%= @current_step.resolution_type&.titleize %></span>
                   </p>
                 <% end %>
-                <% if @current_step.respond_to?(:resolution_code) && @current_step.resolution_code.present? %>
-                  <p class="text-sm mb-2"><strong>Resolution Code:</strong> <%= @current_step.resolution_code %></p>
-                <% end %>
-                <% if @current_step.respond_to?(:notes) && @current_step.notes.present? %>
-                  <div class="text-sm mb-2"><%= render_step_content(@current_step, 'notes', @scenario.results || {}) %></div>
+                <% if @current_step.respond_to?(:resolution_description) %>
+                  <% desc = @current_step.resolution_description %>
+                  <% if desc.present? %>
+                    <div class="text-sm mb-2"><%= desc.is_a?(String) ? desc : render_step_content(@current_step, 'description', @scenario.results || {}) %></div>
+                  <% end %>
                 <% end %>
               </div>
             </div>
@@ -433,6 +433,24 @@
         <% end %>
 
       <% when "form" %>
+        <% if @current_step.instructions.present? %>
+          <div class="step-content-box step-content-box--form mb-4">
+            <div class="step-content-box__accent"></div>
+            <div class="step-content-box__body">
+              <div class="scenario-content-layout">
+                <div class="step-content-box__icon-wrap mr-3 mt-0.5">
+                  <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <h3 class="step-content-box__label">Instructions</h3>
+                  <div class="text-sm"><%= render_step_content(@current_step, 'instructions', @scenario.results || {}) %></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
         <%= form_with url: player_scenario_next_path(@scenario), method: :post, class: "space-y-4" do |form| %>
           <%= render "scenarios/form_step", step: @current_step %>
           <div class="scenario-button-bar">

@@ -305,11 +305,10 @@ class StepHelperTest < ActionView::TestCase
     assert_includes result, "supervisor"
   end
 
-  test "Resolve#outcome_summary shows resolution type and code" do
-    r = Steps::Resolve.create!(workflow: @workflow, position: 0, title: "R", resolution_type: "success", resolution_code: "RESOLVED")
+  test "Resolve#outcome_summary shows resolution type" do
+    r = Steps::Resolve.create!(workflow: @workflow, position: 0, title: "R", resolution_type: "success")
     result = r.outcome_summary
     assert_includes result, "Success"
-    assert_includes result, "(RESOLVED)"
   end
 
   test "SubFlow#outcome_summary shows target workflow title" do

@@ -8,7 +8,7 @@
 <% transitions = step.transitions.includes(:target_step) %>
 <% other_steps = workflow.steps.reject { |s| s.id == step.id } %>
 
-<div class="mt-4 pt-4 border-t"
+<div class="mt-4 border-t" style="padding-top: var(--space-4);"
      data-controller="step-transitions"
      data-step-transitions-step-id-value="<%= step.uuid %>"
      data-step-transitions-step-index-value="<%= step.position %>">
@@ -19,11 +19,10 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
       </svg>
       Connections
-      <span class="text-xs font-normal ml-1">(Graph Mode)</span>
     </label>
     <button type="button"
             data-action="click->step-transitions#addTransition"
-            class="btn btn--sm text-primary">
+            class="btn btn--plain btn--sm">
       <svg class="icon icon--xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
       </svg>

@@ -354,6 +354,21 @@
   gap: var(--space-2);
 }
 
+.option-item__delete {
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+  color: var(--color-ink-muted) !important;
+  flex-shrink: 0;
+}
+
+.option-item__delete:hover {
+  color: var(--color-negative) !important;
+}
+
+.option-item:hover .option-item__delete {
+  opacity: 1;
+}
+
 /* ============================================================================
    Dark Mode Focus Overrides
    Hardcoded OKLCH focus shadows don't auto-swap via tokens.
