@@ -211,9 +211,7 @@ class Workflow < ApplicationRecord
 
   # Class method to cleanup orphaned drafts (untitled, no steps, older than 24 hours)
   def self.cleanup_orphaned_drafts
-    count = orphaned_drafts.count
-    orphaned_drafts.destroy_all
-    count
+    orphaned_drafts.destroy_all.size
   end
 
   # Group helper methods

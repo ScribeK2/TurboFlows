@@ -36,10 +36,8 @@ class CleanupTaskTest < ActiveSupport::TestCase
     non_orphan.update_column(:created_at, 25.hours.ago)
     Steps::Question.create!(workflow: non_orphan, uuid: SecureRandom.uuid, position: 0, title: 'Q', question: '?', answer_type: 'text', variable_name: 'v')
 
-    # Run the orphan query
-    orphans = Workflow.where(status: 'draft', title: 'Untitled Workflow')
-                      .where(created_at: ...24.hours.ago)
-                      .where.not(id: Step.select(:workflow_id).distinct)
+    # Use the model scope (canonical source of truth)
+    orphans = Workflow.orphaned_drafts
 
     assert_includes orphans, orphan
     assert_not_includes orphans, non_orphan
