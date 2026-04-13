@@ -107,17 +107,18 @@ class WorkflowImporter
         attrs[:can_resolve] = step_hash["can_resolve"]
       when "escalate"
         attrs[:target_type] = step_hash["target_type"]
-        attrs[:target_value] = step_hash["target_value"]
+        attrs[:target_value] = step_hash["target_value"].presence || step_hash["target_id"]
         attrs[:priority] = step_hash["priority"]
         attrs[:reason_required] = step_hash["reason_required"]
       when "resolve"
         attrs[:resolution_type] = step_hash["resolution_type"]
-        attrs[:resolution_code] = step_hash["resolution_code"]
         attrs[:notes_required] = step_hash["notes_required"]
         attrs[:survey_trigger] = step_hash["survey_trigger"]
       when "sub_flow"
         attrs[:sub_flow_workflow_id] = step_hash["target_workflow_id"] if step_hash["target_workflow_id"].present?
         attrs[:variable_mapping] = step_hash["variable_mapping"] if step_hash["variable_mapping"].present?
+      when "form"
+        attrs[:options] = step_hash["options"] if step_hash["options"].present?
       end
 
       step = step_class.new(attrs)
@@ -131,7 +132,9 @@ class WorkflowImporter
       # Set rich text fields
       step.update(instructions: step_hash["instructions"]) if step_type == "action" && step_hash["instructions"].present?
       step.update(content: step_hash["content"]) if step_type == "message" && step_hash["content"].present?
-      step.update(notes: step_hash["notes"]) if step_type == "escalate" && step_hash["notes"].present?
+      step.update(notes: step_hash["notes"].presence || step_hash["reason"]) if step_type == "escalate" && (step_hash["notes"].present? || step_hash["reason"].present?)
+      step.update(description: step_hash["description"]) if step_type == "resolve" && step_hash["description"].present?
+      step.update(instructions: step_hash["instructions"]) if step_type == "form" && step_hash["instructions"].present?
 
       uuid_to_step[attrs[:uuid]] = step
     end
@@ -182,6 +185,7 @@ class WorkflowImporter
     when "escalate" then Steps::Escalate
     when "resolve"  then Steps::Resolve
     when "sub_flow" then Steps::SubFlow
+    when "form"     then Steps::Form
     else Steps::Action
     end
   end

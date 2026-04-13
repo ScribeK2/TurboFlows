@@ -149,6 +149,7 @@ module WorkflowParsers
         normalized['answer_type']    = step[:answer_type]   || step['answer_type']   || 'text'
         normalized['variable_name']  = step[:variable_name] || step['variable_name'] || ''
         normalized['options']        = normalize_options(step[:options] || step['options'] || [])
+        normalized['can_resolve']    = step[:can_resolve]   || step['can_resolve']
       when 'decision', 'simple_decision'
         convert_decision_to_question(normalized, step)
       when 'checkpoint'
@@ -156,20 +157,30 @@ module WorkflowParsers
       when 'action'
         normalized['instructions'] = step[:instructions] || step['instructions'] || ''
         normalized['action_type']  = step[:action_type]  || step['action_type']  || ''
+        normalized['can_resolve']  = step[:can_resolve]  || step['can_resolve']
+        normalized['output_fields'] = step[:output_fields] || step['output_fields'] if (step[:output_fields] || step['output_fields']).present?
       when 'sub_flow'
         normalized['target_workflow_id']    = step[:target_workflow_id]    || step['target_workflow_id']
         normalized['target_workflow_title'] = step[:target_workflow_title] || step['target_workflow_title']
         normalized['variable_mapping']      = step[:variable_mapping]      || step['variable_mapping'] || {}
       when 'message'
-        normalized['content'] = step[:content] || step['content'] || ''
+        normalized['content']     = step[:content]     || step['content']     || ''
+        normalized['can_resolve'] = step[:can_resolve] || step['can_resolve']
       when 'escalate'
-        normalized['target_type'] = step[:target_type] || step['target_type'] || ''
-        normalized['priority']    = step[:priority]    || step['priority']    || 'normal'
-        normalized['target_id']   = step[:target_id]   || step['target_id']
-        normalized['reason']      = step[:reason]      || step['reason'] || ''
+        normalized['target_type']    = step[:target_type]    || step['target_type']    || ''
+        normalized['target_value']   = step[:target_value]   || step['target_value']   || step[:target_id] || step['target_id'] || ''
+        normalized['priority']       = step[:priority]       || step['priority']       || 'normal'
+        normalized['reason_required'] = step[:reason_required] || step['reason_required']
+        normalized['notes']          = step[:notes]          || step['notes']          || step[:reason] || step['reason'] || ''
       when 'resolve'
         normalized['resolution_type']  = step[:resolution_type]  || step['resolution_type']  || 'success'
         normalized['resolution_notes'] = step[:resolution_notes] || step['resolution_notes'] || ''
+        normalized['description']      = step[:description]      || step['description']      || ''
+        normalized['notes_required']   = step[:notes_required]   || step['notes_required']
+        normalized['survey_trigger']   = step[:survey_trigger]   || step['survey_trigger']
+      when 'form'
+        normalized['options']      = step[:options] || step['options'] || []
+        normalized['instructions'] = step[:instructions] || step['instructions'] || ''
       end
     end
 

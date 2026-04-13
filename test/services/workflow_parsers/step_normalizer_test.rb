@@ -104,15 +104,30 @@ module WorkflowParsers
         "type" => "escalate",
         "title" => "Escalate",
         "target_type" => "team",
+        "target_value" => "billing-team",
         "priority" => "high",
-        "reason" => "Needs attention"
+        "notes" => "Needs attention"
       }
       result = normalizer.normalize_single_step(step, 0)
 
       assert_equal "escalate",       result["type"]
       assert_equal "team",           result["target_type"]
+      assert_equal "billing-team",   result["target_value"]
       assert_equal "high",           result["priority"]
-      assert_equal "Needs attention", result["reason"]
+      assert_equal "Needs attention", result["notes"]
+    end
+
+    test "normalize_single_step maps escalate legacy field names" do
+      step = {
+        "type" => "escalate",
+        "title" => "Escalate",
+        "target_id" => "support-queue",
+        "reason" => "Customer upset"
+      }
+      result = normalizer.normalize_single_step(step, 0)
+
+      assert_equal "support-queue",  result["target_value"]
+      assert_equal "Customer upset", result["notes"]
     end
 
     test "normalize_single_step defaults escalate priority to normal" do
