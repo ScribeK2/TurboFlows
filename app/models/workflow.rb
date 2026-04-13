@@ -66,7 +66,7 @@ class Workflow < ApplicationRecord
   # Draft workflow scopes
   scope :drafts, -> { draft }
   scope :expired_drafts, -> { draft.where(draft_expires_at: ...Time.current) }
-  scope :orphaned_drafts, -> {
+  scope :orphaned_drafts, lambda {
     draft.where(title: "Untitled Workflow")
          .where(created_at: ...24.hours.ago)
          .where.not(id: Step.select(:workflow_id).distinct)
