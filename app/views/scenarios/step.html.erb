@@ -34,16 +34,15 @@
                   is_current = false
                   is_completed = true
                 %>
-                <button type="button"
-                        onclick="location.href='<%= step_scenario_path(@scenario) %>?step=<%= index %>'"
-                        class="<%= scenario_stepper_classes(is_completed, is_current, path_item['step_type'] || path_item['type']) %> flex-shrink-0"
-                        title="<%= path_item['step_title'] %>">
+                <a href="<%= step_scenario_path(@scenario, step: index) %>"
+                   class="<%= scenario_stepper_classes(is_completed, is_current, path_item['step_type'] || path_item['type']) %> flex-shrink-0"
+                   title="<%= path_item['step_title'] %>">
                   <%= scenario_stepper_step_content(path_item, index, is_completed, is_current) %>
                   <span class="scenario-stepper__label"><%= truncate(path_item['step_title'], length: 20) %></span>
                   <% if path_item['answer'].present? && is_completed %>
                     <span class="scenario-stepper__answer">(<%= truncate(path_item['answer'].to_s, length: 10) %>)</span>
                   <% end %>
-                </button>
+                </a>
                 <% unless index == @scenario.execution_path.length - 1 %>
                   <div class="scenario-step-connector flex-shrink-0"></div>
                 <% end %>

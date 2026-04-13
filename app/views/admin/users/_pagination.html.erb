@@ -6,12 +6,12 @@
   </div>
 
   <div class="admin-pagination__controls">
-    <form action="<%= admin_users_path %>" method="get" data-turbo-frame="users-table" data-turbo-action="advance" class="admin-pagination__per-page">
+    <form action="<%= admin_users_path %>" method="get" data-turbo-frame="users-table" data-turbo-action="advance" class="admin-pagination__per-page" data-controller="auto-submit">
       <% filter_params.to_h.except("per_page", "page").each do |key, value| %>
         <input type="hidden" name="<%= key %>" value="<%= value %>">
       <% end %>
       <label for="per_page" class="text-xs">Per page:</label>
-      <select name="per_page" id="per_page" class="form-select form-select--sm" onchange="this.form.requestSubmit()">
+      <select name="per_page" id="per_page" class="form-select form-select--sm" data-action="change->auto-submit#submit">
         <% [25, 50, 100].each do |size| %>
           <option value="<%= size %>" <%= "selected" if @per_page == size %>><%= size %></option>
         <% end %>
