@@ -60,6 +60,46 @@
     </div>
   </div>
 
+  <!-- Draft Workflows -->
+  <div class="card mb-4">
+    <div class="card__body">
+      <h2 class="font-semibold mb-3" style="font-size: var(--text-lg);">Draft Workflows</h2>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Count</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Total Drafts</td>
+              <td><%= number_with_delimiter(@draft_stats[:total]) %></td>
+            </tr>
+            <tr>
+              <td>Expired <span class="text-xs" style="color: var(--color-ink-muted);">(past 7-day TTL)</span></td>
+              <td><%= number_with_delimiter(@draft_stats[:expired]) %></td>
+            </tr>
+            <tr>
+              <td>Orphaned <span class="text-xs" style="color: var(--color-ink-muted);">(untitled, no steps, &gt;24h)</span></td>
+              <td><%= number_with_delimiter(@draft_stats[:orphaned]) %></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="flex items-center justify-between mt-3">
+        <p class="text-xs" style="color: var(--color-ink-muted);">
+          Removes expired and orphaned drafts. Active drafts with steps are not affected.
+        </p>
+        <%= button_to "Clean up now", admin_data_health_cleanup_drafts_path,
+              method: :post,
+              class: "btn btn--secondary btn--sm",
+              data: { turbo_confirm: "This will delete all expired and orphaned draft workflows. Continue?" } %>
+      </div>
+    </div>
+  </div>
+
   <!-- Cleanup Status -->
   <div class="card">
     <div class="card__body">

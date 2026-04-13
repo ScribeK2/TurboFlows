@@ -101,5 +101,6 @@ Rails.application.routes.draw do
     end
     get "analytics", to: "analytics#index", as: :analytics
     get "data_health", to: "data_health#index", as: :data_health
+    post "data_health/cleanup_drafts", to: "data_health#cleanup_drafts", as: :data_health_cleanup_drafts
   end
 end

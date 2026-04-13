@@ -7,6 +7,18 @@ module Admin
         simulation_days: Scenario.simulation_retention_days,
         live_days: Scenario.live_retention_days
       }
+      @draft_stats = {
+        total: Workflow.draft.count,
+        expired: Workflow.expired_drafts.count,
+        orphaned: Workflow.orphaned_drafts.count
+      }
+    end
+
+    def cleanup_drafts
+      expired = Workflow.cleanup_expired_drafts
+      orphaned = Workflow.cleanup_orphaned_drafts
+      redirect_to admin_data_health_path,
+                  notice: "Cleaned up #{expired} expired and #{orphaned} orphaned draft(s)."
     end
 
     private
