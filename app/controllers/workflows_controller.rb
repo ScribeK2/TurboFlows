@@ -59,19 +59,8 @@ class WorkflowsController < ApplicationController
   end
 
   def new
-    @workflow = current_user.workflows.build(
-      status: 'draft',
-      title: 'Untitled Workflow',
-      graph_mode: true
-    )
-    # Save the draft immediately so the builder has a workflow ID for server-side
-    # step rendering. Ensures the builder always has a persisted workflow to work with.
-    if @workflow.save
-      redirect_to workflow_path(@workflow, edit: true)
-    else
-      @accessible_groups = Group.visible_to(current_user).includes(:children).order(:name)
-      render :new, status: :unprocessable_content
-    end
+    @workflow = Workflow.find_or_create_draft_for(current_user)
+    redirect_to workflow_path(@workflow, edit: true)
   end
 
   def edit

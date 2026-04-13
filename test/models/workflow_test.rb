@@ -559,6 +559,69 @@ class WorkflowTest < ActiveSupport::TestCase
     assert Workflow.exists?(keeper.id)
   end
 
+  test "find_or_create_draft_for creates a new draft when none exists" do
+    assert_difference("Workflow.count", 1) do
+      workflow = Workflow.find_or_create_draft_for(@user)
+      assert_predicate workflow, :persisted?
+      assert_equal "draft", workflow.status
+      assert_equal "Untitled Workflow", workflow.title
+      assert_predicate workflow.graph_mode?, :present?
+    end
+  end
+
+  test "find_or_create_draft_for reuses existing blank draft" do
+    existing = Workflow.create!(title: "Untitled Workflow", user: @user, status: "draft", graph_mode: true)
+
+    assert_no_difference("Workflow.count") do
+      workflow = Workflow.find_or_create_draft_for(@user)
+      assert_equal existing.id, workflow.id
+    end
+  end
+
+  test "find_or_create_draft_for creates new draft when existing draft has steps" do
+    existing = Workflow.create!(title: "Untitled Workflow", user: @user, status: "draft", graph_mode: true)
+    Steps::Resolve.create!(workflow: existing, position: 0, title: "Done", resolution_type: "success")
+
+    assert_difference("Workflow.count", 1) do
+      workflow = Workflow.find_or_create_draft_for(@user)
+      assert_not_equal existing.id, workflow.id
+    end
+  end
+
+  test "find_or_create_draft_for creates new draft when existing draft is renamed" do
+    Workflow.create!(title: "My Custom Flow", user: @user, status: "draft", graph_mode: true)
+
+    assert_difference("Workflow.count", 1) do
+      workflow = Workflow.find_or_create_draft_for(@user)
+      assert_equal "Untitled Workflow", workflow.title
+    end
+  end
+
+  test "find_or_create_draft_for refreshes draft_expires_at on reuse" do
+    existing = Workflow.create!(title: "Untitled Workflow", user: @user, status: "draft", graph_mode: true)
+    old_expiry = existing.draft_expires_at
+
+    travel 1.day do
+      workflow = Workflow.find_or_create_draft_for(@user)
+      assert_equal existing.id, workflow.id
+      assert_operator workflow.draft_expires_at, :>, old_expiry
+    end
+  end
+
+  test "find_or_create_draft_for does not reuse another user's draft" do
+    other_user = User.create!(
+      email: "other-dedup-#{SecureRandom.hex(4)}@example.com",
+      password: "password123!",
+      password_confirmation: "password123!"
+    )
+    Workflow.create!(title: "Untitled Workflow", user: other_user, status: "draft", graph_mode: true)
+
+    assert_difference("Workflow.count", 1) do
+      workflow = Workflow.find_or_create_draft_for(@user)
+      assert_equal @user.id, workflow.user_id
+    end
+  end
+
   test "can_resolve persists through update on AR step" do
     workflow = Workflow.create!(title: "Test can_resolve update", user: @user)
     step = Steps::Action.create!(workflow: workflow, position: 0, title: "Act", can_resolve: false)

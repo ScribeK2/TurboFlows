@@ -214,6 +214,28 @@ class Workflow < ApplicationRecord
     orphaned_drafts.destroy_all.size
   end
 
+  # Find an existing reusable draft for the user, or create a new one.
+  # A draft is reusable if it's untitled and has no steps.
+  def self.find_or_create_draft_for(user)
+    existing = user.workflows
+                   .draft
+                   .where(title: "Untitled Workflow")
+                   .where.not(id: Step.select(:workflow_id).distinct)
+                   .order(created_at: :desc)
+                   .first
+
+    if existing
+      existing.save! # triggers set_draft_expiration callback to refresh TTL
+      existing
+    else
+      user.workflows.create!(
+        status: "draft",
+        title: "Untitled Workflow",
+        graph_mode: true
+      )
+    end
+  end
+
   # Group helper methods
   def primary_group
     if group_workflows.loaded?

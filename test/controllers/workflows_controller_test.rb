@@ -59,7 +59,21 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
     assert_difference("Workflow.count", 1) do
       get new_workflow_path
     end
-    assert_redirected_to workflow_path(Workflow.last, edit: true)
+    workflow = Workflow.last
+    assert_equal "draft", workflow.status
+    assert_redirected_to workflow_path(workflow, edit: true)
+  end
+
+  test "new reuses existing blank draft instead of creating duplicate" do
+    # First visit creates a draft
+    get new_workflow_path
+    first_draft = Workflow.last
+
+    # Second visit reuses same draft
+    assert_no_difference("Workflow.count") do
+      get new_workflow_path
+    end
+    assert_redirected_to workflow_path(first_draft, edit: true)
   end
 
   test "should create workflow" do
@@ -494,6 +508,16 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "draft", workflow.status
     assert_equal "Untitled Workflow", workflow.title
     assert_redirected_to workflow_path(workflow, edit: true)
+  end
+
+  test "GET new reuses blank draft for same user" do
+    sign_in @editor
+    existing = Workflow.create!(title: "Untitled Workflow", user: @editor, status: "draft", graph_mode: true)
+
+    assert_no_difference("Workflow.count") do
+      get new_workflow_path
+    end
+    assert_redirected_to workflow_path(existing, edit: true)
   end
 
   # ===========================================================================
