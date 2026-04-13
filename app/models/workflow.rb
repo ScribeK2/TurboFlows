@@ -205,8 +205,11 @@ class Workflow < ApplicationRecord
 
   # Class method to cleanup expired drafts
   # Can be called from a scheduled job
+  # Uses destroy_all (not delete_all) to fire before_destroy callbacks
+  # that nullify start_step_id/published_version_id and clean up
+  # dependent records (steps, transitions, group_workflows, etc.)
   def self.cleanup_expired_drafts
-    expired_drafts.delete_all
+    expired_drafts.destroy_all.size
   end
 
   # Class method to cleanup orphaned drafts (untitled, no steps, older than 24 hours)

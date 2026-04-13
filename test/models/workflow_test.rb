@@ -622,6 +622,24 @@ class WorkflowTest < ActiveSupport::TestCase
     end
   end
 
+  test "cleanup_expired_drafts handles drafts with steps and associations" do
+    draft = Workflow.create!(title: "Draft With Steps", user: @user, status: "draft")
+    q = Steps::Question.create!(workflow: draft, position: 0, title: "Q1", question: "What?")
+    r = Steps::Resolve.create!(workflow: draft, position: 1, title: "Done", resolution_type: "success")
+    Transition.create!(step: q, target_step: r, position: 0)
+    draft.update!(start_step_id: q.id)
+    draft.update_columns(draft_expires_at: 1.day.ago)
+
+    assert_difference("Workflow.count", -1) do
+      count = Workflow.cleanup_expired_drafts
+      assert_equal 1, count
+    end
+
+    assert_not Workflow.exists?(draft.id)
+    assert_not Step.exists?(q.id)
+    assert_not Step.exists?(r.id)
+  end
+
   test "can_resolve persists through update on AR step" do
     workflow = Workflow.create!(title: "Test can_resolve update", user: @user)
     step = Steps::Action.create!(workflow: workflow, position: 0, title: "Act", can_resolve: false)
