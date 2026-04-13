@@ -514,6 +514,51 @@ class WorkflowTest < ActiveSupport::TestCase
     assert step.reload.can_resolve
   end
 
+  test "orphaned_drafts scope returns untitled drafts with no steps older than 24 hours" do
+    # Orphaned: draft, untitled, no steps, > 24h old
+    orphan = Workflow.create!(title: "Untitled Workflow", user: @user, status: "draft")
+    orphan.update_column(:created_at, 2.days.ago)
+
+    # Not orphaned: has steps
+    with_steps = Workflow.create!(title: "Untitled Workflow", user: @user, status: "draft")
+    with_steps.update_column(:created_at, 2.days.ago)
+    Steps::Resolve.create!(workflow: with_steps, position: 0, title: "Done", resolution_type: "success")
+
+    # Not orphaned: renamed
+    renamed = Workflow.create!(title: "My Flow", user: @user, status: "draft")
+    renamed.update_column(:created_at, 2.days.ago)
+
+    # Not orphaned: too recent
+    recent = Workflow.create!(title: "Untitled Workflow", user: @user, status: "draft")
+
+    results = Workflow.orphaned_drafts
+    assert_includes results, orphan
+    assert_not_includes results, with_steps
+    assert_not_includes results, renamed
+    assert_not_includes results, recent
+  end
+
+  test "cleanup_orphaned_drafts destroys orphaned drafts and returns count" do
+    orphan1 = Workflow.create!(title: "Untitled Workflow", user: @user, status: "draft")
+    orphan1.update_column(:created_at, 2.days.ago)
+    orphan2 = Workflow.create!(title: "Untitled Workflow", user: @user, status: "draft")
+    orphan2.update_column(:created_at, 3.days.ago)
+
+    # Should not be destroyed: has steps
+    keeper = Workflow.create!(title: "Untitled Workflow", user: @user, status: "draft")
+    keeper.update_column(:created_at, 2.days.ago)
+    Steps::Resolve.create!(workflow: keeper, position: 0, title: "Done", resolution_type: "success")
+
+    assert_difference("Workflow.count", -2) do
+      count = Workflow.cleanup_orphaned_drafts
+      assert_equal 2, count
+    end
+
+    assert_not Workflow.exists?(orphan1.id)
+    assert_not Workflow.exists?(orphan2.id)
+    assert Workflow.exists?(keeper.id)
+  end
+
   test "can_resolve persists through update on AR step" do
     workflow = Workflow.create!(title: "Test can_resolve update", user: @user)
     step = Steps::Action.create!(workflow: workflow, position: 0, title: "Act", can_resolve: false)

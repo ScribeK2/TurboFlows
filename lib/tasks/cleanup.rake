@@ -15,12 +15,7 @@ end
 namespace :workflows do
   desc "Delete orphaned draft workflows (untitled, no steps, older than 24 hours)"
   task cleanup_orphaned_drafts: :environment do
-    orphans = Workflow.where(status: "draft", title: "Untitled Workflow")
-                      .where(created_at: ...24.hours.ago)
-                      .where.not(id: Step.select(:workflow_id).distinct)
-
-    count = orphans.count
-    orphans.destroy_all
+    count = Workflow.cleanup_orphaned_drafts
     puts "Cleaned up #{count} orphaned draft workflow(s)."
   end
 end

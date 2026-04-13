@@ -66,6 +66,11 @@ class Workflow < ApplicationRecord
   # Draft workflow scopes
   scope :drafts, -> { draft }
   scope :expired_drafts, -> { draft.where(draft_expires_at: ...Time.current) }
+  scope :orphaned_drafts, -> {
+    draft.where(title: "Untitled Workflow")
+         .where(created_at: ...24.hours.ago)
+         .where.not(id: Step.select(:workflow_id).distinct)
+  }
 
   # Get workflows visible to a specific user
   # Admins see all, Editors see own + public, Users see only public
@@ -202,6 +207,13 @@ class Workflow < ApplicationRecord
   # Can be called from a scheduled job
   def self.cleanup_expired_drafts
     expired_drafts.delete_all
+  end
+
+  # Class method to cleanup orphaned drafts (untitled, no steps, older than 24 hours)
+  def self.cleanup_orphaned_drafts
+    count = orphaned_drafts.count
+    orphaned_drafts.destroy_all
+    count
   end
 
   # Group helper methods
