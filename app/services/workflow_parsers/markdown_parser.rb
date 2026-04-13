@@ -3,7 +3,7 @@
 module WorkflowParsers
   class MarkdownParser < BaseParser
     # Valid step types for Markdown import
-    VALID_MD_TYPES = %w[question action sub_flow message escalate resolve].freeze
+    VALID_MD_TYPES = %w[question action sub_flow message escalate resolve form].freeze
 
     def parse
       # Parse markdown content
@@ -235,9 +235,9 @@ module WorkflowParsers
         return
       end
 
-      # Extract options (for multiple choice questions)
-      # Format: "Options: Yes, No" or "Options: Billing:billing, Technical:technical"
-      if (match = stripped.match(/^\*\*Options\*\*:\s*(.+)$/i) || stripped.match(/^Options:\s*(.+)$/i))
+      # Extract options/fields (for question and form steps)
+      # Format: "Options: Yes, No" or "Fields: Name:text, Email:email"
+      if (match = stripped.match(/^\*\*(?:Options|Fields)\*\*:\s*(.+)$/i) || stripped.match(/^(?:Options|Fields):\s*(.+)$/i))
         options_str = (match ? match[1] : ::Regexp.last_match(1)).strip
         current_step[:options] = parse_markdown_options(options_str)
         return
@@ -348,7 +348,7 @@ module WorkflowParsers
     end
 
     def append_description(current_step, stripped)
-      field_pattern = /^\*\*|Type:|Question:|Answer|Variable:|Options:|Instructions:|Action\s+Type:|Condition:
+      field_pattern = /^\*\*|Type:|Question:|Answer|Variable:|Options:|Fields:|Instructions:|Action\s+Type:|Condition:
         |If\s+(true|false):|Transitions?:|Content:|Target\s+(Type|ID|Workflow|Workflow\s+ID):
         |Priority:|Reason:|Resolution/ix
       heading_pattern = /^##|^###|^\d+\./
@@ -432,6 +432,9 @@ module WorkflowParsers
       when 'resolve'
         normalized[:resolution_type] = step[:resolution_type] || 'success'
         normalized[:resolution_notes] = step[:resolution_notes] || ''
+      when 'form'
+        normalized[:instructions] = step[:instructions] || ''
+        normalized[:options] = step[:options] || [] if step[:options].present?
       end
 
       # Add transitions if present (Graph Mode)

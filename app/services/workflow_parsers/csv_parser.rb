@@ -5,7 +5,7 @@ require 'csv'
 module WorkflowParsers
   class CsvParser < BaseParser
     # Valid step types for CSV import
-    VALID_CSV_TYPES = %w[question action sub_flow message escalate resolve].freeze
+    VALID_CSV_TYPES = %w[question action sub_flow message escalate resolve form].freeze
 
     def parse
       csv = CSV.parse(@file_content, headers: true, header_converters: :symbol)
@@ -150,6 +150,17 @@ module WorkflowParsers
         step[:resolution_type] = row[:resolution_type] || 'success'
         step[:resolution_notes] = row[:resolution_notes] || row[:notes] || ''
         # Resolve steps don't have transitions (terminal)
+
+      when 'form'
+        step[:instructions] = row[:instructions] || ''
+
+        if row[:options]
+          step[:options] = parse_options(row[:options])
+        end
+
+        if row[:transitions]
+          step[:transitions] = parse_transitions(row[:transitions])
+        end
       end
 
       step

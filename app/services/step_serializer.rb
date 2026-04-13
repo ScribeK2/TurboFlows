@@ -61,13 +61,13 @@ class StepSerializer
     when Steps::Resolve
       data.merge!(
         "resolution_type" => step.resolution_type,
-        "resolution_code" => step.resolution_code,
         "description" => step.description&.body.to_s,
         "notes_required" => step.notes_required,
         "survey_trigger" => step.survey_trigger
       )
     when Steps::Form
       data["instructions"] = step.instructions&.body.to_s
+      data["options"] = step.options if step.options.present?
     when Steps::SubFlow
       data["target_workflow_id"] = step.sub_flow_workflow_id
       data["variable_mapping"] = step.variable_mapping if step.variable_mapping.present?
