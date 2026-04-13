@@ -136,16 +136,16 @@ module WorkflowParsers
       resolve_references_in_steps(normalized_steps, step_title_map, step_id_map, title_to_id)
     end
 
+    RESOLUTION_TYPE_ALIASES = {
+      'transferred' => 'transfer',
+      'other' => 'failure'
+    }.freeze
+
     private
 
     # -------------------------------------------------------------------------
     # Value normalisation
     # -------------------------------------------------------------------------
-
-    RESOLUTION_TYPE_ALIASES = {
-      'transferred' => 'transfer',
-      'other'       => 'failure'
-    }.freeze
 
     def normalize_resolution_type(value)
       raw = value.to_s.strip.downcase
@@ -163,7 +163,7 @@ module WorkflowParsers
         normalized['answer_type']    = step[:answer_type]   || step['answer_type']   || 'text'
         normalized['variable_name']  = step[:variable_name] || step['variable_name'] || ''
         normalized['options']        = normalize_options(step[:options] || step['options'] || [])
-        normalized['can_resolve']    = step[:can_resolve]   || step['can_resolve']
+        normalized['can_resolve']    = step[:can_resolve] || step['can_resolve']
       when 'decision', 'simple_decision'
         convert_decision_to_question(normalized, step)
       when 'checkpoint'
@@ -178,14 +178,14 @@ module WorkflowParsers
         normalized['target_workflow_title'] = step[:target_workflow_title] || step['target_workflow_title']
         normalized['variable_mapping']      = step[:variable_mapping]      || step['variable_mapping'] || {}
       when 'message'
-        normalized['content']     = step[:content]     || step['content']     || ''
+        normalized['content']     = step[:content]     || step['content'] || ''
         normalized['can_resolve'] = step[:can_resolve] || step['can_resolve']
       when 'escalate'
         normalized['target_type']    = step[:target_type]    || step['target_type']    || ''
         normalized['target_value']   = step[:target_value]   || step['target_value']   || step[:target_id] || step['target_id'] || ''
         normalized['priority']       = step[:priority]       || step['priority']       || 'normal'
         normalized['reason_required'] = step[:reason_required] || step['reason_required']
-        normalized['notes']          = step[:notes]          || step['notes']          || step[:reason] || step['reason'] || ''
+        normalized['notes'] = step[:notes] || step['notes'] || step[:reason] || step['reason'] || ''
       when 'resolve'
         normalized['resolution_type']  = normalize_resolution_type(step[:resolution_type] || step['resolution_type'] || 'success')
         normalized['resolution_notes'] = step[:resolution_notes] || step['resolution_notes'] || ''

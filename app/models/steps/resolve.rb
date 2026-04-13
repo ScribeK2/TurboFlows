@@ -21,11 +21,7 @@ module Steps
     validates :resolution_type, inclusion: { in: VALID_RESOLUTION_TYPES }, allow_blank: true
 
     def resolution_description
-      if description.present?
-        description
-      else
-        self.class.default_description_for(resolution_type)
-      end
+      description.presence || self.class.default_description_for(resolution_type)
     end
 
     def self.default_description_for(type)
