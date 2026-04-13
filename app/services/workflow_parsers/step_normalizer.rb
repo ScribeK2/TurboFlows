@@ -139,6 +139,20 @@ module WorkflowParsers
     private
 
     # -------------------------------------------------------------------------
+    # Value normalisation
+    # -------------------------------------------------------------------------
+
+    RESOLUTION_TYPE_ALIASES = {
+      'transferred' => 'transfer',
+      'other'       => 'failure'
+    }.freeze
+
+    def normalize_resolution_type(value)
+      raw = value.to_s.strip.downcase
+      RESOLUTION_TYPE_ALIASES.fetch(raw, raw)
+    end
+
+    # -------------------------------------------------------------------------
     # Type-specific field extraction
     # -------------------------------------------------------------------------
 
@@ -173,7 +187,7 @@ module WorkflowParsers
         normalized['reason_required'] = step[:reason_required] || step['reason_required']
         normalized['notes']          = step[:notes]          || step['notes']          || step[:reason] || step['reason'] || ''
       when 'resolve'
-        normalized['resolution_type']  = step[:resolution_type]  || step['resolution_type']  || 'success'
+        normalized['resolution_type']  = normalize_resolution_type(step[:resolution_type] || step['resolution_type'] || 'success')
         normalized['resolution_notes'] = step[:resolution_notes] || step['resolution_notes'] || ''
         normalized['description']      = step[:description]      || step['description']      || ''
         normalized['notes_required']   = step[:notes_required]   || step['notes_required']
