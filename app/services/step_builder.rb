@@ -10,10 +10,10 @@ class StepBuilder
   }.freeze
 
   RICH_TEXT_FIELDS = {
-    "instructions" => [ Steps::Action, Steps::Form ],
-    "content" => [ Steps::Message ],
-    "notes" => [ Steps::Escalate ],
-    "description" => [ Steps::Resolve ]
+    "instructions" => [Steps::Action, Steps::Form],
+    "content" => [Steps::Message],
+    "notes" => [Steps::Escalate],
+    "description" => [Steps::Resolve]
   }.freeze
 
   PERMITTED_STEP_PARAMS = %i[
