@@ -867,7 +867,7 @@
     align-items: center;
     gap: var(--space-1);
     margin-left: var(--space-2);
-    font-size: var(--text-sm);
+    font-size: inherit;
     font-weight: 500;
     color: var(--color-negative);
     transition: opacity var(--duration-normal) var(--ease-out);
@@ -878,8 +878,8 @@
   }
 
   .builder__toolbar-issues svg {
-    width: 0.875rem;
-    height: 0.875rem;
+    width: 0.8125rem;
+    height: 0.8125rem;
   }
 }
 
@@ -916,37 +916,39 @@
 
 /* ===== Health Panel (Wave 2) ===== */
 
+/* === Health Panel: Clean State === */
 .health-panel__clean {
-  text-align: center;
-  padding: var(--space-8) var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .health-panel__clean-icon {
   color: var(--color-positive);
-  margin: 0 auto var(--space-4);
-  display: block;
+  flex-shrink: 0;
 }
 
 .health-panel__clean-title {
-  font-size: var(--text-lg);
+  font-size: var(--text-sm);
   font-weight: 600;
-  margin-bottom: var(--space-4);
+  color: var(--color-ink);
 }
 
+/* === Health Panel: Checklist === */
 .health-panel__checklist {
   list-style: none;
   padding: 0;
   margin: 0;
-  text-align: left;
-  max-width: 20rem;
-  margin-inline: auto;
 }
 
 .health-panel__checklist li {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) 0;
+  padding: var(--space-1) 0;
   font-size: var(--text-sm);
   color: var(--color-ink-subtle);
 }
@@ -954,38 +956,23 @@
 .health-panel__checklist li::before {
   content: "✓";
   color: var(--color-positive);
-  font-weight: 700;
+  font-weight: 600;
+  font-size: var(--text-xs);
   flex-shrink: 0;
 }
 
-.health-panel__checklist--passing li::before {
-  content: "✓";
-  color: var(--color-positive);
-}
-
-.health-panel__checklist--none {
-  color: var(--color-ink-muted);
-  font-style: italic;
-}
-
-.health-panel__checklist--none::before {
-  content: none !important;
-}
-
+/* === Health Panel: Summary === */
 .health-panel__summary {
   display: flex;
   gap: var(--space-3);
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-3);
   margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .health-panel__count {
   font-size: var(--text-sm);
   font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
 }
 
 .health-panel__count--error {
@@ -996,32 +983,21 @@
   color: var(--color-warning);
 }
 
+/* === Health Panel: Sections === */
 .health-panel__section {
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-3);
 }
 
 .health-panel__section-title {
   font-size: var(--text-xs);
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding-bottom: var(--space-2);
-  margin-bottom: var(--space-2);
+  color: var(--color-ink-muted);
+  padding-bottom: var(--space-1);
+  margin-bottom: var(--space-1);
   border-bottom: 1px solid var(--color-border);
 }
 
-.health-panel__section-title--error {
-  color: var(--color-negative);
-}
-
-.health-panel__section-title--warning {
-  color: var(--color-warning);
-}
-
-.health-panel__section-title--passing {
-  color: var(--color-positive);
-}
-
+/* === Health Panel: Issue Rows === */
 .health-panel__issue {
   display: flex;
   align-items: flex-start;
@@ -1039,11 +1015,11 @@
   margin-top: 2px;
 }
 
-.health-panel__issue--error .health-panel__issue-icon {
+.health-panel__issue-icon--error {
   color: var(--color-negative);
 }
 
-.health-panel__issue--warning .health-panel__issue-icon {
+.health-panel__issue-icon--warning {
   color: var(--color-warning);
 }
 

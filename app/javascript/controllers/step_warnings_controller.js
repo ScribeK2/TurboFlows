@@ -274,11 +274,17 @@ export default class extends Controller {
 
     popover.appendChild(list)
 
-    // Position relative to the anchor's row
+    // Append to builder__list (overflow:visible) so the popover isn't clipped
+    // by the scroll container. Position it using the row's offset.
     const row = anchor.closest(".builder__list-row")
-    if (row) {
-      row.style.position = "relative"
-      row.appendChild(popover)
+    const builderList = row?.closest(".builder__list")
+    if (builderList && row) {
+      builderList.style.position = "relative"
+      const rowRect = row.getBoundingClientRect()
+      const listRect = builderList.getBoundingClientRect()
+      popover.style.top = `${rowRect.bottom - listRect.top}px`
+      popover.style.right = `${listRect.right - rowRect.right}px`
+      builderList.appendChild(popover)
     }
 
     this.openPopover = popover

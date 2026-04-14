@@ -23,19 +23,20 @@
     <% if health.clean? %>
       <%# === All Clear === %>
       <div class="health-panel__clean">
-        <svg class="health-panel__clean-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="health-panel__clean-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
           <polyline points="22 4 12 14.01 9 11.01"/>
         </svg>
-        <h3 class="health-panel__clean-title">All checks passing</h3>
-        <ul class="health-panel__checklist">
-          <li>Reachability from start</li>
-          <li>No cycles detected</li>
-          <li>All terminals are Resolve steps</li>
-          <li>No circular sub-flows</li>
-          <li>All required fields present</li>
-        </ul>
+        <span class="health-panel__clean-title">All checks passing</span>
       </div>
+
+      <ul class="health-panel__checklist">
+        <li>Reachability from start</li>
+        <li>No cycles detected</li>
+        <li>All terminals are Resolve steps</li>
+        <li>No circular sub-flows</li>
+        <li>All required fields present</li>
+      </ul>
     <% else %>
       <%# === Summary === %>
       <div class="health-panel__summary">
@@ -55,12 +56,12 @@
       <% errors = health.issues.select { |_uuid, issues| issues.any? { |i| i[:severity] == :error } } %>
       <% if errors.any? %>
         <div class="health-panel__section">
-          <h4 class="health-panel__section-title health-panel__section-title--error">Errors</h4>
+          <h4 class="health-panel__section-title">Errors</h4>
           <% errors.each do |uuid, issues| %>
             <% step = workflow.steps.find { |s| s.uuid == uuid } %>
             <% issues.select { |i| i[:severity] == :error }.each do |issue| %>
-              <div class="health-panel__issue health-panel__issue--error">
-                <div class="health-panel__issue-icon">
+              <div class="health-panel__issue">
+                <div class="health-panel__issue-icon health-panel__issue-icon--error">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                   </svg>
@@ -98,12 +99,12 @@
       <% warnings = health.issues.select { |_uuid, issues| issues.any? { |i| i[:severity] == :warning } } %>
       <% if warnings.any? %>
         <div class="health-panel__section">
-          <h4 class="health-panel__section-title health-panel__section-title--warning">Warnings</h4>
+          <h4 class="health-panel__section-title">Warnings</h4>
           <% warnings.each do |uuid, issues| %>
             <% step = workflow.steps.find { |s| s.uuid == uuid } %>
             <% issues.select { |i| i[:severity] == :warning }.each do |issue| %>
-              <div class="health-panel__issue health-panel__issue--warning">
-                <div class="health-panel__issue-icon">
+              <div class="health-panel__issue">
+                <div class="health-panel__issue-icon health-panel__issue-icon--warning">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                   </svg>
@@ -138,25 +139,23 @@
       <% end %>
 
       <%# === Passing Checks === %>
-      <div class="health-panel__section">
-        <h4 class="health-panel__section-title health-panel__section-title--passing">Passing</h4>
-        <ul class="health-panel__checklist health-panel__checklist--passing">
-          <% passing_checks = [] %>
-          <% graph_errors = health.issues.values.flatten.map { |i| i[:message] } %>
-          <% passing_checks << "Reachability from start" unless graph_errors.any? { |m| m.include?("reachable") } %>
-          <% passing_checks << "No cycles detected" unless graph_errors.any? { |m| m.include?("Cycle") } %>
-          <% passing_checks << "All terminals are Resolve steps" unless graph_errors.any? { |m| m.include?("Resolve") } %>
-          <% passing_checks << "No circular sub-flows" unless graph_errors.any? { |m| m.include?("sub-flow") || m.include?("Sub-flow") } %>
-          <% passing_checks << "All required fields present" unless graph_errors.any? { |m| m.include?("required") } %>
-          <% if passing_checks.any? %>
+      <% passing_checks = [] %>
+      <% graph_errors = health.issues.values.flatten.map { |i| i[:message] } %>
+      <% passing_checks << "Reachability from start" unless graph_errors.any? { |m| m.include?("reachable") } %>
+      <% passing_checks << "No cycles detected" unless graph_errors.any? { |m| m.include?("Cycle") } %>
+      <% passing_checks << "All terminals are Resolve steps" unless graph_errors.any? { |m| m.include?("Resolve") } %>
+      <% passing_checks << "No circular sub-flows" unless graph_errors.any? { |m| m.include?("sub-flow") || m.include?("Sub-flow") } %>
+      <% passing_checks << "All required fields present" unless graph_errors.any? { |m| m.include?("required") } %>
+      <% if passing_checks.any? %>
+        <div class="health-panel__section">
+          <h4 class="health-panel__section-title">Passing</h4>
+          <ul class="health-panel__checklist">
             <% passing_checks.each do |check| %>
               <li><%= check %></li>
             <% end %>
-          <% else %>
-            <li class="health-panel__checklist--none">No checks passing yet</li>
-          <% end %>
-        </ul>
-      </div>
+          </ul>
+        </div>
+      <% end %>
     <% end %>
   </div>
 </turbo-frame>
