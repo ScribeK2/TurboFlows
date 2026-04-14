@@ -13,6 +13,33 @@ module Users
       sign_in @user
     end
 
+    # -- Sign-up (create) tests --
+
+    test "signup with too-short password returns 422 with errors" do
+      sign_out @user
+
+      assert_no_difference "User.count" do
+        post user_registration_path,
+             params: { user: { email: "newuser@example.com", password: "short", password_confirmation: "short" } }
+      end
+
+      assert_response :unprocessable_entity
+      assert_select "#error_explanation"
+    end
+
+    test "signup with valid credentials creates user and redirects" do
+      sign_out @user
+
+      assert_difference "User.count", 1 do
+        post user_registration_path,
+             params: { user: { email: "valid-signup@example.com", password: "securepassword1!", password_confirmation: "securepassword1!" } }
+      end
+
+      assert_redirected_to root_path
+    end
+
+    # -- Update tests --
+
     # 1. update display_name without current_password
     test "update display_name without current_password succeeds" do
       put user_registration_path,
