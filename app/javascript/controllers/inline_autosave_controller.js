@@ -45,6 +45,8 @@ export default class extends Controller {
           "Accept": "text/vnd.turbo-stream.html"
         },
         body: this.lastFormData
+      }).then(() => {
+        document.dispatchEvent(new CustomEvent("health:check-needed"))
       })
     }
   }

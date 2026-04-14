@@ -30,6 +30,8 @@ Rails.application.routes.draw do
     resource :export, only: [:show], controller: "workflows/exports" do
       get :pdf, on: :member
     end
+    resource :health, only: [:show], controller: "workflows/healths"
+    resource :health_fix, only: [:create], controller: "workflows/health_fixes"
     # WorkflowVersionsController handles show/diff/restore (versioned snapshots)
     get "versions/diff", to: "workflow_versions#diff", as: :diff_versions
     get "versions/:id", to: "workflow_versions#show", as: :version

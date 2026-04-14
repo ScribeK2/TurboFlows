@@ -395,7 +395,7 @@ class Workflow < ApplicationRecord
   # Used by both validate_graph_structure and WorkflowPublisher#validate_ar_graph!.
   def validation_graph_hash
     hash = {}
-    steps.includes(:transitions).find_each do |step|
+    steps.includes(transitions: :target_step).find_each do |step|
       hash[step.uuid] = {
         "id" => step.uuid,
         "type" => step.type.demodulize.underscore,
