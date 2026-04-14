@@ -43,10 +43,14 @@
       </div>
     </div>
 
+    <%# Sentinel ensures group_ids key is always present so the controller
+        can distinguish "no groups selected" from "groups not submitted". %>
+    <input type="hidden" name="workflow[group_ids][]" value="">
+
     <div class="mt-2 flex flex-wrap gap-2" data-group-selector-target="selected">
       <% if selected_group_ids.present? %>
         <% @accessible_groups.where(id: selected_group_ids).each do |group| %>
-          <span class="badge badge--group inline-flex items-center gap-2" data-selected-id="<%= group.id %>">
+          <span class="badge badge--group" data-selected-id="<%= group.id %>">
             <%= group.name %>
             <button type="button"
                     data-action="click->group-selector#remove"

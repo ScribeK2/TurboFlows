@@ -142,6 +142,30 @@
   color: oklch(0.8 0.1 250);
 }
 
+/* Group badges */
+.badge--group {
+  background: oklch(0.93 0.03 250);
+  color: oklch(0.4 0.12 250);
+}
+
+[data-theme="dark"] .badge--group {
+  background: oklch(0.25 0.04 250);
+  color: oklch(0.8 0.08 250);
+}
+
+.badge--group .badge__remove {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  opacity: 0.6;
+  line-height: 1;
+}
+
+.badge--group .badge__remove:hover {
+  opacity: 1;
+}
+
 /* Status badges */
 .badge--draft {
   background: oklch(0.93 0.05 75);

@@ -123,28 +123,30 @@ export default class extends Controller {
     const groupId = checkbox.value
     const groupOption = checkbox.closest(".group-option")
     const groupName = groupOption.querySelector("span").textContent.trim().split(" - ")[0]
-    
+
     if (checkbox.checked) {
       this.addSelected(groupId, groupName)
     } else {
       this.removeSelected(groupId)
     }
-    
+
     this.updateButtonText()
+    this.scheduleAutosave()
   }
 
   remove(event) {
     event.stopPropagation()
     const groupId = event.currentTarget.dataset.groupId
     this.removeSelected(groupId)
-    
+
     // Uncheck the checkbox
     const checkbox = this.treeTarget.querySelector(`input[value="${groupId}"]`)
     if (checkbox) {
       checkbox.checked = false
     }
-    
+
     this.updateButtonText()
+    this.scheduleAutosave()
   }
 
   addSelected(groupId, groupName) {
@@ -159,10 +161,10 @@ export default class extends Controller {
       btn.type = "button"
       btn.dataset.action = "click->group-selector#remove"
       btn.dataset.groupId = groupId
-      btn.className = "group-badge__remove"
+      btn.className = "badge__remove"
       const svgNS = "http://www.w3.org/2000/svg"
       const svg = document.createElementNS(svgNS, "svg")
-      svg.setAttribute("class", "group-badge__icon")
+      svg.setAttribute("class", "icon icon--xs")
       svg.setAttribute("fill", "none")
       svg.setAttribute("stroke", "currentColor")
       svg.setAttribute("viewBox", "0 0 24 24")
@@ -183,7 +185,7 @@ export default class extends Controller {
       if (existingHiddenField) {
         // Hidden field exists but badge doesn't - create badge only
         const badge = document.createElement("span")
-        badge.className = "group-badge"
+        badge.className = "badge badge--group"
         badge.dataset.selectedId = groupId
         // Use text node for groupName to prevent XSS from user-created group names
         badge.append(groupName, buildRemoveButton())
@@ -194,7 +196,7 @@ export default class extends Controller {
 
     // Neither badge nor hidden field exists - create both
     const badge = document.createElement("span")
-    badge.className = "group-badge"
+    badge.className = "badge badge--group"
     badge.dataset.selectedId = groupId
 
     const hiddenInput = document.createElement("input")
@@ -237,6 +239,14 @@ export default class extends Controller {
         this.buttonTextTarget.textContent = "Select groups..."
       }
     }
+  }
+
+  // Trigger the parent form's inline-autosave controller to schedule a save.
+  scheduleAutosave() {
+    const form = this.element.closest("form")
+    if (!form) return
+    const autosave = this.application.getControllerForElementAndIdentifier(form, "inline-autosave")
+    if (autosave) autosave.schedule()
   }
 
   clickOutside(event) {
