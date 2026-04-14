@@ -53,6 +53,9 @@
     <% end %>
   </span>
 
+  <%# Warning Icon (populated by step_warnings_controller.js) %>
+  <span class="step-warning-icon" data-step-warnings-target="icon" data-step-uuid="<%= step.uuid %>" hidden></span>
+
   <%# Delete Button (edit mode only) %>
   <%= button_to workflow_step_path(workflow, step),
         method: :delete,

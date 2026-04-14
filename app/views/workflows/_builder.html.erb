@@ -11,9 +11,12 @@
 <%= turbo_stream_from "workflow_#{workflow.id}" %>
 
 <div class="builder"
-     data-controller="builder"
+     data-controller="builder step-warnings"
      data-builder-mode-value="<%= mode %>"
-     data-builder-workflow-id-value="<%= workflow.id %>">
+     data-builder-workflow-id-value="<%= workflow.id %>"
+     data-step-warnings-health-url-value="<%= workflow_health_path(workflow, format: :json) %>"
+     data-step-warnings-fix-url-value="<%= workflow_health_fix_path(workflow) %>"
+     data-step-warnings-mode-value="<%= mode %>">
 
   <%# === Header === %>
   <div class="builder__header">
@@ -56,11 +59,14 @@
       <% end %>
 
       <% if mode == "edit" %>
-        <%= button_to workflow_publishing_path(workflow), method: :post,
-            class: "btn btn--positive btn--sm builder__edit-only",
-            data: { turbo_stream: true } do %>
-          Publish
-        <% end %>
+        <span class="builder__publish-wrapper">
+          <%= button_to workflow_publishing_path(workflow), method: :post,
+              class: "btn btn--positive btn--sm builder__edit-only",
+              data: { turbo_stream: true } do %>
+            Publish
+          <% end %>
+          <span class="builder__publish-badge" data-step-warnings-target="publishBadge" hidden></span>
+        </span>
       <% end %>
 
       <% if workflow.can_be_viewed_by?(current_user) %>
@@ -75,6 +81,7 @@
   <div class="builder__toolbar">
     <span class="builder__toolbar-left" id="step-count">
       <%= pluralize(steps.size, "step") %>
+      <span class="builder__toolbar-issues" data-step-warnings-target="toolbarIssues" hidden aria-live="polite"></span>
     </span>
     <div class="builder__toolbar-right">
       <button class="builder__toolbar-btn"
