@@ -264,6 +264,7 @@ These are the most-used controllers. Wire them via `data-controller` on the appr
 | `clipboard` | Copy text to clipboard | `click->clipboard#copy` |
 | `tooltip` | Show/hide tooltips | `mouseenter->tooltip#show`, `mouseleave->tooltip#hide` |
 | `nav-search` | Cmd+K fuzzy search | On search input |
+| `step-warnings` | Async health check, inline warning icons, popover | On builder container, auto-fetches after saves |
 | `scenario-step` | Player step interactions | On step card, handles auto-advance |
 | `tabs` | Tab switching | `click->tabs#select` |
 
@@ -547,7 +548,7 @@ For page types not covered by a recipe, read these exemplary views. They demonst
 | `session_timeout.css` | components | Session timeout UI |
 | `navigation.css` | modules | Top nav bar |
 | `layout.css` | modules | Page structure (.page-body, .page-main) |
-| `builder.css` | components | Builder-specific styles |
+| `builder.css` | components | Builder-specific styles (includes health panel, inline warnings, popover) |
 | `workflows.css` | modules | Workflow list/show styles |
 | `scenarios.css` | modules | Scenario execution styles |
 | `steps.css` | modules | Step editor styles |

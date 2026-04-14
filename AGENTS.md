@@ -81,17 +81,28 @@ The unified builder lives at `workflows/:id` — one URL for both viewing and ed
 - `steps/_panel_edit.html.erb` — step editor loaded via Turbo Frame into the panel
 - `_flow_diagram_panel.html.erb` — read-only BFS flow diagram in the panel
 - `_settings_panel.html.erb` — workflow metadata (description, groups, public toggle)
+- `_health_panel.html.erb` — health validation results (errors, warnings, passing checks with Fix buttons)
 - `_empty_state.html.erb` — shown when no steps; includes template archetype cards
 
 **Key Stimulus controllers:**
-- `builder_controller.js` — panel open/close, step selection, title autosave, Escape to close
+- `builder_controller.js` — panel open/close, step selection, title autosave, Escape to close, `openHealth` action, auto-opens health panel when `?health=true` URL param is present
 - `step_list_controller.js` — SortableJS reorder + type picker popover
-- `inline_autosave_controller.js` — debounced autosave (2s), listens for `lexxy:change` events, flushes pending saves on disconnect via `FormData` + `fetch`
+- `inline_autosave_controller.js` — debounced autosave (2s), listens for `lexxy:change` events, flushes pending saves on disconnect via `FormData` + `fetch`, dispatches `health:check-needed` after disconnect saves
+- `step_warnings_controller.js` — async health check fetch, renders inline warning icons on step rows, toolbar issue count, click-to-open popover with Fix buttons. Listens for `turbo:submit-end`, `health:check-needed`, `turbo:before-stream-render`
 - `template_picker_controller.js` — template popover in toolbar, applies workflow archetypes
 
 **Autosave pattern:** Every field change triggers `inline-autosave#schedule` (via `data-action` on inputs or `lexxy:change` listener on the form). On disconnect (e.g., switching steps), pending saves are flushed by snapshotting `FormData` and sending via `fetch()` POST with `_method=patch`.
 
 **Mode:** `data-builder-mode-value="view|edit"` on the builder container. CSS hides drag handles, add/delete buttons, and edit-only elements in view mode.
+
+**Inline Validation + Health Panel:**
+- `step_warnings_controller.js` fetches `/workflows/:id/health.json` asynchronously (debounced 500ms) after every autosave or Turbo Stream update
+- Warning icons appear inline on step rows with issue counts; clicking opens a popover with issue details and Fix buttons
+- Toolbar shows aggregate issue count next to step count; clicking opens the Health panel in the slide-in panel
+- Health panel (`_health_panel.html.erb`) shows categorized Errors/Warnings/Passing sections with clickable step links and Fix buttons
+- Fix buttons (`connect_next`, `add_resolve_after`) are deterministic, additive autocorrects that respond with Turbo Streams to update both the step list and health panel
+- Import handoff: imports with issues redirect to `?health=true` which auto-opens the health panel on builder connect
+- Health fetch is separate from autosave because autosave responds with Turbo Streams (HTML), not JSON
 
 ## Controller Architecture
 
@@ -104,6 +115,8 @@ The unified builder lives at `workflows/:id` — one URL for both viewing and ed
 - `Workflows::SettingsController` — workflow metadata panel
 - `Workflows::VersionsController` — version history
 - `Workflows::StepSyncsController` — step sync with optimistic locking (builder autosave)
+- `Workflows::HealthsController` — health validation panel (HTML for builder panel, JSON for async fetch). Overrides `eager_load_steps` to skip rich text preloading
+- `Workflows::HealthFixesController` — deterministic autocorrect actions (`connect_next`, `add_resolve_after`). Responds with Turbo Streams to refresh both step list and health panel
 - `Workflows::ExecutionsController` — start landing page (`new`) + scenario creation (`create`)
 - Plus existing: `Exports`, `Imports`, `Shares`, `Publishings`, `Taggings`, `Pins`
 
@@ -126,6 +139,7 @@ All workflows are graphs. There is no separate "linear mode" — a sequential fl
 - `ScenarioStepProcessor` — extracted step-processing logic for Scenario. Calls public methods on Scenario (`advance_to_next_step`, `resolve_at_current_step`, `record_completion`).
 - `GraphValidator` — DAG validation (cycle detection, reachability from start_step, terminal nodes must be Resolve steps).
 - `SubflowValidator` — prevents circular sub-flow references (max depth: 10).
+- `WorkflowHealthCheck` — aggregates GraphValidator + SubflowValidator + step-level checks into a per-step issue map. Returns `Data.define` Result with issues keyed by step UUID, severity levels, fixable flags, and summary counts. Used by both the health panel (HTML) and async JS fetch (JSON).
 - `WorkflowPublisher` — publishes workflow versions with full graph validation. Uses `Workflow#validation_graph_hash`.
 - `FlowDiagramService` — BFS layout for the builder's flow diagram panel.
 
