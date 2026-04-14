@@ -362,8 +362,8 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
 
     imported = Workflow.last
     # Should redirect to edit page when there are incomplete steps
-    assert_redirected_to edit_workflow_path(imported)
-    assert_match(/incomplete.*step/i, flash[:notice])
+    assert_redirected_to edit_workflow_path(imported, health: true)
+    assert_match(/Review issues in the Health panel/i, flash[:notice])
   end
 
   # ============================================================================

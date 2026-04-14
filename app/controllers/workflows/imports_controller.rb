@@ -36,10 +36,8 @@ module Workflows
         @workflow = result.workflow
 
         if result.incomplete_steps? || result.warnings.any?
-          notice_parts = ["Workflow imported successfully in Graph Mode!"]
-          notice_parts << "#{result.incomplete_steps_count} incomplete step(s) need attention." if result.incomplete_steps?
-          notice_parts << "#{result.warnings.count} warning(s) occurred." if result.warnings.any?
-          redirect_to edit_workflow_path(@workflow), notice: notice_parts.join(" ")
+          redirect_to edit_workflow_path(@workflow, health: true),
+                      notice: "Workflow imported. Review issues in the Health panel."
         else
           redirect_to workflow_path(@workflow), notice: "Workflow imported successfully in Graph Mode!"
         end

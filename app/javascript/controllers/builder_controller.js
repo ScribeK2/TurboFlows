@@ -11,6 +11,11 @@ export default class extends Controller {
   connect() {
     this.boundKeydown = this.handleKeydown.bind(this)
     document.addEventListener("keydown", this.boundKeydown)
+
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("health") === "true") {
+      requestAnimationFrame(() => this.openHealth())
+    }
   }
 
   disconnect() {
