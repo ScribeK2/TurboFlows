@@ -60,14 +60,22 @@ module Workflows
     def respond_with_updated_steps
       @workflow.reload
       steps = @workflow.steps.includes(transitions: :target_step).ordered
+      health = WorkflowHealthCheck.call(@workflow)
 
       respond_to do |format|
         format.turbo_stream do
-          render turbo_stream: turbo_stream.replace(
-            "step-list",
-            partial: "workflows/step_list",
-            locals: { workflow: @workflow, steps: }
-          )
+          render turbo_stream: [
+            turbo_stream.replace(
+              "step-list",
+              partial: "workflows/step_list",
+              locals: { workflow: @workflow, steps: }
+            ),
+            turbo_stream.replace(
+              "builder-panel",
+              partial: "workflows/health_panel",
+              locals: { workflow: @workflow, health: }
+            )
+          ]
         end
         format.html { redirect_to workflow_path(@workflow, edit: true), notice: "Fix applied." }
       end

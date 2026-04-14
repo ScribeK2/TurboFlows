@@ -50,6 +50,14 @@ export default class extends Controller {
     }
   }
 
+  openHealth() {
+    const url = this.element.dataset.builderHealthUrlValue
+    if (url) {
+      this.clearSelectedRow()
+      this.loadPanel(url)
+    }
+  }
+
   closePanel() {
     this.element.classList.remove("builder--panel-open")
     this.clearSelectedRow()
