@@ -16,7 +16,8 @@
      data-builder-workflow-id-value="<%= workflow.id %>"
      data-step-warnings-health-url-value="<%= workflow_health_path(workflow, format: :json) %>"
      data-step-warnings-fix-url-value="<%= workflow_health_fix_path(workflow) %>"
-     data-step-warnings-mode-value="<%= mode %>">
+     data-step-warnings-mode-value="<%= mode %>"
+     data-builder-health-url-value="<%= workflow_health_path(workflow) %>">
 
   <%# === Header === %>
   <div class="builder__header">
@@ -81,7 +82,7 @@
   <div class="builder__toolbar">
     <span class="builder__toolbar-left" id="step-count">
       <%= pluralize(steps.size, "step") %>
-      <span class="builder__toolbar-issues" data-step-warnings-target="toolbarIssues" hidden aria-live="polite"></span>
+      <button type="button" class="builder__toolbar-issues" data-step-warnings-target="toolbarIssues" data-action="click->builder#openHealth" hidden aria-live="polite"></button>
     </span>
     <div class="builder__toolbar-right">
       <button class="builder__toolbar-btn"

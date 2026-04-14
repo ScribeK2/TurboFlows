@@ -68,6 +68,43 @@ module Workflows
       assert_response :unauthorized
     end
 
+    test "show returns HTML health panel for clean workflow" do
+      q = Steps::Question.create!(
+        workflow: @workflow, uuid: SecureRandom.uuid, position: 0,
+        title: "Ask", question: "What?", answer_type: "text"
+      )
+      r = Steps::Resolve.create!(
+        workflow: @workflow, uuid: SecureRandom.uuid, position: 1,
+        title: "Done", resolution_type: "success"
+      )
+      Transition.create!(step: q, target_step: r, position: 0)
+      @workflow.update!(start_step: q)
+
+      get workflow_health_path(@workflow)
+
+      assert_response :success
+      assert_includes response.body, "All checks passing"
+      assert_includes response.body, "builder-panel"
+    end
+
+    test "show returns HTML health panel with issues" do
+      q = Steps::Question.create!(
+        workflow: @workflow, uuid: SecureRandom.uuid, position: 0,
+        title: "Ask", question: "What?", answer_type: "text"
+      )
+      Steps::Resolve.create!(
+        workflow: @workflow, uuid: SecureRandom.uuid, position: 1,
+        title: "Done", resolution_type: "success"
+      )
+      @workflow.update!(start_step: q)
+
+      get workflow_health_path(@workflow)
+
+      assert_response :success
+      assert_includes response.body, "Errors"
+      assert_includes response.body, "No outgoing connections"
+    end
+
     test "show returns error summary counts" do
       q = Steps::Question.create!(
         workflow: @workflow, uuid: SecureRandom.uuid, position: 0,
