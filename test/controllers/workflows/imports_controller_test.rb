@@ -50,6 +50,32 @@ module Workflows
       assert_match(/imported successfully/i, flash[:notice])
     end
 
+    test 'create with incomplete steps redirects to health panel' do
+      json_data = {
+        title: 'Incomplete Flow',
+        description: 'Has incomplete steps',
+        graph_mode: true,
+        start_node_uuid: 'uuid-1',
+        steps: [
+          { id: 'uuid-1', type: 'question', title: 'Ask', answer_type: 'text',
+            transitions: [{ target_uuid: 'uuid-2' }] },
+          { id: 'uuid-2', type: 'resolve', title: 'Done', resolution_type: 'success' }
+        ]
+      }.to_json
+
+      file = Rack::Test::UploadedFile.new(
+        StringIO.new(json_data), 'application/json', false, original_filename: 'incomplete.json'
+      )
+
+      assert_difference 'Workflow.count', 1 do
+        post workflow_import_path, params: { file: file }
+      end
+
+      workflow = Workflow.last
+      assert_redirected_to edit_workflow_path(workflow, health: true)
+      assert_match(/Review issues in the Health panel/i, flash[:notice])
+    end
+
     test 'create requires authentication' do
       sign_out @editor
       post workflow_import_path
