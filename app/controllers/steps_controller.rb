@@ -68,10 +68,10 @@ class StepsController < ApplicationController
                                 partial: "workflows/step_row",
                                 locals: { step: @step, workflow: @workflow }),
             turbo_stream.remove("builder-empty-state"),
-            turbo_stream.update("builder-panel",
+            turbo_stream.replace("builder-panel",
                                 partial: "steps/panel_edit",
                                 locals: { step: @step, workflow: @workflow, readonly: false }),
-            turbo_stream.update("step-count",
+            turbo_stream.update("step-count-text",
                                 helpers.pluralize(@workflow.steps.count, "step"))
           ]
           render turbo_stream: streams
@@ -152,7 +152,7 @@ class StepsController < ApplicationController
       format.turbo_stream do
         streams = [
           turbo_stream.remove(dom_id(@step)),
-          turbo_stream.update("step-count",
+          turbo_stream.update("step-count-text",
                               helpers.pluralize(remaining_steps, "step"))
         ]
         if remaining_steps.zero?
@@ -196,7 +196,7 @@ class StepsController < ApplicationController
                               partial: "workflows/steps_list_items",
                               locals: { workflow: @workflow, steps: steps }),
           turbo_stream.update("builder-panel", ""),
-          turbo_stream.update("step-count",
+          turbo_stream.update("step-count-text",
                               helpers.pluralize(steps.size, "step"))
         ]
       end

@@ -319,6 +319,13 @@ export default class extends Controller {
     }
   }
 
+  fixFromPanel(event) {
+    event.preventDefault()
+    event.stopPropagation()
+    const { stepUuid, fixType } = event.params
+    this.executeFix(stepUuid, fixType, event.currentTarget)
+  }
+
   async executeFix(stepUuid, fixType, button) {
     // Build confirm message
     const row = this.element.querySelector(`[data-step-uuid="${stepUuid}"]`)

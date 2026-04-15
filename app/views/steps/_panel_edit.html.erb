@@ -7,7 +7,9 @@
   - readonly: boolean (default false)
 %>
 <% readonly = local_assigns.fetch(:readonly, false) %>
-<turbo-frame id="builder-panel">
+<turbo-frame id="builder-panel"
+              data-builder-target="panel"
+              data-action="turbo:frame-load->builder#panelLoaded">
   <div class="builder__panel-header">
     <div class="builder__panel-header-left">
       <span class="builder__panel-type-badge builder__panel-type-badge--<%= step.step_type %>"><%= step_type_label(step.step_type) %></span>

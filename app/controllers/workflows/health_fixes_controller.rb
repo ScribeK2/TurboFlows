@@ -70,9 +70,9 @@ module Workflows
               partial: "workflows/step_list",
               locals: { workflow: @workflow, steps: }
             ),
-            turbo_stream.replace(
+            turbo_stream.update(
               "builder-panel",
-              partial: "workflows/health_panel",
+              partial: "workflows/health_panel_inner",
               locals: { workflow: @workflow, health: }
             )
           ]
