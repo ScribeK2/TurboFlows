@@ -1,0 +1,12 @@
+#!/bin/bash
+set -e
+
+# Create storage directory for Active Storage uploads
+mkdir -p /rails/storage
+
+# Run database migrations for both primary and queue databases.
+# db:prepare creates the database on first boot, migrates on subsequent boots.
+bin/rails db:prepare
+bin/rails db:prepare:queue
+
+exec "$@"
