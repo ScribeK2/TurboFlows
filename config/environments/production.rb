@@ -22,7 +22,8 @@ Rails.application.configure do
   config.active_storage.service = :local
   config.active_storage.variant_processor = :mini_magick
 
-  # SSL: controlled by ONCE's DISABLE_SSL env var
+  # SSL: controlled by ONCE's DISABLE_SSL env var.
+  # Set DISABLE_SSL=true when TLS is terminated by a load balancer or during initial staging setup.
   config.assume_ssl = ENV["DISABLE_SSL"].blank?
   config.force_ssl = ENV["DISABLE_SSL"].blank?
 
