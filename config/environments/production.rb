@@ -41,14 +41,20 @@ Rails.application.configure do
 
   config.action_mailer.perform_caching = false
 
-  # SMTP configuration from ONCE env vars
+  # SMTP delivery — required for Devise password resets, account unlock, and email confirmation.
+  # Set SMTP_ADDRESS to enable. Without it, mailer defaults to :sendmail (will fail silently
+  # in most container environments).
   if ENV["SMTP_ADDRESS"].present?
     config.action_mailer.delivery_method = :smtp
+    config.action_mailer.raise_delivery_errors = true
     config.action_mailer.smtp_settings = {
-      address: ENV["SMTP_ADDRESS"],
-      port: ENV.fetch("SMTP_PORT", 587).to_i,
-      user_name: ENV["SMTP_USERNAME"],
-      password: ENV["SMTP_PASSWORD"]
+      address:         ENV.fetch("SMTP_ADDRESS"),
+      port:            ENV.fetch("SMTP_PORT", 587).to_i,
+      domain:          ENV.fetch("SMTP_DOMAIN", ENV.fetch("APP_HOST", "localhost")),
+      user_name:       ENV["SMTP_USERNAME"],
+      password:        ENV["SMTP_PASSWORD"],
+      authentication:  ENV.fetch("SMTP_AUTHENTICATION", "plain"),
+      enable_starttls: ENV.fetch("SMTP_STARTTLS", "true") == "true"
     }
   end
   config.action_mailer.default_options = {
