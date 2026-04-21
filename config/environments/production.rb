@@ -22,6 +22,17 @@ Rails.application.configure do
   config.active_storage.service = :local
   config.active_storage.variant_processor = :mini_magick
 
+  # ActionCable WebSocket origin validation.
+  # Uses APP_HOST to allow connections from the staging/production domain.
+  # Without this, WebSockets may fail silently behind a load balancer.
+  if ENV["APP_HOST"].present?
+    config.action_cable.allowed_request_origins = [
+      "https://#{ENV["APP_HOST"]}",
+      "http://#{ENV["APP_HOST"]}",
+      /https?:\/\/.*\.#{Regexp.escape(ENV["APP_HOST"])}/
+    ]
+  end
+
   # SSL: controlled by ONCE's DISABLE_SSL env var.
   # Set DISABLE_SSL=true when TLS is terminated by a load balancer or during initial staging setup.
   config.assume_ssl = ENV["DISABLE_SSL"].blank?
