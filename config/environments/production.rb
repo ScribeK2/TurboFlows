@@ -31,10 +31,16 @@ Rails.application.configure do
   config.active_storage.service = :local
   config.active_storage.variant_processor = :mini_magick
 
-  # Mount Action Cable outside main process or domain.
-  # config.action_cable.mount_path = nil
-  # config.action_cable.url = "wss://example.com/cable"
-  # config.action_cable.allowed_request_origins = [ "http://example.com", /http:\/\/example.*/ ]
+  # ActionCable WebSocket origin validation.
+  # Uses APP_HOST to allow connections from the staging/production domain.
+  # Without this, WebSockets may fail silently behind a load balancer.
+  if ENV["APP_HOST"].present?
+    config.action_cable.allowed_request_origins = [
+      "https://#{ENV["APP_HOST"]}",
+      "http://#{ENV["APP_HOST"]}",
+      /https?:\/\/.*\.#{Regexp.escape(ENV["APP_HOST"])}/
+    ]
+  end
 
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
   # Set DISABLE_SSL=true when TLS is terminated by a load balancer or during initial staging setup.
