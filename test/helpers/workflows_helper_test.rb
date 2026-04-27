@@ -22,6 +22,14 @@ class WorkflowsHelperTest < ActionView::TestCase
     assert_includes result, "icon"
   end
 
+  test "STEP_TYPE_ICONS covers every step subclass" do
+    step_types = Step.descendants.map { |klass| klass.name.demodulize.underscore }
+    step_types.each do |type|
+      assert WorkflowsHelper::STEP_TYPE_ICONS.key?(type),
+        "Missing Heroicon mapping for step type '#{type}' in STEP_TYPE_ICONS"
+    end
+  end
+
   test "answer_type_label returns correct labels" do
     assert_equal "Yes / No", answer_type_label("yes_no")
     assert_equal "Multiple Choice", answer_type_label("multiple_choice")
