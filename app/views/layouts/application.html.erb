@@ -62,10 +62,7 @@
                         data-action="click->nav-search#open"
                         class="nav__search-pill"
                         aria-label="Search workflows">
-                  <svg class="icon icon--sm" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
-                    <circle cx="11" cy="11" r="8" />
-                    <path stroke-linecap="round" d="m21 21-4.35-4.35" />
-                  </svg>
+                  <%= icon "magnifying-glass", class: "icon icon--sm" %>
                   <span class="nav__search-pill-text">Search...</span>
                   <kbd class="nav__search-pill-kbd">&#8984;K</kbd>
                 </button>
@@ -74,10 +71,7 @@
                         data-action="click->nav-search#backdropClose"
                         class="nav__search popup popup--animated">
                   <div class="nav__search-input-wrapper">
-                    <svg class="icon icon--sm" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
-                      <circle cx="11" cy="11" r="8" />
-                      <path stroke-linecap="round" d="m21 21-4.35-4.35" />
-                    </svg>
+                    <%= icon "magnifying-glass", class: "icon icon--sm" %>
                     <input data-nav-search-target="input"
                            data-action="input->nav-search#search keydown->nav-search#navigate"
                            type="text"
@@ -114,9 +108,7 @@
                           data-action="click->nav-menu#toggle"
                           class="nav__menu-trigger"
                           aria-label="Open menu">
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-                      <path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
+                    <%= icon "chevron-down" %>
                   </button>
 
                   <dialog data-nav-menu-target="dialog"
@@ -139,12 +131,8 @@
               class="dark-mode-toggle"
               aria-label="Toggle dark mode"
             >
-              <svg data-dark-mode-target="sunIcon" class="icon icon--sm is-hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
-              </svg>
-              <svg data-dark-mode-target="moonIcon" class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
-              </svg>
+              <%= icon "sun", class: "icon icon--sm is-hidden" %>
+              <%= icon "moon", class: "icon icon--sm" %>
             </button>
 
             <% if user_signed_in? %>
@@ -168,17 +156,12 @@
                   </div>
                   <div class="dropdown__body">
                     <%= link_to edit_user_registration_path, class: "dropdown__item", role: "menuitem" do %>
-                      <svg class="icon icon--sm" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
+                      <%= icon "eye", class: "icon icon--sm" %>
                       Account
                     <% end %>
                     <div class="dropdown__divider"></div>
                     <%= link_to destroy_user_session_path, data: { turbo_method: :delete }, class: "dropdown__item", role: "menuitem" do %>
-                      <svg class="icon icon--sm" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-                      </svg>
+                      <%= icon "arrow-right-on-rectangle", class: "icon icon--sm" %>
                       Sign out
                     <% end %>
                   </div>

@@ -26,7 +26,7 @@ class WorkflowsHelperTest < ActionView::TestCase
     step_types = Step.descendants.map { |klass| klass.name.demodulize.underscore }
     step_types.each do |type|
       assert WorkflowsHelper::STEP_TYPE_ICONS.key?(type),
-        "Missing Heroicon mapping for step type '#{type}' in STEP_TYPE_ICONS"
+             "Missing Heroicon mapping for step type '#{type}' in STEP_TYPE_ICONS"
     end
   end
 

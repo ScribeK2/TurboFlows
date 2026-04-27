@@ -19,9 +19,7 @@
     </div>
     <div class="admin-page-header__actions">
       <%= link_to admin_workflows_path, class: "btn btn--secondary" do %>
-        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-        </svg>
+        <%= icon "arrow-left", class: "icon icon--sm" %>
         Back to List
       <% end %>
       <%= link_to workflow_path(@workflow), class: "btn btn--primary" do %>

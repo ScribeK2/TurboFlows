@@ -12,9 +12,7 @@
               data-action="click->group-selector#toggle"
               class="form-input text-left w-full flex items-center justify-between">
         <span data-group-selector-target="buttonText" class="text-sm font-medium">Select groups...</span>
-        <svg class="icon icon--sm" data-group-selector-target="chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-        </svg>
+        <%= icon "chevron-down", class: "icon icon--sm" %>
       </button>
 
       <div class="is-hidden card" style="position: absolute; top: 100%; left: 0; right: 0; margin-top: 0.25rem; z-index: 100; max-height: 16rem; overflow-y: auto;"
@@ -33,9 +31,7 @@
             <% end %>
           <% else %>
             <div class="px-3 py-4 text-sm text-center">
-              <svg class="icon icon--lg mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-              </svg>
+              <%= icon "folder", class: "icon icon--lg mx-auto mb-2" %>
               No groups available. Admins can create groups in the admin panel.
             </div>
           <% end %>
@@ -56,9 +52,7 @@
                     data-action="click->group-selector#remove"
                     data-group-id="<%= group.id %>"
                     class="badge__remove">
-              <svg class="icon icon--xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <%= icon "x-mark", class: "icon icon--xs" %>
             </button>
             <%= hidden_field_tag "workflow[group_ids][]", group.id %>
           </span>

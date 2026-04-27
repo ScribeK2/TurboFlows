@@ -20,9 +20,7 @@
         <% @folders.each do |folder| %>
           <li class="wf-list-item" data-folder-id="<%= folder.id %>">
             <div class="flex items-center flex-1 min-w-0">
-              <svg class="icon icon--sm mr-3 cursor-move flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16" />
-              </svg>
+              <%= icon "bars-2", class: "icon icon--sm mr-3 cursor-move flex-shrink-0" %>
               <div>
                 <span class="font-medium"><%= folder.name %></span>
                 <span class="text-xs ml-2"><%= pluralize(folder.workflows_count, "workflow") %></span>
