@@ -19,26 +19,6 @@
     <div class="player-progress__text">Step <%= step_number %> of <%= total_steps %></div>
   </div>
 
-  <%# ── Progress Stepper (read-only, minimal dots) ── %>
-  <% if @scenario.execution_path.present? && @scenario.execution_path.any? %>
-    <div class="player-stepper">
-      <div class="player-stepper__track">
-        <% @scenario.execution_path.each_with_index do |path_item, index| %>
-          <% stype_pill = path_item['step_type'] || path_item['type'] %>
-          <span class="player-stepper__dot player-stepper__dot--completed player-stepper__dot--<%= stype_pill %>"
-                title="<%= path_item['step_title'] %><%= " — #{path_item['answer']}" if path_item['answer'].present? %>">
-            <svg class="player-stepper__check" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          </span>
-        <% end %>
-        <span class="player-stepper__dot player-stepper__dot--current" title="Current step">
-          <%= step_number %>
-        </span>
-      </div>
-    </div>
-  <% end %>
-
   <%# ── Step Card ── %>
   <div class="card player-step-card"
        data-controller="scenario-step"
