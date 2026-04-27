@@ -5,9 +5,7 @@
       <p class="text-sm mt-1">Upload a JSON, CSV, YAML, or Markdown file to import a workflow.</p>
     </div>
     <%= link_to workflows_path, class: "btn btn--plain btn--circle" do %>
-      <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-      </svg>
+      <%= icon "x-mark", class: "icon" %>
     <% end %>
   </div>
 
@@ -20,9 +18,7 @@
                data-file-upload-target="dropZone"
                data-action="dragover->file-upload#dragOver dragleave->file-upload#dragLeave drop->file-upload#drop">
             <div class="file-dropzone__empty" data-file-upload-target="emptyState">
-              <svg class="icon icon--xl mx-auto mb-3" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
+              <%= icon "cloud-arrow-up", class: "icon icon--xl mx-auto mb-3" %>
               <div class="text-sm mb-1">
                 <label for="file" class="cursor-pointer font-medium">
                   <span>Upload a file</span>
@@ -33,9 +29,7 @@
               <p class="text-xs">JSON, CSV, YAML, or Markdown files up to 10MB</p>
             </div>
             <div class="is-hidden text-center" data-file-upload-target="fileSelected">
-              <svg class="icon icon--xl mx-auto mb-3 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <%= icon "check-circle", class: "icon icon--xl mx-auto mb-3 text-success" %>
               <p class="font-medium" data-file-upload-target="fileName">No file selected</p>
               <p class="text-xs" data-file-upload-target="fileSize"></p>
               <button type="button" data-action="click->file-upload#clearFile" class="btn btn--plain btn--sm mt-2">

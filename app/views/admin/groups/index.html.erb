@@ -9,15 +9,11 @@
     </div>
     <div class="flex gap-2">
       <%= link_to admin_root_path, class: "btn btn--secondary flex items-center gap-2" do %>
-        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-        </svg>
+        <%= icon "arrow-left", class: "icon icon--sm" %>
         Back to Dashboard
       <% end %>
       <%= link_to new_admin_group_path, class: "btn btn--primary flex items-center gap-2" do %>
-        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
+        <%= icon "plus", class: "icon icon--sm" %>
         New Group
       <% end %>
     </div>
@@ -39,16 +35,12 @@
     </div>
   <% else %>
     <div class="empty-state">
-      <svg class="empty-state__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-      </svg>
+      <%= icon "lock-closed", class: "empty-state__icon" %>
       <h3 class="empty-state__title">No groups</h3>
       <p class="empty-state__text">Get started by creating a new group.</p>
       <div class="mt-4">
         <%= link_to new_admin_group_path, class: "btn btn--primary flex items-center gap-2" do %>
-          <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
+          <%= icon "plus", class: "icon icon--sm" %>
           New Group
         <% end %>
       </div>

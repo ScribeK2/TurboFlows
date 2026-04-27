@@ -14,16 +14,12 @@
     <div class="card__body">
       <div class="flex items-center justify-center gap-6 text-sm">
         <div class="flex items-center gap-2">
-          <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
+          <%= icon "clipboard", class: "icon icon--sm" %>
           <span><%= pluralize(@workflow.steps.size, "step") %></span>
         </div>
         <% if @workflow.is_public? %>
           <div class="flex items-center gap-2">
-            <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
+            <%= icon "lock-closed", class: "icon icon--sm" %>
             <span>Public</span>
           </div>
         <% end %>
@@ -84,9 +80,7 @@
   <!-- Back Link -->
   <div class="mt-6 text-center">
     <%= link_to workflows_path, class: "btn btn--plain btn--sm" do %>
-      <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-      </svg>
+      <%= icon "arrow-left", class: "icon icon--sm" %>
       Back to Workflows
     <% end %>
   </div>

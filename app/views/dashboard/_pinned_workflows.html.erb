@@ -14,9 +14,7 @@
                 data-carousel-target="leftArrow"
                 data-action="click->carousel#scrollLeft"
                 aria-label="Scroll left">
-          <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-          </svg>
+          <%= icon "chevron-left", class: "icon icon--sm" %>
         </button>
 
         <div class="carousel-track" data-carousel-target="track">
@@ -30,9 +28,7 @@
                 <span class="carousel-card__desc"><%= workflow.description.to_plain_text.truncate(80) %></span>
               <% end %>
               <span class="carousel-card__meta">
-                <svg class="icon icon--xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
+                <%= icon "clipboard", class: "icon icon--xs" %>
                 <%= pluralize(workflow.steps.size, "step") %>
               </span>
             <% end %>
@@ -41,9 +37,7 @@
           <% if pinned.size >= UserWorkflowPin::MAX_PINS %>
             <%= link_to workflows_path, class: "carousel-card carousel-card--manage" do %>
               <span class="carousel-card__manage-text">Manage Pinned</span>
-              <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-              </svg>
+              <%= icon "arrow-right", class: "icon icon--sm" %>
             <% end %>
           <% end %>
         </div>
@@ -52,18 +46,14 @@
                 data-carousel-target="rightArrow"
                 data-action="click->carousel#scrollRight"
                 aria-label="Scroll right">
-          <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
+          <%= icon "chevron-right", class: "icon icon--sm" %>
         </button>
       </div>
     </div>
   <% else %>
     <div class="dashboard-empty animate-fade-in-up">
       <div class="dashboard-empty__icon">
-        <svg class="icon icon--xl" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-        </svg>
+        <%= icon "bookmark", class: "icon icon--xl" %>
       </div>
       <h3 class="dashboard-empty__title">No pinned workflows</h3>
       <p class="dashboard-empty__text">Pin your most-used flows for instant access</p>

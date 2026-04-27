@@ -14,23 +14,23 @@
           %>
           <div class="scenario-stats">
             <span class="badge flex items-center gap-1.5">
-              <svg class="icon icon--xs" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <%= icon "clock", class: "icon icon--xs" %>
               <%= duration_text %>
             </span>
             <span class="badge flex items-center gap-1.5">
-              <svg class="icon icon--xs" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+              <%= icon "clipboard", class: "icon icon--xs" %>
               <%= pluralize(path.length, 'step') %>
             </span>
             <% if questions_count > 0 %>
               <span class="badge flex items-center gap-1.5">
-                <svg class="icon icon--xs" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <%= icon "question-mark-circle", class: "icon icon--xs" %>
                 <%= pluralize(questions_count, 'question') %> answered
               </span>
             <% end %>
             <% resolution = @scenario.results&.dig('_resolution') %>
             <% if resolution.present? && resolution['type'].present? %>
               <span class="badge badge--resolve flex items-center gap-1.5">
-                <svg class="icon icon--xs" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <%= icon "check-circle", class: "icon icon--xs" %>
                 <%= resolution['type']&.titleize %>
               </span>
             <% end %>
@@ -41,37 +41,27 @@
       </div>
       <% if @scenario.stopped? %>
         <div class="badge badge--alert scenario-status-badge" role="status">
-          <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <%= icon "x-mark", class: "icon icon--sm" %>
           Workflow Stopped
         </div>
       <% elsif @scenario.timed_out? %>
         <div class="badge badge--alert scenario-status-badge" role="status">
-          <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+          <%= icon "clock", class: "icon icon--sm" %>
           Timed Out
         </div>
       <% elsif @scenario.errored? %>
         <div class="badge badge--alert scenario-status-badge" role="status">
-          <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+          <%= icon "exclamation-circle", class: "icon icon--sm" %>
           Error
         </div>
       <% elsif @scenario.complete? %>
         <div class="badge badge--published scenario-status-badge" role="status">
-          <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
+          <%= icon "check", class: "icon icon--sm" %>
           Completed
         </div>
       <% else %>
         <div class="badge scenario-status-badge" role="status">
-          <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+          <%= icon "clock", class: "icon icon--sm" %>
           In Progress
         </div>
       <% end %>
@@ -82,9 +72,7 @@
   <% if @scenario.stopped? %>
     <div class="card card--escalate mb-4">
       <div class="card__body scenario-warning__inner">
-        <svg class="icon icon--lg flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-        </svg>
+        <%= icon "exclamation-triangle", class: "icon icon--lg flex-shrink-0 mt-0.5" %>
         <div class="scenario-warning__content">
           <h3 class="font-semibold mb-2">Workflow Stopped</h3>
           <p class="text-sm mb-2">
@@ -97,7 +85,7 @@
             Stopped on <%= @scenario.updated_at.strftime("%B %d, %Y at %I:%M %p") %>
           </p>
           <%= link_to new_workflow_scenario_path(@workflow), class: "btn btn--sm flex items-center gap-1.5" do %>
-            <svg class="icon icon--xs" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            <%= icon "arrow-path", class: "icon icon--xs" %>
             Run Again
           <% end %>
         </div>
@@ -108,9 +96,7 @@
   <% if @scenario.timed_out? %>
     <div class="card mb-4">
       <div class="card__body scenario-warning__inner">
-        <svg class="icon icon--lg flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
+        <%= icon "clock", class: "icon icon--lg flex-shrink-0 mt-0.5" %>
         <div class="scenario-warning__content">
           <h3 class="font-semibold mb-2">Scenario Timed Out</h3>
           <p class="text-sm mb-2">
@@ -120,7 +106,7 @@
             Timed out on <%= @scenario.updated_at.strftime("%B %d, %Y at %I:%M %p") %>
           </p>
           <%= link_to new_workflow_scenario_path(@workflow), class: "btn btn--sm flex items-center gap-1.5" do %>
-            <svg class="icon icon--xs" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            <%= icon "arrow-path", class: "icon icon--xs" %>
             Try Again
           <% end %>
         </div>
@@ -129,9 +115,7 @@
   <% elsif @scenario.errored? %>
     <div class="card mb-4">
       <div class="card__body scenario-warning__inner">
-        <svg class="icon icon--lg flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
+        <%= icon "exclamation-circle", class: "icon icon--lg flex-shrink-0 mt-0.5" %>
         <div class="scenario-warning__content">
           <h3 class="font-semibold mb-2">Scenario Error</h3>
           <p class="text-sm mb-2">
@@ -141,7 +125,7 @@
             Error occurred on <%= @scenario.updated_at.strftime("%B %d, %Y at %I:%M %p") %>
           </p>
           <%= link_to new_workflow_scenario_path(@workflow), class: "btn btn--sm flex items-center gap-1.5" do %>
-            <svg class="icon icon--xs" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            <%= icon "arrow-path", class: "icon icon--xs" %>
             Try Again
           <% end %>
         </div>
@@ -158,7 +142,7 @@
               data-action="click->tabs#switch"
               role="tab"
               aria-selected="true">
-        <svg class="icon icon--xs inline mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+        <%= icon "chevron-right", class: "icon icon--xs inline mr-1.5" %>
         Execution Path
       </button>
       <button type="button"
@@ -167,7 +151,7 @@
               data-action="click->tabs#switch"
               role="tab"
               aria-selected="false">
-        <svg class="icon icon--xs inline mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+        <%= icon "document-chart-bar", class: "icon icon--xs inline mr-1.5" %>
         Results Summary
       </button>
     </div>
@@ -207,7 +191,7 @@
                         data-action="click->scenario-results#toggle"
                         aria-expanded="false">
                   <span class="scenario-result-badge badge badge--published">
-                    <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                    <%= icon "check", class: "icon icon--sm" %>
                   </span>
                   <div class="scenario-exec-toggle__body">
                     <span class="mr-2 flex-shrink-0">
@@ -219,11 +203,7 @@
                     </span>
                     <span class="ml-2 text-xs flex-shrink-0"><%= index + 1 %></span>
                   </div>
-                  <svg class="icon icon--sm ml-2 flex-shrink-0 transition-transform duration-200"
-                       data-scenario-results-target="toggleIcon"
-                       fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                  </svg>
+                  <%= icon "chevron-right", class: "icon icon--sm ml-2 flex-shrink-0 transition-transform duration-200" %>
                 </button>
                 <div class="is-hidden mt-2 ml-11" data-scenario-results-target="details">
                   <% if path_item['answer'].present? %>
@@ -236,7 +216,7 @@
                     <p class="text-sm mt-1">
                       <strong>Routing:</strong>
                       <span class="badge ml-1">
-                        <svg class="icon icon--xs inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                        <%= icon "arrows-up-down", class: "icon icon--xs inline mr-1" %>
                         <% if path_item['condition_result'].is_a?(String) %>
                           <%= path_item['condition_result'] %>
                         <% else %>
@@ -285,9 +265,7 @@
               <% escalation = @scenario.results['_escalation'] %>
               <div class="admin-info-box admin-info-box--warning mb-4">
                 <div class="scenario-warning__inner">
-                  <svg class="icon icon--sm flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12" />
-                  </svg>
+                  <%= icon "arrow-up", class: "icon icon--sm flex-shrink-0 mt-0.5" %>
                   <div class="scenario-warning__content">
                     <h3 class="text-sm font-semibold mb-2">Escalation Details</h3>
                     <dl class="text-sm">
@@ -320,9 +298,7 @@
               <% resolution = @scenario.results['_resolution'] %>
               <div class="admin-info-box admin-info-box--info mb-4">
                 <div class="scenario-warning__inner">
-                  <svg class="icon icon--sm flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                  <%= icon "check-circle", class: "icon icon--sm flex-shrink-0 mt-0.5" %>
                   <div class="scenario-warning__content">
                     <h3 class="text-sm font-semibold mb-2">Resolution Details</h3>
                     <dl class="text-sm">
@@ -364,7 +340,7 @@
                                 title="Copy value"
                                 data-action="click->clipboard#copy"
                                 data-clipboard-target="button">
-                          <svg class="icon icon--xs" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                          <%= icon "clipboard-document-list", class: "icon icon--xs" %>
                         </button>
                       </dd>
                     <% end %>
@@ -388,12 +364,12 @@
   <div class="scenario-footer">
     <div class="scenario-footer__group">
       <%= link_to workflow_path(@workflow), class: "btn btn--plain flex items-center gap-1.5" do %>
-        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+        <%= icon "chevron-left", class: "icon icon--sm" %>
         Back to Workflow
       <% end %>
       <% if current_user&.can_create_workflows? %>
         <%= link_to edit_workflow_path(@workflow), class: "btn btn--plain flex items-center gap-1.5" do %>
-          <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+          <%= icon "pencil-square", class: "icon icon--sm" %>
           Edit Workflow
         <% end %>
       <% end %>
@@ -405,12 +381,12 @@
                 class="btn btn--plain flex items-center gap-1.5"
                 data-action="click->clipboard#copy"
                 data-clipboard-target="button">
-          <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+          <%= icon "link", class: "icon icon--sm" %>
           Copy Link
         </button>
       </div>
       <%= link_to new_workflow_scenario_path(@workflow), class: "btn btn--positive flex items-center gap-1.5" do %>
-        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+        <%= icon "arrow-path", class: "icon icon--sm" %>
         Run Again
       <% end %>
     </div>

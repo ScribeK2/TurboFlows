@@ -3,9 +3,7 @@
   Local variables: form (FormBuilder), step (Steps::Message), workflow
 %>
 <div class="alert alert--info flex items-start gap-3 mb-4">
-  <svg class="icon icon--sm flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
+  <%= icon "information-circle", class: "icon icon--sm flex-shrink-0 mt-0.5" %>
   <p class="text-sm">
     <strong>Message Step:</strong> Display information or guidance to the CSR. Use <code>{{variable_name}}</code> for dynamic content.
   </p>

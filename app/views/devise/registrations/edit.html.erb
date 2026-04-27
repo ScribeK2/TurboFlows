@@ -59,7 +59,7 @@
 
   <%= render partial: "shared/card", locals: {
     title: "Account overview",
-    icon: '<svg class="icon icon--lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A7 7 0 0112 4a7 7 0 016.879 13.804A9.953 9.953 0 0112 20a9.953 9.953 0 01-6.879-2.196z"></path></svg>',
+    icon: icon("user-circle", class: "icon icon--lg"),
     content: overview_content,
     content_class: "space-y-4"
   } %>
@@ -93,7 +93,7 @@
 
   <%= render partial: "shared/card", locals: {
     title: "Email settings",
-    icon: '<svg class="icon icon--lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12H8m0 0l4-4m-4 4l4 4m8-4a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>',
+    icon: icon("envelope", class: "icon icon--lg"),
     content: email_content,
     content_class: "space-y-4"
   } %>
@@ -135,7 +135,7 @@
 
   <%= render partial: "shared/card", locals: {
     title: "Security",
-    icon: '<svg class="icon icon--lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c1.657 0 3-1.343 3-3S13.657 5 12 5 9 6.343 9 8s1.343 3 3 3z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21v-2a4 4 0 00-3-3.87M9 15.13A4 4 0 006 19v2"></path></svg>',
+    icon: icon("lock-closed", class: "icon icon--lg"),
     content: password_content,
     content_class: "space-y-4"
   } %>

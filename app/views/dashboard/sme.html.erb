@@ -13,9 +13,7 @@
         <% end %>
       </div>
       <div class="stat-card__icon">
-        <svg class="icon icon--xl" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
+        <%= icon "document-text", class: "icon icon--xl" %>
       </div>
     </div>
 
@@ -32,10 +30,7 @@
         <% end %>
       </div>
       <div class="stat-card__icon">
-        <svg class="icon icon--xl" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
+        <%= icon "play", class: "icon icon--xl" %>
       </div>
     </div>
 
@@ -46,9 +41,7 @@
         <p class="stat-card__label">Total Scenarios</p>
       </div>
       <div class="stat-card__icon">
-        <svg class="icon icon--xl" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
+        <%= icon "chart-bar", class: "icon icon--xl" %>
       </div>
     </div>
 
@@ -64,9 +57,7 @@
           <circle class="stat-card__progress-fill" cx="24" cy="24" r="20" fill="none" stroke-width="3" stroke-linecap="round" stroke-dasharray="<%= (125.66).round(2) %>" stroke-dashoffset="<%= (125.66 * (1 - @dashboard.company_completion_rate / 100.0)).round(2) %>" />
         </svg>
         <div class="stat-card__progress-icon">
-          <svg class="icon icon--sm" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
+          <%= icon "check", class: "icon icon--sm" %>
         </div>
       </div>
     </div>
@@ -120,17 +111,13 @@
         <% else %>
           <div class="dashboard-empty">
             <div class="dashboard-empty__icon">
-              <svg class="icon icon--xl" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+              <%= icon "document-text", class: "icon icon--xl" %>
             </div>
             <h3 class="dashboard-empty__title">No workflows yet</h3>
             <p class="dashboard-empty__text">Get started by creating your first workflow or browsing templates.</p>
             <div class="empty-state__actions">
               <%= link_to new_workflow_path, class: "btn btn--primary btn--sm", aria: { label: "Create your first workflow" } do %>
-                <svg class="icon icon--xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
+                <%= icon "plus", class: "icon icon--xs" %>
                 Create Workflow
               <% end %>
             </div>
@@ -176,10 +163,7 @@
         <% else %>
           <div class="dashboard-empty">
             <div class="dashboard-empty__icon">
-              <svg class="icon icon--xl" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <%= icon "play", class: "icon icon--xl" %>
             </div>
             <p class="dashboard-empty__text">Start a workflow to see activity here</p>
           </div>

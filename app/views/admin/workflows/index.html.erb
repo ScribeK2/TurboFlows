@@ -6,9 +6,7 @@
       <p class="text-sm mt-1">View and manage all workflows across the system.</p>
     </div>
     <%= link_to admin_root_path, class: "btn btn--secondary flex items-center gap-2" do %>
-      <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-      </svg>
+      <%= icon "arrow-left", class: "icon icon--sm" %>
       Back to Dashboard
     <% end %>
   </div>
@@ -46,9 +44,7 @@
                 Open
               <% end %>
               <%= link_to admin_workflow_path(workflow), data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete '#{workflow.title}'? This cannot be undone." }, class: "btn btn--plain btn--sm wf-list-item__delete", title: "Delete workflow" do %>
-                <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
+                <%= icon "trash", class: "icon icon--sm" %>
               <% end %>
             </div>
           </div>
@@ -60,9 +56,7 @@
       <% end %>
     <% else %>
       <div class="empty-state">
-        <svg class="empty-state__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
+        <%= icon "document-text", class: "empty-state__icon" %>
         <h3 class="empty-state__title">No workflows</h3>
         <p class="empty-state__text">No workflows found in the system.</p>
       </div>

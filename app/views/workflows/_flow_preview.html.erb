@@ -3,14 +3,14 @@
     <h2 class="font-bold">Flow Preview</h2>
     <div class="editor-zoom">
       <button type="button" data-action="click->flow-preview#zoomOut" class="editor-zoom__btn" title="Zoom out">
-        <svg class="icon icon--sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"/></svg>
+        <%= icon "magnifying-glass", class: "icon icon--sm" %>
       </button>
       <span data-flow-preview-target="zoomLevel" class="editor-zoom__level">100%</span>
       <button type="button" data-action="click->flow-preview#zoomIn" class="editor-zoom__btn" title="Zoom in">
-        <svg class="icon icon--sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+        <%= icon "magnifying-glass", class: "icon icon--sm" %>
       </button>
       <button type="button" data-action="click->flow-preview#fitToScreen" class="editor-zoom__btn" title="Fit to screen">
-        <svg class="icon icon--sm" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+        <%= icon "arrows-pointing-out", class: "icon icon--sm" %>
       </button>
       <div class="w-px h-5 mx-1 bg-border"></div>
       <button type="button" data-action="click->flow-preview#render" class="btn btn--plain btn--sm">
@@ -25,9 +25,7 @@
     style="min-height: 300px; max-height: 600px; overflow: auto;"
   >
     <div class="wf-empty-state">
-      <svg class="icon icon--xl wf-empty-state__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-      </svg>
+      <%= icon "bolt", class: "icon icon--xl wf-empty-state__icon" %>
       <p class="wf-empty-state__text">Add steps to see the flow preview</p>
     </div>
   </div>

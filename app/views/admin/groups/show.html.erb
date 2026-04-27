@@ -29,15 +29,11 @@
     </div>
     <div class="flex gap-2">
       <%= link_to admin_groups_path, class: "btn btn--secondary flex items-center gap-2" do %>
-        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-        </svg>
+        <%= icon "arrow-left", class: "icon icon--sm" %>
         Back to Groups
       <% end %>
       <%= link_to edit_admin_group_path(@group), class: "btn btn--secondary flex items-center gap-2" do %>
-        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-        </svg>
+        <%= icon "pencil-square", class: "icon icon--sm" %>
         Edit Group
       <% end %>
     </div>
@@ -67,9 +63,7 @@
     </div>
   <% else %>
     <div class="empty-state">
-      <svg class="empty-state__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-      </svg>
+      <%= icon "document-text", class: "empty-state__icon" %>
       <h3 class="empty-state__title">No workflows in this group</h3>
       <p class="empty-state__text">Workflows assigned to this group will appear here.</p>
     </div>

@@ -10,33 +10,23 @@
   <!-- Quick Action Buttons -->
   <div class="admin-grid mb-4">
     <%= link_to admin_users_path, class: "btn btn--secondary flex items-center gap-2 justify-center" do %>
-      <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-      </svg>
+      <%= icon "user-group", class: "icon icon--sm" %>
       Manage Users
     <% end %>
     <%= link_to admin_workflows_path, class: "btn btn--secondary flex items-center gap-2 justify-center" do %>
-      <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-      </svg>
+      <%= icon "document-text", class: "icon icon--sm" %>
       All Workflows
     <% end %>
     <%= link_to admin_groups_path, class: "btn btn--secondary flex items-center gap-2 justify-center" do %>
-      <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-      </svg>
+      <%= icon "folder", class: "icon icon--sm" %>
       Manage Groups
     <% end %>
     <%= link_to admin_analytics_path, class: "btn btn--secondary flex items-center gap-2 justify-center" do %>
-      <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-      </svg>
+      <%= icon "chart-bar", class: "icon icon--sm" %>
       Analytics
     <% end %>
     <%= link_to admin_data_health_path, class: "btn btn--secondary flex items-center gap-2 justify-center" do %>
-      <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
-      </svg>
+      <%= icon "circle-stack", class: "icon icon--sm" %>
       Data Health
     <% end %>
   </div>
@@ -50,9 +40,7 @@
           <p class="stat-card__value"><%= @users_count %></p>
           <p class="stat-card__label">Total Users</p>
         </div>
-        <svg class="icon icon--xl" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-        </svg>
+        <%= icon "user-group", class: "icon icon--xl" %>
       </div>
     </div>
 
@@ -63,9 +51,7 @@
           <p class="stat-card__value"><%= @workflows_count %></p>
           <p class="stat-card__label">Total Workflows</p>
         </div>
-        <svg class="icon icon--xl" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
+        <%= icon "document-text", class: "icon icon--xl" %>
       </div>
     </div>
 
@@ -76,9 +62,7 @@
           <p class="stat-card__value"><%= @public_workflows_count %></p>
           <p class="stat-card__label">Public Workflows</p>
         </div>
-        <svg class="icon icon--xl" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
+        <%= icon "calendar-days", class: "icon icon--xl" %>
       </div>
     </div>
 

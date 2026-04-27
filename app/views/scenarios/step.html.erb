@@ -129,9 +129,7 @@
           <% if step['reference_url'].present? %>
             <a href="<%= step['reference_url'] %>" target="_blank" rel="noopener"
                class="step-reference-link mb-3">
-              <svg class="icon icon--xs" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-              </svg>
+              <%= icon "link", class: "icon icon--xs" %>
               More info
             </a>
           <% end %>
@@ -155,9 +153,7 @@
                     <label class="radio-card radio-card-yes">
                       <%= form.radio_button :answer, "yes", { required: true, data: { action: "change->scenario-step#inputChanged", scenario_step_target: "input" } } %>
                       <span class="radio-icon radio-icon-yes">
-                        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
+                        <%= icon "check", class: "icon icon--sm" %>
                       </span>
                       <span class="radio-dot"></span>
                       <span class="radio-label">Yes</span>
@@ -165,9 +161,7 @@
                     <label class="radio-card radio-card-no">
                       <%= form.radio_button :answer, "no", { required: true, data: { action: "change->scenario-step#inputChanged" } } %>
                       <span class="radio-icon radio-icon-no">
-                        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                        <%= icon "x-mark", class: "icon icon--sm" %>
                       </span>
                       <span class="radio-dot"></span>
                       <span class="radio-label">No</span>
@@ -187,9 +181,7 @@
                   <% else %>
                     <div class="scenario-input-wrap">
                       <span class="scenario-input-icon">
-                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                        </svg>
+                        <%= icon "pencil-square", class: "icon" %>
                       </span>
                       <%= form.text_field :answer, { class: "scenario-input", required: true, data: { action: "input->scenario-step#inputChanged", scenario_step_target: "input" } } %>
                     </div>
@@ -202,9 +194,7 @@
                   <% else %>
                     <div class="scenario-input-wrap">
                       <span class="scenario-input-icon">
-                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                        </svg>
+                        <%= icon "pencil-square", class: "icon" %>
                       </span>
                       <%= form.text_field :answer, { class: "scenario-input", required: true, data: { action: "input->scenario-step#inputChanged", scenario_step_target: "input" } } %>
                     </div>
@@ -214,17 +204,11 @@
                   <div class="scenario-input-wrap">
                     <span class="scenario-input-icon">
                       <% if step['answer_type'] == 'number' %>
-                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5l-3.9 19.5m-2.1-19.5l-3.9 19.5" />
-                        </svg>
+                        <%= icon "hashtag", class: "icon" %>
                       <% elsif step['answer_type'] == 'date' %>
-                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                        </svg>
+                        <%= icon "calendar-days", class: "icon" %>
                       <% else %>
-                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                        </svg>
+                        <%= icon "pencil-square", class: "icon" %>
                       <% end %>
                     </span>
                     <%= form.text_field :answer, { class: "scenario-input", required: true, placeholder: step['answer_type'] == 'number' ? 'Enter a number' : step['answer_type'] == 'date' ? 'YYYY-MM-DD' : 'Type your answer...', data: { action: "input->scenario-step#inputChanged", scenario_step_target: "input" } } %>
@@ -250,10 +234,7 @@
                 <div class="scenario-content-layout--between">
                   <div class="scenario-content-layout flex-1">
                     <div class="step-content-box__icon-wrap mr-3 mt-0.5">
-                      <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.65-5.65a8 8 0 1111.56-1.22l.13.13-6.04 6.74z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-4.5-4.5" />
-                      </svg>
+                      <%= icon "check", class: "icon icon--sm" %>
                     </div>
                     <div class="flex-1">
                       <h3 class="step-content-box__label">Instructions</h3>
@@ -265,9 +246,7 @@
                           title="Copy instructions to clipboard"
                           data-action="click->clipboard#copy"
                           data-clipboard-target="button">
-                    <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
-                    </svg>
+                    <%= icon "clipboard-document-list", class: "icon icon--sm" %>
                   </button>
                 </div>
               </div>
@@ -283,7 +262,7 @@
                   <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
                   <% if step['can_resolve'] %>
                     <%= button_tag type: "submit", name: "resolved_here", value: "true", class: "scenario-btn-resolve", data: { turbo_confirm: "Mark this step as having resolved the issue? The scenario will end." } do %>
-                      <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      <%= icon "check-circle", class: "icon icon--sm" %>
                       Resolved
                     <% end %>
                   <% end %>
@@ -298,9 +277,7 @@
               <div class="step-content-box__body">
                 <div class="scenario-content-layout">
                   <div class="step-content-box__icon-wrap mr-3 mt-0.5">
-                    <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
+                    <%= icon "chat-bubble-bottom-center-text", class: "icon icon--sm" %>
                   </div>
                   <div class="flex-1">
                     <h3 class="step-content-box__label">Message</h3>
@@ -328,7 +305,7 @@
                   <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
                   <% if step['can_resolve'] %>
                     <%= button_tag type: "submit", name: "resolved_here", value: "true", class: "scenario-btn-resolve", data: { turbo_confirm: "Mark this step as having resolved the issue? The scenario will end." } do %>
-                      <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      <%= icon "check-circle", class: "icon icon--sm" %>
                       Resolved
                     <% end %>
                   <% end %>
@@ -343,9 +320,7 @@
               <div class="step-content-box__body">
                 <div class="scenario-content-layout">
                   <div class="step-content-box__icon-wrap mr-3 mt-0.5">
-                    <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
+                    <%= icon "exclamation-triangle", class: "icon icon--sm" %>
                   </div>
                   <div class="flex-1">
                     <h3 class="step-content-box__label">Escalation Required</h3>
@@ -405,9 +380,7 @@
               <div class="step-content-box__body">
                 <div class="scenario-content-layout">
                   <div class="step-content-box__icon-wrap mr-3 mt-0.5">
-                    <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                    <%= icon "check-circle", class: "icon icon--sm" %>
                   </div>
                   <div class="flex-1">
                     <h3 class="step-content-box__label">Resolution</h3>
@@ -463,9 +436,7 @@
                 <div class="step-content-box__body">
                   <div class="scenario-content-layout">
                     <div class="step-content-box__icon-wrap mr-3 mt-0.5">
-                      <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
+                      <%= icon "document-text", class: "icon icon--sm" %>
                     </div>
                     <div class="flex-1">
                       <h3 class="step-content-box__label">Instructions</h3>

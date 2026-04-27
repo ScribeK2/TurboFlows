@@ -17,9 +17,7 @@
   <%# Drag Handle (edit mode only) %>
   <span class="drag-handle builder__edit-only" title="Drag to reorder"
         data-controller="tooltip" data-tooltip-text-value="Drag to reorder">
-    <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"/>
-    </svg>
+    <%= icon "bars-2", class: "icon icon--sm" %>
   </span>
 
   <%# Type Badge with Step Number %>
@@ -63,8 +61,6 @@
         class: "builder__step-delete builder__edit-only btn btn--plain btn--sm",
         style: "color: var(--color-negative);",
         title: "Remove step" do %>
-    <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-    </svg>
+    <%= icon "x-mark", class: "icon icon--sm" %>
   <% end %>
 </div>

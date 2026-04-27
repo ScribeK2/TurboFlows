@@ -23,30 +23,30 @@
       <button type="button" data-visual-editor-target="undoBtn"
               data-action="click->visual-editor#undo"
               class="editor-zoom__btn" title="Undo (Ctrl+Z)" disabled>
-        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a5 5 0 015 5v2M3 10l4-4M3 10l4 4"/></svg>
+        <%= icon "arrow-uturn-right", class: "icon icon--sm" %>
       </button>
       <button type="button" data-visual-editor-target="redoBtn"
               data-action="click->visual-editor#redo"
               class="editor-zoom__btn" title="Redo (Ctrl+Shift+Z)" disabled>
-        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10H11a5 5 0 00-5 5v2M21 10l-4-4M21 10l-4 4"/></svg>
+        <%= icon "arrow-uturn-left", class: "icon icon--sm" %>
       </button>
     </div>
     <div class="editor-zoom">
       <button type="button" data-action="click->canvas-zoom#zoomOut"
               class="editor-zoom__btn"
               title="Zoom out">
-        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
+        <%= icon "minus", class: "icon icon--sm" %>
       </button>
       <span class="editor-zoom__level" data-canvas-zoom-target="zoomLevel">100%</span>
       <button type="button" data-action="click->canvas-zoom#zoomIn"
               class="editor-zoom__btn"
               title="Zoom in">
-        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        <%= icon "plus", class: "icon icon--sm" %>
       </button>
       <button type="button" data-action="click->canvas-zoom#fitToScreen"
               class="editor-zoom__btn"
               title="Fit to screen">
-        <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+        <%= icon "arrows-pointing-out", class: "icon icon--sm" %>
       </button>
       <div class="w-px h-5 mx-1 bg-border"></div>
       <button type="button" data-action="click->canvas-zoom#autoArrange"
@@ -77,9 +77,7 @@
       <%# Empty state %>
       <div data-visual-editor-target="emptyState" class="absolute inset-0 flex items-center justify-center">
         <div class="text-center">
-          <svg class="icon icon--xl mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"/>
-          </svg>
+          <%= icon "plus", class: "icon icon--xl mx-auto mb-2" %>
           <p class="text-sm">Drag a step from the palette to start building</p>
         </div>
       </div>
@@ -102,7 +100,7 @@
         <h3 class="editor-inspector__title" data-ve-step-inspector-target="title">Edit Step</h3>
         <button type="button" data-action="click->ve-step-inspector#close"
                 class="dialog__close">
-          <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          <%= icon "x-mark", class: "icon icon--sm" %>
         </button>
       </div>
       <div class="editor-inspector__body" data-ve-step-inspector-target="body"></div>
@@ -141,7 +139,7 @@
         <h3 class="dialog__title" data-ve-step-modal-target="title">Edit Step</h3>
         <button type="button" data-action="click->ve-step-modal#close"
                 class="dialog__close">
-          <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          <%= icon "x-mark", class: "icon icon--sm" %>
         </button>
       </div>
       <%# Modal body %>

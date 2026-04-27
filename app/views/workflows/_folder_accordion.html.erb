@@ -5,16 +5,10 @@
            data-action="toggle->folder-accordion#toggle">
     <div class="flex items-center gap-3">
       <%# Chevron icon — rotates 90deg when open %>
-      <svg class="icon icon--sm folder-accordion__chevron"
-           data-folder-accordion-target="chevron"
-           fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-      </svg>
+      <%= icon "chevron-right", class: "icon icon--sm folder-accordion__chevron" %>
 
       <%# Folder icon %>
-      <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-      </svg>
+      <%= icon "folder", class: "icon icon--sm" %>
 
       <span class="font-semibold"><%= folder.name %></span>
     </div>
