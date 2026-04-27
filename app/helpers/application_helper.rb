@@ -1,4 +1,6 @@
 module ApplicationHelper
+  include RailsIcons::Helpers::IconHelper
+
   # Safely display workflow description as plain text
   def display_workflow_description(workflow)
     workflow.description.present? ? workflow.description.to_s : "No description"
