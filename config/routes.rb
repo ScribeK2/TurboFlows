@@ -1,4 +1,5 @@
 Rails.application.routes.draw do
+  mount RailsIcons::Engine, at: '/rails_icons'
   get "healthz", to: proc { [200, {}, ["OK"]] }
 
   devise_for :users, controllers: {

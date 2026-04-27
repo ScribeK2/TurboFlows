@@ -1,36 +1,25 @@
 # Workflow View Helpers
 module WorkflowsHelper
   include StepTypeIcons
+  include RailsIcons::Helpers::IconHelper
 
   # ============================================================================
   # Step Type Helpers
   # ============================================================================
 
-  # SVG path data for step type icons (Heroicons-style, 24x24, stroke-based)
-  STEP_TYPE_SVG_PATHS = {
-    'question' => "M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
-    'action' => "M13 10V3L4 14h7v7l9-11h-7z",
-    'sub_flow' => "M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1",
-    'message' => "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z",
-    'escalate' => "M5 10l7-7m0 0l7 7m-7-7v18",
-    'resolve' => "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z",
-    'form' => "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+  # Step type → Heroicon name (24/outline). Single source of truth for which
+  # Heroicon represents each step type — change here to update everywhere.
+  STEP_TYPE_ICONS = {
+    'question' => 'question-mark-circle',
+    'action' => 'bolt',
+    'sub_flow' => 'arrows-right-left',
+    'message' => 'chat-bubble-bottom-center-text',
+    'escalate' => 'exclamation-triangle',
+    'resolve' => 'check-circle',
+    'form' => 'document-text'
   }.freeze
 
-  DEFAULT_STEP_SVG_PATH = "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z".freeze
-
-  # SVG path data for UI icons
-  UI_SVG_PATHS = {
-    'sparkles' => "M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z",
-    'lightbulb' => "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707" \
-                   "m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531" \
-                   "c0-.895-.356-1.754-.988-2.386l-.548-.547z",
-    'warning' => "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z",
-    'paperclip' => "M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13",
-    'question' => "M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
-    'pencil' => "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
-    'check_circle' => "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-  }.freeze
+  DEFAULT_STEP_ICON = 'document'.freeze
 
   STEP_TYPE_LABELS = {
     'question' => 'Question',
@@ -65,38 +54,12 @@ module WorkflowsHelper
     STEP_TYPE_LABELS[type] || type&.titleize || 'Step'
   end
 
-  # Get an inline SVG icon for a step type
+  # Render the Heroicon for a given step type. Delegates to rails_icons.
   def step_type_svg_icon(type, css_classes: "icon")
-    path_data = STEP_TYPE_SVG_PATHS[type] || DEFAULT_STEP_SVG_PATH
-    render_svg_icon(path_data, css_classes: css_classes)
-  end
-
-  # Get an inline SVG icon for a UI element
-  def ui_svg_icon(name, css_classes: "icon")
-    path_data = UI_SVG_PATHS[name.to_s]
-    return "" unless path_data
-
-    render_svg_icon(path_data, css_classes: css_classes)
+    icon STEP_TYPE_ICONS.fetch(type, DEFAULT_STEP_ICON), class: css_classes
   end
 
   private
-
-  # Render an inline SVG from path data (handles multi-subpath icons)
-  def render_svg_icon(path_data, css_classes: "icon")
-    sub_paths = path_data.split(/(?= M)/).map(&:strip)
-    path_elements = sub_paths.map do |d|
-      tag.path(d: d, 'stroke-linecap': "round", 'stroke-linejoin': "round", 'stroke-width': "2")
-    end.join.html_safe
-
-    tag.svg(
-      path_elements,
-      class: css_classes,
-      fill: "none",
-      stroke: "currentColor",
-      viewBox: "0 0 24 24",
-      xmlns: "http://www.w3.org/2000/svg"
-    )
-  end
 
   # Get CSS classes for a step type badge
   def step_type_badge_classes(type)
@@ -211,13 +174,7 @@ module WorkflowsHelper
     hue_var = "--hue-#{dominant == 'sub_flow' ? 'subflow' : dominant}"
 
     content_tag(:div, class: "wf-list-item__icon", style: "--step-hue: var(#{hue_var});") do
-      content_tag(:svg, nil, class: "wf-list-item__icon-svg", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24", 'stroke-width': "1.5") do
-        safe_join([
-                    tag.path(d: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2", 'stroke-linecap': "round", 'stroke-linejoin': "round"),
-                    tag.path(d: "M9 5a2 2 0 012-2h2a2 2 0 012 2", 'stroke-linecap': "round", 'stroke-linejoin': "round"),
-                    tag.path(d: "M9 14l2 2 4-4", 'stroke-linecap': "round", 'stroke-linejoin': "round")
-                  ])
-      end
+      icon "clipboard-document-check", class: "wf-list-item__icon-svg"
     end
   end
 end
