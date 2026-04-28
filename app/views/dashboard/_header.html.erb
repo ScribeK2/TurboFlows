@@ -1,16 +1,29 @@
-<div class="page-header-section animate-fade-in">
-  <div>
-    <h1 class="page-header-section__title">Dashboard</h1>
+<div class="dashboard-greet animate-fade-in">
+  <div class="dashboard-greet__intro">
+    <h1 class="dashboard-greet__title">
+      <%= time_based_greeting(current_user) %><%= ", #{greeting_name(current_user)}" if greeting_name(current_user).present? %>
+    </h1>
+    <p class="dashboard-greet__subtitle"><%= greeting_date(current_user) %></p>
   </div>
-  <div class="flex items-center gap-2">
+
+  <% if current_user.can_create_workflows? %>
+    <% drafts = @dashboard.draft_count %>
+    <% health_issues = @dashboard.workflows_with_health_issues_count %>
+    <% if drafts.positive? || health_issues.positive? %>
+      <%= link_to workflows_path, class: "dashboard-greet__attention", aria: { label: "Workflows that need attention" } do %>
+        <% parts = [] %>
+        <% parts << "<strong>#{drafts}</strong> draft#{drafts == 1 ? "" : "s"} waiting".html_safe if drafts.positive? %>
+        <% parts << "<strong>#{health_issues}</strong> need#{health_issues == 1 ? "s" : ""} attention".html_safe if health_issues.positive? %>
+        <%= safe_join(parts, " · ") %>
+      <% end %>
+    <% end %>
+  <% end %>
+
+  <div class="dashboard-greet__actions">
     <% if current_user.can_create_workflows? %>
       <%= link_to new_workflow_path, class: "btn btn--primary", aria: { label: "Create a new workflow" } do %>
         <%= icon "plus", class: "icon icon--sm" %>
         Create Workflow
-      <% end %>
-      <%= link_to new_workflow_path, class: "btn btn--secondary", aria: { label: "Create workflow from template" } do %>
-        <%= icon "lock-closed", class: "icon icon--sm" %>
-        New from Template
       <% end %>
     <% else %>
       <%= link_to play_path, class: "btn btn--positive", aria: { label: "Run a flow" } do %>

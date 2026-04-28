@@ -1,54 +1,77 @@
-<div id="pinned-workflows-section">
-  <% pinned = dashboard.pinned_workflows %>
+<% pinned = dashboard.pinned_workflows %>
+<% min_slots = 4 %>
+<% prompt_slots = [min_slots - pinned.size, 0].max %>
+
+<section class="quick-launcher animate-fade-in-up" id="pinned-workflows-section" aria-label="Your fast path">
+  <div class="quick-launcher__header">
+    <div>
+      <h2 class="quick-launcher__title">Your fast path</h2>
+      <p class="quick-launcher__subtitle">Pinned workflows · click to run</p>
+    </div>
+    <%= link_to workflows_path, class: "btn btn--plain btn--sm" do %>
+      Manage pins
+      <%= icon "arrow-right", class: "icon icon--xs" %>
+    <% end %>
+  </div>
+
   <% if pinned.any? %>
-    <div class="pinned-section animate-fade-in-up">
-      <div class="recent-section__header recent-section__header--plain">
-        <div>
-          <h2 class="recent-section__title">Pinned Workflows</h2>
-          <p class="recent-section__subtitle">Your quick-access flows</p>
-        </div>
-      </div>
+    <div class="launcher-grid">
+      <% pinned.each_with_index do |workflow, index| %>
+        <% stats = dashboard.pinned_workflow_stats[workflow.id] || { runs: 0, last_run_at: nil } %>
+        <article class="launcher-card animate-fade-in-up" style="animation-delay: <%= 0.05 * index %>s;">
+          <header class="launcher-card__head">
+            <h3 class="launcher-card__title">
+              <%= link_to workflow.title, workflow_path(workflow), aria: { label: "Open #{workflow.title}" } %>
+            </h3>
+            <span class="launcher-card__pin" aria-label="Pinned" title="Pinned">
+              <%= icon "bookmark", class: "icon icon--xs" %>
+            </span>
+          </header>
 
-      <div class="carousel-wrapper" data-controller="carousel">
-        <button class="carousel-arrow carousel-arrow--left"
-                data-carousel-target="leftArrow"
-                data-action="click->carousel#scrollLeft"
-                aria-label="Scroll left">
-          <%= icon "chevron-left", class: "icon icon--sm" %>
-        </button>
+          <% if workflow.description.present? %>
+            <p class="launcher-card__desc"><%= workflow.description.to_plain_text.truncate(100) %></p>
+          <% end %>
 
-        <div class="carousel-track" data-carousel-target="track">
-          <% pinned.each_with_index do |workflow, index| %>
-            <%= button_to play_workflow_path(workflow), method: :post,
-                  class: "carousel-card card animate-fade-in-up",
-                  style: "animation-delay: #{0.05 * index}s;",
-                  aria: { label: "Run #{workflow.title}" } do %>
-              <span class="carousel-card__title"><%= workflow.title %></span>
-              <% if workflow.description.present? %>
-                <span class="carousel-card__desc"><%= workflow.description.to_plain_text.truncate(80) %></span>
+          <% if workflow.tags.any? %>
+            <div class="launcher-card__tags">
+              <% workflow.tags.each do |tag| %>
+                <span class="tag-pill"><%= tag.name %></span>
               <% end %>
-              <span class="carousel-card__meta">
-                <%= icon "clipboard", class: "icon icon--xs" %>
-                <%= pluralize(workflow.steps.size, "step") %>
-              </span>
-            <% end %>
+            </div>
           <% end %>
 
-          <% if pinned.size >= UserWorkflowPin::MAX_PINS %>
-            <%= link_to workflows_path, class: "carousel-card carousel-card--manage" do %>
-              <span class="carousel-card__manage-text">Manage Pinned</span>
-              <%= icon "arrow-right", class: "icon icon--sm" %>
+          <p class="launcher-card__meta">
+            <% if stats[:runs].positive? %>
+              <span class="launcher-card__runs"><%= stats[:runs] %></span>
+              run<%= "s" if stats[:runs] != 1 %>
+              <% if stats[:last_run_at] %>
+                · last run <%= time_ago_in_words(stats[:last_run_at]) %> ago
+              <% end %>
+            <% else %>
+              <%= pluralize(workflow.steps.size, "step") %> · never run yet
             <% end %>
-          <% end %>
-        </div>
+          </p>
 
-        <button class="carousel-arrow carousel-arrow--right"
-                data-carousel-target="rightArrow"
-                data-action="click->carousel#scrollRight"
-                aria-label="Scroll right">
-          <%= icon "chevron-right", class: "icon icon--sm" %>
-        </button>
-      </div>
+          <%= button_to play_workflow_path(workflow), method: :post,
+                class: "btn btn--positive btn--block launcher-card__run",
+                aria: { label: "Run #{workflow.title}" } do %>
+            <%= icon "play", class: "icon icon--sm" %>
+            Run
+          <% end %>
+        </article>
+      <% end %>
+
+      <% prompt_slots.times do |i| %>
+        <%= link_to workflows_path, class: "launcher-card launcher-card--add animate-fade-in-up",
+              style: "animation-delay: #{0.05 * (pinned.size + i)}s;",
+              aria: { label: "Pin a workflow" } do %>
+          <span class="launcher-card--add__plus" aria-hidden="true">
+            <%= icon "plus", class: "icon icon--lg" %>
+          </span>
+          <span class="launcher-card--add__label">Pin a workflow</span>
+          <span class="launcher-card--add__hint">One-click access for your go-to flows</span>
+        <% end %>
+      <% end %>
     </div>
   <% else %>
     <div class="dashboard-empty animate-fade-in-up">
@@ -56,10 +79,10 @@
         <%= icon "bookmark", class: "icon icon--xl" %>
       </div>
       <h3 class="dashboard-empty__title">No pinned workflows</h3>
-      <p class="dashboard-empty__text">Pin your most-used flows for instant access</p>
+      <p class="dashboard-empty__text">Pin your most-used flows for instant access on every call.</p>
       <div class="empty-state__actions">
-        <%= link_to "Browse workflows", workflows_path, class: "btn btn--plain btn--sm" %>
+        <%= link_to "Browse workflows", workflows_path, class: "btn btn--primary btn--sm" %>
       </div>
     </div>
   <% end %>
-</div>
+</section>

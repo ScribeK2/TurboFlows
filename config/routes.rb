@@ -7,6 +7,7 @@ Rails.application.routes.draw do
   }
 
   resource :first_run, only: %i[new create]
+  resource :profile, only: %i[edit update]
   root to: 'dashboard#index'
 
   # Mount ActionCable

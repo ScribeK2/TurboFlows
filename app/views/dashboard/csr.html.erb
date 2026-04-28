@@ -1,92 +1,32 @@
 <div class="dashboard-layout">
   <%= render "dashboard/header" %>
 
-  <%# -- Stat Cards -- %>
-  <div class="stat-grid">
-    <%# Scenarios This Week %>
-    <div class="stat-card animate-fade-in-up hover-lift" style="animation-delay: 0.1s;" aria-label="Scenarios this week: <%= @dashboard.scenarios_this_week %>">
-      <div>
-        <p class="stat-card__value"><%= @dashboard.scenarios_this_week %></p>
-        <p class="stat-card__label">This Week</p>
-      </div>
-      <div class="stat-card__icon">
-        <%= icon "calendar-days", class: "icon icon--xl" %>
-      </div>
-    </div>
-
-    <%# Total Runs %>
-    <div class="stat-card animate-fade-in-up hover-lift" style="animation-delay: 0.15s;" aria-label="Total runs: <%= @dashboard.personal_scenario_total %>">
-      <div>
-        <p class="stat-card__value"><%= @dashboard.personal_scenario_total %></p>
-        <p class="stat-card__label">Total Runs</p>
-      </div>
-      <div class="stat-card__icon">
-        <%= icon "chart-bar", class: "icon icon--xl" %>
-      </div>
-    </div>
-
-    <%# Personal Completion Rate %>
-    <div class="stat-card animate-fade-in-up hover-lift" style="animation-delay: 0.2s;" aria-label="Completion rate: <%= @dashboard.personal_completion_rate %>%">
-      <div>
-        <p class="stat-card__value"><%= @dashboard.personal_completion_rate %>%</p>
-        <p class="stat-card__label">Completion Rate</p>
-      </div>
-      <div class="stat-card__progress">
-        <svg class="stat-card__progress-svg" viewBox="0 0 48 48">
-          <circle class="stat-card__progress-track" cx="24" cy="24" r="20" fill="none" stroke-width="3" />
-          <circle class="stat-card__progress-fill" cx="24" cy="24" r="20" fill="none" stroke-width="3" stroke-linecap="round" stroke-dasharray="<%= (125.66).round(2) %>" stroke-dashoffset="<%= (125.66 * (1 - @dashboard.personal_completion_rate / 100.0)).round(2) %>" />
-        </svg>
-        <div class="stat-card__progress-icon">
-          <%= icon "check", class: "icon icon--sm" %>
-        </div>
-      </div>
-    </div>
-
-    <%# Most Used Flow %>
-    <% most_used = @dashboard.most_used_workflow %>
-    <div class="stat-card animate-fade-in-up hover-lift" style="animation-delay: 0.25s;" aria-label="Most used flow: <%= most_used ? "#{most_used[:count]} runs" : 'None' %>">
-      <div>
-        <p class="stat-card__value"><%= most_used ? most_used[:count] : "—" %></p>
-        <p class="stat-card__label">Most Used Flow</p>
-        <% if most_used&.dig(:workflow) %>
-          <p class="stat-card__detail truncate"><%= link_to most_used[:workflow].title, workflow_path(most_used[:workflow]) %></p>
-        <% end %>
-      </div>
-      <div class="stat-card__icon">
-        <%= icon "arrow-trending-up", class: "icon icon--xl" %>
-      </div>
-    </div>
-  </div>
-
-  <hr class="dashboard-divider">
-
-  <%# -- Pinned Workflows -- %>
+  <%# -- Quick Launcher (pinned workflows hero) -- %>
   <%= render "dashboard/pinned_workflows", dashboard: @dashboard %>
 
   <hr class="dashboard-divider">
 
   <%# -- Two-Column Content -- %>
   <div class="dashboard-grid">
-    <%# Left: Recent Workflows %>
-    <div class="recent-section animate-fade-in-up" style="animation-delay: 0.35s;">
+    <%# Left: Recently Run %>
+    <div class="recent-section animate-fade-in-up" style="animation-delay: 0.1s;">
       <div class="recent-section__header">
         <div>
-          <h2 class="recent-section__title">Recent Workflows</h2>
-          <p class="recent-section__subtitle">Recently added workflows</p>
+          <h2 class="recent-section__title">Recently Run</h2>
+          <p class="recent-section__subtitle">Workflows you've run, most recent first</p>
         </div>
-        <%= link_to "View all", workflows_path, class: "btn btn--plain btn--sm", aria: { label: "View all workflows" } %>
       </div>
       <div class="wf-list">
-        <% if @dashboard.workflows.any? %>
-          <% @dashboard.workflows.each_with_index do |workflow, index| %>
-            <div class="wf-list-item animate-fade-in-up" style="animation-delay: <%= 0.4 + (index * 0.05) %>s;">
+        <% if @dashboard.recently_run_workflows.any? %>
+          <% @dashboard.recently_run_workflows.each_with_index do |scenario, index| %>
+            <% workflow = scenario.workflow %>
+            <div class="wf-list-item animate-fade-in-up" style="animation-delay: <%= 0.15 + (index * 0.05) %>s;">
               <div class="wf-list-item__info">
                 <div class="wf-list-item__title">
                   <%= link_to workflow.title, workflow_path(workflow), aria: { label: "View workflow: #{workflow.title}" } %>
-                  <%= workflow_status_badge(workflow) %>
                 </div>
                 <div class="wf-list-item__meta">
-                  Created <%= time_ago_in_words(workflow.created_at) %> ago
+                  <%= scenario.status.titleize %> · last run <%= time_ago_in_words(scenario.created_at) %> ago
                 </div>
                 <% if workflow.tags.any? %>
                   <div class="wf-list-item__tags flex flex-wrap gap-1 mt-0\.5">
@@ -98,23 +38,26 @@
               </div>
               <div class="wf-list-item__actions">
                 <%= render "workflows/pin_button", workflow: workflow, pinned: @dashboard.pinned_workflow_ids.include?(workflow.id), location: "recent" %>
-                <%= button_to "Run", play_workflow_path(workflow), method: :post, class: "btn btn--positive btn--sm", aria: { label: "Start #{workflow.title}" } %>
+                <%= button_to play_workflow_path(workflow), method: :post, class: "btn btn--positive btn--sm", aria: { label: "Re-run #{workflow.title}" } do %>
+                  <%= icon "play", class: "icon icon--xs" %>
+                  Re-run
+                <% end %>
               </div>
             </div>
           <% end %>
         <% else %>
           <div class="dashboard-empty">
             <div class="dashboard-empty__icon">
-              <%= icon "document-text", class: "icon icon--xl" %>
+              <%= icon "play", class: "icon icon--xl" %>
             </div>
-            <p class="dashboard-empty__text">No workflows available yet</p>
+            <p class="dashboard-empty__text">Start a workflow to see it here</p>
           </div>
         <% end %>
       </div>
     </div>
 
     <%# Right: Recent Activity %>
-    <div class="recent-section animate-fade-in-up" style="animation-delay: 0.4s;">
+    <div class="recent-section animate-fade-in-up" style="animation-delay: 0.15s;">
       <div class="recent-section__header">
         <div>
           <h2 class="recent-section__title">Recent Activity</h2>
