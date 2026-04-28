@@ -50,9 +50,27 @@ class User < ApplicationRecord
   ROLES = %w[admin editor user].freeze
 
   normalizes :display_name, with: ->(name) { name.strip }
+  # Canonicalize to the Rails-friendly TimeZone name (e.g., "Pacific Time (US & Canada)")
+  # so f.time_zone_select can pre-select the saved value. Accepts IANA names
+  # ("America/Los_Angeles") as input and converts them to the friendly form.
+  normalizes :time_zone, with: lambda { |name|
+    cleaned = name.to_s.strip
+    next cleaned if cleaned.empty?
+
+    ActiveSupport::TimeZone::MAPPING.invert[cleaned] || cleaned
+  }
 
   # Validations
   validates :display_name, length: { maximum: 50 }, allow_blank: true
+  validates :time_zone, presence: true
+  validate :time_zone_must_be_recognized
+
+  def time_zone_must_be_recognized
+    return if time_zone.blank?
+    return if ActiveSupport::TimeZone[time_zone]
+
+    errors.add(:time_zone, "is not a recognized time zone")
+  end
 
   # Check if user can create workflows
   def can_create_workflows?

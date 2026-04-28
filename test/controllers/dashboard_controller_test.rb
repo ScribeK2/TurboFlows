@@ -65,18 +65,45 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
 
     get root_path
     assert_response :success
-    assert_select "h2", text: "Pinned Workflows"
+    assert_select "h2", text: "Your fast path"
+    assert_select ".launcher-card__title", text: /Pinned WF/
   end
 
-  test "CSR sees scenario stats" do
+  test "CSR launcher fills empty slots with pin-prompt cards" do
+    # No pins => empty state, not prompt cards
+    get root_path
+    assert_select ".launcher-card--add", count: 0
+    assert_select "h3", text: "No pinned workflows"
+
+    # Add 2 pins => 2 launcher cards + 2 prompt cards (min 4 slots)
     editor = User.create!(email: "editor-#{SecureRandom.hex(4)}@example.com", password: "password123!", password_confirmation: "password123!", role: "editor")
-    workflow = Workflow.create!(title: "Test WF", user: editor, is_public: true)
+    2.times do |i|
+      wf = Workflow.create!(title: "WF #{i}", user: editor, is_public: true)
+      UserWorkflowPin.create!(user: @user, workflow: wf)
+    end
+    get root_path
+    assert_select ".launcher-card", count: 4
+    assert_select ".launcher-card--add", count: 2
+  end
+
+  test "CSR shows Recently Run section with re-run buttons" do
+    editor = User.create!(email: "editor-#{SecureRandom.hex(4)}@example.com", password: "password123!", password_confirmation: "password123!", role: "editor")
+    workflow = Workflow.create!(title: "Triage Flow", user: editor, is_public: true)
     Scenario.create!(workflow: workflow, user: @user, purpose: "live", status: "completed")
 
     get root_path
     assert_response :success
-    assert_select "[aria-label*='Scenarios this week']"
-    assert_select "[aria-label*='Completion rate']"
+    assert_select "h2", text: "Recently Run"
+    assert_select ".wf-list-item__title", text: /Triage Flow/
+    assert_select "button[aria-label='Re-run Triage Flow']"
+  end
+
+  test "CSR dashboard does not render the old stat cards" do
+    get root_path
+    assert_response :success
+    assert_select ".stat-grid", count: 0
+    assert_select "[aria-label*='Total runs']", count: 0
+    assert_select "[aria-label*='Most used flow']", count: 0
   end
 
   # -- SME dashboard --
@@ -94,7 +121,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
 
     get root_path
     assert_response :success
-    assert_select "p", text: /1 draft/
+    assert_select ".stat-card__chip", text: /1 draft/
   end
 
   test "SME sees company-wide scenario stats" do
