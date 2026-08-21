@@ -66,6 +66,11 @@
   --color-on-mint:       var(--color-ink);
 
   /* Semantics: two-tier — strong for text/borders, soft for pill fills */
+  /* Text that sits ON a strong semantic fill. White in light; ink in dark,
+     because the dark semantic tokens are LIGHT fills (L 0.80), not dark ones. */
+  --color-on-negative:   oklch(1.0 0 0);
+  --color-on-positive:   oklch(1.0 0 0);
+  --color-on-warning:    oklch(1.0 0 0);
   --color-negative:      oklch(0.500 0.140 25);
   --color-negative-soft: oklch(0.884 0.036 18);
   --color-positive:      oklch(0.450 0.100 165);
@@ -98,13 +103,19 @@
   --color-step-form:     var(--hue-form);
 
   /* ─── Composable Step Colors ─── */
-  /* Pale tints (Q2b). Always use these — never inline oklch() with --step-hue. */
-  --step-bg:       oklch(0.88 0.05 var(--step-hue));   /* pale fill  */
-  --step-border:   oklch(0.86 0.04 var(--step-hue));   /* hairline on tint */
-  --step-text:     oklch(0.35 0.10 var(--step-hue));   /* text on --step-bg */
-  --step-dot:      oklch(0.55 0.12 var(--step-hue));   /* dots, diagram nodes */
-  --step-solid:    oklch(0.45 0.11 var(--step-hue));   /* filled chips */
-  --step-on-solid: oklch(1.0 0 0);                      /* text on --step-solid */
+  /* Stored as SCALARS, not composed colors. A composed token like
+     `--step-bg: oklch(.88 .05 var(--step-hue))` declared on :root resolves
+     against :root's (undefined) --step-hue and inherits as invalid, so
+     descendants that set --step-hue never re-resolve it. That trap is why
+     this codebase previously wrote inline oklch() literals everywhere.
+     Scalars have no var() indirection, so they inherit cleanly; the
+     composition happens per-element in the `*` rule below. */
+  --step-bg-l: 0.88;    --step-bg-c: 0.05;
+  --step-border-l: 0.86; --step-border-c: 0.04;
+  --step-text-l: 0.35;  --step-text-c: 0.10;
+  --step-dot-l: 0.55;   --step-dot-c: 0.12;
+  --step-solid-l: 0.45; --step-solid-c: 0.11;
+  --step-on-solid: oklch(1.0 0 0);
 
   /* ─── Shadows (Dual-Layer) ─── */
   --shadow-sm: 0 0 0 0 transparent;   /* flat: cards rely on a 1px hairline border */
@@ -160,6 +171,9 @@
   --color-on-primary:    oklch(1.0 0 0);
   --color-mint:          oklch(0.850 0.085 165);
   --color-on-mint:       oklch(0.13 0.015 250);
+  --color-on-negative:   oklch(0.13 0.015 250);
+  --color-on-positive:   oklch(0.13 0.015 250);
+  --color-on-warning:    oklch(0.13 0.015 250);
   --color-negative:      oklch(0.80 0.100 25);
   --color-negative-soft: oklch(0.28 0.060 25);
   --color-positive:      oklch(0.80 0.100 165);
@@ -168,11 +182,11 @@
   --color-warning-soft:  oklch(0.28 0.060 80);
   --color-backdrop:      oklch(0.05 0.01 250 / 0.7);
   --color-backdrop-light: oklch(0.05 0.01 250 / 0.4);
-  --step-bg:       oklch(0.28 0.06 var(--step-hue));
-  --step-border:   oklch(0.34 0.06 var(--step-hue));
-  --step-text:     oklch(0.80 0.10 var(--step-hue));
-  --step-dot:      oklch(0.74 0.12 var(--step-hue));
-  --step-solid:    oklch(0.78 0.12 var(--step-hue));
+  --step-bg-l: 0.28;    --step-bg-c: 0.06;
+  --step-border-l: 0.34; --step-border-c: 0.06;
+  --step-text-l: 0.80;  --step-text-c: 0.10;
+  --step-dot-l: 0.74;   --step-dot-c: 0.12;
+  --step-solid-l: 0.78; --step-solid-c: 0.12;
   --step-on-solid: oklch(0.13 0.015 250);
   --shadow-sm: 0 0 0 0 transparent;
   --shadow:    0 2px 6px oklch(0.05 0.02 250 / 0.28), 0 1px 2px oklch(0.05 0.02 250 / 0.16);
@@ -201,6 +215,9 @@
     --color-on-primary:    oklch(1.0 0 0);
     --color-mint:          oklch(0.850 0.085 165);
     --color-on-mint:       oklch(0.13 0.015 250);
+    --color-on-negative:   oklch(0.13 0.015 250);
+    --color-on-positive:   oklch(0.13 0.015 250);
+    --color-on-warning:    oklch(0.13 0.015 250);
     --color-negative:      oklch(0.80 0.100 25);
     --color-negative-soft: oklch(0.28 0.060 25);
     --color-positive:      oklch(0.80 0.100 165);
@@ -209,11 +226,11 @@
     --color-warning-soft:  oklch(0.28 0.060 80);
     --color-backdrop:      oklch(0.05 0.01 250 / 0.7);
     --color-backdrop-light: oklch(0.05 0.01 250 / 0.4);
-    --step-bg:       oklch(0.28 0.06 var(--step-hue));
-    --step-border:   oklch(0.34 0.06 var(--step-hue));
-    --step-text:     oklch(0.80 0.10 var(--step-hue));
-    --step-dot:      oklch(0.74 0.12 var(--step-hue));
-    --step-solid:    oklch(0.78 0.12 var(--step-hue));
+    --step-bg-l: 0.28;    --step-bg-c: 0.06;
+    --step-border-l: 0.34; --step-border-c: 0.06;
+    --step-text-l: 0.80;  --step-text-c: 0.10;
+    --step-dot-l: 0.74;   --step-dot-c: 0.12;
+    --step-solid-l: 0.78; --step-solid-c: 0.12;
     --step-on-solid: oklch(0.13 0.015 250);
     --shadow-sm: 0 0 0 0 transparent;
     --shadow:    0 2px 6px oklch(0.05 0.02 250 / 0.28), 0 1px 2px oklch(0.05 0.02 250 / 0.16);
@@ -226,6 +243,16 @@
   :root:not([data-theme="dark"]) {
     color-scheme: light;
   }
+}
+
+/* Composed per-element so --step-hue set on any element (or inherited from an
+   ancestor) resolves here rather than at :root. Must not move into :root. */
+* {
+  --step-bg:     oklch(var(--step-bg-l) var(--step-bg-c) var(--step-hue, 250));
+  --step-border: oklch(var(--step-border-l) var(--step-border-c) var(--step-hue, 250));
+  --step-text:   oklch(var(--step-text-l) var(--step-text-c) var(--step-hue, 250));
+  --step-dot:    oklch(var(--step-dot-l) var(--step-dot-c) var(--step-hue, 250));
+  --step-solid:  oklch(var(--step-solid-l) var(--step-solid-c) var(--step-hue, 250));
 }
 
 /* ─── Keyboard Shortcut Hints ─── */

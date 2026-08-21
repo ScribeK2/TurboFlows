@@ -75,7 +75,7 @@
 .wizard-progress__indicator.is-done {
   border-color: var(--color-positive);
   background: var(--color-positive);
-  color: oklch(1 0 0);
+  color: var(--color-on-positive);
 }
 
 .wizard-progress__indicator.is-done:hover {

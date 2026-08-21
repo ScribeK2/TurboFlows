@@ -131,13 +131,13 @@
 
 .radio-card:has(input:checked) .radio-icon.radio-icon-yes {
   background: var(--color-positive);
-  color: var(--color-canvas-raised);
+  color: var(--color-on-positive);
   box-shadow: 0 0 0 3px oklch(0.55 0.19 145 / 0.15);
 }
 
 .radio-card:has(input:checked) .radio-icon.radio-icon-no {
   background: var(--color-negative);
-  color: var(--color-canvas-raised);
+  color: var(--color-on-negative);
   box-shadow: 0 0 0 3px oklch(0.55 0.22 25 / 0.15);
 }
 
@@ -230,7 +230,7 @@
 
 [data-theme="dark"] .radio-card:has(input:checked) .radio-icon.radio-icon-yes {
   background: var(--color-positive);
-  color: var(--color-canvas-raised);
+  color: var(--color-on-positive);
   box-shadow: 0 0 0 3px oklch(0.55 0.19 145 / 0.2);
 }
 
@@ -242,7 +242,7 @@
 
 [data-theme="dark"] .radio-card:has(input:checked) .radio-icon.radio-icon-no {
   background: var(--color-negative);
-  color: var(--color-canvas-raised);
+  color: var(--color-on-negative);
   box-shadow: 0 0 0 3px oklch(0.55 0.22 25 / 0.2);
 }
 
@@ -529,7 +529,7 @@
 .stepper-pill--completed {
   background: var(--color-positive);
   border-color: var(--color-positive);
-  color: oklch(1 0 0);
+  color: var(--color-on-positive);
   animation: none;
 }
 

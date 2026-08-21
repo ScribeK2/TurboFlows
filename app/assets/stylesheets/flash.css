@@ -81,7 +81,7 @@
 
 .toast--warning {
   background: var(--color-warning);
-  color: var(--color-ink);
+  color: var(--color-on-warning);
 }
 
 .toast--error {

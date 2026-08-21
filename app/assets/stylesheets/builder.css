@@ -845,7 +845,7 @@
     height: 16px;
     border-radius: var(--radius-full);
     background: var(--color-negative);
-    color: white;
+    color: var(--color-on-negative);
     font-size: 0.625rem;
     font-weight: 700;
     display: flex;
