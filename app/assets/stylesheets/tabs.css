@@ -1,0 +1,62 @@
+@layer components {
+/* tabs.css — Underline tab bar.
+   Use .tab-bar for NAVIGATION between views of one record (reference image 3:
+   Analytics / General / Security / Users / Billing).
+   Use .wf-status-tabs (segmented pill) for FILTERING a list. The two do
+   different jobs and deliberately look different. See UIGUIDE "Tabs". */
+
+.tab-bar {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tab-bar::-webkit-scrollbar { display: none; }
+
+.tab-bar__tab {
+  position: relative;
+  padding: var(--space-3) 0;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-ink-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.tab-bar__tab:hover {
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+/* The 2px rule sits ON the container's hairline, not below it. */
+.tab-bar__tab::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: -1px;
+  height: 2px;
+  background: transparent;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.tab-bar__tab.is-active {
+  color: var(--color-primary-text);
+  font-weight: 600;
+}
+
+.tab-bar__tab.is-active::after {
+  background: var(--color-primary);
+}
+
+.tab-bar__tab:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -2px;
+}
+}

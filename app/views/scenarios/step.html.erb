@@ -2,15 +2,19 @@
   <meta name="turbo-cache-control" content="no-cache">
 <% end %>
 <div class="page-content">
-  <div class="mb-4">
+  <div class="page-header-section">
+    <%= link_to workflow_path(@workflow), class: "page-back" do %>
+      <%= icon "chevron-left", class: "icon icon--xs" %>
+      Back to workflow
+    <% end %>
     <% if current_user&.regular? %>
-      <h1 title="<%= @workflow.title %>">
-        <%= truncate(@workflow.title, length: 60, omission: '...') %>
+      <h1 class="page-header-section__title" title="<%= @workflow.title %>">
+        <%= truncate(@workflow.title, length: 60, omission: "...") %>
       </h1>
-      <p class="text-sm">Step-by-step execution</p>
+      <p class="page-header-section__ident">Step-by-step execution</p>
     <% else %>
-      <h1>Running Scenario</h1>
-      <p class="text-sm">Step-by-step execution of <%= @workflow.title %></p>
+      <h1 class="page-header-section__title">Running Scenario</h1>
+      <p class="page-header-section__ident"><%= @workflow.title %></p>
     <% end %>
   </div>
 

@@ -184,7 +184,7 @@
 .wf-mode-toggle__btn.is-active {
   background: var(--color-canvas-raised);
   color: var(--color-ink);
-  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border);
 }
 
 [data-theme="dark"] .wf-mode-toggle {
@@ -412,6 +412,67 @@
 }
 
 /* ============================================================================
+   List Toolbar — first row inside the list container (reference image 4:
+   search | segmented status | Filters (n) | Show All | sort)
+   ============================================================================ */
+
+.wf-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* When the toolbar is the container's only child there is nothing to divide. */
+.card > .wf-toolbar:last-child { border-bottom: none; }
+
+.wf-toolbar__search {
+  position: relative;
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.wf-toolbar__search-icon {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: var(--space-3);
+  display: flex;
+  align-items: center;
+  color: var(--color-ink-muted);
+  pointer-events: none;
+}
+
+.wf-toolbar__search-input {
+  padding-inline-start: 2.25rem;
+}
+
+.wf-toolbar__filters {
+  font-size: var(--text-sm);
+  color: var(--color-ink-subtle);
+  white-space: nowrap;
+}
+
+.wf-toolbar__link {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-primary-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+
+.wf-toolbar__sort {
+  width: auto;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .wf-toolbar__search { flex-basis: 100%; }
+}
+
+/* ============================================================================
    Status Filter Tabs (segmented control)
    ============================================================================ */
 
@@ -428,6 +489,7 @@
 .status-filter__tab,
 .wf-status-tabs__tab {
   padding: var(--space-2) var(--space-4);
+  border: 1px solid transparent;
   border-radius: var(--radius);
   font-size: var(--text-sm);
   font-weight: 500;
@@ -449,7 +511,7 @@
 .wf-status-tabs__tab--active {
   background: var(--color-canvas-raised);
   color: var(--color-ink);
-  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border);
 }
 
 /* ============================================================================
@@ -491,8 +553,9 @@
   width: 2.5rem;
   height: 2.5rem;
   border-radius: var(--radius-lg);
-  background: var(--step-bg);
-  color: var(--step-text);
+  background: var(--color-canvas-alt);
+  border: 1px solid var(--color-border);
+  color: var(--color-ink-subtle);
   display: flex;
   align-items: center;
   justify-content: center;

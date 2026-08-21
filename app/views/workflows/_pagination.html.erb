@@ -1,0 +1,33 @@
+<%# First / prev / numbered / next / last, per reference image 4.
+    Locals: page, total_pages %>
+<% if total_pages > 1 %>
+  <%
+    keep = { status: params[:status], search: params[:search], group_id: params[:group_id], sort: params[:sort] }
+    window = 5
+    first_shown = [[page - (window / 2), 1].max, [total_pages - window + 1, 1].max].min
+    last_shown  = [first_shown + window - 1, total_pages].min
+  %>
+  <nav class="pagination" aria-label="Pagination">
+    <%= link_to "«", url_for(keep.merge(page: 1)),
+          class: "pagination__item #{'is-disabled' if page == 1}",
+          aria: { label: "First page" } %>
+    <%= link_to "‹", url_for(keep.merge(page: [page - 1, 1].max)),
+          class: "pagination__item #{'is-disabled' if page == 1}",
+          aria: { label: "Previous page" } %>
+
+    <% (first_shown..last_shown).each do |p| %>
+      <%= link_to p, url_for(keep.merge(page: p)),
+            class: "pagination__item #{'is-active' if p == page}",
+            aria: { current: ("page" if p == page) } %>
+    <% end %>
+
+    <%= link_to "›", url_for(keep.merge(page: [page + 1, total_pages].min)),
+          class: "pagination__item #{'is-disabled' if page == total_pages}",
+          aria: { label: "Next page" } %>
+    <%= link_to "»", url_for(keep.merge(page: total_pages)),
+          class: "pagination__item #{'is-disabled' if page == total_pages}",
+          aria: { label: "Last page" } %>
+
+    <span class="pagination__summary">Page <%= page %> of <%= total_pages %></span>
+  </nav>
+<% end %>

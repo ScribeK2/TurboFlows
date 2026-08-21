@@ -1,5 +1,7 @@
 # Workflow View Helpers
 module WorkflowsHelper
+  DEFAULT_SORT = "recent".freeze
+
   include StepTypeIcons
   include RailsIcons::Helpers::IconHelper
 
@@ -176,5 +178,17 @@ module WorkflowsHelper
     content_tag(:div, class: "wf-list-item__icon", style: "--step-hue: var(#{hue_var});") do
       icon "clipboard-document-check", class: "wf-list-item__icon-svg"
     end
+  end
+
+  # Filters the index toolbar reports as active. Drives the "Filters (n)" count
+  # and whether "Show All" is worth offering. Mirrors the params WorkflowsFilter
+  # actually reads.
+  def active_workflow_filters(selected_group: nil)
+    filters = []
+    filters << :group if selected_group.present?
+    filters << :status if params[:status].present? && params[:status] != "all"
+    filters << :search if params[:search].present?
+    filters << :sort if params[:sort].present? && params[:sort] != DEFAULT_SORT
+    filters
   end
 end
