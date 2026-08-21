@@ -51,7 +51,7 @@
       <% end %>
 
       <% if mode == "view" %>
-        <%= link_to new_workflow_scenario_path(workflow), class: "btn btn--positive btn--sm" do %>
+        <%= link_to new_workflow_scenario_path(workflow), class: "btn btn--secondary btn--sm" do %>
           Run Scenario
         <% end %>
       <% end %>
@@ -59,7 +59,7 @@
       <% if mode == "edit" %>
         <span class="builder__publish-wrapper">
           <%= button_to workflow_publishing_path(workflow), method: :post,
-              class: "btn btn--positive btn--sm builder__edit-only",
+              class: "btn btn--primary btn--sm builder__edit-only",
               data: { turbo_stream: true } do %>
             Publish
           <% end %>

@@ -81,7 +81,7 @@
       <div class="card__body">
         <h2>Scenario Complete!</h2>
         <p class="mb-4">All steps have been completed.</p>
-        <%= link_to "View Results", scenario_path(@scenario), class: "btn btn--positive" %>
+        <%= link_to "View Results", scenario_path(@scenario), class: "btn btn--secondary" %>
       </div>
     </div>
   <% else %>
@@ -424,7 +424,7 @@
                 </div>
                 <div class="scenario-btn-group">
                   <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
-                  <%= form.submit "Complete Workflow", class: "btn btn--positive", data: { scenario_step_target: "submit" } %>
+                  <%= form.submit "Complete Workflow", class: "btn btn--mint", data: { scenario_step_target: "submit" } %>
                 </div>
               </div>
             <% end %>

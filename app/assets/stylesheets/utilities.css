@@ -362,7 +362,7 @@
 /* Text color utilities */
 .text-muted { color: var(--color-ink-muted); }
 .text-subtle { color: var(--color-ink-subtle); }
-.text-primary { color: var(--color-primary); }
+.text-primary { color: var(--color-primary-text); }
 .text-success { color: var(--color-positive); }
 .text-danger { color: var(--color-negative); }
 

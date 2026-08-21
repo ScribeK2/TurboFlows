@@ -38,7 +38,7 @@
               </div>
               <div class="wf-list-item__actions">
                 <%= render "workflows/pin_button", workflow: workflow, pinned: @dashboard.pinned_workflow_ids.include?(workflow.id), location: "recent" %>
-                <%= button_to play_workflow_path(workflow), method: :post, class: "btn btn--positive btn--sm", aria: { label: "Re-run #{workflow.title}" } do %>
+                <%= button_to play_workflow_path(workflow), method: :post, class: "btn btn--secondary btn--sm", aria: { label: "Re-run #{workflow.title}" } do %>
                   <%= icon "play", class: "icon icon--xs" %>
                   Re-run
                 <% end %>

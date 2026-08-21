@@ -1,5 +1,7 @@
 @layer components {
-/* buttons.css — Button components (HEY Calm + Fizzy Vibrant) */
+/* buttons.css — Button components (Northwest navy: flat fills, hairline outlines) */
+/* Hierarchy rule: at most ONE filled button per screen. Everything else is
+   .btn--secondary (outlined) or .btn--plain (text). See UIGUIDE. */
 
 .btn {
   --btn-bg: transparent;
@@ -16,7 +18,7 @@
   font-weight: 500;
   line-height: var(--line-height-tight);
   cursor: pointer;
-  border: 1.5px solid var(--btn-border);
+  border: 1px solid var(--btn-border);
   background: var(--btn-bg);
   color: var(--btn-text);
   transition:
@@ -38,55 +40,36 @@
   transform: scale(0.96);
 }
 
-/* ─── Primary ─── */
-/* Intentional: gradient start/end differ from --color-primary for depth effect
-   (lighter top, darker bottom). Chroma tracks --color-primary (0.22). */
+/* ─── Primary — the single filled action ─── */
 .btn--primary {
-  --btn-bg: oklch(0.55 0.22 250);
-  --btn-text: oklch(1 0 0);
-  --btn-border: oklch(0.48 0.22 250);
-  background: linear-gradient(180deg, oklch(0.57 0.20 250), oklch(0.53 0.22 250));
-  box-shadow: 0 1px 2px oklch(0.30 0.10 250 / 0.2), 0 2px 6px oklch(0.30 0.10 250 / 0.1);
+  --btn-bg: var(--color-primary);
+  --btn-text: var(--color-on-primary);
+  --btn-border: var(--color-primary);
 }
 
 .btn--primary:hover {
-  background: linear-gradient(180deg, oklch(0.53 0.22 250), oklch(0.48 0.24 250));
-  --btn-border: oklch(0.44 0.24 250);
-  box-shadow: 0 2px 4px oklch(0.30 0.10 250 / 0.25), 0 4px 12px oklch(0.30 0.10 250 / 0.15);
-  transform: translateY(-1px);
+  --btn-bg: var(--color-primary-hover);
+  --btn-border: var(--color-primary-hover);
 }
 
 .btn--primary:active:not(:disabled) {
-  background: oklch(0.50 0.22 250);
-  box-shadow: inset 0 1px 3px oklch(0.20 0.10 250 / 0.25), 0 1px 2px oklch(0.30 0.10 250 / 0.1);
+  --btn-bg: var(--color-primary-hover);
 }
 
-[data-theme="dark"] .btn--primary {
-  --btn-border: oklch(0.60 0.18 250);
-  background: linear-gradient(180deg, oklch(0.72 0.19 250), oklch(0.68 0.21 250));
-}
-
-[data-theme="dark"] .btn--primary:hover {
-  background: linear-gradient(180deg, oklch(0.68 0.21 250), oklch(0.64 0.22 250));
-  --btn-border: oklch(0.56 0.20 250);
-}
-
-/* ─── Secondary ─── */
+/* ─── Secondary — outlined ─── */
 .btn--secondary {
   --btn-bg: var(--color-canvas-raised);
-  --btn-text: var(--color-ink);
+  --btn-text: var(--color-primary-muted);
   --btn-border: var(--color-border);
-  box-shadow: var(--shadow-sm);
 }
 
 .btn--secondary:hover {
   --btn-border: var(--color-border-strong);
-  box-shadow: var(--shadow);
+  --btn-text: var(--color-primary-text);
 }
 
 .btn--secondary:active:not(:disabled) {
-  box-shadow: none;
-  transform: scale(0.97);
+  --btn-bg: var(--color-canvas-alt);
 }
 
 /* ─── Plain / Ghost ─── */
@@ -105,38 +88,42 @@
   --btn-text: var(--color-ink);
 }
 
-/* ─── Negative / Danger ─── */
+/* ─── Negative / Danger — outlined by default ─── */
 .btn--negative {
-  --btn-bg: var(--color-negative);
-  --btn-text: oklch(1 0 0);
+  --btn-bg: transparent;
+  --btn-text: var(--color-negative);
   --btn-border: var(--color-negative);
 }
 
 .btn--negative:hover {
-  --btn-bg: oklch(0.48 0.22 25);
-  --btn-border: oklch(0.48 0.22 25);
+  --btn-bg: var(--color-negative-soft);
 }
 
-[data-theme="dark"] .btn--negative:hover {
-  --btn-bg: oklch(0.60 0.18 25);
-  --btn-border: oklch(0.60 0.18 25);
+/* Filled danger is reserved for the confirming action inside a destructive dialog. */
+.btn--negative.btn--solid {
+  --btn-bg: var(--color-negative);
+  --btn-text: var(--color-on-primary);
 }
 
-/* ─── Positive / Success ─── */
-.btn--positive {
-  --btn-bg: var(--color-positive);
-  --btn-text: oklch(1 0 0);
-  --btn-border: var(--color-positive);
+.btn--negative.btn--solid:hover {
+  --btn-bg: var(--color-negative);
+  filter: brightness(0.92);
 }
 
-.btn--positive:hover {
-  --btn-bg: oklch(0.53 0.19 145);
-  --btn-border: oklch(0.53 0.19 145);
+[data-theme="dark"] .btn--negative.btn--solid {
+  --btn-text: var(--color-canvas);
 }
 
-[data-theme="dark"] .btn--positive:hover {
-  --btn-bg: oklch(0.60 0.16 145);
-  --btn-border: oklch(0.60 0.16 145);
+/* ─── Mint — terminal completion ONLY (Resolve, scenario complete) ───
+   Deliberately scarce: if a screen shows two of these, one of them is wrong. */
+.btn--mint {
+  --btn-bg: var(--color-mint);
+  --btn-text: var(--color-on-mint);
+  --btn-border: var(--color-mint);
+}
+
+.btn--mint:hover {
+  filter: brightness(0.95);
 }
 
 /* ─── Sizes ─── */
@@ -160,7 +147,7 @@
 /* ─── States ─── */
 .btn.is-disabled,
 .btn:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   pointer-events: none;
 }
 
@@ -201,14 +188,14 @@
 }
 
 /* ─── Step Type Buttons ─── */
-.btn--step-question  { background: linear-gradient(180deg, oklch(0.52 0.13 var(--hue-question)), oklch(0.48 0.15 var(--hue-question)));  --btn-text: oklch(1 0 0); --btn-border: oklch(0.44 0.15 var(--hue-question)); }
-.btn--step-action    { background: linear-gradient(180deg, oklch(0.52 0.13 var(--hue-action)), oklch(0.48 0.15 var(--hue-action)));    --btn-text: oklch(1 0 0); --btn-border: oklch(0.44 0.15 var(--hue-action)); }
-.btn--step-message   { background: linear-gradient(180deg, oklch(0.52 0.13 var(--hue-message)), oklch(0.48 0.15 var(--hue-message)));   --btn-text: oklch(1 0 0); --btn-border: oklch(0.44 0.15 var(--hue-message)); }
-.btn--step-escalate  { background: linear-gradient(180deg, oklch(0.57 0.17 var(--hue-escalate)), oklch(0.53 0.19 var(--hue-escalate)));  --btn-text: oklch(1 0 0); --btn-border: oklch(0.49 0.19 var(--hue-escalate)); }
-.btn--step-resolve   { background: linear-gradient(180deg, oklch(0.52 0.13 var(--hue-resolve)), oklch(0.48 0.15 var(--hue-resolve)));   --btn-text: oklch(1 0 0); --btn-border: oklch(0.44 0.15 var(--hue-resolve)); }
-.btn--step-subflow   { background: linear-gradient(180deg, oklch(0.52 0.13 var(--hue-subflow)), oklch(0.48 0.15 var(--hue-subflow)));   --btn-text: oklch(1 0 0); --btn-border: oklch(0.44 0.15 var(--hue-subflow)); }
-.btn--step-sub-flow  { background: linear-gradient(180deg, oklch(0.52 0.13 var(--hue-subflow)), oklch(0.48 0.15 var(--hue-subflow)));   --btn-text: oklch(1 0 0); --btn-border: oklch(0.44 0.15 var(--hue-subflow)); }
-.btn--step-form      { background: linear-gradient(180deg, oklch(0.52 0.13 var(--hue-form)), oklch(0.48 0.15 var(--hue-form)));       --btn-text: oklch(1 0 0); --btn-border: oklch(0.44 0.15 var(--hue-form)); }
+.btn--step-question  { --step-hue: var(--hue-question); --btn-bg: var(--step-solid); --btn-text: var(--step-on-solid); --btn-border: var(--step-solid); }
+.btn--step-action    { --step-hue: var(--hue-action); --btn-bg: var(--step-solid); --btn-text: var(--step-on-solid); --btn-border: var(--step-solid); }
+.btn--step-message   { --step-hue: var(--hue-message); --btn-bg: var(--step-solid); --btn-text: var(--step-on-solid); --btn-border: var(--step-solid); }
+.btn--step-escalate  { --step-hue: var(--hue-escalate); --btn-bg: var(--step-solid); --btn-text: var(--step-on-solid); --btn-border: var(--step-solid); }
+.btn--step-resolve   { --step-hue: var(--hue-resolve); --btn-bg: var(--step-solid); --btn-text: var(--step-on-solid); --btn-border: var(--step-solid); }
+.btn--step-subflow   { --step-hue: var(--hue-subflow); --btn-bg: var(--step-solid); --btn-text: var(--step-on-solid); --btn-border: var(--step-solid); }
+.btn--step-sub-flow  { --step-hue: var(--hue-subflow); --btn-bg: var(--step-solid); --btn-text: var(--step-on-solid); --btn-border: var(--step-solid); }
+.btn--step-form      { --step-hue: var(--hue-form); --btn-bg: var(--step-solid); --btn-text: var(--step-on-solid); --btn-border: var(--step-solid); }
 
 /* ─── Button Group ─── */
 .btn-group {
@@ -232,8 +219,3 @@
 }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .btn--primary:hover {
-    transform: none;
-  }
-}

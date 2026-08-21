@@ -89,7 +89,7 @@ h2 { font-size: var(--text-xl); }
 h3 { font-size: var(--text-lg); }
 
 a {
-  color: var(--color-link);
+  color: var(--color-primary-text);
   transition: color 0.1s ease;
 }
 

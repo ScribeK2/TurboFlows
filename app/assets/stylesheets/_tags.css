@@ -5,7 +5,7 @@
     gap: var(--space-1);
     padding: var(--space-1) var(--space-2);
     background: var(--color-primary-soft);
-    color: var(--color-primary);
+    color: var(--color-primary-text);
     border-radius: var(--radius-full);
     font-size: 0.75rem;
     font-weight: 500;
@@ -66,5 +66,5 @@
   }
 
   .tag-suggestion:hover { background: var(--color-canvas-alt); }
-  .tag-suggestion--create { font-style: italic; color: var(--color-primary); }
+  .tag-suggestion--create { font-style: italic; color: var(--color-primary-text); }
 }
