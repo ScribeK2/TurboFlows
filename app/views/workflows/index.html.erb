@@ -98,10 +98,10 @@
           <%= render "workflows/list_toolbar" %>
         </div>
 
-        <div class="card p-8 text-center">
-          <%= icon "document-text", class: "icon icon--xl mx-auto mb-4" %>
-          <h3 class="font-semibold mb-2">No workflows</h3>
-          <p class="text-sm">
+        <div class="empty-state">
+          <%= icon "document-text", class: "empty-state__icon" %>
+          <h3 class="empty-state__title">No workflows</h3>
+          <p class="empty-state__text">
             <% if @search_query.present? %>
               No workflows found matching "<%= @search_query %>"<% if @selected_group %> in <%= @selected_group.name %><% end %>.
             <% elsif @selected_group.present? %>

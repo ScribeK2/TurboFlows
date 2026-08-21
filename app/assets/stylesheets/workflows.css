@@ -2,18 +2,6 @@
 /* workflows.css — Workflow list, detail, editor, and import page styles (HEY Calm + Fizzy Vibrant) */
 
 /* ============================================================================
-   Page Title (shared across wizard steps, workflow pages)
-   ============================================================================ */
-
-.page-title {
-  font-size: var(--text-2xl);
-  font-weight: 700;
-  color: var(--color-ink);
-  letter-spacing: var(--letter-spacing-tight);
-  line-height: var(--line-height-tight);
-}
-
-/* ============================================================================
    Text State Helpers (for wizard progress labels)
    ============================================================================ */
 

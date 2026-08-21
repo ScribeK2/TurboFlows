@@ -98,10 +98,13 @@
 .alert--error,
 .alert--danger  { border-left-color: var(--color-negative); }
 
+/* Info is not an exception, so it does not get a tint — same call as
+   .badge--info reading as plain text. The navy left accent still marks it as a
+   callout. Warning / success / error keep their fills. */
 .alert--info {
-  background: var(--color-primary-soft);
-  border-color: var(--color-primary-soft);
-  color: var(--color-primary-text);
+  background: var(--color-canvas-alt);
+  border-color: var(--color-border);
+  color: var(--color-ink);
   border-left-color: var(--color-primary);
 }
 
