@@ -3,8 +3,12 @@
   <div class="page-header-section">
     <div class="scenario-header">
       <div>
-        <p class="text-xs font-semibold uppercase tracking-widest mb-1">Scenario</p>
+        <%= link_to workflow_path(@workflow), class: "page-back" do %>
+          <%= icon "chevron-left", class: "icon icon--xs" %>
+          Back to <%= @workflow.title %>
+        <% end %>
         <h1 class="page-header-section__title">Scenario Results</h1>
+        <p class="page-header-section__ident"><%= @workflow.title %></p>
         <% if @scenario.complete? && !@scenario.stopped? %>
           <%
             path = flattened_execution_path(@scenario)
@@ -135,9 +139,9 @@
 
   <%# === Tabbed Content === %>
   <div data-controller="tabs" data-tabs-active-value="0">
-    <div class="wf-status-tabs mb-4" role="tablist">
+    <div class="tab-bar mb-4" role="tablist">
       <button type="button"
-              class="wf-status-tabs__tab wf-status-tabs__tab--active"
+              class="tab-bar__tab is-active"
               data-tabs-target="tab"
               data-action="click->tabs#switch"
               role="tab"
@@ -146,7 +150,7 @@
         Execution Path
       </button>
       <button type="button"
-              class="wf-status-tabs__tab"
+              class="tab-bar__tab"
               data-tabs-target="tab"
               data-action="click->tabs#switch"
               role="tab"
@@ -246,7 +250,8 @@
           </div>
         <% else %>
           <div class="empty-state p-4">
-            <p class="empty-state__text">No execution path recorded.</p>
+            <h3 class="empty-state__title">No execution path recorded</h3>
+            <p class="empty-state__text">Steps appear here as the scenario is run.</p>
           </div>
         <% end %>
       </div>
@@ -353,7 +358,8 @@
           </div>
         <% else %>
           <div class="empty-state p-4">
-            <p class="empty-state__text">No results recorded.</p>
+            <h3 class="empty-state__title">No results recorded</h3>
+            <p class="empty-state__text">Answers and resolutions collected during the run will be summarised here.</p>
           </div>
         <% end %>
       </div>
@@ -385,7 +391,7 @@
           Copy Link
         </button>
       </div>
-      <%= link_to new_workflow_scenario_path(@workflow), class: "btn btn--positive flex items-center gap-1.5" do %>
+      <%= link_to new_workflow_scenario_path(@workflow), class: "btn btn--secondary flex items-center gap-1.5" do %>
         <%= icon "arrow-path", class: "icon icon--sm" %>
         Run Again
       <% end %>

@@ -59,6 +59,33 @@
   margin-top: var(--space-1);
 }
 
+/* Small grey identifier under a heavy H1 (reference image 3: "websitename.com"
+   beneath "Hosting"). Quieter than __subtitle, which is prose. */
+.page-header-section__ident {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-ink-muted);
+  margin-top: var(--space-1);
+}
+
+/* Back link above a detail page's title (reference image 3: "< Back to Home"). */
+.page-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-primary-text);
+  text-decoration: none;
+  margin-bottom: var(--space-2);
+}
+
+.page-back:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* Auth-specific layout */
 .auth-page {
   min-height: 100vh;

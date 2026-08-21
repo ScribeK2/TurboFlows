@@ -30,11 +30,11 @@
 
 
 [data-theme="dark"] .flash--notice .flash__body {
-  background: oklch(0.5 0.16 145);
+  background: var(--color-positive);
 }
 
 [data-theme="dark"] .flash--alert .flash__body {
-  background: oklch(0.5 0.18 25);
+  background: var(--color-negative);
 }
 
 .flash__text {
@@ -81,7 +81,7 @@
 
 .toast--warning {
   background: var(--color-warning);
-  color: var(--color-ink);
+  color: var(--color-on-warning);
 }
 
 .toast--error {

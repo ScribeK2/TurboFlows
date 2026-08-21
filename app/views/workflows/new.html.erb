@@ -1,7 +1,7 @@
 <div class="page-content">
   <div class="mb-6">
-    <h1 class="page-title">New Workflow</h1>
-    <p class="text-sm mt-1">Create a new workflow by adding steps below.</p>
+    <h1 class="page-header-section__title">New Workflow</h1>
+    <p class="page-header-section__subtitle">Create a new workflow by adding steps below.</p>
   </div>
 
   <%= form_with model: @workflow, local: true, class: "card" do |form| %>
@@ -42,7 +42,7 @@
           <label class="form-label mb-0">Workflow Steps</label>
           <div class="flex gap-2 flex-wrap">
             <button type="button" data-action="click->workflow-builder#addStep" data-workflow-builder-type-param="question" class="btn btn--secondary btn--sm">Add Question</button>
-            <button type="button" data-action="click->workflow-builder#addStep" data-workflow-builder-type-param="action" class="btn btn--positive btn--sm">Add Action</button>
+            <button type="button" data-action="click->workflow-builder#addStep" data-workflow-builder-type-param="action" class="btn btn--step-action btn--sm">Add Action</button>
             <button type="button" data-action="click->workflow-builder#addStep" data-workflow-builder-type-param="message" class="btn btn--sm btn--step-message">Add Message</button>
             <button type="button" data-action="click->workflow-builder#addStep" data-workflow-builder-type-param="sub_flow" data-step-type="sub_flow" class="btn btn--sm btn--step-subflow">Add Sub-flow</button>
           </div>

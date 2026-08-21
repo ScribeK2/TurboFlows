@@ -1,20 +1,21 @@
 <div class="page-content page-narrow">
-  <div class="flex items-center justify-between mb-6">
-    <div>
-      <h1 class="page-title">
-        Compare: v<%= @version_old.version_number %> &rarr; v<%= @version_new.version_number %>
-      </h1>
-      <p class="text-sm mt-1"><%= @workflow.title %></p>
-    </div>
-    <%= link_to "Back to Versions", workflow_versions_path(@workflow), class: "btn btn--plain" %>
+  <div class="page-header-section">
+    <%= link_to workflow_versions_path(@workflow), class: "page-back" do %>
+      <%= icon "chevron-left", class: "icon icon--xs" %>
+      Back to Versions
+    <% end %>
+    <h1 class="page-header-section__title">
+      Compare: v<%= @version_old.version_number %> &rarr; v<%= @version_new.version_number %>
+    </h1>
+    <p class="page-header-section__ident"><%= @workflow.title %></p>
   </div>
 
   <% has_changes = @diff[:added].any? || @diff[:removed].any? || @diff[:modified].any? || @diff[:metadata_changes].any? %>
 
   <% unless has_changes %>
-    <div class="card p-8 text-center">
-      <p class="font-medium">No differences</p>
-      <p class="text-sm mt-2">These two versions are identical.</p>
+    <div class="empty-state">
+      <h3 class="empty-state__title">No differences</h3>
+      <p class="empty-state__text">These two versions are identical.</p>
     </div>
   <% else %>
     <%# Metadata changes %>

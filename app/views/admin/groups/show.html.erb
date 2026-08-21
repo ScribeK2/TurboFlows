@@ -11,11 +11,11 @@
   </nav>
 
   <!-- Header Section -->
-  <div class="mb-4 flex items-center justify-between">
+  <div class="page-header-section flex items-center justify-between gap-4 flex-wrap">
     <div>
-      <h1><%= @group.name %></h1>
+      <h1 class="page-header-section__title"><%= @group.name %></h1>
       <% if @group.description.present? %>
-        <p class="text-sm mt-1"><%= @group.description %></p>
+        <p class="page-header-section__subtitle"><%= @group.description %></p>
       <% end %>
       <div class="flex items-center gap-4 text-sm mt-2">
         <span>Path: <%= @group.full_path %></span>

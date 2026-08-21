@@ -2,23 +2,11 @@
 /* workflows.css — Workflow list, detail, editor, and import page styles (HEY Calm + Fizzy Vibrant) */
 
 /* ============================================================================
-   Page Title (shared across wizard steps, workflow pages)
-   ============================================================================ */
-
-.page-title {
-  font-size: var(--text-2xl);
-  font-weight: 700;
-  color: var(--color-ink);
-  letter-spacing: var(--letter-spacing-tight);
-  line-height: var(--line-height-tight);
-}
-
-/* ============================================================================
    Text State Helpers (for wizard progress labels)
    ============================================================================ */
 
 .text-active {
-  color: var(--color-primary);
+  color: var(--color-primary-text);
 }
 
 .text-done {
@@ -75,12 +63,12 @@
 .wizard-progress__indicator.is-done {
   border-color: var(--color-positive);
   background: var(--color-positive);
-  color: oklch(1 0 0);
+  color: var(--color-on-positive);
 }
 
 .wizard-progress__indicator.is-done:hover {
-  background: oklch(0.53 0.19 145);
-  border-color: oklch(0.53 0.19 145);
+  background: var(--color-positive);
+  border-color: var(--color-positive);
 }
 
 .wizard-progress__connector {
@@ -184,7 +172,7 @@
 .wf-mode-toggle__btn.is-active {
   background: var(--color-canvas-raised);
   color: var(--color-ink);
-  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border);
 }
 
 [data-theme="dark"] .wf-mode-toggle {
@@ -412,46 +400,71 @@
 }
 
 /* ============================================================================
+   List Toolbar — first row inside the list container (reference image 4:
+   search | segmented status | Filters (n) | Show All | sort)
+   ============================================================================ */
+
+.wf-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* When the toolbar is the container's only child there is nothing to divide. */
+.card > .wf-toolbar:last-child { border-bottom: none; }
+
+.wf-toolbar__search {
+  position: relative;
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.wf-toolbar__search-icon {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: var(--space-3);
+  display: flex;
+  align-items: center;
+  color: var(--color-ink-muted);
+  pointer-events: none;
+}
+
+.wf-toolbar__search-input {
+  padding-inline-start: 2.25rem;
+}
+
+.wf-toolbar__filters {
+  font-size: var(--text-sm);
+  color: var(--color-ink-subtle);
+  white-space: nowrap;
+}
+
+.wf-toolbar__link {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-primary-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+
+.wf-toolbar__sort {
+  width: auto;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .wf-toolbar__search { flex-basis: 100%; }
+}
+
+/* ============================================================================
    Status Filter Tabs (segmented control)
    ============================================================================ */
 
 .status-filter,
-.wf-status-tabs {
-  display: inline-flex;
-  align-items: center;
-  background: var(--color-canvas-alt);
-  border-radius: var(--radius-lg);
-  padding: var(--space-1);
-  border: 1px solid var(--color-border);
-}
-
-.status-filter__tab,
-.wf-status-tabs__tab {
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--color-ink-subtle);
-  text-decoration: none;
-  transition:
-    background var(--duration-fast) var(--ease-out),
-    color var(--duration-fast) var(--ease-out);
-}
-
-.status-filter__tab:hover,
-.wf-status-tabs__tab:hover {
-  color: var(--color-ink);
-  text-decoration: none;
-}
-
-.status-filter__tab.is-active,
-.wf-status-tabs__tab.is-active,
-.wf-status-tabs__tab--active {
-  background: var(--color-canvas-raised);
-  color: var(--color-ink);
-  box-shadow: var(--shadow-sm);
-}
-
 /* ============================================================================
    Workflow List Item (in card)
    ============================================================================ */
@@ -474,12 +487,12 @@
 }
 
 /* Colored left border accent based on dominant step type */
-.wf-list-item--question { border-left-color: oklch(0.55 0.2 var(--color-step-question)); }
-.wf-list-item--action { border-left-color: oklch(0.65 0.18 var(--color-step-action)); }
-.wf-list-item--message { border-left-color: oklch(0.55 0.18 var(--color-step-message)); }
-.wf-list-item--escalate { border-left-color: oklch(0.55 0.22 var(--color-step-escalate)); }
-.wf-list-item--resolve { border-left-color: oklch(0.6 0.19 var(--color-step-resolve)); }
-.wf-list-item--sub_flow { border-left-color: oklch(0.55 0.18 var(--color-step-subflow)); }
+.wf-list-item--question { }
+.wf-list-item--action { }
+.wf-list-item--message { }
+.wf-list-item--escalate { }
+.wf-list-item--resolve { }
+.wf-list-item--sub_flow { }
 .wf-list-item--default { border-left-color: var(--color-border); }
 
 .wf-list-item__body {
@@ -491,8 +504,9 @@
   width: 2.5rem;
   height: 2.5rem;
   border-radius: var(--radius-lg);
-  background: oklch(0.95 0.04 var(--step-hue));
-  color: oklch(0.45 0.16 var(--step-hue));
+  background: var(--color-canvas-alt);
+  border: 1px solid var(--color-border);
+  color: var(--color-ink-subtle);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -500,10 +514,6 @@
   margin-right: var(--space-4);
 }
 
-[data-theme="dark"] .wf-list-item__icon {
-  background: oklch(0.25 0.06 var(--step-hue));
-  color: oklch(0.7 0.12 var(--step-hue));
-}
 
 .wf-list-item__icon-svg {
   width: 1.25rem;
@@ -519,7 +529,7 @@
 }
 
 .wf-list-item__title:hover {
-  color: var(--color-primary);
+  color: var(--color-primary-text);
   text-decoration: none;
 }
 
@@ -568,27 +578,27 @@
 }
 
 .publish-state--draft {
-  background: oklch(0.95 0.05 80);
-  color: oklch(0.45 0.10 80);
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
   border: 1px solid oklch(0.85 0.08 80);
 }
 
 .publish-state--published {
-  background: oklch(0.95 0.05 145);
-  color: oklch(0.40 0.15 145);
+  background: var(--color-positive-soft);
+  color: var(--color-positive);
   border: 1px solid oklch(0.85 0.10 145);
 }
 
 [data-theme="dark"] .publish-state--draft {
-  background: oklch(0.25 0.03 80);
-  color: oklch(0.70 0.08 80);
-  border-color: oklch(0.35 0.04 80);
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  border-color: var(--color-warning);
 }
 
 [data-theme="dark"] .publish-state--published {
-  background: oklch(0.20 0.05 145);
-  color: oklch(0.70 0.14 145);
-  border-color: oklch(0.30 0.08 145);
+  background: var(--color-positive-soft);
+  color: var(--color-positive);
+  border-color: var(--color-positive);
 }
 
 /* ============================================================================
@@ -869,27 +879,39 @@
 }
 
 [data-step-type="question"] .step-card__number {
-  background: oklch(0.55 0.18 var(--color-step-question));
+  --step-hue: var(--hue-question);
+  background: var(--step-solid);
+  color: var(--step-on-solid);
 }
 
 [data-step-type="action"] .step-card__number {
-  background: oklch(0.55 0.18 var(--color-step-action));
+  --step-hue: var(--hue-action);
+  background: var(--step-solid);
+  color: var(--step-on-solid);
 }
 
 [data-step-type="message"] .step-card__number {
-  background: oklch(0.55 0.18 var(--color-step-message));
+  --step-hue: var(--hue-message);
+  background: var(--step-solid);
+  color: var(--step-on-solid);
 }
 
 [data-step-type="escalate"] .step-card__number {
-  background: oklch(0.55 0.18 var(--color-step-escalate));
+  --step-hue: var(--hue-escalate);
+  background: var(--step-solid);
+  color: var(--step-on-solid);
 }
 
 [data-step-type="resolve"] .step-card__number {
-  background: oklch(0.55 0.18 var(--color-step-resolve));
+  --step-hue: var(--hue-resolve);
+  background: var(--step-solid);
+  color: var(--step-on-solid);
 }
 
 [data-step-type="sub_flow"] .step-card__number {
-  background: oklch(0.55 0.18 var(--color-step-subflow));
+  --step-hue: var(--hue-subflow);
+  background: var(--step-solid);
+  color: var(--step-on-solid);
 }
 
 /* ============================================================================
@@ -1306,15 +1328,15 @@
 }
 
 .wf-status-bar__item--ok {
-  color: oklch(0.40 0.15 145);
-  background: oklch(0.95 0.04 145);
-  border-color: oklch(0.85 0.08 145);
+  color: var(--color-positive);
+  background: var(--color-positive-soft);
+  border-color: var(--color-positive);
 }
 
 .wf-status-bar__item--warning {
-  color: oklch(0.45 0.12 80);
-  background: oklch(0.95 0.06 80);
-  border-color: oklch(0.85 0.08 80);
+  color: var(--color-warning);
+  background: var(--color-warning-soft);
+  border-color: var(--color-warning);
 }
 
 .wf-status-bar__sep {
@@ -1323,15 +1345,15 @@
 }
 
 [data-theme="dark"] .wf-status-bar__item--ok {
-  color: oklch(0.75 0.12 145);
-  background: oklch(0.20 0.04 145);
-  border-color: oklch(0.30 0.06 145);
+  color: var(--color-positive);
+  background: var(--color-positive-soft);
+  border-color: var(--color-positive);
 }
 
 [data-theme="dark"] .wf-status-bar__item--warning {
-  color: oklch(0.75 0.10 80);
-  background: oklch(0.25 0.05 80);
-  border-color: oklch(0.35 0.06 80);
+  color: var(--color-warning);
+  background: var(--color-warning-soft);
+  border-color: var(--color-warning);
 }
 
 /* ============================================================================

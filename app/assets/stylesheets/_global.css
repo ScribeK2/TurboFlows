@@ -42,27 +42,46 @@
   --letter-spacing-normal: 0;
   --letter-spacing-wide: 0.025em;
 
-  /* ─── OKLCH Palette — Blue-Tinted Neutrals (Light Mode) ─── */
-  --color-ink:           oklch(0.20 0.02 245);
-  --color-ink-subtle:    oklch(0.40 0.01 245);
-  --color-ink-muted:     oklch(0.60 0.01 245);
-  --color-canvas:        oklch(0.985 0.003 245);
-  --color-canvas-alt:    oklch(0.965 0.007 245);
+  /* ─── OKLCH Palette — Northwest Navy (Light Mode) ─── */
+  /* Values sampled from reference screenshots; see docs plan for provenance. */
+  --color-ink:           oklch(0.153 0.050 279);
+  --color-ink-subtle:    oklch(0.400 0.030 270);
+  --color-ink-muted:     oklch(0.600 0.020 265);
+  --color-canvas:        oklch(0.967 0.005 250);
+  --color-canvas-alt:    oklch(0.953 0.006 250);
   --color-canvas-raised: oklch(1.0 0 0);
-  --color-border:        oklch(0.89 0.015 245);
-  --color-border-strong: oklch(0.78 0.02 245);
+  --color-border:        oklch(0.910 0.008 250);
+  --color-border-strong: oklch(0.820 0.012 250);
 
   /* ─── Accents ─── */
-  --color-primary:       oklch(0.55 0.22 250);
-  --color-primary-hover: oklch(0.48 0.24 250);
-  --color-primary-soft:  oklch(0.93 0.04 250);
-  --color-negative:      oklch(0.55 0.22 25);
-  --color-positive:      oklch(0.60 0.19 145);
-  --color-warning:       oklch(0.70 0.17 80);
-  --color-backdrop:      oklch(0.10 0.01 245 / 0.6);
-  --color-backdrop-light: oklch(0.10 0.01 245 / 0.3);
+  --color-primary:       oklch(0.318 0.109 256);
+  --color-primary-hover: oklch(0.260 0.100 256);
+  --color-primary-soft:  oklch(0.930 0.030 256);
+  --color-primary-muted: oklch(0.510 0.074 255);  /* links, outlined button text */
+  --color-primary-text:  var(--color-primary);    /* split only diverges in dark */
+  --color-on-primary:    oklch(1.0 0 0);
 
-  /* Legacy alias */
+  /* Mint — reserved for terminal completion only (Resolve, scenario complete) */
+  --color-mint:          oklch(0.850 0.085 165);
+  --color-on-mint:       var(--color-ink);
+
+  /* Semantics: two-tier — strong for text/borders, soft for pill fills */
+  /* Text that sits ON a strong semantic fill. White in light; ink in dark,
+     because the dark semantic tokens are LIGHT fills (L 0.80), not dark ones. */
+  --color-on-negative:   oklch(1.0 0 0);
+  --color-on-positive:   oklch(1.0 0 0);
+  --color-on-warning:    oklch(1.0 0 0);
+  --color-negative:      oklch(0.500 0.140 25);
+  --color-negative-soft: oklch(0.884 0.036 18);
+  --color-positive:      oklch(0.450 0.100 165);
+  --color-positive-soft: oklch(0.880 0.050 165);
+  --color-warning:       oklch(0.450 0.100 75);
+  --color-warning-soft:  oklch(0.900 0.050 80);
+
+  --color-backdrop:      oklch(0.10 0.01 250 / 0.6);
+  --color-backdrop-light: oklch(0.10 0.01 250 / 0.3);
+
+  /* Legacy alias — still used for backgrounds/borders, so it tracks primary */
   --color-link: var(--color-primary);
 
   /* ─── Step Type Hues ─── */
@@ -84,23 +103,32 @@
   --color-step-form:     var(--hue-form);
 
   /* ─── Composable Step Colors ─── */
-  --step-bg:     oklch(0.95 0.04 var(--step-hue));
-  --step-border: oklch(0.80 0.10 var(--step-hue));
-  --step-text:   oklch(0.35 0.15 var(--step-hue));
-  --step-dot:    oklch(0.60 0.20 var(--step-hue));
+  /* Stored as SCALARS, not composed colors. A composed token like
+     `--step-bg: oklch(.88 .05 var(--step-hue))` declared on :root resolves
+     against :root's (undefined) --step-hue and inherits as invalid, so
+     descendants that set --step-hue never re-resolve it. That trap is why
+     this codebase previously wrote inline oklch() literals everywhere.
+     Scalars have no var() indirection, so they inherit cleanly; the
+     composition happens per-element in the `*` rule below. */
+  --step-bg-l: 0.88;    --step-bg-c: 0.05;
+  --step-border-l: 0.86; --step-border-c: 0.04;
+  --step-text-l: 0.35;  --step-text-c: 0.10;
+  --step-dot-l: 0.55;   --step-dot-c: 0.12;
+  --step-solid-l: 0.45; --step-solid-c: 0.11;
+  --step-on-solid: oklch(1.0 0 0);
 
   /* ─── Shadows (Dual-Layer) ─── */
-  --shadow-sm: 0 1px 2px oklch(0.25 0.02 245 / 0.05), 0 1px 1px oklch(0.25 0.02 245 / 0.03);
-  --shadow:    0 2px 6px oklch(0.25 0.02 245 / 0.07), 0 1px 2px oklch(0.25 0.02 245 / 0.04);
-  --shadow-lg: 0 4px 16px oklch(0.25 0.02 245 / 0.10), 0 2px 4px oklch(0.25 0.02 245 / 0.05);
-  --shadow-xl: 0 8px 32px oklch(0.25 0.02 245 / 0.12), 0 4px 8px oklch(0.25 0.02 245 / 0.06);
+  --shadow-sm: 0 0 0 0 transparent;   /* flat: cards rely on a 1px hairline border */
+  --shadow:    0 2px 6px oklch(0.25 0.02 250 / 0.07), 0 1px 2px oklch(0.25 0.02 250 / 0.04);
+  --shadow-lg: 0 4px 16px oklch(0.25 0.02 250 / 0.10), 0 2px 4px oklch(0.25 0.02 250 / 0.05);
+  --shadow-xl: 0 8px 32px oklch(0.25 0.02 250 / 0.12), 0 4px 8px oklch(0.25 0.02 250 / 0.06);
 
   /* ─── Borders & Radii ─── */
   --radius-sm:   0.25rem;
-  --radius:      0.5rem;
-  --radius-md:   0.625rem;   /* interactive elements: buttons, inputs */
-  --radius-lg:   0.75rem;
-  --radius-xl:   1rem;
+  --radius:      0.375rem;
+  --radius-md:   0.375rem;   /* interactive elements: buttons, inputs */
+  --radius-lg:   0.5rem;
+  --radius-xl:   0.75rem;
   --radius-full: 9999px;
 
   /* ─── Focus ─── */
@@ -127,26 +155,43 @@
 /* ─── Dark Mode ─── */
 [data-theme="dark"] {
   color-scheme: dark;
-  --color-ink:           oklch(0.92 0.01 245);
-  --color-ink-subtle:    oklch(0.72 0.01 245);
-  --color-ink-muted:     oklch(0.50 0.01 245);
-  --color-canvas:        oklch(0.13 0.015 245);
-  --color-canvas-alt:    oklch(0.16 0.012 245);
-  --color-canvas-raised: oklch(0.19 0.01 245);
-  --color-border:        oklch(0.26 0.015 245);
-  --color-border-strong: oklch(0.35 0.02 245);
-  --color-primary:       oklch(0.70 0.20 250);
-  --color-primary-hover: oklch(0.76 0.18 250);
-  --color-primary-soft:  oklch(0.25 0.06 250);
-  --color-negative:      oklch(0.70 0.18 25);
-  --color-positive:      oklch(0.70 0.16 145);
-  --color-warning:       oklch(0.75 0.15 80);
-  --color-backdrop:      oklch(0.05 0.01 245 / 0.7);
-  --color-backdrop-light: oklch(0.05 0.01 245 / 0.4);
-  --shadow-sm: 0 1px 2px oklch(0.05 0.02 245 / 0.20), 0 1px 1px oklch(0.05 0.02 245 / 0.12);
-  --shadow:    0 2px 6px oklch(0.05 0.02 245 / 0.28), 0 1px 2px oklch(0.05 0.02 245 / 0.16);
-  --shadow-lg: 0 4px 16px oklch(0.05 0.02 245 / 0.40), 0 2px 4px oklch(0.05 0.02 245 / 0.20);
-  --shadow-xl: 0 8px 32px oklch(0.05 0.02 245 / 0.48), 0 4px 8px oklch(0.05 0.02 245 / 0.24);
+  --color-ink:           oklch(0.92 0.010 250);
+  --color-ink-subtle:    oklch(0.72 0.010 250);
+  --color-ink-muted:     oklch(0.50 0.010 250);
+  --color-canvas:        oklch(0.13 0.015 250);
+  --color-canvas-alt:    oklch(0.16 0.012 250);
+  --color-canvas-raised: oklch(0.19 0.010 250);
+  --color-border:        oklch(0.26 0.015 250);
+  --color-border-strong: oklch(0.35 0.020 250);
+  --color-primary:       oklch(0.70 0.140 256);  /* fill, white text  */
+  --color-primary-hover: oklch(0.76 0.130 256);
+  --color-primary-soft:  oklch(0.25 0.060 256);
+  --color-primary-muted: oklch(0.72 0.090 255);
+  --color-primary-text:  oklch(0.78 0.140 256);  /* link on canvas    */
+  --color-on-primary:    oklch(1.0 0 0);
+  --color-mint:          oklch(0.850 0.085 165);
+  --color-on-mint:       oklch(0.13 0.015 250);
+  --color-on-negative:   oklch(0.13 0.015 250);
+  --color-on-positive:   oklch(0.13 0.015 250);
+  --color-on-warning:    oklch(0.13 0.015 250);
+  --color-negative:      oklch(0.80 0.100 25);
+  --color-negative-soft: oklch(0.28 0.060 25);
+  --color-positive:      oklch(0.80 0.100 165);
+  --color-positive-soft: oklch(0.28 0.060 165);
+  --color-warning:       oklch(0.80 0.100 80);
+  --color-warning-soft:  oklch(0.28 0.060 80);
+  --color-backdrop:      oklch(0.05 0.01 250 / 0.7);
+  --color-backdrop-light: oklch(0.05 0.01 250 / 0.4);
+  --step-bg-l: 0.28;    --step-bg-c: 0.06;
+  --step-border-l: 0.34; --step-border-c: 0.06;
+  --step-text-l: 0.80;  --step-text-c: 0.10;
+  --step-dot-l: 0.74;   --step-dot-c: 0.12;
+  --step-solid-l: 0.78; --step-solid-c: 0.12;
+  --step-on-solid: oklch(0.13 0.015 250);
+  --shadow-sm: 0 0 0 0 transparent;
+  --shadow:    0 2px 6px oklch(0.05 0.02 250 / 0.28), 0 1px 2px oklch(0.05 0.02 250 / 0.16);
+  --shadow-lg: 0 4px 16px oklch(0.05 0.02 250 / 0.40), 0 2px 4px oklch(0.05 0.02 250 / 0.20);
+  --shadow-xl: 0 8px 32px oklch(0.05 0.02 250 / 0.48), 0 4px 8px oklch(0.05 0.02 250 / 0.24);
 }
 
 
@@ -154,26 +199,43 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --color-ink:           oklch(0.92 0.01 245);
-    --color-ink-subtle:    oklch(0.72 0.01 245);
-    --color-ink-muted:     oklch(0.50 0.01 245);
-    --color-canvas:        oklch(0.13 0.015 245);
-    --color-canvas-alt:    oklch(0.16 0.012 245);
-    --color-canvas-raised: oklch(0.19 0.01 245);
-    --color-border:        oklch(0.26 0.015 245);
-    --color-border-strong: oklch(0.35 0.02 245);
-    --color-primary:       oklch(0.70 0.20 250);
-    --color-primary-hover: oklch(0.76 0.18 250);
-    --color-primary-soft:  oklch(0.25 0.06 250);
-    --color-negative:      oklch(0.70 0.18 25);
-    --color-positive:      oklch(0.70 0.16 145);
-    --color-warning:       oklch(0.75 0.15 80);
-    --color-backdrop:      oklch(0.05 0.01 245 / 0.7);
-    --color-backdrop-light: oklch(0.05 0.01 245 / 0.4);
-    --shadow-sm: 0 1px 2px oklch(0.05 0.02 245 / 0.20), 0 1px 1px oklch(0.05 0.02 245 / 0.12);
-    --shadow:    0 2px 6px oklch(0.05 0.02 245 / 0.28), 0 1px 2px oklch(0.05 0.02 245 / 0.16);
-    --shadow-lg: 0 4px 16px oklch(0.05 0.02 245 / 0.40), 0 2px 4px oklch(0.05 0.02 245 / 0.20);
-    --shadow-xl: 0 8px 32px oklch(0.05 0.02 245 / 0.48), 0 4px 8px oklch(0.05 0.02 245 / 0.24);
+    --color-ink:           oklch(0.92 0.010 250);
+    --color-ink-subtle:    oklch(0.72 0.010 250);
+    --color-ink-muted:     oklch(0.50 0.010 250);
+    --color-canvas:        oklch(0.13 0.015 250);
+    --color-canvas-alt:    oklch(0.16 0.012 250);
+    --color-canvas-raised: oklch(0.19 0.010 250);
+    --color-border:        oklch(0.26 0.015 250);
+    --color-border-strong: oklch(0.35 0.020 250);
+    --color-primary:       oklch(0.70 0.140 256);  /* fill, white text  */
+    --color-primary-hover: oklch(0.76 0.130 256);
+    --color-primary-soft:  oklch(0.25 0.060 256);
+    --color-primary-muted: oklch(0.72 0.090 255);
+    --color-primary-text:  oklch(0.78 0.140 256);  /* link on canvas    */
+    --color-on-primary:    oklch(1.0 0 0);
+    --color-mint:          oklch(0.850 0.085 165);
+    --color-on-mint:       oklch(0.13 0.015 250);
+    --color-on-negative:   oklch(0.13 0.015 250);
+    --color-on-positive:   oklch(0.13 0.015 250);
+    --color-on-warning:    oklch(0.13 0.015 250);
+    --color-negative:      oklch(0.80 0.100 25);
+    --color-negative-soft: oklch(0.28 0.060 25);
+    --color-positive:      oklch(0.80 0.100 165);
+    --color-positive-soft: oklch(0.28 0.060 165);
+    --color-warning:       oklch(0.80 0.100 80);
+    --color-warning-soft:  oklch(0.28 0.060 80);
+    --color-backdrop:      oklch(0.05 0.01 250 / 0.7);
+    --color-backdrop-light: oklch(0.05 0.01 250 / 0.4);
+    --step-bg-l: 0.28;    --step-bg-c: 0.06;
+    --step-border-l: 0.34; --step-border-c: 0.06;
+    --step-text-l: 0.80;  --step-text-c: 0.10;
+    --step-dot-l: 0.74;   --step-dot-c: 0.12;
+    --step-solid-l: 0.78; --step-solid-c: 0.12;
+    --step-on-solid: oklch(0.13 0.015 250);
+    --shadow-sm: 0 0 0 0 transparent;
+    --shadow:    0 2px 6px oklch(0.05 0.02 250 / 0.28), 0 1px 2px oklch(0.05 0.02 250 / 0.16);
+    --shadow-lg: 0 4px 16px oklch(0.05 0.02 250 / 0.40), 0 2px 4px oklch(0.05 0.02 250 / 0.20);
+    --shadow-xl: 0 8px 32px oklch(0.05 0.02 250 / 0.48), 0 4px 8px oklch(0.05 0.02 250 / 0.24);
   }
 }
 
@@ -181,6 +243,16 @@
   :root:not([data-theme="dark"]) {
     color-scheme: light;
   }
+}
+
+/* Composed per-element so --step-hue set on any element (or inherited from an
+   ancestor) resolves here rather than at :root. Must not move into :root. */
+* {
+  --step-bg:     oklch(var(--step-bg-l) var(--step-bg-c) var(--step-hue, 250));
+  --step-border: oklch(var(--step-border-l) var(--step-border-c) var(--step-hue, 250));
+  --step-text:   oklch(var(--step-text-l) var(--step-text-c) var(--step-hue, 250));
+  --step-dot:    oklch(var(--step-dot-l) var(--step-dot-c) var(--step-hue, 250));
+  --step-solid:  oklch(var(--step-solid-l) var(--step-solid-c) var(--step-hue, 250));
 }
 
 /* ─── Keyboard Shortcut Hints ─── */
@@ -222,14 +294,14 @@ html[data-theme="dark"] {
   --lexxy-color-canvas:       oklch(0.19 0.01 245);
   --lexxy-color-text:         oklch(0.92 0.01 245);
   --lexxy-color-text-subtle:  oklch(0.65 0.01 245);
-  --lexxy-color-accent-dark:  oklch(0.70 0.18 250);
-  --lexxy-color-accent-medium:oklch(0.60 0.16 250);
-  --lexxy-color-accent-light: oklch(0.30 0.06 250);
-  --lexxy-color-accent-lightest: oklch(0.25 0.04 250);
-  --lexxy-color-link:         oklch(0.70 0.18 250);
-  --lexxy-color-selected:     oklch(0.25 0.04 250);
-  --lexxy-color-selected-hover: oklch(0.30 0.06 250);
-  --lexxy-color-selected-dark:oklch(0.60 0.16 250);
+  --lexxy-color-accent-dark:  oklch(0.78 0.14 256);
+  --lexxy-color-accent-medium:oklch(0.70 0.14 256);
+  --lexxy-color-accent-light: oklch(0.30 0.06 256);
+  --lexxy-color-accent-lightest: oklch(0.25 0.04 256);
+  --lexxy-color-link:         oklch(0.78 0.14 256);
+  --lexxy-color-selected:     oklch(0.25 0.04 256);
+  --lexxy-color-selected-hover: oklch(0.30 0.06 256);
+  --lexxy-color-selected-dark:oklch(0.70 0.14 256);
   --lexxy-color-code-bg:      oklch(0.16 0.012 245);
   --lexxy-color-table-header-bg: oklch(0.22 0.01 245);
   --lexxy-color-table-cell-border: oklch(0.30 0.015 245);
@@ -247,14 +319,14 @@ html[data-theme="dark"] {
     --lexxy-color-canvas:       oklch(0.19 0.01 245);
     --lexxy-color-text:         oklch(0.92 0.01 245);
     --lexxy-color-text-subtle:  oklch(0.65 0.01 245);
-    --lexxy-color-accent-dark:  oklch(0.70 0.18 250);
-    --lexxy-color-accent-medium:oklch(0.60 0.16 250);
-    --lexxy-color-accent-light: oklch(0.30 0.06 250);
-    --lexxy-color-accent-lightest: oklch(0.25 0.04 250);
-    --lexxy-color-link:         oklch(0.70 0.18 250);
-    --lexxy-color-selected:     oklch(0.25 0.04 250);
-    --lexxy-color-selected-hover: oklch(0.30 0.06 250);
-    --lexxy-color-selected-dark:oklch(0.60 0.16 250);
+    --lexxy-color-accent-dark:  oklch(0.78 0.14 256);
+    --lexxy-color-accent-medium:oklch(0.70 0.14 256);
+    --lexxy-color-accent-light: oklch(0.30 0.06 256);
+    --lexxy-color-accent-lightest: oklch(0.25 0.04 256);
+    --lexxy-color-link:         oklch(0.78 0.14 256);
+    --lexxy-color-selected:     oklch(0.25 0.04 256);
+    --lexxy-color-selected-hover: oklch(0.30 0.06 256);
+    --lexxy-color-selected-dark:oklch(0.70 0.14 256);
     --lexxy-color-code-bg:      oklch(0.16 0.012 245);
     --lexxy-color-table-header-bg: oklch(0.22 0.01 245);
     --lexxy-color-table-cell-border: oklch(0.30 0.015 245);

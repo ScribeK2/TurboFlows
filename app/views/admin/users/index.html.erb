@@ -1,9 +1,9 @@
 <div class="page-content" data-controller="admin-users" data-admin-users-total-count-value="<%= @total_count %>">
   <!-- Header Section -->
-  <div class="mb-4 flex items-center justify-between">
+  <div class="page-header-section flex items-center justify-between gap-4 flex-wrap">
     <div>
-      <h1>User Management</h1>
-      <p class="text-sm mt-1">
+      <h1 class="page-header-section__title">User Management</h1>
+      <p class="page-header-section__subtitle">
         Manage user roles, permissions, and group assignments across the system.
       </p>
     </div>
@@ -295,7 +295,7 @@
       </button>
       <button type="button"
               data-action="click->admin-users#closeResetModal"
-              class="btn btn--positive flex items-center gap-2">
+              class="btn btn--primary flex items-center gap-2">
         <%= icon "check", class: "icon icon--sm" %>
         Done
       </button>

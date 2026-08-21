@@ -1,8 +1,8 @@
 <div class="page-content">
-  <div class="mb-4 flex items-center justify-between">
+  <div class="page-header-section flex items-center justify-between gap-4 flex-wrap">
     <div>
-      <h1>Folders in <%= @group.name %></h1>
-      <p class="text-sm mt-1">Organize workflows into folders within this group.</p>
+      <h1 class="page-header-section__title">Folders in <%= @group.name %></h1>
+      <p class="page-header-section__subtitle">Organize workflows into folders within this group.</p>
     </div>
     <div class="flex gap-2">
       <%= link_to admin_groups_path, class: "btn btn--secondary" do %>
@@ -33,7 +33,7 @@
               <%= link_to edit_admin_group_folder_path(@group, folder), class: "btn btn--sm btn--secondary" do %>
                 Edit
               <% end %>
-              <%= link_to admin_group_folder_path(@group, folder), data: { turbo_method: :delete, turbo_confirm: "Delete folder '#{folder.name}'? Workflows will be moved to Uncategorized." }, class: "btn btn--sm btn--negative" do %>
+              <%= link_to admin_group_folder_path(@group, folder), data: { turbo_method: :delete, turbo_confirm: "Delete folder '#{folder.name}'? Workflows will be moved to Uncategorized." }, class: "btn btn--sm btn--plain" do %>
                 Delete
               <% end %>
             </div>
@@ -43,7 +43,8 @@
     </div>
   <% else %>
     <div class="empty-state">
-      <p class="empty-state__text">No folders yet. Create one to start organizing workflows.</p>
+      <h3 class="empty-state__title">No folders yet</h3>
+      <p class="empty-state__text">Folders you create appear here, and workflows can be filed into them.</p>
     </div>
   <% end %>
 </div>

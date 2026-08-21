@@ -3,7 +3,7 @@
   <div class="admin-page-header">
     <div class="admin-page-header__body">
       <div class="admin-page-header__title-row">
-        <h1><%= @workflow.title %></h1>
+        <h1 class="page-header-section__title"><%= @workflow.title %></h1>
         <% if @workflow.is_public? %>
           <span class="badge badge--published">Public</span>
         <% end %>
@@ -48,7 +48,7 @@
                     <span class="badge ml-3"><%= step.step_type %></span>
                   </div>
                   <% if step.is_a?(Steps::Question) && step.question.present? %>
-                    <p class="text-sm mt-1">Q: <%= step.question %></p>
+                    <p class="page-header-section__subtitle">Q: <%= step.question %></p>
                   <% end %>
                   <% if step.is_a?(Steps::Action) && step.instructions.present? %>
                     <div class="mt-2 text-sm">

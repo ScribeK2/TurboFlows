@@ -1,49 +1,30 @@
-<div class="stat-grid mb-4">
-  <%# Total Runs %>
-  <div class="stat-card">
-    <div class="flex items-center justify-between">
-      <div>
-        <p class="stat-card__value"><%= number_with_delimiter(@total_runs) %></p>
-        <p class="stat-card__label">Total Runs</p>
-      </div>
-      <%= icon "arrow-trending-up", class: "icon icon--xl" %>
+<%# One bordered panel, hairline-divided cells (reference image 3).
+    No decorative icons: the reference stat card is label + value only. %>
+<div class="stat-panel">
+  <div class="stat-panel__grid">
+    <div class="stat-cell">
+      <span class="stat-cell__label">Total Runs</span>
+      <p class="stat-cell__value"><%= number_with_delimiter(@total_runs) %></p>
     </div>
-  </div>
 
-  <%# Completion Rate %>
-  <div class="stat-card">
-    <div class="flex items-center justify-between">
-      <div>
-        <p class="stat-card__value"><%= @completion_rate %>%</p>
-        <p class="stat-card__label">Completion Rate</p>
+    <div class="stat-cell">
+      <span class="stat-cell__label">Completion Rate</span>
+      <p class="stat-cell__value"><%= @completion_rate %>%</p>
+      <div class="stat-cell__bar" aria-hidden="true">
+        <span style="width: <%= @completion_rate %>%"></span>
       </div>
-      <%= icon "check-circle", class: "icon icon--xl" %>
     </div>
-  </div>
 
-  <%# Avg Duration %>
-  <div class="stat-card">
-    <div class="flex items-center justify-between">
-      <div>
-        <% minutes = @avg_duration / 60 %>
-        <% seconds = @avg_duration % 60 %>
-        <p class="stat-card__value">
-          <%= minutes > 0 ? "#{minutes}m #{seconds}s" : "#{seconds}s" %>
-        </p>
-        <p class="stat-card__label">Avg Duration</p>
-      </div>
-      <%= icon "clock", class: "icon icon--xl" %>
+    <div class="stat-cell">
+      <span class="stat-cell__label">Avg Duration</span>
+      <% minutes = @avg_duration / 60 %>
+      <% seconds = @avg_duration % 60 %>
+      <p class="stat-cell__value"><%= minutes.positive? ? "#{minutes}m #{seconds}s" : "#{seconds}s" %></p>
     </div>
-  </div>
 
-  <%# Escalation Rate %>
-  <div class="stat-card">
-    <div class="flex items-center justify-between">
-      <div>
-        <p class="stat-card__value"><%= @escalation_rate %>%</p>
-        <p class="stat-card__label">Escalation Rate</p>
-      </div>
-      <%= icon "exclamation-triangle", class: "icon icon--xl" %>
+    <div class="stat-cell">
+      <span class="stat-cell__label">Escalation Rate</span>
+      <p class="stat-cell__value"><%= @escalation_rate %>%</p>
     </div>
   </div>
 </div>

@@ -1,5 +1,8 @@
 @layer components {
-/* tables.css — Table components */
+/* tables.css — Data tables (reference image 4).
+   Anatomy: a bordered container holds an optional toolbar row, the table, and
+   an optional footer holding pagination. Hairlines separate rows; nothing
+   floats. Status cells read as plain text — a pill means "look here". */
 
 .table {
   width: 100%;
@@ -9,40 +12,117 @@
 
 .table th {
   text-align: left;
-  padding: 0.75rem 1rem;
+  padding: var(--space-3) var(--space-4);
   background: var(--color-canvas-raised);
-  border-bottom: 2px solid var(--color-border);
+  /* Hairline, not a 2px rule: the header is not a heavier object than a row. */
+  border-bottom: 1px solid var(--color-border);
   font-weight: 600;
   font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
   color: var(--color-ink-subtle);
+  white-space: nowrap;
 }
 
 .table td {
-  padding: 0.75rem 1rem;
+  padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--color-border);
   vertical-align: middle;
+  color: var(--color-ink);
 }
 
-.table tr:hover td {
-  background: var(--color-canvas-raised);
+/* canvas-raised is the container's own background, so hovering to it was
+   invisible. Rows tint toward canvas-alt instead. */
+.table tbody tr:hover td {
+  background: var(--color-canvas-alt);
 }
 
 .table tr:last-child td {
   border-bottom: none;
 }
 
-/* Responsive table wrapper */
+/* Numbers align on the decimal and never reflow as they change. */
+.table__numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Sortable header: label plus a low-contrast affordance that darkens on hover
+   and when the column is the active sort. */
+.table__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.table__sort:hover {
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+.table__sort::after {
+  content: "⇅";
+  font-size: 0.75em;
+  opacity: 0.4;
+}
+
+.table__sort.is-sorted-asc::after  { content: "↑"; opacity: 1; }
+.table__sort.is-sorted-desc::after { content: "↓"; opacity: 1; }
+.table__sort.is-sorted-asc,
+.table__sort.is-sorted-desc { color: var(--color-primary-text); }
+
+/* An advisory row injected between data rows (image 4's promo strip). */
+.table__row--notice td {
+  background: var(--color-canvas-alt);
+  color: var(--color-ink-subtle);
+  font-size: var(--text-xs);
+}
+
+/* Footer strip inside the container, for pagination and result counts. */
+.table__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.table__footer .pagination {
+  margin-top: 0;
+}
+
+.table__count {
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Responsive wrapper — the bordered container itself. */
 .table-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  background: var(--color-canvas-raised);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
 }
 
+/* When the wrapper sits inside a .card, the card already draws the border. */
+.card > .table-wrap {
+  border: none;
+  border-radius: 0;
+  background: none;
+}
+
 .table-wrap .table th:first-child,
 .table-wrap .table td:first-child {
-  padding-left: 1.25rem;
+  padding-inline-start: var(--space-5);
+}
+
+.table-wrap .table th:last-child,
+.table-wrap .table td:last-child {
+  padding-inline-end: var(--space-5);
 }
 }

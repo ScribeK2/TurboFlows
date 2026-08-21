@@ -3,12 +3,13 @@
     <%# Date Range %>
     <div>
       <label class="form-label text-xs uppercase tracking-wider mb-2">Date Range</label>
-      <div class="inline-flex rounded border overflow-hidden">
+      <div class="wf-status-tabs" role="group" aria-label="Date range">
         <% current_range = params[:range] || "30d" %>
         <% %w[7d 30d 90d all].each do |range| %>
           <% active = current_range == range %>
           <button type="button"
-                  class="btn btn--sm <%= active ? 'btn--primary' : 'btn--plain' %>"
+                  class="wf-status-tabs__tab <%= "is-active" if active %>"
+                  aria-pressed="<%= active %>"
                   data-action="click->analytics-filters#selectRange"
                   data-value="<%= range %>">
             <%= range == "all" ? "All" : range %>
@@ -20,12 +21,13 @@
     <%# Purpose %>
     <div>
       <label class="form-label text-xs uppercase tracking-wider mb-2">Purpose</label>
-      <div class="inline-flex rounded border overflow-hidden">
+      <div class="wf-status-tabs" role="group" aria-label="Purpose">
         <% current_purpose = params[:purpose] || "all" %>
         <% %w[all simulation live].each do |purpose| %>
           <% active = current_purpose == purpose %>
           <button type="button"
-                  class="btn btn--sm <%= active ? 'btn--primary' : 'btn--plain' %>"
+                  class="wf-status-tabs__tab <%= "is-active" if active %>"
+                  aria-pressed="<%= active %>"
                   data-action="click->analytics-filters#selectPurpose"
                   data-value="<%= purpose %>">
             <%= purpose.capitalize %>

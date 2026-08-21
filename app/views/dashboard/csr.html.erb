@@ -1,44 +1,49 @@
 <div class="dashboard-layout">
   <%= render "dashboard/header" %>
 
-  <%# -- Quick Launcher (pinned workflows hero) -- %>
+  <%# -- Quick Launcher (pinned workflows) -- %>
   <%= render "dashboard/pinned_workflows", dashboard: @dashboard %>
-
-  <hr class="dashboard-divider">
 
   <%# -- Two-Column Content -- %>
   <div class="dashboard-grid">
     <%# Left: Recently Run %>
-    <div class="recent-section animate-fade-in-up" style="animation-delay: 0.1s;">
-      <div class="recent-section__header">
-        <div>
-          <h2 class="recent-section__title">Recently Run</h2>
-          <p class="recent-section__subtitle">Workflows you've run, most recent first</p>
-        </div>
-      </div>
-      <div class="wf-list">
+    <section class="dash-section animate-fade-in-up" style="animation-delay: 0.1s;">
+      <div class="dash-section__head">
+        <h2 class="dash-section__title">Recently Run</h2>
         <% if @dashboard.recently_run_workflows.any? %>
-          <% @dashboard.recently_run_workflows.each_with_index do |scenario, index| %>
+          <span class="dash-section__count"><%= @dashboard.recently_run_workflows.size %></span>
+        <% end %>
+        <%= link_to "View all", workflows_path, class: "dash-section__link" %>
+      </div>
+
+      <div class="dash-section__body">
+        <% if @dashboard.recently_run_workflows.any? %>
+          <% @dashboard.recently_run_workflows.each do |scenario| %>
             <% workflow = scenario.workflow %>
-            <div class="wf-list-item animate-fade-in-up" style="animation-delay: <%= 0.15 + (index * 0.05) %>s;">
-              <div class="wf-list-item__info">
-                <div class="wf-list-item__title">
+            <div class="dash-row">
+              <span class="dash-row__icon" aria-hidden="true">
+                <%= icon "play", class: "icon icon--sm" %>
+              </span>
+              <div class="dash-row__body">
+                <div class="dash-row__title">
                   <%= link_to workflow.title, workflow_path(workflow), aria: { label: "View workflow: #{workflow.title}" } %>
                 </div>
-                <div class="wf-list-item__meta">
-                  <%= scenario.status.titleize %> · last run <%= time_ago_in_words(scenario.created_at) %> ago
-                </div>
+                <p class="dash-row__sub">
+                  <%= scenario.status.titleize %> &middot; last run <%= time_ago_in_words(scenario.created_at) %> ago
+                </p>
                 <% if workflow.tags.any? %>
-                  <div class="wf-list-item__tags flex flex-wrap gap-1 mt-0\.5">
+                  <div class="dash-row__tags flex flex-wrap gap-1">
                     <% workflow.tags.each do |tag| %>
                       <span class="tag-pill"><%= tag.name %></span>
                     <% end %>
                   </div>
                 <% end %>
               </div>
-              <div class="wf-list-item__actions">
-                <%= render "workflows/pin_button", workflow: workflow, pinned: @dashboard.pinned_workflow_ids.include?(workflow.id), location: "recent" %>
-                <%= button_to play_workflow_path(workflow), method: :post, class: "btn btn--positive btn--sm", aria: { label: "Re-run #{workflow.title}" } do %>
+              <div class="dash-row__actions">
+                <%= render "workflows/pin_button", workflow: workflow,
+                      pinned: @dashboard.pinned_workflow_ids.include?(workflow.id), location: "recent" %>
+                <%= button_to play_workflow_path(workflow), method: :post,
+                      class: "btn btn--secondary btn--sm", aria: { label: "Re-run #{workflow.title}" } do %>
                   <%= icon "play", class: "icon icon--xs" %>
                   Re-run
                 <% end %>
@@ -50,55 +55,26 @@
             <div class="dashboard-empty__icon">
               <%= icon "play", class: "icon icon--xl" %>
             </div>
-            <p class="dashboard-empty__text">Start a workflow to see it here</p>
+            <h3 class="dashboard-empty__title">Nothing run yet</h3>
+            <p class="dashboard-empty__text">Workflows you run will be listed here so you can pick them back up fast.</p>
           </div>
         <% end %>
       </div>
-    </div>
+    </section>
 
     <%# Right: Recent Activity %>
-    <div class="recent-section animate-fade-in-up" style="animation-delay: 0.15s;">
-      <div class="recent-section__header">
-        <div>
-          <h2 class="recent-section__title">Recent Activity</h2>
-          <p class="recent-section__subtitle">Your latest scenarios</p>
-        </div>
-      </div>
-      <div class="activity-feed">
+    <section class="dash-section animate-fade-in-up" style="animation-delay: 0.15s;">
+      <div class="dash-section__head">
+        <h2 class="dash-section__title">Recent Activity</h2>
         <% if @dashboard.recent_scenarios.any? %>
-          <% @dashboard.recent_scenarios.each do |scenario| %>
-            <% workflow = scenario.workflow %>
-            <% if workflow %>
-              <%= link_to scenario_path(scenario), class: "activity-feed__item", aria: { label: "View scenario for #{workflow.title}" } do %>
-                <div class="activity-feed__dot activity-feed__dot--<%= scenario.status %>" aria-hidden="true"></div>
-                <div class="activity-feed__body">
-                  <p class="font-medium truncate"><%= workflow.title %></p>
-                  <p class="activity-feed__meta">
-                    <%= scenario.status.capitalize %> &middot; <%= time_ago_in_words(scenario.created_at) %> ago
-                  </p>
-                </div>
-              <% end %>
-            <% else %>
-              <div class="activity-feed__item">
-                <div class="activity-feed__dot" aria-hidden="true"></div>
-                <div class="activity-feed__body">
-                  <p class="text-sm italic truncate text-muted">Deleted workflow</p>
-                  <p class="activity-feed__meta">
-                    <%= scenario.status.capitalize %> &middot; <%= time_ago_in_words(scenario.created_at) %> ago
-                  </p>
-                </div>
-              </div>
-            <% end %>
-          <% end %>
-        <% else %>
-          <div class="dashboard-empty">
-            <div class="dashboard-empty__icon">
-              <%= icon "play", class: "icon icon--xl" %>
-            </div>
-            <p class="dashboard-empty__text">Start a workflow to see your activity here</p>
-          </div>
+          <span class="dash-section__count"><%= @dashboard.recent_scenarios.size %></span>
         <% end %>
       </div>
-    </div>
+
+      <div class="dash-section__body">
+        <%= render "dashboard/activity_feed", scenarios: @dashboard.recent_scenarios,
+              empty_text: "Scenarios you run will show up here as they happen." %>
+      </div>
+    </section>
   </div>
 </div>

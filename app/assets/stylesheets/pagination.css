@@ -27,13 +27,27 @@
 }
 
 .pagination__item.is-active {
-  background: var(--color-link);
-  color: oklch(1 0 0);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
   font-weight: 600;
 }
 
 .pagination__item.is-disabled {
   opacity: 0.4;
   pointer-events: none;
+}
+
+.pagination {
+  justify-content: center;
+  margin-top: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.pagination__summary {
+  margin-inline-start: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 }
