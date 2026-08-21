@@ -101,7 +101,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
   test "CSR dashboard does not render the old stat cards" do
     get root_path
     assert_response :success
-    assert_select ".stat-grid", count: 0
+    assert_select ".stat-panel", count: 0
     assert_select "[aria-label*='Total runs']", count: 0
     assert_select "[aria-label*='Most used flow']", count: 0
   end

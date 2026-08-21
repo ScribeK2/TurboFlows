@@ -51,7 +51,7 @@ module Admin
       sign_in @admin
       get admin_analytics_path
 
-      assert_select ".stat-card", minimum: 4
+      assert_select ".stat-cell", minimum: 4
     end
 
     test "analytics page filters by date range" do
