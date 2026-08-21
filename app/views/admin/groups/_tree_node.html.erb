@@ -47,7 +47,7 @@
                     turbo_method: :delete,
                     turbo_confirm: "Are you sure you want to delete the group '#{group.name}'? This action cannot be undone.#{group.children.any? ? ' Note: This group has subgroups that must be deleted or reassigned first.' : ''}#{group.workflows.any? ? ' Note: This group contains workflows that must be reassigned first.' : ''}"
                   },
-                  class: "btn btn--sm btn--negative",
+                  class: "btn btn--sm btn--plain",
                   title: "Delete group" do %>
         <%= icon "trash", class: "icon icon--sm" %>
       <% end %>

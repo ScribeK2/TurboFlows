@@ -4,7 +4,7 @@
     <div class="card__header">
       <div>
         <h3>Drop-off Points</h3>
-        <p class="text-sm mt-1">Steps where scenarios were abandoned most frequently.</p>
+        <p class="empty-state__text">Steps where scenarios were abandoned most frequently.</p>
       </div>
     </div>
     <% if @dropoff_points.any? %>
@@ -32,8 +32,8 @@
       </div>
     <% else %>
       <div class="empty-state p-4">
-        <p class="empty-state__text">No drop-off data for this period</p>
-        <p class="text-sm mt-1">Abandoned scenarios will show which steps agents leave most often.</p>
+        <h3 class="empty-state__title">No drop-off data for this period</h3>
+        <p class="empty-state__text">Abandoned scenarios will show which steps agents leave most often.</p>
       </div>
     <% end %>
   </div>
@@ -43,7 +43,7 @@
     <div class="card__header flex items-center justify-between">
       <div>
         <h3>Busiest Hours</h3>
-        <p class="text-sm mt-1">Scenario runs grouped by hour of day.</p>
+        <p class="empty-state__text">Scenario runs grouped by hour of day.</p>
       </div>
       <span class="badge">
         Times in <%= Time.zone.name %>
@@ -82,8 +82,8 @@
       </div>
     <% else %>
       <div class="empty-state p-4">
-        <p class="empty-state__text">No hourly data for this period</p>
-        <p class="text-sm mt-1">Run scenarios to see peak activity hours.</p>
+        <h3 class="empty-state__title">No hourly data for this period</h3>
+        <p class="empty-state__text">Run scenarios to see peak activity hours.</p>
       </div>
     <% end %>
   </div>

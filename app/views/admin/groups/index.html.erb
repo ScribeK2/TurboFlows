@@ -1,9 +1,9 @@
 <div class="page-content">
   <!-- Header Section -->
-  <div class="mb-4 flex items-center justify-between">
+  <div class="page-header-section flex items-center justify-between gap-4 flex-wrap">
     <div>
-      <h1>Group Management</h1>
-      <p class="text-sm mt-1">
+      <h1 class="page-header-section__title">Group Management</h1>
+      <p class="page-header-section__subtitle">
         Organize workflows into hierarchical groups and subgroups.
       </p>
     </div>
@@ -22,9 +22,6 @@
   <!-- Groups Tree -->
   <% if @groups.any? %>
     <div class="card">
-      <div class="card__header">
-        <h2>Groups</h2>
-      </div>
       <div class="card__body">
         <ul class="group-tree" data-controller="group-tree">
           <% @groups.each do |group| %>
