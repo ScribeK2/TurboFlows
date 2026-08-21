@@ -26,11 +26,11 @@
   <%# Tabs %>
   <% active_tab = (params[:tab] || "0").to_i %>
   <div class="mt-6" data-controller="tabs" data-tabs-active-value="<%= active_tab %>">
-    <div class="wf-status-tabs mb-4">
+    <div class="tab-bar mb-4" role="tablist">
       <% %w[Overview Workflows Agents Operations Step\ Performance].each_with_index do |label, i| %>
         <% is_active = i == active_tab %>
-        <button data-tabs-target="tab" data-action="click->tabs#switch"
-                class="wf-status-tabs__tab <%= 'wf-status-tabs__tab--active' if is_active %>"
+        <button data-tabs-target="tab" data-action="click->tabs#switch" role="tab"
+                class="tab-bar__tab <%= "is-active" if is_active %>"
                 aria-selected="<%= is_active %>">
           <%= label %>
         </button>
