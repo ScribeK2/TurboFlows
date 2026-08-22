@@ -23,12 +23,19 @@
     </div>
   </div>
 
-  <%# Add Step Button (edit mode only) — outside scroll area so popover isn't clipped %>
+  <%# Add Step (edit mode only) — outside the scroll area so the popover is not
+      clipped. A trailing row that invites an action, per .list-row--prompt. %>
   <div class="builder__list-add-wrapper builder__edit-only">
-    <div class="builder__list-add"
-         data-action="click->step-list#toggleTypePicker">
-      + Add Step
-    </div>
+    <button type="button"
+            class="list-row list-row--compact list-row--prompt builder__list-add"
+            data-action="click->step-list#toggleTypePicker">
+      <span class="list-row__icon" aria-hidden="true">
+        <%= icon "plus", class: "icon icon--sm" %>
+      </span>
+      <span class="list-row__body">
+        <span class="list-row__title">Add a step</span>
+      </span>
+    </button>
     <%= render "workflows/type_picker", workflow: workflow %>
   </div>
 </div>

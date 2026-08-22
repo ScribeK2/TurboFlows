@@ -42,15 +42,18 @@
         <span class="badge badge--warning">No connections</span>
       <% end %>
     </div>
-
-    <p class="list-row__sub">
-      <% parts = [] %>
-      <% parts << "Start" if step == workflow.start_step %>
-      <% parts << "Terminal" if step.terminal? %>
-      <% parts << "→ #{targets.map { |t| "Step #{t.position}" }.join(", ")}" if targets.any? %>
-      <%= parts.join(" · ").presence || type_label %>
-    </p>
   </div>
+
+  <%# Status and outgoing connections sit inline rather than on a second line:
+      a step list is scanned vertically, and a two-line row costs about a third
+      of the steps visible at once. Mirrors how .list-row__progress sits inline. %>
+  <span class="builder__step-meta">
+    <% parts = [] %>
+    <% parts << "Start" if step == workflow.start_step %>
+    <% parts << "Terminal" if step.terminal? %>
+    <% parts << "→ #{targets.map { |t| "Step #{t.position}" }.join(", ")}" if targets.any? %>
+    <%= parts.join(" · ") %>
+  </span>
 
   <%# Warning Icon (populated by step_warnings_controller.js) %>
   <span class="step-warning-icon" data-step-warnings-target="icon" data-step-uuid="<%= step.uuid %>" hidden></span>

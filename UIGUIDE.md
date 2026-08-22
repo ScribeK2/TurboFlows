@@ -630,7 +630,7 @@ For page types not covered by a recipe, read these exemplary views. They demonst
 | `app/views/workflows/index.html.erb` | Index/list with sidebar | Two-column layout, search, filters, pagination, empty state |
 | `app/views/player/step.html.erb` | Step execution | Card-based UI, form variations, button bars, progress stepper |
 | `app/views/workflows/_builder.html.erb` | Builder/editor | Header with inline edit, panel system, toolbar, Stimulus wiring. Its chrome now follows this guide; the editing internals it opens into are still excluded (see §Surfaces Deliberately Excluded) |
-| `app/views/workflows/_step_row.html.erb` | Dense list row | Composing `.list-row` + `.list-row--compact` with block-specific concerns, rather than redefining a row |
+| `app/views/workflows/_step_row.html.erb` | Dense list row | Composing `.list-row` + `.list-row--compact` with block-specific concerns, rather than redefining a row. Status/meta sits inline, not on a second line — a scanned list pays for two-line rows in steps visible at once |
 
 ---
 

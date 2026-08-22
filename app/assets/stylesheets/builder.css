@@ -1,9 +1,15 @@
 @layer components {
   /* ===== Builder Shell ===== */
+  /* The builder is a fixed-height app shell, not a document: the step list and
+     the panel scroll independently inside it. That needs a real height (a
+     min-height lets children grow instead of overflowing) and min-height:0 on
+     every flex ancestor of a scroll area, or the scroll never engages.
+     8rem is the nav plus .page-main's padding above and below. */
   .builder {
     display: flex;
     flex-direction: column;
-    min-height: calc(100vh - 5rem);
+    height: calc(100vh - 8rem);
+    height: calc(100dvh - 8rem);
   }
 
   .builder__header {
@@ -135,6 +141,7 @@
   .builder__main {
     display: flex;
     flex: 1;
+    min-height: 0;
   }
 
   /* ===== Step List ===== */
@@ -142,6 +149,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
+    min-height: 0;
     padding: var(--space-3) var(--space-4);
     gap: var(--space-2);
     transition: flex-basis var(--duration-normal) var(--ease-out);
@@ -149,6 +157,8 @@
   }
 
   .builder__list-scroll {
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -164,8 +174,12 @@
      live here. Keep these rules to properties .list-row does not set, so the
      two never fight - both are in the components layer, where source order
      decides. */
-  /* One bordered container of hairline-divided rows, not a stack of cards. */
+  /* One bordered container of hairline-divided rows, not a stack of cards.
+     flex-shrink:0 matters: as a column-flex child of the scroll area it would
+     otherwise compress to the available height instead of overflowing it, and
+     the list would silently never scroll. */
   #steps-list {
+    flex-shrink: 0;
     background: var(--color-canvas-raised);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
@@ -184,6 +198,14 @@
     /* Room for the 3px selection accent, so selecting does not shift text. */
     border-left: 3px solid transparent;
     padding-left: calc(var(--space-4) - 3px);
+  }
+
+  .builder__step-meta {
+    flex-shrink: 0;
+    font-size: var(--text-xs);
+    color: var(--color-ink-muted);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
   }
 
   .builder__step:not(:last-child) {
@@ -298,47 +320,47 @@
     opacity: 1;
   }
 
-  /* ===== Add Step ===== */
+  /* ===== Add Step =====
+     A trailing prompt row in the same container as the steps, rather than a
+     dashed box floating below it. Anatomy comes from .list-row--prompt; only
+     the button reset and the container seam live here. */
   .builder__list-add-wrapper {
     position: relative;
     flex-shrink: 0;
-  }
-
-  .builder__list-add {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-2) var(--space-3);
-    border: 1px dashed var(--color-border);
-    border-radius: var(--radius);
-    color: var(--color-primary-text);
-    font-size: var(--text-sm);
-    cursor: pointer;
-    transition: border-color var(--duration-fast) var(--ease-out),
-                background var(--duration-fast) var(--ease-out);
-  }
-
-  .builder__list-add:hover {
-    border-color: var(--color-primary);
-    background: var(--color-primary-soft);
-  }
-
-  /* ===== Type Picker Popover ===== */
-  .builder__type-picker {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    margin-top: var(--space-2);
     background: var(--color-canvas-raised);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-lg);
-    padding: var(--space-2);
+    overflow: visible;
+  }
+
+  .builder__list-add {
+    width: 100%;
+    border: none;
+    background: none;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+    border-radius: var(--radius-lg);
+  }
+
+  .builder__list-add:hover {
+    background: var(--color-canvas-alt);
+  }
+
+  /* ===== Type Picker Popover =====
+     .dropdown__menu supplies the surface; only geometry is overridden, since
+     this one spans the trigger rather than hanging off its right edge. */
+  .builder__type-picker {
+    /* Add Step is pinned to the bottom of a fixed-height shell, so the picker
+       opens upward - downward would put it below the fold every time. */
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    width: auto;
+    margin-bottom: var(--space-2);
+    padding: var(--space-1);
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
-    z-index: var(--z-dropdown);
     transition: opacity var(--duration-fast) var(--ease-spring),
                 transform var(--duration-fast) var(--ease-spring);
   }
@@ -355,21 +377,12 @@
   }
 
   .builder__type-option {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius);
     border: none;
     background: transparent;
     width: 100%;
     text-align: left;
-    cursor: pointer;
-    transition: background var(--duration-fast) var(--ease-out);
-  }
-
-  .builder__type-option:hover {
-    background: var(--color-canvas-alt);
+    border-radius: var(--radius);
+    font: inherit;
   }
 
   .builder__type-dot {
@@ -898,4 +911,22 @@
   background: var(--color-canvas-alt);
   color: var(--color-ink);
 }
+
+  @media (max-width: 640px) {
+    .builder {
+      height: auto;
+      min-height: calc(100dvh - 8rem);
+    }
+
+    .builder__main,
+    .builder__list,
+    .builder__list-scroll {
+      min-height: 0;
+      overflow: visible;
+    }
+
+    .builder__step-meta {
+      display: none;
+    }
+  }
 }
