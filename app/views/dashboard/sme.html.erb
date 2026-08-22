@@ -50,37 +50,37 @@
   <%# -- Two-Column Content -- %>
   <div class="dashboard-grid">
     <%# Left: Recent Workflows %>
-    <section class="dash-section animate-fade-in-up" style="animation-delay: 0.1s;">
-      <div class="dash-section__head">
-        <h2 class="dash-section__title">Recent Workflows</h2>
+    <section class="list-section animate-fade-in-up" style="animation-delay: 0.1s;">
+      <div class="list-section__head">
+        <h2 class="list-section__title">Recent Workflows</h2>
         <% if @dashboard.workflows.any? %>
-          <span class="dash-section__count"><%= @dashboard.workflows.size %></span>
+          <span class="list-section__count"><%= @dashboard.workflows.size %></span>
         <% end %>
-        <%= link_to "View all", workflows_path, class: "dash-section__link", aria: { label: "View all workflows" } %>
+        <%= link_to "View all", workflows_path, class: "list-section__link", aria: { label: "View all workflows" } %>
       </div>
 
-      <div class="dash-section__body">
+      <div class="list-section__body">
         <% if @dashboard.workflows.any? %>
           <% @dashboard.workflows.each do |workflow| %>
-            <div class="dash-row">
-              <span class="dash-row__icon" aria-hidden="true">
+            <div class="list-row">
+              <span class="list-row__icon" aria-hidden="true">
                 <%= icon "document-text", class: "icon icon--sm" %>
               </span>
-              <div class="dash-row__body">
-                <div class="dash-row__title">
+              <div class="list-row__body">
+                <div class="list-row__title">
                   <%= link_to workflow.title, workflow_path(workflow), aria: { label: "View workflow: #{workflow.title}" } %>
                   <%= workflow_status_badge(workflow) %>
                 </div>
-                <p class="dash-row__sub">Created <%= time_ago_in_words(workflow.created_at) %> ago</p>
+                <p class="list-row__sub">Created <%= time_ago_in_words(workflow.created_at) %> ago</p>
                 <% if workflow.tags.any? %>
-                  <div class="dash-row__tags flex flex-wrap gap-1">
+                  <div class="list-row__tags flex flex-wrap gap-1">
                     <% workflow.tags.each do |tag| %>
                       <span class="tag-pill"><%= tag.name %></span>
                     <% end %>
                   </div>
                 <% end %>
               </div>
-              <div class="dash-row__actions">
+              <div class="list-row__actions">
                 <%= link_to "View", workflow_path(workflow), class: "btn btn--secondary btn--sm",
                       aria: { label: "View workflow: #{workflow.title}" } %>
                 <% if workflow.can_be_edited_by?(current_user) %>
@@ -109,15 +109,15 @@
     </section>
 
     <%# Right: Recent Activity %>
-    <section class="dash-section animate-fade-in-up" style="animation-delay: 0.15s;">
-      <div class="dash-section__head">
-        <h2 class="dash-section__title">Recent Activity</h2>
+    <section class="list-section animate-fade-in-up" style="animation-delay: 0.15s;">
+      <div class="list-section__head">
+        <h2 class="list-section__title">Recent Activity</h2>
         <% if @dashboard.recent_scenarios.any? %>
-          <span class="dash-section__count"><%= @dashboard.recent_scenarios.size %></span>
+          <span class="list-section__count"><%= @dashboard.recent_scenarios.size %></span>
         <% end %>
       </div>
 
-      <div class="dash-section__body">
+      <div class="list-section__body">
         <%= render "dashboard/activity_feed", scenarios: @dashboard.recent_scenarios,
               empty_text: "Scenarios run by your team will appear here as they happen." %>
       </div>

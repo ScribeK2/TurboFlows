@@ -365,27 +365,27 @@ Section heading sits **on the canvas**; the bordered container holds only rows.
   </div>
 
   <!-- Section: bold title + count badge + text link, ABOVE the container -->
-  <section class="dash-section">
-    <div class="dash-section__head">
-      <h2 class="dash-section__title">Recent Items</h2>
-      <span class="dash-section__count"><%= items.size %></span>
-      <%= link_to "View all", items_path, class: "dash-section__link" %>
+  <section class="list-section">
+    <div class="list-section__head">
+      <h2 class="list-section__title">Recent Items</h2>
+      <span class="list-section__count"><%= items.size %></span>
+      <%= link_to "View all", items_path, class: "list-section__link" %>
     </div>
 
-    <div class="dash-section__body">
+    <div class="list-section__body">
       <% items.each do |item| %>
-        <div class="dash-row">
-          <span class="dash-row__icon" aria-hidden="true">
+        <div class="list-row">
+          <span class="list-row__icon" aria-hidden="true">
             <%= icon "document-text", class: "icon icon--sm" %>
           </span>
-          <div class="dash-row__body">
-            <div class="dash-row__title">
+          <div class="list-row__body">
+            <div class="list-row__title">
               <%= link_to item.title, item_path(item) %>
               <span class="badge badge--published">Published</span>
             </div>
-            <p class="dash-row__sub">Created <%= time_ago_in_words(item.created_at) %> ago</p>
+            <p class="list-row__sub">Created <%= time_ago_in_words(item.created_at) %> ago</p>
           </div>
-          <div class="dash-row__actions">
+          <div class="list-row__actions">
             <%= link_to "View", item_path(item), class: "btn btn--secondary btn--sm" %>
           </div>
         </div>
@@ -613,6 +613,7 @@ For page types not covered by a recipe, read these exemplary views. They demonst
 | `skeleton.css` | components | Loading skeletons |
 | `pagination.css` | components | Page navigation (« ‹ 1 2 3 › » + summary) |
 | `tabs.css` | components | Underline tab bar (`.tab-bar`) |
+| `lists.css` | components | Section + row list pattern: `.list-section`, `.list-row` |
 | `_tags.css` | components | Tag pills, autocomplete |
 | `_player.css` | components | Player-specific styles |
 | `_form_step.css` | components | FormStep builder UI |
@@ -628,7 +629,7 @@ For page types not covered by a recipe, read these exemplary views. They demonst
 | `steps.css` | modules | Step editor styles |
 | `editor.css` | modules | Rich text editor (Lexxy) |
 | `transitions.css` | modules | Transition editor |
-| `dashboard.css` | modules | Dashboard: `.dash-section`, `.dash-row`, `.stat-panel`/`.stat-cell` |
+| `dashboard.css` | modules | Dashboard shell: `.dashboard-*`, `.stat-panel`/`.stat-cell` |
 | `auth.css` | modules | Login/signup pages |
 | `admin.css` | modules | Admin panel |
 | `utilities.css` | utilities | Layout utilities (.flex, .gap-*, .mb-*, .text-*) |

@@ -66,13 +66,13 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     get root_path
     assert_response :success
     assert_select "h2", text: "Your fast path"
-    assert_select ".dash-row__title", text: /Pinned WF/
+    assert_select ".list-row__title", text: /Pinned WF/
   end
 
   test "CSR launcher offers a pin prompt row once pins exist" do
     # No pins => empty state carries the call to action, not a prompt row
     get root_path
-    assert_select ".dash-row--prompt", count: 0
+    assert_select ".list-row--prompt", count: 0
     assert_select "h3", text: "No pinned workflows"
 
     # With pins => one row per pin, plus a single trailing prompt row
@@ -82,8 +82,8 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
       UserWorkflowPin.create!(user: @user, workflow: wf)
     end
     get root_path
-    assert_select "#pinned-workflows-section .dash-row", count: 3
-    assert_select ".dash-row--prompt", count: 1
+    assert_select "#pinned-workflows-section .list-row", count: 3
+    assert_select ".list-row--prompt", count: 1
   end
 
   test "CSR shows Recently Run section with re-run buttons" do
@@ -94,7 +94,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     get root_path
     assert_response :success
     assert_select "h2", text: "Recently Run"
-    assert_select ".dash-row__title", text: /Triage Flow/
+    assert_select ".list-row__title", text: /Triage Flow/
     assert_select "button[aria-label='Re-run Triage Flow']"
   end
 

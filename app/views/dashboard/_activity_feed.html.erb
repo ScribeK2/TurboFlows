@@ -4,21 +4,21 @@
   <% scenarios.each do |scenario| %>
     <% workflow = scenario.workflow %>
     <% if workflow %>
-      <%= link_to scenario_path(scenario), class: "dash-row", aria: { label: "View scenario for #{workflow.title}" } do %>
-        <span class="dash-row__dot dash-row__dot--<%= scenario.status %>" aria-hidden="true"></span>
-        <div class="dash-row__body">
-          <p class="dash-row__title"><%= workflow.title %></p>
-          <p class="dash-row__sub">
+      <%= link_to scenario_path(scenario), class: "list-row", aria: { label: "View scenario for #{workflow.title}" } do %>
+        <span class="list-row__dot list-row__dot--<%= scenario.status %>" aria-hidden="true"></span>
+        <div class="list-row__body">
+          <p class="list-row__title"><%= workflow.title %></p>
+          <p class="list-row__sub">
             <%= scenario.status.capitalize %> &middot; <%= time_ago_in_words(scenario.created_at) %> ago
           </p>
         </div>
       <% end %>
     <% else %>
-      <div class="dash-row">
-        <span class="dash-row__dot" aria-hidden="true"></span>
-        <div class="dash-row__body">
-          <p class="dash-row__title dash-row__title--muted">Deleted workflow</p>
-          <p class="dash-row__sub">
+      <div class="list-row">
+        <span class="list-row__dot" aria-hidden="true"></span>
+        <div class="list-row__body">
+          <p class="list-row__title list-row__title--muted">Deleted workflow</p>
+          <p class="list-row__sub">
             <%= scenario.status.capitalize %> &middot; <%= time_ago_in_words(scenario.created_at) %> ago
           </p>
         </div>
