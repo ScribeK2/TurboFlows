@@ -30,15 +30,23 @@ export default class extends Controller {
 
   toggleTypePicker(event) {
     event.stopPropagation()
-    if (this.hasTypePickerTarget) {
-      this.typePickerTarget.hidden = !this.typePickerTarget.hidden
-    }
+    this.setTypePickerHidden(!this.typePickerTarget?.hidden)
   }
 
   closeTypePicker() {
-    if (this.hasTypePickerTarget) {
-      this.typePickerTarget.hidden = true
-    }
+    this.setTypePickerHidden(true)
+  }
+
+  // The picker is a .dropdown__menu, and that component is driven by
+  // .is-hidden, not the hidden attribute - utilities.css carries
+  // `.dropdown__menu:not(.is-hidden) { display: block }`, which sits in the
+  // utilities layer and so outranks anything components can say. Keep the
+  // attribute in sync too, so the element stays semantically hidden.
+  setTypePickerHidden(hidden) {
+    if (!this.hasTypePickerTarget) return
+
+    this.typePickerTarget.hidden = hidden
+    this.typePickerTarget.classList.toggle("is-hidden", hidden)
   }
 
   handleReorder(event) {
@@ -61,10 +69,13 @@ export default class extends Controller {
     event.stopPropagation()
   }
 
+  // The picker lives inside .builder__list-add-wrapper, so a click on one of
+  // its options counts as "inside" and must not be treated as an outside click.
+  // Choosing a type closes it explicitly, via closeTypePicker.
   closeOnOutsideClick(event) {
     if (this.hasTypePickerTarget && !this.typePickerTarget.hidden) {
       if (!event.target.closest(".builder__list-add-wrapper")) {
-        this.typePickerTarget.hidden = true
+        this.setTypePickerHidden(true)
       }
     }
   }

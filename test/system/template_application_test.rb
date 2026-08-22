@@ -43,6 +43,24 @@ class TemplateApplicationTest < ApplicationSystemTestCase
     assert_selector ".builder__step", count: 1
   end
 
+  test "type picker closes after adding a step, and does not cover the list" do
+    workflow = Workflow.create!(title: "Picker test", user: @user)
+    Steps::Resolve.create!(workflow: workflow, position: 1, title: "Done")
+
+    visit workflow_path(workflow, edit: true)
+    assert_selector ".builder__step", count: 1, wait: 5
+
+    find(".builder__list-add").click
+    assert_selector ".builder__type-option", visible: true, wait: 5
+
+    find(".builder__type-option", text: "Action").click
+
+    # The picker sits inside the add-step wrapper, so an outside-click handler
+    # alone never closes it - choosing a type has to.
+    assert_no_selector ".builder__type-option", visible: true, wait: 5
+    assert_selector ".builder__step", count: 2, wait: 5
+  end
+
   test "opening a step marks its row as selected" do
     workflow = Workflow.create!(title: "Selection test", user: @user)
     Steps::Resolve.create!(workflow: workflow, position: 1, title: "Done")

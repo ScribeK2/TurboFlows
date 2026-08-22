@@ -359,8 +359,6 @@
     width: auto;
     margin-bottom: var(--space-2);
     padding: var(--space-1);
-    display: flex;
-    flex-direction: column;
     transition: opacity var(--duration-fast) var(--ease-spring),
                 transform var(--duration-fast) var(--ease-spring);
   }
@@ -370,10 +368,6 @@
       opacity: 0;
       transform: scale(0.95);
     }
-  }
-
-  .builder__type-picker[hidden] {
-    display: none;
   }
 
   .builder__type-option {
