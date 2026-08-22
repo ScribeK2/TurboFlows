@@ -54,31 +54,18 @@
         <div class="space-y-3">
           <% @folders.each do |folder| %>
             <% folder_workflows = @workflows_by_folder&.dig(folder.id) || Workflow.none %>
-            <%= render partial: "workflows/folder_accordion", locals: { folder: folder, workflows: folder_workflows, selected_group: @selected_group } %>
+            <%= render partial: "workflows/folder_accordion", locals: { name: folder.name, workflows: folder_workflows } %>
           <% end %>
 
           <%# Uncategorized folder (always last, virtual) %>
           <% if @uncategorized_workflows.present? && @uncategorized_workflows.any? %>
-            <details class="folder-accordion" data-controller="folder-accordion" open>
-              <summary class="folder-accordion__header"
-                       data-action="toggle->folder-accordion#toggle">
-                <div class="flex items-center gap-3">
-                  <%= icon "chevron-right", class: "icon icon--xs rotate-90" %>
-                  <%= icon "archive-box", class: "icon icon--sm" %>
-                  <span class="font-semibold italic">Uncategorized</span>
-                </div>
-                <span class="badge">
-                  <%= pluralize(@uncategorized_workflows.size, "workflow") %>
-                </span>
-              </summary>
-              <div class="folder-accordion__body">
-                <ul>
-                  <% @uncategorized_workflows.each_with_index do |workflow, index| %>
-                    <%= render partial: "workflows/workflow_list_item", locals: { workflow: workflow, index: index } %>
-                  <% end %>
-                </ul>
-              </div>
-            </details>
+            <%= render partial: "workflows/folder_accordion", locals: {
+                  name: "Uncategorized",
+                  workflows: @uncategorized_workflows,
+                  icon_name: "archive-box",
+                  name_class: "font-semibold italic",
+                  open: true
+                } %>
           <% end %>
         </div>
       <% elsif @workflows_paginated.any? %>

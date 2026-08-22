@@ -1,16 +1,24 @@
-<%# Renders a single folder as an expandable accordion
-    Locals: folder, workflows (ActiveRecord relation), selected_group %>
-<details class="folder-accordion card mb-3" data-controller="folder-accordion">
-  <summary class="folder-accordion__summary"
-           data-action="toggle->folder-accordion#toggle">
+<%# One expandable folder of workflows.
+    Required locals: name (String), workflows (enumerable of Workflow)
+    Optional locals: icon_name (default "folder"), name_class, open
+
+    Also renders the virtual "Uncategorized" bucket, which is why the icon,
+    the name styling and the initial open state are locals rather than
+    hardcoded. Previously that bucket was a second copy of this markup written
+    inline in index.html.erb; the copies drifted and it rendered unstyled. %>
+<%
+  icon_name  = local_assigns.fetch(:icon_name, "folder")
+  name_class = local_assigns.fetch(:name_class, "font-semibold")
+%>
+<details class="folder-accordion card mb-3" <%= "open" if local_assigns[:open] %>>
+  <summary class="folder-accordion__summary">
     <div class="flex items-center gap-3">
-      <%# Chevron icon — rotates 90deg when open %>
+      <%# Rotates 90deg when open, via .folder-accordion[open] in workflows.css %>
       <%= icon "chevron-right", class: "icon icon--sm folder-accordion__chevron" %>
 
-      <%# Folder icon %>
-      <%= icon "folder", class: "icon icon--sm" %>
+      <%= icon icon_name, class: "icon icon--sm" %>
 
-      <span class="font-semibold"><%= folder.name %></span>
+      <span class="<%= name_class %>"><%= name %></span>
     </div>
 
     <span class="badge">
@@ -18,7 +26,6 @@
     </span>
   </summary>
 
-  <%# Expanded content: workflow cards %>
   <div class="folder-accordion__body">
     <% if workflows.any? %>
       <ul class="wf-list">
