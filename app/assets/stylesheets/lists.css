@@ -154,6 +154,19 @@
   flex-shrink: 0;
 }
 
+/* Compact size modifier, for dense lists where full row padding costs too much
+   scroll - the builder's step list runs to 40+ rows. Sized like .btn--sm is to
+   .btn: same anatomy, tighter box. */
+.list-row--compact {
+  padding: var(--space-2) var(--space-4);
+  gap: var(--space-3);
+}
+
+.list-row--compact .list-row__icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
 /* A trailing row that invites an action rather than showing data. */
 .list-row--prompt { color: var(--color-ink-muted); }
 .list-row--prompt .list-row__title { font-weight: 500; color: var(--color-ink-subtle); }

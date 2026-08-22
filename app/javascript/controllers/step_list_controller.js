@@ -13,7 +13,8 @@ export default class extends Controller {
       this.sortable = new Sortable(this.listTarget, {
         handle: ".drag-handle",
         animation: 150,
-        ghostClass: "builder__list-row--dragging",
+        ghostClass: "sortable-ghost",
+        dragClass: "sortable-drag",
         onEnd: this.handleReorder.bind(this)
       })
     }

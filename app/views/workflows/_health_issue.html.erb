@@ -1,0 +1,45 @@
+<%#
+  Health Issue — one row in the health panel.
+
+  Uses .list-row anatomy: the issue message is the title (it is what you read
+  first), the step it belongs to is the subtitle and the way in, and Fix is an
+  outlined action pinned right. Fix is never a filled button - a panel can show
+  many of them, and only one fill belongs on a screen.
+
+  Local variables:
+  - issue: issue hash from WorkflowHealthCheck
+  - uuid: step uuid the issue belongs to
+  - step: the AR Step, or nil
+  - workflow: Workflow object
+%>
+<% severity = issue[:severity] == :error ? "error" : "warning" %>
+
+<div class="list-row list-row--compact health-panel__issue">
+  <span class="health-panel__issue-icon health-panel__issue-icon--<%= severity %>" aria-hidden="true">
+    <%= icon severity == "error" ? "exclamation-circle" : "exclamation-triangle", class: "icon icon--xs" %>
+  </span>
+
+  <div class="list-row__body">
+    <div class="list-row__title"><%= issue[:message] %></div>
+    <% if step %>
+      <button type="button"
+              class="list-row__sub health-panel__issue-step"
+              data-action="click->builder#openStep"
+              data-builder-url-param="<%= panel_edit_workflow_step_path(workflow, step) %>">
+        Step <%= step.position %>: <%= step.title.presence || "Untitled" %>
+      </button>
+    <% end %>
+  </div>
+
+  <% if issue[:fixable] && issue[:fix_type] %>
+    <div class="list-row__actions">
+      <button type="button"
+              class="btn btn--secondary btn--sm"
+              data-action="click->step-warnings#fixFromPanel"
+              data-step-warnings-step-uuid-param="<%= uuid %>"
+              data-step-warnings-fix-type-param="<%= issue[:fix_type] %>">
+        Fix
+      </button>
+    </div>
+  <% end %>
+</div>
