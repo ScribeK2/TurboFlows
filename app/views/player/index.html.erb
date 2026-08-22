@@ -19,52 +19,43 @@
              data-action="input->player-filter#filter">
     </div>
 
-    <%# ── Workflow Grid ── %>
-    <div class="player-workflow-grid">
+    <%# ── Workflow list: hairline-divided rows, same pattern as the dashboards ── %>
+    <div class="list-section__body">
       <% @workflows.each do |workflow| %>
-        <%
-          first_step = workflow.start_step || workflow.steps.first
-          step_type = first_step&.step_type || "question"
-        %>
         <%= button_to play_workflow_path(workflow), method: :post,
-              class: "player-workflow-card player-workflow-card--#{step_type}",
-              data: {
-                player_filter_target: "card",
-                title: workflow.title,
-                description: workflow.description_text.to_s
-              } do %>
-          <div class="player-workflow-card__body">
-            <div style="margin-bottom: var(--space-2);">
-              <% primary_group = workflow.groups.first %>
-              <span class="badge badge--info"><%= primary_group&.name || "Uncategorized" %></span>
-            </div>
-            <div class="player-workflow-card__title"><%= workflow.title %></div>
-            <% if workflow.description.present? %>
-              <p class="player-workflow-card__desc"><%= truncate(strip_tags(workflow.description.to_s), length: 120) %></p>
-            <% end %>
-            <div class="player-workflow-card__footer">
-              <span class="player-workflow-card__meta">
-                <%= icon "clipboard", class: "icon icon--xs" %>
-                <%= workflow.steps.size %> steps
-              </span>
+              class: "list-row",
+              form: { data: { player_filter_target: "card",
+                              title: workflow.title,
+                              description: workflow.description_text.to_s } } do %>
+          <span class="list-row__icon" aria-hidden="true">
+            <%= icon "play", class: "icon icon--sm" %>
+          </span>
+          <span class="list-row__body">
+            <span class="list-row__title"><%= workflow.title %></span>
+            <span class="list-row__sub">
+              <%= workflow.groups.first&.name || "Uncategorized" %>
+              &middot; <%= pluralize(workflow.steps.size, "step") %>
               <% if workflow.versions.any? %>
-                <span class="badge badge--subtle">v<%= workflow.versions.last.version_number %></span>
+                &middot; v<%= workflow.versions.last.version_number %>
               <% end %>
-            </div>
+              <% if workflow.description.present? %>
+                &middot; <%= truncate(strip_tags(workflow.description.to_s), length: 90) %>
+              <% end %>
+            </span>
             <% if workflow.tags.any? %>
-              <div class="player-workflow-card__tags">
+              <span class="list-row__tags flex flex-wrap gap-1">
                 <% workflow.tags.first(3).each do |tag| %>
                   <span class="tag-pill"><%= tag.name %></span>
                 <% end %>
                 <% if workflow.tags.size > 3 %>
-                  <span class="player-workflow-card__meta">+<%= workflow.tags.size - 3 %> more</span>
+                  <span class="list-row__sub">+<%= workflow.tags.size - 3 %> more</span>
                 <% end %>
-              </div>
+              </span>
             <% end %>
-          </div>
-          <div class="player-workflow-card__arrow">
+          </span>
+          <span class="list-row__arrow" aria-hidden="true">
             <%= icon "chevron-right", class: "icon icon--sm" %>
-          </div>
+          </span>
         <% end %>
       <% end %>
     </div>
@@ -78,7 +69,8 @@
   <% else %>
     <div class="player-empty">
       <%= icon "document-text", class: "player-empty__icon" %>
-      <p class="player-empty__text">No published workflows available yet.</p>
+      <h3 class="empty-state__title">No workflows available</h3>
+      <p class="player-empty__text">Published workflows will appear here, ready to run.</p>
     </div>
   <% end %>
 </div>

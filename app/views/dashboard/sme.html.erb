@@ -1,103 +1,91 @@
 <div class="dashboard-layout">
   <%= render "dashboard/header" %>
 
-  <%# -- Stat Cards -- %>
-  <div class="stat-grid">
-    <%# Active Workflows %>
-    <div class="stat-card animate-fade-in-up hover-lift" data-accent="primary" style="animation-delay: 0.1s;" aria-label="Total workflows: <%= @dashboard.workflow_count %>">
-      <div class="stat-card__body">
-        <div class="stat-card__head">
-          <span class="stat-card__label">Active Workflows</span>
+  <%# -- Stats: one bordered panel, hairline-divided cells -- %>
+  <div class="stat-panel animate-fade-in">
+    <div class="stat-panel__grid">
+      <div class="stat-cell" aria-label="Total workflows: <%= @dashboard.workflow_count %>">
+        <div class="stat-cell__head">
+          <span class="stat-cell__label">Active Workflows</span>
           <% if @dashboard.draft_count.positive? %>
-            <span class="stat-card__chip"><%= @dashboard.draft_count %> draft<%= @dashboard.draft_count == 1 ? "" : "s" %></span>
+            <span class="stat-cell__chip"><%= @dashboard.draft_count %> draft<%= @dashboard.draft_count == 1 ? "" : "s" %></span>
           <% end %>
         </div>
-        <p class="stat-card__value"><%= @dashboard.workflow_count %></p>
+        <p class="stat-cell__value"><%= @dashboard.workflow_count %></p>
         <% published = @dashboard.workflow_count - @dashboard.draft_count %>
         <% if published.positive? %>
-          <p class="stat-card__detail"><%= published %> published</p>
+          <p class="stat-cell__detail"><%= published %> published</p>
         <% end %>
       </div>
-    </div>
 
-    <%# Company Scenarios This Week %>
-    <div class="stat-card animate-fade-in-up hover-lift" data-accent="positive" style="animation-delay: 0.15s;" aria-label="Scenarios this week: <%= @dashboard.company_scenarios_this_week %>">
-      <div class="stat-card__body">
-        <div class="stat-card__head">
-          <span class="stat-card__label">Scenarios This Week</span>
+      <div class="stat-cell" aria-label="Scenarios this week: <%= @dashboard.company_scenarios_this_week %>">
+        <div class="stat-cell__head">
+          <span class="stat-cell__label">Scenarios This Week</span>
           <% if @dashboard.scenario_active.positive? %>
-            <span class="stat-card__chip">● <%= @dashboard.scenario_active %> live</span>
+            <span class="stat-cell__chip"><%= @dashboard.scenario_active %> live</span>
           <% end %>
         </div>
-        <p class="stat-card__value"><%= @dashboard.company_scenarios_this_week %></p>
+        <p class="stat-cell__value"><%= @dashboard.company_scenarios_this_week %></p>
       </div>
-    </div>
 
-    <%# Total Scenarios Run %>
-    <div class="stat-card animate-fade-in-up hover-lift" data-accent="message" style="animation-delay: 0.2s;" aria-label="Total scenarios: <%= @dashboard.company_scenario_total %>">
-      <div class="stat-card__body">
-        <div class="stat-card__head">
-          <span class="stat-card__label">Total Scenarios</span>
+      <div class="stat-cell" aria-label="Total scenarios: <%= @dashboard.company_scenario_total %>">
+        <div class="stat-cell__head">
+          <span class="stat-cell__label">Total Scenarios</span>
         </div>
-        <p class="stat-card__value"><%= number_with_delimiter(@dashboard.company_scenario_total) %></p>
+        <p class="stat-cell__value"><%= number_with_delimiter(@dashboard.company_scenario_total) %></p>
       </div>
-    </div>
 
-    <%# Company Completion Rate %>
-    <div class="stat-card animate-fade-in-up hover-lift" data-accent="warning" style="animation-delay: 0.25s;" aria-label="Completion rate: <%= @dashboard.company_completion_rate %>%">
-      <div class="stat-card__body">
-        <div class="stat-card__head">
-          <span class="stat-card__label">Completion Rate</span>
+      <div class="stat-cell" aria-label="Completion rate: <%= @dashboard.company_completion_rate %>%">
+        <div class="stat-cell__head">
+          <span class="stat-cell__label">Completion Rate</span>
         </div>
-        <p class="stat-card__value"><%= @dashboard.company_completion_rate %>%</p>
-        <div class="stat-card__bar" aria-hidden="true">
+        <p class="stat-cell__value"><%= @dashboard.company_completion_rate %>%</p>
+        <div class="stat-cell__bar" aria-hidden="true">
           <span style="width: <%= @dashboard.company_completion_rate %>%"></span>
         </div>
       </div>
     </div>
   </div>
 
-  <hr class="dashboard-divider">
-
   <%# -- Two-Column Content -- %>
   <div class="dashboard-grid">
     <%# Left: Recent Workflows %>
-    <div class="recent-section animate-fade-in-up" style="animation-delay: 0.3s;">
-      <div class="recent-section__header">
-        <div>
-          <h2 class="recent-section__title">Recent Workflows</h2>
-          <p class="recent-section__subtitle">Your most recently created workflows</p>
-        </div>
-        <%= link_to "View all", workflows_path, class: "btn btn--plain btn--sm", aria: { label: "View all workflows" } %>
-      </div>
-      <div class="wf-list">
+    <section class="list-section animate-fade-in-up" style="animation-delay: 0.1s;">
+      <div class="list-section__head">
+        <h2 class="list-section__title">Recent Workflows</h2>
         <% if @dashboard.workflows.any? %>
-          <% @dashboard.workflows.each_with_index do |workflow, index| %>
-            <div class="wf-list-item animate-fade-in-up" style="animation-delay: <%= 0.35 + (index * 0.05) %>s;">
-              <div class="wf-list-item__info">
-                <div class="wf-list-item__title">
+          <span class="list-section__count"><%= @dashboard.workflows.size %></span>
+        <% end %>
+        <%= link_to "View all", workflows_path, class: "list-section__link", aria: { label: "View all workflows" } %>
+      </div>
+
+      <div class="list-section__body">
+        <% if @dashboard.workflows.any? %>
+          <% @dashboard.workflows.each do |workflow| %>
+            <div class="list-row">
+              <span class="list-row__icon" aria-hidden="true">
+                <%= icon "document-text", class: "icon icon--sm" %>
+              </span>
+              <div class="list-row__body">
+                <div class="list-row__title">
                   <%= link_to workflow.title, workflow_path(workflow), aria: { label: "View workflow: #{workflow.title}" } %>
                   <%= workflow_status_badge(workflow) %>
                 </div>
-                <div class="wf-list-item__meta">
-                  Created <%= time_ago_in_words(workflow.created_at) %> ago
-                </div>
+                <p class="list-row__sub">Created <%= time_ago_in_words(workflow.created_at) %> ago</p>
                 <% if workflow.tags.any? %>
-                  <div class="wf-list-item__tags flex flex-wrap gap-1 mt-0\.5">
+                  <div class="list-row__tags flex flex-wrap gap-1">
                     <% workflow.tags.each do |tag| %>
                       <span class="tag-pill"><%= tag.name %></span>
                     <% end %>
                   </div>
                 <% end %>
               </div>
-              <div class="wf-list-item__actions">
-                <%= link_to workflow_path(workflow), class: "btn btn--secondary btn--sm", aria: { label: "View workflow: #{workflow.title}" } do %>
-                  View
-                <% end %>
+              <div class="list-row__actions">
+                <%= link_to "View", workflow_path(workflow), class: "btn btn--secondary btn--sm",
+                      aria: { label: "View workflow: #{workflow.title}" } %>
                 <% if workflow.can_be_edited_by?(current_user) %>
-                  <%= link_to edit_workflow_path(workflow), class: "btn btn--secondary btn--sm", aria: { label: "Edit workflow: #{workflow.title}" } do %>
-                    Edit
-                  <% end %>
+                  <%= link_to "Edit", edit_workflow_path(workflow), class: "btn btn--secondary btn--sm",
+                        aria: { label: "Edit workflow: #{workflow.title}" } %>
                 <% end %>
               </div>
             </div>
@@ -108,9 +96,9 @@
               <%= icon "document-text", class: "icon icon--xl" %>
             </div>
             <h3 class="dashboard-empty__title">No workflows yet</h3>
-            <p class="dashboard-empty__text">Get started by creating your first workflow or browsing templates.</p>
+            <p class="dashboard-empty__text">Workflows you create will be listed here, newest first.</p>
             <div class="empty-state__actions">
-              <%= link_to new_workflow_path, class: "btn btn--primary btn--sm", aria: { label: "Create your first workflow" } do %>
+              <%= link_to new_workflow_path, class: "btn btn--secondary btn--sm", aria: { label: "Create your first workflow" } do %>
                 <%= icon "plus", class: "icon icon--xs" %>
                 Create Workflow
               <% end %>
@@ -118,51 +106,21 @@
           </div>
         <% end %>
       </div>
-    </div>
+    </section>
 
     <%# Right: Recent Activity %>
-    <div class="recent-section animate-fade-in-up" style="animation-delay: 0.35s;">
-      <div class="recent-section__header">
-        <div>
-          <h2 class="recent-section__title">Recent Activity</h2>
-          <p class="recent-section__subtitle">Latest scenarios across the team</p>
-        </div>
-      </div>
-      <div class="activity-feed">
+    <section class="list-section animate-fade-in-up" style="animation-delay: 0.15s;">
+      <div class="list-section__head">
+        <h2 class="list-section__title">Recent Activity</h2>
         <% if @dashboard.recent_scenarios.any? %>
-          <% @dashboard.recent_scenarios.each do |scenario| %>
-            <% workflow = scenario.workflow %>
-            <% if workflow %>
-              <%= link_to scenario_path(scenario), class: "activity-feed__item", aria: { label: "View scenario for #{workflow.title}" } do %>
-                <div class="activity-feed__dot activity-feed__dot--<%= scenario.status %>" aria-hidden="true"></div>
-                <div class="activity-feed__body">
-                  <p class="font-medium truncate"><%= workflow.title %></p>
-                  <p class="activity-feed__meta">
-                    <%= scenario.status.capitalize %> &middot; <%= time_ago_in_words(scenario.created_at) %> ago
-                  </p>
-                </div>
-              <% end %>
-            <% else %>
-              <div class="activity-feed__item">
-                <div class="activity-feed__dot" aria-hidden="true"></div>
-                <div class="activity-feed__body">
-                  <p class="text-sm italic truncate text-muted">Deleted workflow</p>
-                  <p class="activity-feed__meta">
-                    <%= scenario.status.capitalize %> &middot; <%= time_ago_in_words(scenario.created_at) %> ago
-                  </p>
-                </div>
-              </div>
-            <% end %>
-          <% end %>
-        <% else %>
-          <div class="dashboard-empty">
-            <div class="dashboard-empty__icon">
-              <%= icon "play", class: "icon icon--xl" %>
-            </div>
-            <p class="dashboard-empty__text">Start a workflow to see activity here</p>
-          </div>
+          <span class="list-section__count"><%= @dashboard.recent_scenarios.size %></span>
         <% end %>
       </div>
-    </div>
+
+      <div class="list-section__body">
+        <%= render "dashboard/activity_feed", scenarios: @dashboard.recent_scenarios,
+              empty_text: "Scenarios run by your team will appear here as they happen." %>
+      </div>
+    </section>
   </div>
 </div>

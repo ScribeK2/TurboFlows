@@ -1,0 +1,61 @@
+<%# Index toolbar — search + status segment + filter summary + sort.
+    Mirrors reference image 4: the toolbar is the first row INSIDE the list
+    container, not a separate card floating above it. %>
+<% filters = active_workflow_filters(selected_group: @selected_group) %>
+
+<div class="wf-toolbar">
+  <%= form_with url: workflows_path, method: :get, local: true,
+        class: "wf-toolbar__search", data: { controller: "workflow-search" } do |form| %>
+    <%= hidden_field_tag :group_id, params[:group_id] if params[:group_id].present? %>
+    <%= hidden_field_tag :status, params[:status] if params[:status].present? %>
+    <%= hidden_field_tag :per_page, params[:per_page] if params[:per_page].present? %>
+    <span class="wf-toolbar__search-icon" aria-hidden="true">
+      <%= icon "magnifying-glass", class: "icon icon--sm" %>
+    </span>
+    <%= form.text_field :search,
+          value: @search_query,
+          placeholder: @selected_group ? "Search in #{@selected_group.name}..." : "Search workflows...",
+          class: "form-input wf-toolbar__search-input",
+          aria: { label: "Search workflows" } %>
+  <% end %>
+
+  <%# Segmented control — this filters a list, so it stays segmented (see UIGUIDE "Tabs"). %>
+  <div class="wf-status-tabs" role="group" aria-label="Filter by status">
+    <%
+      filter_tabs = [ { key: "all", label: "All" }, { key: "published", label: "Published" } ]
+      filter_tabs << { key: "draft", label: "Drafts" } if current_user&.can_create_workflows?
+    %>
+    <% filter_tabs.each do |tab| %>
+      <% active = @status_filter == tab[:key] %>
+      <%= link_to tab[:label],
+            workflows_path(status: tab[:key], search: params[:search], group_id: params[:group_id], sort: params[:sort], per_page: params[:per_page]),
+            class: "wf-status-tabs__tab #{'is-active' if active}",
+            aria: { current: ("true" if active) },
+            data: { turbo_action: "replace" } %>
+    <% end %>
+  </div>
+
+  <% if filters.any? %>
+    <span class="wf-toolbar__filters">Filters (<%= filters.size %>)</span>
+    <%= link_to "Show All", workflows_path(per_page: params[:per_page]), class: "wf-toolbar__link" %>
+  <% end %>
+
+  <%
+    sort_options = [
+      { key: "recent", label: "Recently Updated" },
+      { key: "alphabetical", label: "Alphabetical" },
+      { key: "most_steps", label: "Most Steps" }
+    ]
+  %>
+  <select data-controller="sort-select"
+          data-action="change->sort-select#navigate"
+          class="form-select wf-toolbar__sort"
+          aria-label="Sort workflows">
+    <% sort_options.each do |opt| %>
+      <option value="<%= workflows_path(sort: opt[:key], status: params[:status], search: params[:search], group_id: params[:group_id], per_page: params[:per_page]) %>"
+              <%= "selected" if @sort_by == opt[:key] %>>
+        <%= opt[:label] %>
+      </option>
+    <% end %>
+  </select>
+</div>

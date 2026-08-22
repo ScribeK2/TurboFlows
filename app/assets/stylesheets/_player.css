@@ -52,7 +52,7 @@
 
   .player-link {
     font-size: var(--text-sm);
-    color: var(--color-primary);
+    color: var(--color-primary-text);
     text-decoration: none;
     font-weight: 500;
     transition: color 0.15s ease;
@@ -158,13 +158,13 @@
   }
 
   /* ─── Step-Type Accent Borders ─── */
-  .player-workflow-card--question  { border-top: 3.5px solid oklch(0.55 0.20 var(--hue-question)); }
-  .player-workflow-card--action    { border-top: 3.5px solid oklch(0.60 0.19 var(--hue-action)); }
-  .player-workflow-card--message   { border-top: 3.5px solid oklch(0.55 0.18 var(--hue-message)); }
-  .player-workflow-card--escalate  { border-top: 3.5px solid oklch(0.55 0.22 var(--hue-escalate)); }
-  .player-workflow-card--resolve   { border-top: 3.5px solid oklch(0.60 0.19 var(--hue-resolve)); }
-  .player-workflow-card--sub_flow  { border-top: 3.5px solid oklch(0.55 0.18 var(--hue-subflow)); }
-  .player-workflow-card--form      { border-top: 3.5px solid oklch(0.55 0.20 var(--hue-question)); }
+  .player-workflow-card--question  { --step-hue: var(--hue-question); }
+  .player-workflow-card--action  { --step-hue: var(--hue-action); }
+  .player-workflow-card--message  { --step-hue: var(--hue-message); }
+  .player-workflow-card--escalate  { --step-hue: var(--hue-escalate); }
+  .player-workflow-card--resolve  { --step-hue: var(--hue-resolve); }
+  .player-workflow-card--sub_flow  { --step-hue: var(--hue-subflow); }
+  .player-workflow-card--form  { --step-hue: var(--hue-form); }
 
   /* ─── Search Filter ─── */
   .player-search {
@@ -265,7 +265,7 @@
   }
 
   .player-workflow-card:hover .player-workflow-card__arrow {
-    color: var(--color-primary);
+    color: var(--color-primary-text);
     transform: translateX(2px);
   }
 
@@ -311,7 +311,7 @@
 
   .player-progress__fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--color-primary), oklch(0.60 0.18 250));
+    background: var(--color-primary);
     border-radius: var(--radius-full);
     transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   }
@@ -369,13 +369,15 @@
   }
 
   .player-completion__icon-wrap--success {
-    background: oklch(0.95 0.06 var(--hue-resolve));
-    color: oklch(0.45 0.17 var(--hue-resolve));
+    --step-hue: var(--hue-resolve);
+  background: var(--step-bg);
+    color: var(--step-text);
   }
 
   .player-completion__icon-wrap--stopped {
-    background: oklch(0.95 0.06 var(--hue-escalate));
-    color: oklch(0.45 0.2 var(--hue-escalate));
+    --step-hue: var(--hue-escalate);
+  background: var(--step-bg);
+    color: var(--step-text);
   }
 
   .player-completion__icon {
@@ -460,13 +462,15 @@
   }
 
   [data-theme="dark"] .player-completion__icon-wrap--success {
-    background: oklch(0.22 0.06 var(--hue-resolve));
-    color: oklch(0.7 0.14 var(--hue-resolve));
+    --step-hue: var(--hue-resolve);
+  background: var(--step-bg);
+    color: var(--step-text);
   }
 
   [data-theme="dark"] .player-completion__icon-wrap--stopped {
-    background: oklch(0.22 0.06 var(--hue-escalate));
-    color: oklch(0.7 0.14 var(--hue-escalate));
+    --step-hue: var(--hue-escalate);
+  background: var(--step-bg);
+    color: var(--step-text);
   }
 
   /* ─── Embed Mode — hide chrome for iframe embedding ─── */

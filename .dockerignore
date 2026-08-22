@@ -1,0 +1,38 @@
+# Version control
+.git
+.gitignore
+
+# Development databases
+db/*.sqlite3
+db/*.sqlite3-*
+
+# Temporary files
+tmp/
+log/
+storage/
+
+# Development tooling
+.bundle
+vendor/bundle
+
+# Test and docs
+test/
+docs/
+.rubocop.yml
+.ruby-lsp/
+.claude/
+
+# IDE files
+.vscode/
+.idea/
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*
+
+# Worktrees
+.worktrees/
+
+# OS files
+.DS_Store

@@ -4,7 +4,7 @@
   Local variables:
   - workflow: Workflow object
 %>
-<div class="builder__type-picker"
+<div class="dropdown__menu builder__type-picker is-hidden"
      hidden
      data-step-list-target="typePicker">
   <% [
@@ -19,8 +19,8 @@
     <%= button_to workflow_steps_path(workflow),
         method: :post,
         params: { step_type: st[:type] },
-        data: { turbo_stream: true },
-        class: "builder__type-option" do %>
+        data: { turbo_stream: true, action: "click->step-list#closeTypePicker" },
+        class: "dropdown__item builder__type-option" do %>
       <span class="builder__type-dot builder__type-dot--<%= st[:type] %>"></span>
       <span class="builder__type-name"><%= st[:name] %></span>
       <span class="builder__type-desc"><%= st[:desc] %></span>

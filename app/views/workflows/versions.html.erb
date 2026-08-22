@@ -1,7 +1,11 @@
 <div class="page-content">
-  <div class="wf-page-header mb-6">
-    <h1 class="page-title">Version History: <%= @workflow.title %></h1>
-    <%= link_to "Back to Workflow", @workflow, class: "btn btn--plain btn--sm" %>
+  <div class="page-header-section">
+    <%= link_to @workflow, class: "page-back" do %>
+      <%= icon "chevron-left", class: "icon icon--xs" %>
+      Back to workflow
+    <% end %>
+    <h1 class="page-header-section__title">Version History</h1>
+    <p class="page-header-section__ident"><%= @workflow.title %></p>
   </div>
 
   <% if @versions.size >= 2 %>
@@ -58,9 +62,9 @@
       </table>
     </div>
   <% else %>
-    <div class="card p-8 text-center">
-      <p>No published versions yet.</p>
-      <p class="text-sm mt-2">Use the Publish button on the workflow page to create the first version.</p>
+    <div class="empty-state">
+      <h3 class="empty-state__title">No published versions yet</h3>
+      <p class="empty-state__text">Publishing a workflow creates a version here, so you can compare and restore.</p>
     </div>
   <% end %>
 </div>

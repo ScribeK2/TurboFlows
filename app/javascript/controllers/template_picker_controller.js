@@ -17,7 +17,10 @@ export default class extends Controller {
     const key = event.currentTarget.dataset.templateKey
     const name = event.currentTarget.dataset.templateName
 
-    if (!confirm(`This will replace your current steps with the "${name}" template. Continue?`)) {
+    // Nothing to replace on an empty workflow, and the empty state routes here
+    // for its "Browse templates" link, so only confirm when steps exist.
+    const hasSteps = document.querySelectorAll("#steps-list .builder__step").length > 0
+    if (hasSteps && !confirm(`This will replace your current steps with the "${name}" template. Continue?`)) {
       return
     }
 

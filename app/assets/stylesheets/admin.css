@@ -58,22 +58,6 @@
 }
 
 /* ============================================================================
-   Admin Two-Column Layout (for Recent Users/Workflows)
-   ============================================================================ */
-
-.admin-recent-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.5rem;
-}
-
-@media (min-width: 768px) {
-  .admin-recent-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-/* ============================================================================
    Admin User Row
    ============================================================================ */
 
@@ -118,13 +102,13 @@
 }
 
 .admin-role-badge--admin {
-  background: oklch(0.93 0.07 145);
-  color: oklch(0.4 0.15 145);
+  background: var(--color-positive-soft);
+  color: var(--color-positive);
 }
 
 .admin-role-badge--editor {
-  background: oklch(0.93 0.07 260);
-  color: oklch(0.4 0.18 260);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-text);
 }
 
 .admin-role-badge--user {
@@ -134,13 +118,13 @@
 }
 
 [data-theme="dark"] .admin-role-badge--admin {
-  background: oklch(0.22 0.06 145);
-  color: oklch(0.7 0.14 145);
+  background: var(--color-positive-soft);
+  color: var(--color-positive);
 }
 
 [data-theme="dark"] .admin-role-badge--editor {
-  background: oklch(0.22 0.06 260);
-  color: oklch(0.7 0.16 260);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-text);
 }
 
 [data-theme="dark"] .admin-role-badge--user {
@@ -278,14 +262,14 @@
 
 .admin-info-box--info {
   background: oklch(0.96 0.04 260);
-  border-color: oklch(0.85 0.08 260);
-  color: oklch(0.35 0.14 260);
+  border-color: var(--color-primary);
+  color: var(--color-primary-text);
 }
 
 .admin-info-box--warning {
-  background: oklch(0.97 0.04 75);
-  border-color: oklch(0.85 0.1 75);
-  color: oklch(0.45 0.12 75);
+  background: var(--color-warning-soft);
+  border-color: var(--color-warning);
+  color: var(--color-warning);
 }
 
 /* ============================================================================
@@ -304,45 +288,16 @@
   }
 }
 
-/* When admin-grid is used for the two-column recent section (no btn children),
-   override to 2 columns at medium breakpoint */
-.admin-grid:has(> .admin-recent) {
+/* When admin-grid holds the two recent sections rather than the quick-action
+   buttons, it must stay at 2 columns instead of expanding to 5. */
+.admin-grid:has(> .list-section) {
   grid-template-columns: 1fr;
 }
 
 @media (min-width: 768px) {
-  .admin-grid:has(> .admin-recent) {
+  .admin-grid:has(> .list-section) {
     grid-template-columns: repeat(2, 1fr);
   }
-}
-
-/* ============================================================================
-   Admin Recent Card (Recent Users / Recent Workflows)
-   ============================================================================ */
-
-.admin-recent {
-  background: var(--color-canvas);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-}
-
-.admin-recent:hover {
-  box-shadow: var(--shadow);
-}
-
-.admin-recent__item {
-  padding: 0.875rem 1.5rem;
-  transition: background 0.15s ease;
-}
-
-.admin-recent__item:hover {
-  background: var(--color-canvas-raised);
-}
-
-.admin-recent__item + .admin-recent__item {
-  border-top: 1px solid var(--color-border);
 }
 
 /* ============================================================================
@@ -372,18 +327,6 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: 0.5rem;
-}
-
-/* ============================================================================
-   Stat Card Icon Color (teal/green accent)
-   ============================================================================ */
-
-.stat-card .icon {
-  color: oklch(0.6 0.16 175);
-}
-
-[data-theme="dark"] .stat-card .icon {
-  color: oklch(0.7 0.14 175);
 }
 
 /* ============================================================================
@@ -441,14 +384,14 @@
 
 [data-theme="dark"] .admin-info-box--info {
   background: oklch(0.2 0.04 260);
-  border-color: oklch(0.3 0.08 260);
-  color: oklch(0.75 0.12 260);
+  border-color: var(--color-primary);
+  color: var(--color-primary-text);
 }
 
 [data-theme="dark"] .admin-info-box--warning {
-  background: oklch(0.2 0.04 75);
-  border-color: oklch(0.3 0.1 75);
-  color: oklch(0.8 0.1 75);
+  background: var(--color-warning-soft);
+  border-color: var(--color-warning);
+  color: var(--color-warning);
 }
 
 /* ============================================================================
@@ -473,10 +416,13 @@
    Analytics Bar (progress/distribution bars)
    ============================================================================ */
 
+/* Outcome bars encode data, so they keep hue — but as FILLS they must use the
+   dot tier, not the text tier. --color-warning at text lightness renders brown;
+   --step-dot is sized for non-text marks and is verified in both themes. */
 .analytics-bar-track {
   flex: 1;
   height: 0.5rem;
-  background: var(--color-canvas-raised);
+  background: var(--color-canvas-alt);
   border-radius: var(--radius-full);
   overflow: hidden;
 }
@@ -484,49 +430,15 @@
 .analytics-bar {
   height: 100%;
   border-radius: var(--radius-full);
-  transition: width 0.3s ease;
+  transition: width var(--duration-normal) var(--ease-out);
 }
 
-.analytics-bar--default {
-  background: oklch(0.6 0.16 260);
-}
-
-.analytics-bar--resolved {
-  background: oklch(0.6 0.19 145);
-}
-
-.analytics-bar--completed {
-  background: oklch(0.6 0.19 145);
-}
-
-.analytics-bar--escalated {
-  background: oklch(0.65 0.18 75);
-}
-
-.analytics-bar--error {
-  background: oklch(0.6 0.2 25);
-}
-
-.analytics-bar--muted {
-  background: var(--color-ink-muted);
-}
-
-[data-theme="dark"] .analytics-bar--default {
-  background: oklch(0.5 0.14 260);
-}
-
-[data-theme="dark"] .analytics-bar--resolved,
-[data-theme="dark"] .analytics-bar--completed {
-  background: oklch(0.5 0.16 145);
-}
-
-[data-theme="dark"] .analytics-bar--escalated {
-  background: oklch(0.55 0.16 75);
-}
-
-[data-theme="dark"] .analytics-bar--error {
-  background: oklch(0.5 0.18 25);
-}
+.analytics-bar--default   { background: var(--color-primary); }
+.analytics-bar--resolved,
+.analytics-bar--completed  { --step-hue: var(--hue-resolve);  background: var(--step-dot); }
+.analytics-bar--escalated  { --step-hue: var(--hue-escalate); background: var(--step-dot); }
+.analytics-bar--error      { --step-hue: var(--hue-escalate); background: var(--step-dot); }
+.analytics-bar--muted      { background: var(--color-ink-muted); }
 
 /* ============================================================================
    Prose (rich text content display)
@@ -541,7 +453,7 @@
 .prose p:last-child { margin-bottom: 0; }
 .prose ul, .prose ol { padding-left: 1.25rem; margin-bottom: 0.75rem; }
 .prose li { margin-bottom: 0.25rem; }
-.prose a { color: var(--color-link); text-decoration: underline; }
+.prose a { color: var(--color-primary-text); text-decoration: underline; }
 .prose strong { font-weight: 600; }
 
 .prose-sm {
@@ -656,12 +568,12 @@
   font-weight: 500;
   border-radius: var(--radius-full);
   background: oklch(0.95 0.04 260);
-  color: oklch(0.4 0.14 260);
+  color: var(--color-primary-text);
 }
 
 [data-theme="dark"] .admin-filter-pill {
   background: oklch(0.25 0.04 260);
-  color: oklch(0.75 0.12 260);
+  color: var(--color-primary-text);
 }
 
 .admin-filter-pill__remove {
@@ -814,7 +726,7 @@
 }
 
 .admin-bulk-bar__btn--danger:hover {
-  background: oklch(0.55 0.22 25);
+  background: var(--color-negative);
 }
 
 /* ============================================================================

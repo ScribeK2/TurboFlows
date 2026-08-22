@@ -44,108 +44,34 @@
 
     <!-- Main Content -->
     <div class="wf-content">
-      <!-- Search Bar -->
-      <div class="wf-search mb-4">
-        <%= form_with url: workflows_path, method: :get, local: true, class: "card", data: { controller: "workflow-search" } do |form| %>
-          <%= hidden_field_tag :group_id, params[:group_id] if params[:group_id].present? %>
-          <div class="card__body flex items-center gap-3">
-            <div class="flex-1 relative">
-              <div class="absolute" style="top: 50%; left: 0.75rem; transform: translateY(-50%); pointer-events: none;">
-                <%= icon "magnifying-glass", class: "icon icon--sm" %>
-              </div>
-              <%= form.text_field :search,
-                  value: @search_query,
-                  placeholder: @selected_group ? "Search workflows in #{@selected_group.name}..." : "Search workflows by title or description...",
-                  class: "form-input",
-                  style: "padding-left: 2.5rem;" %>
-            </div>
-            <% if @search_query.present? %>
-              <%= link_to workflows_path(group_id: params[:group_id]), class: "btn btn--plain btn--sm" do %>
-                <%= icon "x-mark", class: "icon icon--xs" %>
-                Clear
-              <% end %>
-            <% end %>
-          </div>
-        <% end %>
-      </div>
-
-      <!-- Status Filter Tabs + Sort Controls -->
-      <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
-        <%# Status filter tabs %>
-        <div class="wf-status-tabs">
-          <%
-            filter_tabs = [
-              { key: 'all', label: 'All' },
-              { key: 'published', label: 'Published' }
-            ]
-            filter_tabs << { key: 'draft', label: 'Drafts' } if current_user&.can_create_workflows?
-          %>
-          <% filter_tabs.each do |tab| %>
-            <% active = @status_filter == tab[:key] %>
-            <%= link_to workflows_path(status: tab[:key], search: params[:search], group_id: params[:group_id], sort: params[:sort]),
-                        class: "wf-status-tabs__tab #{active ? 'is-active' : ''}",
-                        data: { turbo_action: "replace" } do %>
-              <%= tab[:label] %>
-            <% end %>
-          <% end %>
-        </div>
-
-        <%# Sort dropdown %>
-        <%
-          sort_options = [
-            { key: 'recent', label: 'Recently Updated' },
-            { key: 'alphabetical', label: 'Alphabetical' },
-            { key: 'most_steps', label: 'Most Steps' }
-          ]
-        %>
-        <select data-controller="sort-select"
-                data-action="change->sort-select#navigate"
-                class="form-select" style="width: auto;">
-          <% sort_options.each do |opt| %>
-            <option value="<%= workflows_path(sort: opt[:key], status: params[:status], search: params[:search], group_id: params[:group_id]) %>"
-                    <%= 'selected' if @sort_by == opt[:key] %>>
-              <%= opt[:label] %>
-            </option>
-          <% end %>
-        </select>
-      </div>
-
       <!-- Workflows List -->
       <% if @selected_group.present? && @folders.present? && @folders.any? %>
+        <div class="card mb-4">
+          <%= render "workflows/list_toolbar" %>
+        </div>
+
         <%# Folder accordion view when a group is selected and has folders %>
         <div class="space-y-3">
           <% @folders.each do |folder| %>
             <% folder_workflows = @workflows_by_folder&.dig(folder.id) || Workflow.none %>
-            <%= render partial: "workflows/folder_accordion", locals: { folder: folder, workflows: folder_workflows, selected_group: @selected_group } %>
+            <%= render partial: "workflows/folder_accordion", locals: { name: folder.name, workflows: folder_workflows } %>
           <% end %>
 
           <%# Uncategorized folder (always last, virtual) %>
           <% if @uncategorized_workflows.present? && @uncategorized_workflows.any? %>
-            <details class="folder-accordion" data-controller="folder-accordion" open>
-              <summary class="folder-accordion__header"
-                       data-action="toggle->folder-accordion#toggle">
-                <div class="flex items-center gap-3">
-                  <%= icon "chevron-right", class: "icon icon--xs rotate-90" %>
-                  <%= icon "archive-box", class: "icon icon--sm" %>
-                  <span class="font-semibold italic">Uncategorized</span>
-                </div>
-                <span class="badge">
-                  <%= pluralize(@uncategorized_workflows.size, "workflow") %>
-                </span>
-              </summary>
-              <div class="folder-accordion__body">
-                <ul>
-                  <% @uncategorized_workflows.each_with_index do |workflow, index| %>
-                    <%= render partial: "workflows/workflow_list_item", locals: { workflow: workflow, index: index } %>
-                  <% end %>
-                </ul>
-              </div>
-            </details>
+            <%= render partial: "workflows/folder_accordion", locals: {
+                  name: "Uncategorized",
+                  workflows: @uncategorized_workflows,
+                  icon_name: "archive-box",
+                  name_class: "font-semibold italic",
+                  open: true
+                } %>
           <% end %>
         </div>
       <% elsif @workflows_paginated.any? %>
         <%# Flat list view (no group selected or group has no folders) %>
         <div class="card">
+          <%= render "workflows/list_toolbar" %>
           <ul>
             <% @workflows_paginated.each_with_index do |workflow, index| %>
               <%= render partial: 'workflows/workflow_list_item', locals: { workflow: workflow, index: index } %>
@@ -153,31 +79,16 @@
           </ul>
         </div>
 
-        <%# Pagination controls %>
-        <% if @total_pages > 1 %>
-          <nav class="flex items-center justify-center gap-2 mt-6" aria-label="Pagination">
-            <% if @page > 1 %>
-              <%= link_to url_for(page: @page - 1, status: params[:status], search: params[:search], group_id: params[:group_id], sort: params[:sort]), class: "btn btn--plain btn--sm" do %>
-                &larr; Previous
-              <% end %>
-            <% end %>
-
-            <% (1..@total_pages).each do |p| %>
-              <%= link_to p, url_for(page: p, status: params[:status], search: params[:search], group_id: params[:group_id], sort: params[:sort]), class: "btn #{p == @page ? 'btn--primary' : 'btn--plain'} btn--sm" %>
-            <% end %>
-
-            <% if @page < @total_pages %>
-              <%= link_to url_for(page: @page + 1, status: params[:status], search: params[:search], group_id: params[:group_id], sort: params[:sort]), class: "btn btn--plain btn--sm" do %>
-                Next &rarr;
-              <% end %>
-            <% end %>
-          </nav>
-        <% end %>
+        <%= render "workflows/pagination", page: @page, total_pages: @total_pages, per_page: @per_page %>
       <% else %>
-        <div class="card p-8 text-center">
-          <%= icon "document-text", class: "icon icon--xl mx-auto mb-4" %>
-          <h3 class="font-semibold mb-2">No workflows</h3>
-          <p class="text-sm">
+        <div class="card mb-4">
+          <%= render "workflows/list_toolbar" %>
+        </div>
+
+        <div class="empty-state">
+          <%= icon "document-text", class: "empty-state__icon" %>
+          <h3 class="empty-state__title">No workflows</h3>
+          <p class="empty-state__text">
             <% if @search_query.present? %>
               No workflows found matching "<%= @search_query %>"<% if @selected_group %> in <%= @selected_group.name %><% end %>.
             <% elsif @selected_group.present? %>
@@ -188,7 +99,7 @@
           </p>
           <% if current_user&.can_create_workflows? %>
             <div class="mt-4">
-              <%= link_to new_workflow_path, class: "btn btn--primary btn--sm", aria: { label: "Create a new workflow" } do %>
+              <%= link_to new_workflow_path, class: "btn btn--secondary btn--sm", aria: { label: "Create a new workflow" } do %>
                 <%= icon "plus", class: "icon icon--sm" %>
                 New Workflow
               <% end %>

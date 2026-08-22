@@ -16,13 +16,18 @@
 
 ## Section 1: Design Philosophy
 
-### Aesthetic Identity — "Calm + Fizzy"
+### Aesthetic Identity — "Calm + Deliberate"
 
-TurboFlows uses a dual-energy aesthetic:
-- **Calm** — low-contrast, blue-tinted neutral surfaces. The canvas breathes. Generous whitespace. No visual noise.
-- **Fizzy** — saturated OKLCH accent pops on interactive elements. Buttons, badges, and step-type indicators use vivid color to draw attention where it matters.
+TurboFlows uses a near-monochrome navy system:
+- **Calm** — low-chroma, blue-tinted neutral surfaces. Flat. Hairline 1px borders do the work that shadows used to. Generous whitespace.
+- **Deliberate** — color is *scarce*, and scarcity is the point. One filled button per screen. A pill only for step types and genuinely exceptional states. Everything else reads as quiet text.
 
-The result: a quiet, professional workspace where the important things (actions, decisions, alerts) pop against a calm background. Think Basecamp/HEY energy, not Material Design density.
+The result: a page where the eye lands on the one thing that matters, because it is the only saturated element present. Corporate and composed, not playful.
+
+**Scarcity rules (these carry most of the look):**
+1. **One filled button per screen.** Everything else is `.btn--secondary` (outlined) or `.btn--plain` (text).
+2. **Pills only for exceptions.** Ordinary status ("Published") is plain text; a pill means "look here" (e.g. a failure).
+3. **Mint appears once or not at all.** It marks terminal completion only.
 
 ### Color Model — OKLCH
 
@@ -32,14 +37,52 @@ All colors use OKLCH (Oklch Lightness Chroma Hue). Never hardcode hex, rgb, or h
 - Canvas: `var(--color-canvas)`, `var(--color-canvas-alt)`, `var(--color-canvas-raised)`
 - Ink: `var(--color-ink)`, `var(--color-ink-subtle)`, `var(--color-ink-muted)`
 - Borders: `var(--color-border)`, `var(--color-border-strong)`
-- Primary accent: `var(--color-primary)`, `var(--color-primary-hover)`, `var(--color-primary-soft)`
-- Semantic: `var(--color-negative)`, `var(--color-positive)`, `var(--color-warning)`
+- Primary: `var(--color-primary)` (fills), `var(--color-primary-text)` (links/icons on canvas), `var(--color-primary-hover)`, `var(--color-primary-soft)`, `var(--color-primary-muted)`
+- Mint: `var(--color-mint)` — **terminal completion only** (Resolve step, scenario complete)
+- Semantic, two tiers: `var(--color-negative)` / `var(--color-negative-soft)`, same for `positive` and `warning`
 
-**Step-type hues** — each step type has a dedicated hue token:
+**Two-tier semantics — pick by role, not by vibe:**
+- `--color-X` is sized for **text, icons and borders**.
+- `--color-X-soft` is the **pill fill**.
+- `--color-on-X` is text that sits **on top of** a `--color-X` fill.
+
+> Never put white text on `--color-negative/positive/warning`. In dark mode those
+> tokens are *light* fills (L 0.80) because they are sized for text, so white on
+> them measures ~3:1 and fails AA. Use `var(--color-on-negative)` etc., which is
+> white in light and ink in dark.
+
+**Why `--color-primary-text` exists:** in dark mode no single lightness clears AA
+for both "link on canvas" and "white text on a filled button" by more than 0.06.
+The split lets each sit comfortably. In light mode both alias the same navy.
+
+**Step-type hues** — each step type has a dedicated hue token. Step colour is
+**pale tints only**, and appears only on badges, flow-diagram nodes and dots —
+never as a card border or row background (surfaces stay neutral):
 - `var(--hue-question)` (250, blue), `var(--hue-action)` (145, green)
 - `var(--hue-message)` (290, purple), `var(--hue-escalate)` (25, red/orange)
 - `var(--hue-resolve)` (160, teal), `var(--hue-subflow)` (310, magenta)
 - `var(--hue-form)` (45, amber/yellow)
+
+**How to use a step hue.** Set `--step-hue` on the element, then consume the
+composed token — never write `oklch()` inline:
+
+```css
+.badge--question { --step-hue: var(--hue-question); }
+.badge--question { background: var(--step-bg); color: var(--step-text); }
+```
+
+Available: `--step-bg` (pale fill), `--step-text` (text on that fill),
+`--step-border`, `--step-dot` (dots, diagram nodes), `--step-solid` (filled chip)
+with `--step-on-solid` for its text. All five swap per theme automatically.
+
+> **The trap this replaced:** these are composed in a `*` rule, NOT on `:root`.
+> A custom property whose value contains `var()` resolves at the element where it
+> is *declared*. Declared on `:root`, `--step-bg` resolves against `:root`'s
+> undefined `--step-hue`, becomes invalid, and inherits as invalid — descendants
+> setting `--step-hue` never re-resolve it. The L/C values live on `:root` as
+> plain scalars (`--step-bg-l`, `--step-bg-c`); the `*` rule composes them
+> per-element. **Never declare an inherited custom property containing a `var()`
+> that points at something descendants will set.**
 
 ### Typography
 
@@ -60,19 +103,21 @@ Use the `--space-N` scale. Never use raw rem/px values for spacing.
 
 ### Shadows
 
-Dual-layer shadows for depth. Use token names, never write raw box-shadow values.
-- `var(--shadow-sm)` — cards, inputs (subtle lift)
+Surfaces are **flat**. Cards and inputs use a 1px hairline border, not a shadow;
+`--shadow-sm` is deliberately `none`. Shadows survive only for elements that
+genuinely float above the page. Use token names, never raw box-shadow values.
+- `var(--shadow-sm)` — none (kept so existing rules stay valid)
 - `var(--shadow)` — dropdowns, popovers (medium lift)
 - `var(--shadow-lg)` — dialogs, modals (high lift)
 - `var(--shadow-xl)` — tooltips, floating elements
 
 ### Border Radii
 
-- `var(--radius-sm)` 0.25rem — pills, small badges
-- `var(--radius)` 0.5rem — general purpose
-- `var(--radius-md)` 0.625rem — buttons, inputs (interactive elements)
-- `var(--radius-lg)` 0.75rem — cards
-- `var(--radius-xl)` 1rem — large containers
+- `var(--radius-sm)` 0.25rem — small badges
+- `var(--radius)` 0.375rem — general purpose
+- `var(--radius-md)` 0.375rem — buttons, inputs (interactive elements)
+- `var(--radius-lg)` 0.5rem — cards
+- `var(--radius-xl)` 0.75rem — large containers
 - `var(--radius-full)` 9999px — avatars, dots
 
 ### Motion
@@ -92,11 +137,56 @@ Dark mode is automatic. Use token names and they swap values via `[data-theme="d
 
 - **No Tailwind classes** — use component classes (`.btn--primary`) or utility classes from `utilities.css`
 - **No hardcoded colors** — always `var(--color-*)` or `var(--hue-*)` tokens
-- **No inline `style=""` attributes** — use component/utility classes instead
-- **No gradients on surfaces** — only buttons get subtle gradients (`.btn--primary`)
-- **No heavy shadows** — max is `var(--shadow-xl)`, and that's rare
+- **No *literal* colour in an inline `style=""`** — the hardcoded-colour rule
+  above applies inside style attributes too, so `background: rgba(0,0,0,.5)`
+  is out and `background: var(--color-canvas)` is fine. Inline `style=""`
+  itself is not banned: for a one-off layout value (a grid template, a fixed
+  position) it is the right tool, and the recipes in Section 3 use it
+- **No gradients anywhere** — not on surfaces, not on buttons
+- **No shadows on cards, rows or inputs** — a 1px hairline border is the separator. Shadows are for popovers, dropdowns and dialogs only
+- **No second filled button** on the same screen
+- **No colored borders or tinted backgrounds to signal step type** — that lives in the badge
+- **No `oklch()` written inline against `--step-hue`** — use `--step-bg` / `--step-text` / `--step-dot` / `--step-solid`
 - **No external fonts or CDN links** — system fonts only
 - **No raw px/rem for spacing** — use `var(--space-N)` tokens
+
+### Surfaces Deliberately Excluded
+
+Some surfaces were left out of the northwest-palette migration on purpose. They
+are **not** unfinished work, and tidying them into line with the rest of the
+system is a change of design, not a cascade fix. Do not restructure either one
+without meeting its reopen condition.
+
+- **Scenario runner mechanics** — the radio cards, button bar and progress rail
+  in `scenarios/step` and `scenarios/show`. Only the page chrome (back link, H1,
+  identifier) was adopted. No reference material shows a runner, and this is the
+  screen users operate under time pressure on live calls, where familiarity is
+  worth more than consistency.
+  *Reopen when:* reference material for a runner exists, or a real user complaint
+  about the runner comes in.
+
+- **Builder editing internals** — `_panel_edit` and its form surface in
+  `steps.css`, `_preview_pane`, `_visual_editor` / `_visual_condition` and
+  `transitions.css`, and the flow diagram panel with `flow_diagram.css`. These
+  are graph rendering and a large bespoke form surface, where the design system
+  has little to say and restyling means inventing.
+  *Reopen when:* reference material exists, and then as a design consultation
+  rather than a refactor.
+
+  > **Note what is no longer excluded.** The builder's *chrome* — header,
+  > toolbar, step list, step rows, empty state, health panel and the shared
+  > panel chrome — was migrated after a design consultation established that
+  > the rest of TurboFlows is now mature enough to serve as its own reference,
+  > which is what this entry's reopen condition asked for. Its colours were
+  > tokenised in a separate pass first; an earlier version of this entry wrongly
+  > claimed that had already happened, when `builder.css`, `steps.css`,
+  > `transitions.css` and `flow_diagram.css` still carried literal
+  > `oklch()`/`#fff` values that never swapped in dark mode — flow-diagram nodes
+  > read `var(--color-surface, #fff)`, and `--color-surface` is not a token, so
+  > they rendered white in dark mode. The entries above remain excluded: this
+  > was a narrowing, not a lifting.
+
+  The scenario runner exclusion above is untouched by that work.
 
 ---
 
@@ -108,15 +198,21 @@ Each component references its CSS file by selector name. Read that file for exac
 
 | Class | Use when | Visual |
 |-------|----------|--------|
-| `.btn` | Base button (transparent bg, border) | Inline-flex, 1.5px border, radius-md |
-| `.btn--primary` | Primary action (submit, save, create) | Blue gradient bg, white text, shadow |
-| `.btn--secondary` | Secondary action (edit, cancel) | Canvas-alt bg, ink text |
+| `.btn` | Base button (transparent bg, border) | Inline-flex, 1px hairline border, radius-md |
+| `.btn--primary` | **The one** primary action on the screen | Flat navy fill, white text, no gradient |
+| `.btn--secondary` | Everything else with a visible edge | Raised bg, hairline border, navy-muted text |
 | `.btn--plain` | Tertiary/minimal action | No border, transparent, subtle hover |
-| `.btn--negative` | Destructive action (delete, remove) | Red/negative color accent |
-| `.btn--positive` | Completion action (resolve, complete) | Green/positive color accent |
+| `.btn--negative` | Destructive action (delete, remove) | Outlined red |
+| `.btn--negative.btn--solid` | Confirming action inside a destructive dialog | Filled red — only place a filled danger button is allowed |
+| `.btn--mint` | Terminal completion (Complete Workflow) | Mint fill, ink text. **Scarce: one per screen, or none** |
 | `.btn--sm` | Compact size modifier | Smaller padding, text-xs |
 | `.btn--lg` | Large size modifier | Larger padding, text-base |
 | `.btn--circle` | Icon-only circular button | Equal padding, border-radius-full |
+
+**Hierarchy rule:** at most **one filled button per screen**. If a page header
+already has a `.btn--primary`, an empty state on that page uses `.btn--secondary`.
+`.btn--positive` was retired — a green "Start" on every row of a list is exactly
+the noise this system removes.
 
 **Active state:** All buttons scale to 0.96 on press (`transform: scale(0.96)`).
 **Stimulus:** Buttons with confirm dialogs use `data-turbo-confirm`.
@@ -125,9 +221,9 @@ Each component references its CSS file by selector name. Read that file for exac
 
 | Class | Use when | Visual |
 |-------|----------|--------|
-| `.card` | Any contained content block | White bg, border, radius-lg, shadow-sm |
-| `.card--bordered-top` | Step-type colored cards | 3.5px colored top border + gradient glow |
-| `.card--question` `.card--action` etc. | Step type specific | Top border color from `--hue-*` token |
+| `.card` | Any contained content block | Raised bg, 1px hairline border, radius-lg, no shadow |
+| `.card--bordered-top` | Emphasis card | 3px neutral top border |
+| `.card--question` `.card--action` etc. | Publishes `--step-hue` for nested tokens | **No colored border** — surfaces stay neutral |
 | `.card--accent-left` | Left-accent emphasis | 3px left border |
 | `.card--muted` | De-emphasized content | Canvas-alt bg, no shadow |
 | `.card__body` | Card content area | Standard padding |
@@ -186,13 +282,18 @@ Each component references its CSS file by selector name. Read that file for exac
 
 | Class | Use when | Visual |
 |-------|----------|--------|
-| `.badge` | Generic label | Inline-flex, text-xs, radius-full, pill shape |
+| `.badge` | Generic label | Inline-flex, text-xs. **Pill shape is opt-in**, not the default |
 | `.badge--question` `.badge--action` `.badge--message` `.badge--escalate` `.badge--resolve` `.badge--sub-flow` `.badge--form` | Step type | Color from `--hue-*` token |
-| `.badge--draft` `.badge--published` | Workflow status | Yellow/green tint |
-| `.badge--admin` `.badge--editor` `.badge--regular` | User role | Role-specific color |
-| `.badge--alert` | Error/urgent | Red tint (hue 25) |
-| `.badge--warning` | Warning/caution | Yellow tint (hue 75) |
-| `.badge--info` | Informational | Blue tint (hue 250) |
+| `.badge--draft` `.badge--published` | Workflow status | **Plain text**, no pill |
+| `.badge--admin` `.badge--editor` `.badge--regular` | User role | **Plain text**, no pill |
+| `.badge--info` | Informational | **Plain text**, no pill |
+| `.badge--alert` | Error/urgent — exceptional | Pill, negative-soft fill |
+| `.badge--warning` | Warning/caution — exceptional | Pill, warning-soft fill |
+| `.badge--group` | Tag/token with a remove affordance | Pill, neutral fill + hairline |
+
+**Tiering rule:** a badge is a pill only when it marks a **step type** or an
+**exceptional state**. Ordinary status and role read as plain text, so a list
+does not become a wall of pastel and the eye finds real problems instantly.
 
 ### Flash Messages (`flash.css`)
 
@@ -214,18 +315,35 @@ Each component references its CSS file by selector name. Read that file for exac
 **Structure:** Left zone (search), center (logo), right (actions). Height: 4rem.
 **Stimulus:** `data-controller="nav-search"` for Cmd+K search, `data-controller="nav-menu"` for menu dropdown.
 
+### Tabs (`tabs.css`, `workflows.css`)
+
+Two components, two different jobs. Do not conflate them.
+
+| Class | Use when | Visual |
+|-------|----------|--------|
+| `.tab-bar` / `.tab-bar__tab` | **Navigating** between views of one record (Execution Path / Results Summary) | Bare text on a hairline rule; active tab gets navy text + 2px underline |
+| `.wf-status-tabs` / `__tab` | **Filtering** a list (All / Published / Drafts) | Segmented pill control in a bordered track; active segment is a raised pill |
+
+Active state is `.is-active` on both. `data-controller="tabs"` toggles it for you,
+so `.tab-bar` drops into any existing tablist with no JS change.
+
 ### Other Components
 
 | Component | Classes | File | Notes |
 |-----------|---------|------|-------|
+| List rows | `.list-section`, `.list-row`, `.list-row--compact` | `lists.css` | Section + hairline-divided rows. `--compact` is the dense size (builder step list); same anatomy, tighter box — sized like `.btn--sm` is to `.btn` |
 | Tooltips | `.tooltip`, `.tooltip--bottom` | `tooltips.css` | Absolute, spring easing entrance |
 | Skeletons | `.skeleton`, `.skeleton--text`, `--heading`, `--card` | `skeleton.css` | Shimmer animation, use for loading states |
-| Pagination | `.pagination`, `.pagination__item`, `.is-active` | `pagination.css` | Flex row, min-width 2rem items |
+| Pagination | `.pagination-bar`, `.pagination`, `.pagination__item`, `.is-active` | `pagination.css` | `.pagination-bar` is a three-zone grid: summary left, numbered nav centred, page-size right |
 | Icons | `.icon`, `.icon--xs/sm/lg/xl` | `icons.css` | Inline-flex sizing (0.75 to 2rem) |
 
 ### Empty States
 
-Use a centered card layout with an icon, heading, description, and optional CTA button:
+**Keep the frame, and say what will fill it.** The container, card border, and
+(for charts) the axes and gridlines still render — only the data is missing. The
+description is an instructive sentence about what will appear here, not an
+apology. If the page header already has a filled button, the empty-state CTA is
+`.btn--secondary`.
 
 ```html
 <div class="card" style="padding: var(--space-8); text-align: center;">
@@ -233,7 +351,7 @@ Use a centered card layout with an icon, heading, description, and optional CTA 
   <h3 class="font-semibold mb-2">No items found</h3>
   <p class="text-sm" style="color: var(--color-ink-muted);">Description text here.</p>
   <div class="mt-4">
-    <a href="..." class="btn btn--primary btn--sm">Create New</a>
+    <a href="..." class="btn btn--secondary btn--sm">Create New</a>
   </div>
 </div>
 ```
@@ -276,55 +394,57 @@ Each recipe shows the complete HTML structure for a page type. Use these as star
 
 ### Recipe 1: Dashboard / Index Page
 
-Two-column layout with sidebar and card-based content list.
+Section heading sits **on the canvas**; the bordered container holds only rows.
 
 ```erb
 <div class="page-content">
-  <!-- Page Header -->
+  <!-- Page header: title left, ONE filled action right -->
   <div class="page-header-section">
-    <div>
-      <h1 class="page-header-section__title">Page Title</h1>
-      <p class="page-header-section__subtitle">Optional subtitle text</p>
-    </div>
+    <h1 class="page-header-section__title">Page Title</h1>
     <div class="flex items-center gap-2">
-      <%= link_to new_thing_path, class: "btn btn--primary btn--sm" do %>
-        <svg class="icon icon--sm">...</svg>
-        New Item
+      <a href="..." class="btn btn--secondary btn--sm">Import</a>
+      <a href="..." class="btn btn--primary btn--sm">New Item</a>
+    </div>
+  </div>
+
+  <!-- Section: bold title + count badge + text link, ABOVE the container -->
+  <section class="list-section">
+    <div class="list-section__head">
+      <h2 class="list-section__title">Recent Items</h2>
+      <span class="list-section__count"><%= items.size %></span>
+      <%= link_to "View all", items_path, class: "list-section__link" %>
+    </div>
+
+    <div class="list-section__body">
+      <% items.each do |item| %>
+        <div class="list-row">
+          <span class="list-row__icon" aria-hidden="true">
+            <%= icon "document-text", class: "icon icon--sm" %>
+          </span>
+          <div class="list-row__body">
+            <div class="list-row__title">
+              <%= link_to item.title, item_path(item) %>
+              <span class="badge badge--published">Published</span>
+            </div>
+            <p class="list-row__sub">Created <%= time_ago_in_words(item.created_at) %> ago</p>
+          </div>
+          <div class="list-row__actions">
+            <%= link_to "View", item_path(item), class: "btn btn--secondary btn--sm" %>
+          </div>
+        </div>
       <% end %>
     </div>
-  </div>
-
-  <!-- Content Area -->
-  <div class="card">
-    <ul>
-      <%% @items.each do |item| %>
-        <li class="flex items-center justify-between"
-            style="padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border);">
-          <div>
-            <h3 class="font-semibold"><%= item.title %></h3>
-            <p class="text-sm" style="color: var(--color-ink-subtle);"><%= item.description %></p>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="badge"><%= item.status %></span>
-            <%= link_to "View", item_path(item), class: "btn btn--plain btn--sm" %>
-          </div>
-        </li>
-      <%% end %>
-    </ul>
-  </div>
-
-  <!-- Empty State (when no items) -->
-  <%% if @items.empty? %>
-    <div class="card" style="padding: var(--space-8); text-align: center;">
-      <svg class="icon icon--xl mx-auto mb-4">...</svg>
-      <h3 class="font-semibold mb-2">No items yet</h3>
-      <p class="text-sm" style="color: var(--color-ink-muted);">Get started by creating your first item.</p>
-    </div>
-  <%% end %>
+  </section>
 </div>
 ```
 
-**Layout:** `.page-content` wraps everything. `.page-header-section` is a flex row (title left, actions right). Content goes in `.card` containers.
+**Anatomy of a row:** icon chip (neutral) → semibold title → grey subtitle →
+optional inline progress → outlined action pinned right. Rows are divided by
+`border-bottom` hairlines, never by gaps or shadows. The icon chip stays neutral;
+it is not a place to signal step type.
+
+**Stats** use `.stat-panel` — ONE bordered card whose `.stat-cell` children are
+divided by hairlines — not a grid of separate cards.
 
 ### Recipe 2: Detail / Show Page
 
@@ -333,21 +453,15 @@ Single-column content with a header and sections.
 ```erb
 <div class="page-content">
   <div class="page-main">
-    <!-- Breadcrumb + Back -->
-    <nav class="mb-4">
-      <%= link_to "← Back to list", items_path, class: "btn btn--plain btn--sm" %>
-    </nav>
-
-    <!-- Header -->
+    <!-- Header: back link, heavy H1, small grey identifier -->
     <div class="page-header-section">
       <div>
+        <%= link_to parent_path, class: "page-back" do %>
+          <%= icon "chevron-left", class: "icon icon--xs" %>
+          Back to <%= @item.parent.name %>
+        <% end %>
         <h1 class="page-header-section__title"><%= @item.title %></h1>
-        <div class="flex items-center gap-2 mt-1">
-          <span class="badge badge--<%= @item.status %>"><%= @item.status.titleize %></span>
-          <span class="text-sm" style="color: var(--color-ink-muted);">
-            Updated <%= time_ago_in_words(@item.updated_at) %> ago
-          </span>
-        </div>
+        <p class="page-header-section__ident"><%= @item.identifier %></p>
       </div>
       <div class="flex items-center gap-2">
         <%= link_to edit_item_path(@item), class: "btn btn--secondary btn--sm" do %>Edit<% end %>
@@ -371,6 +485,8 @@ Single-column content with a header and sections.
 ```
 
 **Layout:** `.page-main` provides max-width (80rem) and responsive padding. Cards stack vertically with `.mb-4` spacing.
+
+**Tabbed detail pages** put a `.tab-bar` directly under the header (see "Tabs").
 
 ### Recipe 3: Form Page
 
@@ -513,7 +629,8 @@ For page types not covered by a recipe, read these exemplary views. They demonst
 |-----------|-----------|----------|
 | `app/views/workflows/index.html.erb` | Index/list with sidebar | Two-column layout, search, filters, pagination, empty state |
 | `app/views/player/step.html.erb` | Step execution | Card-based UI, form variations, button bars, progress stepper |
-| `app/views/workflows/_builder.html.erb` | Builder/editor | Header with inline edit, panel system, toolbar, Stimulus wiring |
+| `app/views/workflows/_builder.html.erb` | Builder/editor | Header with inline edit, panel system, toolbar, Stimulus wiring. Its chrome now follows this guide; the editing internals it opens into are still excluded (see §Surfaces Deliberately Excluded) |
+| `app/views/workflows/_step_row.html.erb` | Dense list row | Composing `.list-row` + `.list-row--compact` with block-specific concerns, rather than redefining a row. Status/meta sits inline, not on a second line — a scanned list pays for two-line rows in steps visible at once |
 
 ---
 
@@ -538,7 +655,9 @@ For page types not covered by a recipe, read these exemplary views. They demonst
 | `icons.css` | components | Icon sizing |
 | `tooltips.css` | components | Tooltip positioning |
 | `skeleton.css` | components | Loading skeletons |
-| `pagination.css` | components | Page navigation |
+| `pagination.css` | components | Page navigation (« ‹ 1 2 3 › » + summary) |
+| `tabs.css` | components | Underline tab bar (`.tab-bar`) |
+| `lists.css` | components | Section + row list pattern: `.list-section`, `.list-row`, `.list-row--compact` |
 | `_tags.css` | components | Tag pills, autocomplete |
 | `_player.css` | components | Player-specific styles |
 | `_form_step.css` | components | FormStep builder UI |
@@ -554,7 +673,7 @@ For page types not covered by a recipe, read these exemplary views. They demonst
 | `steps.css` | modules | Step editor styles |
 | `editor.css` | modules | Rich text editor (Lexxy) |
 | `transitions.css` | modules | Transition editor |
-| `dashboard.css` | modules | Dashboard layout |
+| `dashboard.css` | modules | Dashboard shell: `.dashboard-*`, `.stat-panel`/`.stat-cell` |
 | `auth.css` | modules | Login/signup pages |
 | `admin.css` | modules | Admin panel |
 | `utilities.css` | utilities | Layout utilities (.flex, .gap-*, .mb-*, .text-*) |
@@ -596,3 +715,14 @@ Before submitting a new or modified view, verify:
 6. **Works in both light and dark mode** — tokens auto-swap, no manual overrides needed
 7. **Responsive** — tested at mobile (< 640px), tablet (640-1024px), desktop (1024px+)
 8. **Spacing uses --space-N tokens** — no raw rem/px values for margins/padding/gaps
+9. **At most one filled button** on the screen
+10. **Badges**: pill only for step types and exceptional states
+11. **Step color** goes through `--step-*` tokens, never inline `oklch()`
+12. **Text on a semantic fill** uses `--color-on-*`, never hardcoded white
+13. **Verify in the browser, in both themes.** Passing tests prove nothing about
+    color. Read `getComputedStyle` on the element — a token that silently fails to
+    resolve renders as "no style applied", which looks plausible in a screenshot
+14. **Tabs match their job** — `.tab-bar` (underline) for *navigating* between
+    views of one record; `.wf-status-tabs` (segmented) for *filtering* a list.
+    Wearing the filter control for navigation was the most-repeated mistake of
+    the migration

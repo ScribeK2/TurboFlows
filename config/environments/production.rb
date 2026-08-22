@@ -33,8 +33,9 @@ Rails.application.configure do
     ]
   end
 
-  # SSL: controlled by ONCE's DISABLE_SSL env var.
-  # Set DISABLE_SSL=true when TLS is terminated by a load balancer or during initial staging setup.
+  # SSL: controlled by ONCE's DISABLE_SSL env var. assume_ssl matters when TLS
+  # is terminated by a proxy, which is how the demo server runs.
+  # Set DISABLE_SSL when TLS is terminated upstream, or during staging setup.
   config.assume_ssl = ENV["DISABLE_SSL"].blank?
   config.force_ssl = ENV["DISABLE_SSL"].blank?
 

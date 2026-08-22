@@ -1,156 +1,91 @@
 @layer components {
-/* badges.css — Badge and avatar components */
+/* badges.css — Badge and avatar components
+   Tiering rule (Northwest reference): a badge is a PILL only when it marks a
+   step type or an *exceptional* state. Ordinary status and role read as plain
+   text, so the eye finds problems instantly instead of scanning a wall of
+   pastel. See UIGUIDE "Badges". */
 
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  padding: 0.125rem 0.5rem;
-  border-radius: var(--radius-full);
   font-size: var(--text-xs);
   font-weight: 500;
   line-height: 1.5;
   white-space: nowrap;
 }
 
-/* Step type badges */
-.badge--question {
-  background: oklch(0.93 0.05 var(--color-step-question));
-  color: oklch(0.4 0.15 var(--color-step-question));
+/* Pill treatment — opt-in, applied by the modifiers that earn it. */
+.badge--question,
+.badge--action,
+.badge--message,
+.badge--escalate,
+.badge--resolve,
+.badge--sub-flow,
+.badge--form,
+.badge--alert,
+.badge--warning,
+.badge--group {
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-full);
 }
 
-.badge--action {
-  background: oklch(0.93 0.05 var(--color-step-action));
-  color: oklch(0.4 0.15 var(--color-step-action));
-}
+/* ─── Step type badges — pills, hue-derived, theme-aware via tokens ─── */
+.badge--question { --step-hue: var(--hue-question); }
+.badge--action   { --step-hue: var(--hue-action); }
+.badge--message  { --step-hue: var(--hue-message); }
+.badge--escalate { --step-hue: var(--hue-escalate); }
+.badge--resolve  { --step-hue: var(--hue-resolve); }
+.badge--sub-flow { --step-hue: var(--hue-subflow); }
+.badge--form     { --step-hue: var(--hue-form); }
 
-.badge--message {
-  background: oklch(0.93 0.05 var(--color-step-message));
-  color: oklch(0.4 0.15 var(--color-step-message));
-}
-
-.badge--escalate {
-  background: oklch(0.93 0.05 var(--color-step-escalate));
-  color: oklch(0.4 0.15 var(--color-step-escalate));
-}
-
-.badge--resolve {
-  background: oklch(0.93 0.05 var(--color-step-resolve));
-  color: oklch(0.4 0.15 var(--color-step-resolve));
-}
-
-.badge--sub-flow {
-  background: oklch(0.93 0.05 var(--color-step-subflow));
-  color: oklch(0.4 0.15 var(--color-step-subflow));
-}
-
+.badge--question,
+.badge--action,
+.badge--message,
+.badge--escalate,
+.badge--resolve,
+.badge--sub-flow,
 .badge--form {
-  background: oklch(0.93 0.05 var(--color-step-form));
-  color: oklch(0.4 0.15 var(--color-step-form));
+  background: var(--step-bg);
+  color: var(--step-text);
 }
 
-/* Dark mode step badges */
-[data-theme="dark"] .badge--question {
-  background: oklch(0.25 0.06 var(--color-step-question));
-  color: oklch(0.8 0.1 var(--color-step-question));
-}
-
-[data-theme="dark"] .badge--action {
-  background: oklch(0.25 0.06 var(--color-step-action));
-  color: oklch(0.8 0.1 var(--color-step-action));
-}
-
-[data-theme="dark"] .badge--message {
-  background: oklch(0.25 0.06 var(--color-step-message));
-  color: oklch(0.8 0.1 var(--color-step-message));
-}
-
-[data-theme="dark"] .badge--escalate {
-  background: oklch(0.25 0.06 var(--color-step-escalate));
-  color: oklch(0.8 0.1 var(--color-step-escalate));
-}
-
-[data-theme="dark"] .badge--resolve {
-  background: oklch(0.25 0.06 var(--color-step-resolve));
-  color: oklch(0.8 0.1 var(--color-step-resolve));
-}
-
-[data-theme="dark"] .badge--sub-flow {
-  background: oklch(0.25 0.06 var(--color-step-subflow));
-  color: oklch(0.8 0.1 var(--color-step-subflow));
-}
-
-[data-theme="dark"] .badge--form {
-  background: oklch(0.25 0.06 var(--color-step-form));
-  color: oklch(0.8 0.1 var(--color-step-form));
-}
-
-/* Role badges */
-.badge--admin {
-  background: oklch(0.93 0.05 145);
-  color: oklch(0.4 0.15 145);
-}
-
-.badge--editor {
-  background: oklch(0.93 0.05 260);
-  color: oklch(0.4 0.15 260);
-}
-
-.badge--regular {
-  background: var(--color-canvas-raised);
-  color: var(--color-ink-subtle);
-}
-
-[data-theme="dark"] .badge--admin {
-  background: oklch(0.25 0.06 145);
-  color: oklch(0.8 0.1 145);
-}
-
-[data-theme="dark"] .badge--editor {
-  background: oklch(0.25 0.06 260);
-  color: oklch(0.8 0.1 260);
-}
-
-/* Semantic badges */
+/* ─── Exceptional states — the only non-step pills ─── */
 .badge--alert {
-  background: oklch(0.93 0.05 25);
-  color: oklch(0.4 0.15 25);
+  background: var(--color-negative-soft);
+  color: var(--color-negative);
 }
 
 .badge--warning {
-  background: oklch(0.93 0.05 75);
-  color: oklch(0.45 0.1 75);
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
 }
 
-.badge--info {
-  background: oklch(0.93 0.05 250);
-  color: oklch(0.4 0.15 250);
+/* ─── Ordinary status, role and info — plain text, no pill ─── */
+.badge--draft,
+.badge--published,
+.badge--admin,
+.badge--editor,
+.badge--regular,
+.badge--info,
+.badge--default {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  color: var(--color-ink-muted);
 }
 
-[data-theme="dark"] .badge--alert {
-  background: oklch(0.25 0.06 25);
-  color: oklch(0.8 0.1 25);
+/* Published is the one status worth a little weight — still not a pill. */
+.badge--published {
+  color: var(--color-ink-subtle);
+  font-weight: 600;
 }
 
-[data-theme="dark"] .badge--warning {
-  background: oklch(0.25 0.04 75);
-  color: oklch(0.75 0.08 75);
-}
-
-[data-theme="dark"] .badge--info {
-  background: oklch(0.25 0.06 250);
-  color: oklch(0.8 0.1 250);
-}
-
-/* Group badges */
+/* ─── Group chips — a token with a remove affordance, not a status ─── */
 .badge--group {
-  background: oklch(0.93 0.03 250);
-  color: oklch(0.4 0.12 250);
-}
-
-[data-theme="dark"] .badge--group {
-  background: oklch(0.25 0.04 250);
-  color: oklch(0.8 0.08 250);
+  background: var(--color-canvas-alt);
+  color: var(--color-ink-subtle);
+  border: 1px solid var(--color-border);
 }
 
 .badge--group .badge__remove {
@@ -166,33 +101,12 @@
   opacity: 1;
 }
 
-/* Status badges */
-.badge--draft {
-  background: oklch(0.93 0.05 75);
-  color: oklch(0.45 0.1 75);
-}
+/* ─── Avatars ─── */
+.avatar--admin   { background: oklch(0.45 0.10 165); }
+.avatar--editor  { background: var(--color-primary); }
+.avatar--regular { background: var(--color-ink-muted); }
 
-.badge--published {
-  background: oklch(0.93 0.05 145);
-  color: oklch(0.4 0.15 145);
-}
-
-[data-theme="dark"] .badge--draft {
-  background: oklch(0.25 0.04 75);
-  color: oklch(0.75 0.08 75);
-}
-
-[data-theme="dark"] .badge--published {
-  background: oklch(0.25 0.06 145);
-  color: oklch(0.8 0.1 145);
-}
-
-/* Avatar color classes */
-.avatar--admin { background: oklch(0.6 0.19 145); }
-.avatar--editor { background: oklch(0.55 0.2 260); }
-.avatar--regular { background: oklch(0.55 0.02 75); }
-
-/* Step type dots (for composition display) */
+/* ─── Step type dots (for composition display) ─── */
 .dot {
   display: inline-block;
   width: 0.5rem;
@@ -201,10 +115,11 @@
   background: var(--color-ink-muted);
 }
 
-.dot--question { background: oklch(0.55 0.2 var(--color-step-question)); }
-.dot--action { background: oklch(0.65 0.18 var(--color-step-action)); }
-.dot--message { background: oklch(0.55 0.18 var(--color-step-message)); }
-.dot--escalate { background: oklch(0.55 0.22 var(--color-step-escalate)); }
-.dot--resolve { background: oklch(0.6 0.19 var(--color-step-resolve)); }
-.dot--sub-flow { background: oklch(0.55 0.18 var(--color-step-subflow)); }
+.dot--question { --step-hue: var(--hue-question); background: var(--step-dot); }
+.dot--action   { --step-hue: var(--hue-action);   background: var(--step-dot); }
+.dot--message  { --step-hue: var(--hue-message);  background: var(--step-dot); }
+.dot--escalate { --step-hue: var(--hue-escalate); background: var(--step-dot); }
+.dot--resolve  { --step-hue: var(--hue-resolve);  background: var(--step-dot); }
+.dot--sub-flow { --step-hue: var(--hue-subflow);  background: var(--step-dot); }
+.dot--form     { --step-hue: var(--hue-form);     background: var(--step-dot); }
 }

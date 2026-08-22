@@ -93,7 +93,7 @@ export default class extends Controller {
       stepType = typeInput?.value || null
     }
     if (!stepType) {
-      const selectedRow = document.querySelector('.builder__list-row--selected')
+      const selectedRow = document.querySelector('.builder__step--selected')
       stepType = selectedRow?.dataset?.stepType || null
     }
 

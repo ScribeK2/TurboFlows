@@ -461,13 +461,13 @@
 }
 
 .nav__search-badge--published {
-  background: oklch(0.93 0.04 145);
-  color: oklch(0.40 0.15 145);
+  background: var(--color-positive-soft);
+  color: var(--color-positive);
 }
 
 [data-theme="dark"] .nav__search-badge--published {
-  background: oklch(0.30 0.08 145);
-  color: oklch(0.70 0.16 145);
+  background: var(--color-positive-soft);
+  color: var(--color-positive);
 }
 
 .nav__search-badge--draft {

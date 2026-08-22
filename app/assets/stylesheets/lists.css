@@ -1,0 +1,220 @@
+@layer components {
+/* lists.css — Section + row list pattern.
+   A bold section title (with optional count and link) sits on the canvas above
+   a bordered container of hairline-divided rows — reference image 1's
+   "Action Items (7) View All".
+
+   Shared by both product dashboards, the admin dashboard and the player index,
+   so it lives here rather than in dashboard.css. This is the general list
+   pattern, not a dashboard-specific one. */
+
+/* ============================================================================
+   List Section — bold title + count + text link ABOVE a bordered row list.
+   Mirrors "Action Items (7) View All" in reference image 1: the heading sits
+   on the canvas, the container holds only rows.
+   ============================================================================ */
+
+.list-section { margin-bottom: var(--space-8); }
+
+.list-section__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.list-section__title {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-ink);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.list-section__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding-inline: 0.375rem;
+  border-radius: var(--radius-full);
+  background: var(--color-canvas-alt);
+  border: 1px solid var(--color-border);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-ink-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.list-section__link {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-primary-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.list-section__link:hover { color: var(--color-primary-hover); }
+
+.list-section__body {
+  background: var(--color-canvas-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+/* ============================================================================
+   List Row — icon chip / title / subtitle / optional progress / action
+   ============================================================================ */
+
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  transition: background var(--duration-fast) var(--ease-out);
+  text-decoration: none;
+  color: inherit;
+}
+
+.list-row:not(:last-child) { border-bottom: 1px solid var(--color-border); }
+
+.list-row:hover { background: var(--color-canvas-alt); text-decoration: none; }
+
+.list-row__icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius);
+  background: var(--color-canvas-alt);
+  border: 1px solid var(--color-border);
+  color: var(--color-ink-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.list-row__body { flex: 1; min-width: 0; }
+
+.list-row__title {
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.list-row__title a { color: inherit; text-decoration: none; }
+.list-row__title a:hover { color: var(--color-primary-text); }
+
+.list-row__sub {
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+  margin-top: 0.125rem;
+}
+
+.list-row__tags { margin-top: var(--space-1); }
+
+.list-row__progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+  min-width: 9rem;
+}
+
+.list-row__progress-track {
+  flex: 1;
+  height: 6px;
+  background: var(--color-canvas-alt);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.list-row__progress-track > span {
+  display: block;
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: var(--radius-full);
+}
+
+.list-row__progress-label {
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.list-row__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* Compact size modifier, for dense lists where full row padding costs too much
+   scroll - the builder's step list runs to 40+ rows. Sized like .btn--sm is to
+   .btn: same anatomy, tighter box. */
+.list-row--compact {
+  padding: var(--space-2) var(--space-4);
+  gap: var(--space-3);
+}
+
+.list-row--compact .list-row__icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* A trailing row that invites an action rather than showing data. */
+.list-row--prompt { color: var(--color-ink-muted); }
+.list-row--prompt .list-row__title { font-weight: 500; color: var(--color-ink-subtle); }
+
+/* ============================================================================
+   List Row status dot (activity feed)
+   ============================================================================ */
+
+.list-row__dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+  background: var(--color-ink-muted);
+}
+
+.list-row__dot--completed { background: var(--color-positive); }
+.list-row__dot--active    { background: var(--color-primary); }
+.list-row__dot--stopped   { background: var(--color-ink-muted); }
+.list-row__dot--error     { background: var(--color-negative); }
+
+.list-row__title--muted {
+  font-weight: 400;
+  font-style: italic;
+  color: var(--color-ink-muted);
+}
+
+/* A row that is itself a submit button (Rails button_to wraps it in a form,
+   so the divider has to hang off the form, not the button's :last-child). */
+button.list-row {
+  width: 100%;
+  text-align: start;
+  background: none;
+  border: none;
+  border-radius: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.list-section__body > form:not(:last-child) > button.list-row {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.list-row__arrow {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-ink-muted);
+  flex-shrink: 0;
+}
+}

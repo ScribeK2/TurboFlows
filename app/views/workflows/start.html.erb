@@ -1,7 +1,7 @@
 <div class="wizard-page" style="padding-bottom: 7rem;">
   <!-- Header Section -->
   <div class="wizard-page__header text-center">
-    <h1 class="page-title"><%= @workflow.title %></h1>
+    <h1 class="page-header-section__title"><%= @workflow.title %></h1>
     <% if @workflow.description? %>
       <div class="mt-3 text-left">
         <%= @workflow.description %>
@@ -35,7 +35,7 @@
       <%= form.submit "Start Workflow",
           data: { form_submit_target: "submit" },
           aria: { label: "Start workflow: #{@workflow.title}" },
-          class: "btn btn--positive btn--lg" %>
+          class: "btn btn--primary btn--lg" %>
     <% end %>
     <p class="text-sm mt-2 text-muted">Begin step-by-step guided execution</p>
   </div>

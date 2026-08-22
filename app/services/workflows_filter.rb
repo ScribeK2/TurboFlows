@@ -4,7 +4,10 @@ class WorkflowsFilter
               :accessible_groups, :total_count, :total_pages, :page,
               :workflows_paginated, :group_error
 
-  PER_PAGE = 6
+  # Sized for the card grid and folder accordion, not admin's [10, 25, 50]:
+  # six divides the grid cleanly and 25 cards in an accordion reads as broken.
+  PER_PAGE_OPTIONS = [6, 12, 24].freeze
+  DEFAULT_PER_PAGE = 6
 
   def initialize(user:, params:)
     @user = user
@@ -34,6 +37,8 @@ class WorkflowsFilter
   def search_query
     @params[:search]
   end
+
+  def per_page_size = per_page
 
   private
 
@@ -125,8 +130,15 @@ class WorkflowsFilter
   def paginate
     @page = [(@params[:page] || 1).to_i, 1].max
     @total_count = @workflows.count
-    @total_pages = [(@total_count.to_f / PER_PAGE).ceil, 1].max
+    @total_pages = [(@total_count.to_f / per_page).ceil, 1].max
     @page = [@page, @total_pages].min
-    @workflows_paginated = @workflows.limit(PER_PAGE).offset((@page - 1) * PER_PAGE)
+    @workflows_paginated = @workflows.limit(per_page).offset((@page - 1) * per_page)
+  end
+
+  # Anything not on the allowlist — junk, an out-of-range number, a missing
+  # param — falls back to the default rather than erroring or trusting input.
+  def per_page
+    size = @params[:per_page].to_i
+    PER_PAGE_OPTIONS.include?(size) ? size : DEFAULT_PER_PAGE
   end
 end

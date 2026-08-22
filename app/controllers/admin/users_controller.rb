@@ -6,6 +6,7 @@ class Admin::UsersController < Admin::BaseController
     @current_page = filter.current_page
     @total_pages = filter.total_pages
     @per_page = filter.per_page_size
+    @sort = filter.sort_key
     @all_groups = Group.order(:name)
   end
 

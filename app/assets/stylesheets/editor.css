@@ -236,12 +236,12 @@
 }
 
 /* Step type palette dots/icons using hue tokens */
-.step-palette__dot--question, .step-palette__icon--question { background: oklch(0.55 0.2 var(--color-step-question)); }
-.step-palette__dot--action,   .step-palette__icon--action   { background: oklch(0.65 0.18 var(--color-step-action)); }
-.step-palette__dot--message,  .step-palette__icon--message  { background: oklch(0.55 0.18 var(--color-step-message)); }
-.step-palette__dot--escalate, .step-palette__icon--escalate { background: oklch(0.55 0.22 var(--color-step-escalate)); }
-.step-palette__dot--resolve,  .step-palette__icon--resolve  { background: oklch(0.6 0.19 var(--color-step-resolve)); }
-.step-palette__dot--sub-flow, .step-palette__icon--sub-flow { background: oklch(0.55 0.18 var(--color-step-subflow)); }
+.step-palette__dot--question, .step-palette__icon--question { --step-hue: var(--hue-question); background: var(--step-dot); }
+.step-palette__dot--action,   .step-palette__icon--action   { --step-hue: var(--hue-action); background: var(--step-dot); }
+.step-palette__dot--message,  .step-palette__icon--message  { --step-hue: var(--hue-message); background: var(--step-dot); }
+.step-palette__dot--escalate, .step-palette__icon--escalate { --step-hue: var(--hue-escalate); background: var(--step-dot); }
+.step-palette__dot--resolve,  .step-palette__icon--resolve  { --step-hue: var(--hue-resolve); background: var(--step-dot); }
+.step-palette__dot--sub-flow, .step-palette__icon--sub-flow { --step-hue: var(--hue-subflow); background: var(--step-dot); }
 
 /* Zoom controls */
 .editor-zoom {
@@ -377,7 +377,7 @@
 }
 
 .condition-token--variable {
-  color: var(--color-link);
+  color: var(--color-primary-text);
   font-weight: 600;
 }
 
@@ -391,11 +391,11 @@
 }
 
 [data-theme="dark"] .condition-token--variable {
-  color: oklch(0.7 0.18 260);
+  color: var(--color-primary-text);
 }
 
 [data-theme="dark"] .condition-token--value {
-  color: oklch(0.7 0.16 145);
+  color: var(--color-positive);
 }
 
 /* ============================================================================
@@ -775,7 +775,7 @@
 }
 
 .wf-steps-container .step-card__header:hover {
-  background: oklch(0.45 0.12 var(--step-hue) / 0.15);
+  background: var(--step-bg);
 }
 
 .wf-steps-container .step-card__number {
@@ -879,7 +879,7 @@
 .inline-step-creator__add-btn:hover {
   background: var(--color-primary-soft);
   border-color: var(--color-primary);
-  color: var(--color-primary);
+  color: var(--color-primary-text);
 }
 
 .inline-step-creator__grid {
@@ -917,13 +917,13 @@
   transform: scale(0.98);
 }
 
-.inline-step-creator__type-btn--question  { background: oklch(0.50 0.14 var(--hue-question)); }
-.inline-step-creator__type-btn--action    { background: oklch(0.50 0.14 var(--hue-action)); }
-.inline-step-creator__type-btn--message   { background: oklch(0.50 0.14 var(--hue-message)); }
-.inline-step-creator__type-btn--escalate  { background: oklch(0.50 0.14 var(--hue-escalate)); }
-.inline-step-creator__type-btn--resolve   { background: oklch(0.50 0.14 var(--hue-resolve)); }
-.inline-step-creator__type-btn--sub-flow  { background: oklch(0.50 0.14 var(--hue-subflow)); }
-.inline-step-creator__type-btn--sub_flow  { background: oklch(0.50 0.14 var(--hue-subflow)); }
+.inline-step-creator__type-btn--question  { --step-hue: var(--hue-question); background: var(--step-solid); color: var(--step-on-solid); }
+.inline-step-creator__type-btn--action    { --step-hue: var(--hue-action); background: var(--step-solid); color: var(--step-on-solid); }
+.inline-step-creator__type-btn--message   { --step-hue: var(--hue-message); background: var(--step-solid); color: var(--step-on-solid); }
+.inline-step-creator__type-btn--escalate  { --step-hue: var(--hue-escalate); background: var(--step-solid); color: var(--step-on-solid); }
+.inline-step-creator__type-btn--resolve   { --step-hue: var(--hue-resolve); background: var(--step-solid); color: var(--step-on-solid); }
+.inline-step-creator__type-btn--sub-flow  { --step-hue: var(--hue-subflow); background: var(--step-solid); color: var(--step-on-solid); }
+.inline-step-creator__type-btn--sub_flow  { --step-hue: var(--hue-subflow); background: var(--step-solid); color: var(--step-on-solid); }
 
 /* ============================================================================
    Step Outline Sidebar Wrapper (hidden on mobile, shown on desktop)

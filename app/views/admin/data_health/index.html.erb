@@ -1,16 +1,13 @@
 <div class="page-content">
   <div class="page-header-section">
-    <div>
-      <h1 class="page-header-section__title">Data Health</h1>
-      <p class="page-header-section__subtitle">
-        Database table sizes, record counts, and retention configuration.
-      </p>
-    </div>
-    <div class="flex items-center gap-2">
-      <%= link_to admin_root_path, class: "btn btn--plain btn--sm" do %>
-        &larr; Dashboard
-      <% end %>
-    </div>
+    <%= link_to admin_root_path, class: "page-back" do %>
+      <%= icon "chevron-left", class: "icon icon--xs" %>
+      Back to Dashboard
+    <% end %>
+    <h1 class="page-header-section__title">Data Health</h1>
+    <p class="page-header-section__subtitle">
+      Database table sizes, record counts, and retention configuration.
+    </p>
   </div>
 
   <!-- Table Sizes -->

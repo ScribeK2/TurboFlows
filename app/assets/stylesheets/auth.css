@@ -58,10 +58,10 @@
   padding: 0.625rem 0.75rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  background: var(--color-canvas);
+  background: var(--color-canvas-alt);
   color: var(--color-ink);
   font-size: var(--text-sm);
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
   outline: none;
 }
@@ -71,8 +71,8 @@
 }
 
 .auth-form__input:focus {
-  border-color: var(--color-link);
-  box-shadow: 0 0 0 3px oklch(0.55 0.2 260 / 0.15);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
 }
 
 .auth-form__input::placeholder {
@@ -201,7 +201,7 @@
 
 .auth-links a {
   font-size: var(--text-sm);
-  color: var(--color-link);
+  color: var(--color-primary-text);
   text-decoration: none;
   transition: color 0.15s ease;
 }
@@ -229,9 +229,7 @@
   position: absolute;
   inset: -2rem -3rem;
   background:
-    radial-gradient(circle at 25% 40%, oklch(0.70 0.19 160 / 0.12) 0%, transparent 60%),
-    radial-gradient(circle at 75% 40%, oklch(0.78 0.18 75 / 0.12) 0%, transparent 60%),
-    radial-gradient(circle at 50% 70%, oklch(0.62 0.21 255 / 0.10) 0%, transparent 60%);
+    radial-gradient(circle at 50% 45%, var(--color-primary-soft) 0%, transparent 65%);
   z-index: -1;
   border-radius: var(--radius-full);
   filter: blur(20px);
@@ -239,17 +237,13 @@
 
 [data-theme="dark"] .auth-brand::before {
   background:
-    radial-gradient(circle at 25% 40%, oklch(0.70 0.19 160 / 0.08) 0%, transparent 60%),
-    radial-gradient(circle at 75% 40%, oklch(0.78 0.18 75 / 0.08) 0%, transparent 60%),
-    radial-gradient(circle at 50% 70%, oklch(0.62 0.21 255 / 0.06) 0%, transparent 60%);
+    radial-gradient(circle at 50% 45%, var(--color-primary-soft) 0%, transparent 65%);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .auth-brand::before {
     background:
-      radial-gradient(circle at 25% 40%, oklch(0.70 0.19 160 / 0.08) 0%, transparent 60%),
-      radial-gradient(circle at 75% 40%, oklch(0.78 0.18 75 / 0.08) 0%, transparent 60%),
-      radial-gradient(circle at 50% 70%, oklch(0.62 0.21 255 / 0.06) 0%, transparent 60%);
+      radial-gradient(circle at 50% 45%, var(--color-primary-soft) 0%, transparent 65%);
   }
 }
 
@@ -276,7 +270,7 @@
    ============================================================================ */
 
 .auth-errors {
-  background: oklch(0.96 0.04 25);
+  background: var(--color-negative-soft);
   border: 1px solid oklch(0.85 0.08 25);
   border-radius: var(--radius-lg);
   padding: 1rem;
@@ -286,7 +280,7 @@
 .auth-errors__title {
   font-size: var(--text-sm);
   font-weight: 600;
-  color: oklch(0.4 0.18 25);
+  color: var(--color-negative);
   margin-bottom: 0.5rem;
 }
 
@@ -294,19 +288,19 @@
   list-style: disc;
   padding-left: 1.25rem;
   font-size: var(--text-sm);
-  color: oklch(0.45 0.15 25);
+  color: var(--color-negative);
 }
 
 [data-theme="dark"] .auth-errors {
-  background: oklch(0.22 0.05 25);
-  border-color: oklch(0.32 0.08 25);
+  background: var(--color-negative-soft);
+  border-color: var(--color-negative);
 }
 
 [data-theme="dark"] .auth-errors__title {
-  color: oklch(0.75 0.14 25);
+  color: var(--color-negative);
 }
 
 [data-theme="dark"] .auth-errors__list {
-  color: oklch(0.7 0.12 25);
+  color: var(--color-negative);
 }
 }

@@ -91,6 +91,49 @@ class WorkflowsFilterTest < ActiveSupport::TestCase
     filter = WorkflowsFilter.new(user: @admin, params: { page: "2" }).call
     assert_equal 2, filter.page
     assert_operator filter.total_pages, :>=, 2
-    assert_operator filter.workflows_paginated.size, :<=, WorkflowsFilter::PER_PAGE
+    assert_operator filter.workflows_paginated.size, :<=, WorkflowsFilter::DEFAULT_PER_PAGE
+  end
+
+  test "per_page defaults to DEFAULT_PER_PAGE when the param is absent" do
+    filter = WorkflowsFilter.new(user: @admin, params: {}).call
+    assert_equal WorkflowsFilter::DEFAULT_PER_PAGE, filter.per_page_size
+  end
+
+  test "per_page honours every allowlisted option" do
+    30.times { |i| Workflow.create!(title: "Sized #{i}", user: @admin, status: "published", is_public: true) }
+
+    WorkflowsFilter::PER_PAGE_OPTIONS.each do |size|
+      filter = WorkflowsFilter.new(user: @admin, params: { per_page: size.to_s }).call
+      assert_equal size, filter.per_page_size, "expected per_page_size to honour #{size}"
+      assert_equal size, filter.workflows_paginated.size, "expected #{size} rows on a full page"
+    end
+  end
+
+  test "per_page falls back to the default for values off the allowlist" do
+    ["7", "0", "-5", "1000", "abc", "", nil].each do |bad|
+      filter = WorkflowsFilter.new(user: @admin, params: { per_page: bad }).call
+      assert_equal WorkflowsFilter::DEFAULT_PER_PAGE, filter.per_page_size,
+                   "expected #{bad.inspect} to fall back to the default page size"
+    end
+  end
+
+  test "per_page changes how many pages the same result set spans" do
+    12.times { |i| Workflow.create!(title: "Spanning #{i}", user: @admin, status: "published", is_public: true) }
+
+    small = WorkflowsFilter.new(user: @admin, params: { per_page: "6" }).call
+    large = WorkflowsFilter.new(user: @admin, params: { per_page: "24" }).call
+
+    assert_equal small.total_count, large.total_count, "page size must not change the result count"
+    assert_operator small.total_pages, :>, large.total_pages
+  end
+
+  test "page is clamped to the last page when a larger size collapses the range" do
+    12.times { |i| Workflow.create!(title: "Clamped #{i}", user: @admin, status: "published", is_public: true) }
+
+    filter = WorkflowsFilter.new(user: @admin, params: { page: "3", per_page: "24" }).call
+
+    assert_equal filter.total_pages, filter.page,
+                 "asking for page 3 at a size that yields fewer pages must clamp, not return an empty page"
+    assert_predicate filter.workflows_paginated, :any?
   end
 end

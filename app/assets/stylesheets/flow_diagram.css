@@ -53,7 +53,7 @@
     padding: 0.5rem 0.75rem;
     border-radius: var(--radius-md, 0.5rem);
     border: 2px solid;
-    background: var(--color-surface, #fff);
+    background: var(--color-canvas-raised);
     min-width: 8rem;
     max-width: 14rem;
     font-size: 0.8125rem;
@@ -92,61 +92,62 @@
     letter-spacing: 0.03em;
     padding: 0.125rem 0.375rem;
     border-radius: var(--radius-full, 9999px);
-    background: oklch(0.55 0.15 250);
-    color: #fff;
+    background: var(--color-primary);
+    color: var(--color-on-primary);
     flex-shrink: 0;
   }
 
   .flow-diagram__node-badge--resolve {
-    background: oklch(0.55 0.15 160);
+    --step-hue: var(--hue-resolve);
+    background: var(--step-dot);
   }
 
   /* Step type colors — using OKLCH with step hues from _global.css */
   .flow-diagram__node--question {
     --step-hue: var(--hue-question, 250);
-    border-color: oklch(0.65 0.12 var(--step-hue));
-    color: oklch(0.35 0.10 var(--step-hue));
+    border-color: var(--step-dot);
+    color: var(--step-text);
   }
 
   .flow-diagram__node--action {
     --step-hue: var(--hue-action, 145);
-    border-color: oklch(0.65 0.12 var(--step-hue));
-    color: oklch(0.35 0.10 var(--step-hue));
+    border-color: var(--step-dot);
+    color: var(--step-text);
   }
 
   .flow-diagram__node--message {
     --step-hue: var(--hue-message, 290);
-    border-color: oklch(0.65 0.12 var(--step-hue));
-    color: oklch(0.35 0.10 var(--step-hue));
+    border-color: var(--step-dot);
+    color: var(--step-text);
   }
 
   .flow-diagram__node--escalate {
     --step-hue: var(--hue-escalate, 25);
-    border-color: oklch(0.65 0.12 var(--step-hue));
-    color: oklch(0.35 0.10 var(--step-hue));
+    border-color: var(--step-dot);
+    color: var(--step-text);
   }
 
   .flow-diagram__node--resolve {
     --step-hue: var(--hue-resolve, 160);
-    border-color: oklch(0.65 0.12 var(--step-hue));
-    color: oklch(0.35 0.10 var(--step-hue));
+    border-color: var(--step-dot);
+    color: var(--step-text);
   }
 
   .flow-diagram__node--sub_flow {
     --step-hue: var(--hue-subflow, 310);
-    border-color: oklch(0.65 0.12 var(--step-hue));
-    color: oklch(0.35 0.10 var(--step-hue));
+    border-color: var(--step-dot);
+    color: var(--step-text);
   }
 
   .flow-diagram__node--form {
     --step-hue: var(--hue-form, 45);
-    border-color: oklch(0.65 0.12 var(--step-hue));
-    color: oklch(0.35 0.10 var(--step-hue));
+    border-color: var(--step-dot);
+    color: var(--step-text);
   }
 
   /* Ghost class for SortableJS drag */
   .step-card--ghost {
     opacity: 0.4;
-    background: oklch(0.95 0.02 250);
+    background: var(--color-canvas-alt);
   }
 }
