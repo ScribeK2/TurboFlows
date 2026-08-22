@@ -92,7 +92,7 @@
           </ul>
         </div>
 
-        <%= render "workflows/pagination", page: @page, total_pages: @total_pages %>
+        <%= render "workflows/pagination", page: @page, total_pages: @total_pages, per_page: @per_page %>
       <% else %>
         <div class="card mb-4">
           <%= render "workflows/list_toolbar" %>

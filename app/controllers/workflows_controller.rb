@@ -23,7 +23,7 @@ class WorkflowsController < ApplicationController
     @total_count            = filter.total_count
     @total_pages            = filter.total_pages
     @page                   = filter.page
-    @per_page               = WorkflowsFilter::PER_PAGE
+    @per_page               = filter.per_page_size
     @workflows_paginated    = filter.workflows_paginated
 
     flash.now[:alert] = filter.group_error if filter.group_error
