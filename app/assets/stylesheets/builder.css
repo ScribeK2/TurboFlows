@@ -475,6 +475,12 @@
     line-height: 1;
   }
 
+  .builder__panel-close svg {
+    width: 1rem;
+    height: 1rem;
+    display: block;
+  }
+
   .builder__panel-close:hover {
     background: var(--color-canvas-alt);
     color: var(--color-ink);
@@ -785,6 +791,8 @@
 }
 
 .health-panel__clean-icon {
+  width: 1.25rem;
+  height: 1.25rem;
   color: var(--color-positive);
   flex-shrink: 0;
 }
@@ -800,22 +808,20 @@
   list-style: none;
   padding: 0;
   margin: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
 }
 
-.health-panel__checklist li {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1) 0;
-  font-size: var(--text-sm);
+.health-panel__checklist .list-row__title {
+  font-weight: 400;
   color: var(--color-ink-subtle);
 }
 
-.health-panel__checklist li::before {
-  content: "✓";
+.health-panel__check-icon {
+  width: 1rem;
+  height: 1rem;
   color: var(--color-positive);
-  font-weight: 600;
-  font-size: var(--text-xs);
   flex-shrink: 0;
 }
 

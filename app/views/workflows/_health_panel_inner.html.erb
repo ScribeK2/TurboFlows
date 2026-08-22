@@ -24,16 +24,25 @@
   <% if health.clean? %>
     <%# === All Clear === %>
     <div class="health-panel__clean">
-      <%= icon "check-circle", class: "health-panel__clean-icon" %>
+      <%= icon "check-circle", class: "icon health-panel__clean-icon" %>
       <span class="health-panel__clean-title">All checks passing</span>
     </div>
 
     <ul class="health-panel__checklist">
-      <li>Reachability from start</li>
-      <li>No cycles detected</li>
-      <li>All terminals are Resolve steps</li>
-      <li>No circular sub-flows</li>
-      <li>All required fields present</li>
+      <% [
+        "Reachability from start",
+        "No cycles detected",
+        "All terminals are Resolve steps",
+        "No circular sub-flows",
+        "All required fields present"
+      ].each do |check| %>
+        <li class="list-row list-row--compact">
+          <%= icon "check", class: "icon health-panel__check-icon" %>
+          <span class="list-row__body">
+            <span class="list-row__title"><%= check %></span>
+          </span>
+        </li>
+      <% end %>
     </ul>
   <% else %>
     <%# === Summary === %>

@@ -7,19 +7,23 @@
 #   bin/rails builder_fixture:seed
 module BuilderFixture
   TYPES = %w[question action message form escalate sub_flow resolve].freeze
-  TITLES = ["ZZ Builder Fixture - all types", "ZZ Builder Fixture - density"].freeze
+  TITLES = [
+    "ZZ Builder Fixture - all types",
+    "ZZ Builder Fixture - density",
+    "ZZ Builder Fixture - clean"
+  ].freeze
 
   class << self
     def seed(owner)
       Workflow.where(title: TITLES).destroy_all
-      [coverage(owner), density(owner)]
+      [coverage(owner), density(owner), clean(owner)]
     end
 
     private
 
     # Every step type, plus the edge cases the builder has to render.
     def coverage(owner)
-      wf = Workflow.create!(title: TITLES.first, user: owner,
+      wf = Workflow.create!(title: TITLES[0], user: owner,
                             description: "Every step type, plus the edge cases the builder has to render.")
 
       spine = TYPES.each_with_index.map { |type, i| step(wf, type, i + 1, "#{type.titleize} step") }
@@ -43,9 +47,25 @@ module BuilderFixture
       wf.reload
     end
 
+    # Zero issues, so the health panel renders its clean state - the one state
+    # a fixture full of deliberate problems can never show.
+    def clean(owner)
+      wf = Workflow.create!(title: TITLES[2], user: owner,
+                            description: "A workflow with no health issues at all.")
+
+      steps = [
+        step(wf, "question", 1, "Is the account verified?"),
+        step(wf, "action", 2, "Record the outcome"),
+        step(wf, "resolve", 3, "Resolved")
+      ]
+
+      connect(steps)
+      wf.reload
+    end
+
     # 40 steps, for list density and scroll behaviour.
     def density(owner)
-      wf = Workflow.create!(title: TITLES.last, user: owner,
+      wf = Workflow.create!(title: TITLES[1], user: owner,
                             description: "40 steps, for list density and scroll behaviour.")
 
       steps = Array.new(39) { |i| step(wf, TYPES[i % TYPES.size], i + 1, "Step #{i + 1} - #{TYPES[i % TYPES.size].titleize}") }
