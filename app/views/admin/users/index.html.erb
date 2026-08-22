@@ -46,11 +46,20 @@
                 <th class="bulk-select-column" style="display: none;">
                   <input type="checkbox" data-admin-users-target="selectAll" data-action="change->admin-users#toggleAll" class="form-checkbox">
                 </th>
-                <th>Email</th>
-                <th>Role</th>
+                <th aria-sort="<%= sortable_column_aria_sort(:email, current_sort: @sort) %>">
+                  <%= sortable_column_header "Email", :email, current_sort: @sort, frame: "users-table" %>
+                </th>
+                <th aria-sort="<%= sortable_column_aria_sort(:role, current_sort: @sort) %>">
+                  <%= sortable_column_header "Role", :role, current_sort: @sort, frame: "users-table" %>
+                </th>
+                <%# Groups and Workflows are association counts — sorting them needs a
+                    join or counter cache, so they stay unsorted rather than shipping
+                    an N+1. %>
                 <th>Groups</th>
                 <th>Workflows</th>
-                <th>Joined</th>
+                <th aria-sort="<%= sortable_column_aria_sort(:created_at, current_sort: @sort) %>">
+                  <%= sortable_column_header "Joined", :created_at, current_sort: @sort, frame: "users-table", initial: :desc %>
+                </th>
                 <th>Actions</th>
               </tr>
             </thead>

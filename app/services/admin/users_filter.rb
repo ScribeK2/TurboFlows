@@ -22,6 +22,11 @@ module Admin
     def total_pages  = [(@total_count.to_f / per_page).ceil, 1].max
     def per_page_size = per_page
 
+    # The ordering actually in effect, with the default resolved. Column
+    # headers need this rather than the raw param: with no ?sort the list is
+    # still sorted (newest first), and the Joined header must show that.
+    def sort_key = User::SORT_OPTIONS.include?(params[:sort]) ? params[:sort] : User::DEFAULT_SORT
+
     private
 
     def apply_search
