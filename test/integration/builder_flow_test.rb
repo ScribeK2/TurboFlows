@@ -32,7 +32,7 @@ class BuilderFlowTest < ActionDispatch::IntegrationTest
          headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
     assert_response :success
-    assert_match "builder__list-row", response.body
+    assert_match "builder__step", response.body
   end
 
   test "panel_edit loads step editor in turbo frame" do

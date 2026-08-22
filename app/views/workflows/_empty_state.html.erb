@@ -1,22 +1,33 @@
 <%#
-  Empty State — guided quick-start for workflows with zero steps.
+  Empty State — shown in the builder when a workflow has no steps.
+
+  Keeps the real frame rather than a fake one: the list container renders as it
+  always does, with a single prompt row inviting the first step. Templates are
+  not duplicated here - the toolbar's Templates popover is the one place that
+  action lives.
 
   Local variables:
   - workflow: Workflow object
 %>
 <div class="builder__empty" id="builder-empty-state">
-  <div class="empty-state__illustration">
-    <div class="empty-state__ghost-row"></div>
-    <div class="empty-state__ghost-row"></div>
-    <div class="empty-state__ghost-row"></div>
+  <div class="list-section__body">
+    <div class="list-row list-row--compact list-row--prompt">
+      <span class="list-row__icon" aria-hidden="true">
+        <%= icon "plus", class: "icon icon--sm" %>
+      </span>
+      <div class="list-row__body">
+        <div class="list-row__title">Every workflow starts with a step</div>
+        <p class="list-row__sub">Steps you add will appear here, in the order an agent works through them.</p>
+      </div>
+    </div>
   </div>
-  <h3 class="builder__empty-title">Every workflow starts with a step</h3>
-  <p class="builder__empty-text">Choose a step type to begin building your workflow. You can always add more steps and reorder them later.</p>
+
   <div class="builder__quick-starts">
+    <span class="builder__quick-starts-label">Start with</span>
     <% [
-      { type: "question", label: "Start with a Question" },
-      { type: "action", label: "Start with an Action" },
-      { type: "message", label: "Start with a Message" }
+      { type: "question", label: "Question" },
+      { type: "action", label: "Action" },
+      { type: "message", label: "Message" }
     ].each do |qs| %>
       <%= button_to workflow_steps_path(workflow),
           method: :post,
@@ -26,23 +37,11 @@
         <%= qs[:label] %>
       <% end %>
     <% end %>
-  </div>
 
-  <div class="builder__template-divider">
-    <span>or start from a template</span>
-  </div>
-
-  <div class="builder__template-grid">
-    <% WorkflowTemplate.all.each do |key, template| %>
-      <%= button_to apply_template_workflow_steps_path(workflow),
-          method: :post,
-          params: { template_key: key },
-          data: { turbo_stream: true },
-          class: "builder__template-card",
-          style: "--template-hue: #{template['hue']}" do %>
-        <span class="builder__template-card-name"><%= template["name"] %></span>
-        <span class="builder__template-card-desc"><%= template["description"] %></span>
-      <% end %>
-    <% end %>
+    <button type="button"
+            class="btn btn--plain btn--sm"
+            data-action="click->builder#focusTemplates">
+      Browse templates
+    </button>
   </div>
 </div>

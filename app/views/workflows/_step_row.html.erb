@@ -1,11 +1,18 @@
 <%#
-  Step Row — compact row for the builder step list.
+  Step Row — one row in the builder step list.
+
+  Adopts .list-row anatomy from lists.css (compact size) so the builder shares
+  one row definition with the dashboard and player index. builder__step carries
+  only the builder's own concerns: click target, drag slot, selected state.
 
   Local variables:
   - step: AR Step object
   - workflow: Workflow object
 %>
-<div class="builder__list-row"
+<% type_label = step_type_label(step.step_type) %>
+<% targets = (step.transitions.loaded? ? step.transitions : step.transitions.includes(:target_step)).filter_map(&:target_step) %>
+
+<div class="list-row list-row--compact builder__step"
      id="<%= dom_id(step) %>"
      data-step-id="<%= step.id %>"
      data-step-uuid="<%= step.uuid %>"
@@ -15,52 +22,49 @@
      role="listitem">
 
   <%# Drag Handle (edit mode only) %>
-  <span class="drag-handle builder__edit-only" title="Drag to reorder"
+  <span class="drag-handle builder__edit-only"
         data-controller="tooltip" data-tooltip-text-value="Drag to reorder">
     <%= icon "bars-2", class: "icon icon--sm" %>
   </span>
 
-  <%# Type Badge with Step Number %>
-  <span class="builder__step-badge builder__step-badge--<%= step.step_type %>">
+  <%# Step number in a type-hued badge. The type name is not repeated as a
+      separate label - it lives here, so colour is never the only signal. %>
+  <span class="builder__step-badge builder__step-badge--<%= step.step_type %>"
+        aria-label="<%= type_label %>"
+        title="<%= type_label %>">
     <%= step.position %>
   </span>
 
-  <%# Title %>
-  <span class="builder__step-title">
-    <%= step.title.presence || "Untitled #{step.step_type.titleize}" %>
-  </span>
-
-  <%# Type Label %>
-  <span class="builder__step-type"><%= step_type_label(step.step_type) %></span>
-
-  <%# Connection Hints + Status Pills %>
-  <span class="builder__step-connections">
-    <% if step == workflow.start_step %>
-      <span class="step-pill step-pill--start">Start</span>
-    <% end %>
-    <% if step.terminal? %>
-      <span class="step-pill step-pill--terminal">Terminal</span>
-    <% end %>
-    <% if step.transitions.loaded? ? step.transitions.any? : step.transitions.exists? %>
-      <% targets = step.transitions.map { |t| t.target_step }.compact %>
-      <% if targets.any? %>
-        &rarr; <%= targets.map { |t| "Step #{t.position}" }.join(", ") %>
+  <div class="list-row__body">
+    <div class="list-row__title">
+      <%= step.title.presence || "Untitled #{step.step_type.titleize}" %>
+      <% if step.transitions.empty? && !step.is_a?(Steps::Resolve) %>
+        <span class="badge badge--warning">No connections</span>
       <% end %>
-    <% elsif !step.is_a?(Steps::Resolve) && !step.terminal? %>
-      <span class="step-pill step-pill--warning">No connections</span>
-    <% end %>
+    </div>
+  </div>
+
+  <%# Status and outgoing connections sit inline rather than on a second line:
+      a step list is scanned vertically, and a two-line row costs about a third
+      of the steps visible at once. Mirrors how .list-row__progress sits inline. %>
+  <span class="builder__step-meta">
+    <% parts = [] %>
+    <% parts << "Start" if step == workflow.start_step %>
+    <% parts << "Terminal" if step.terminal? %>
+    <% parts << "→ #{targets.map { |t| "Step #{t.position}" }.join(", ")}" if targets.any? %>
+    <%= parts.join(" · ") %>
   </span>
 
   <%# Warning Icon (populated by step_warnings_controller.js) %>
   <span class="step-warning-icon" data-step-warnings-target="icon" data-step-uuid="<%= step.uuid %>" hidden></span>
 
-  <%# Delete Button (edit mode only) %>
-  <%= button_to workflow_step_path(workflow, step),
-        method: :delete,
-        data: { turbo_confirm: "Remove this step?", turbo_stream: true, action: "click->step-list#stopPropagation" },
-        class: "builder__step-delete builder__edit-only btn btn--plain btn--sm",
-        style: "color: var(--color-negative);",
-        title: "Remove step" do %>
-    <%= icon "x-mark", class: "icon icon--sm" %>
-  <% end %>
+  <div class="list-row__actions builder__edit-only">
+    <%= button_to workflow_step_path(workflow, step),
+          method: :delete,
+          data: { turbo_confirm: "Remove this step?", turbo_stream: true, action: "click->step-list#stopPropagation" },
+          class: "builder__step-delete btn btn--plain btn--sm",
+          title: "Remove step" do %>
+      <%= icon "x-mark", class: "icon icon--sm" %>
+    <% end %>
+  </div>
 </div>

@@ -113,7 +113,7 @@ export default class extends Controller {
   }
 
   renderStepIcons(issues) {
-    const rows = this.element.querySelectorAll(".builder__list-row[data-step-uuid]")
+    const rows = this.element.querySelectorAll(".builder__step[data-step-uuid]")
 
     rows.forEach(row => {
       const uuid = row.dataset.stepUuid
@@ -188,10 +188,18 @@ export default class extends Controller {
     if (!this.hasToolbarIssuesTarget) return
 
     if (total > 0) {
+      // The count is the exceptional thing, so the pill goes on the number and
+      // the button itself stays quiet.
       this.toolbarIssuesTarget.hidden = false
       this.clearElement(this.toolbarIssuesTarget)
-      this.toolbarIssuesTarget.appendChild(this.createWarningIcon())
-      this.toolbarIssuesTarget.appendChild(document.createTextNode(` ${total} issue${total === 1 ? "" : "s"}`))
+
+      const pill = document.createElement("span")
+      pill.className = "badge badge--alert"
+      pill.textContent = total
+      this.toolbarIssuesTarget.appendChild(pill)
+      this.toolbarIssuesTarget.appendChild(
+        document.createTextNode(` issue${total === 1 ? "" : "s"}`)
+      )
     } else {
       this.toolbarIssuesTarget.hidden = true
       this.clearElement(this.toolbarIssuesTarget)
@@ -199,7 +207,7 @@ export default class extends Controller {
   }
 
   clearAllWarnings() {
-    this.element.querySelectorAll(".builder__list-row").forEach(row => {
+    this.element.querySelectorAll(".builder__step").forEach(row => {
       row.classList.remove("has-error", "has-warning")
     })
     this.element.querySelectorAll(".step-warning-icon").forEach(icon => {
@@ -276,7 +284,7 @@ export default class extends Controller {
 
     // Append to builder__list (overflow:visible) so the popover isn't clipped
     // by the scroll container. Position it using the row's offset.
-    const row = anchor.closest(".builder__list-row")
+    const row = anchor.closest(".builder__step")
     const builderList = row?.closest(".builder__list")
     if (builderList && row) {
       builderList.style.position = "relative"

@@ -152,7 +152,7 @@ Dark mode is automatic. Use token names and they swap values via `[data-theme="d
 
 ### Surfaces Deliberately Excluded
 
-Two surfaces were left out of the northwest-palette migration on purpose. They
+Some surfaces were left out of the northwest-palette migration on purpose. They
 are **not** unfinished work, and tidying them into line with the rest of the
 system is a change of design, not a cascade fix. Do not restructure either one
 without meeting its reopen condition.
@@ -165,13 +165,28 @@ without meeting its reopen condition.
   *Reopen when:* reference material for a runner exists, or a real user complaint
   about the runner comes in.
 
-- **Builder internal panels** — `_builder`, `_step_row`, `_panel_edit`,
-  `_health_panel`, `_preview_pane`, `_visual_editor`. Colours were migrated;
-  the structure was not. It is a bespoke editing surface — drag handles, slide-in
-  panel, inline validation — that no reference screenshot covers, so restyling it
-  means inventing on the app's most complex interaction surface.
+- **Builder editing internals** — `_panel_edit` and its form surface in
+  `steps.css`, `_preview_pane`, `_visual_editor` / `_visual_condition` and
+  `transitions.css`, and the flow diagram panel with `flow_diagram.css`. These
+  are graph rendering and a large bespoke form surface, where the design system
+  has little to say and restyling means inventing.
   *Reopen when:* reference material exists, and then as a design consultation
   rather than a refactor.
+
+  > **Note what is no longer excluded.** The builder's *chrome* — header,
+  > toolbar, step list, step rows, empty state, health panel and the shared
+  > panel chrome — was migrated after a design consultation established that
+  > the rest of TurboFlows is now mature enough to serve as its own reference,
+  > which is what this entry's reopen condition asked for. Its colours were
+  > tokenised in a separate pass first; an earlier version of this entry wrongly
+  > claimed that had already happened, when `builder.css`, `steps.css`,
+  > `transitions.css` and `flow_diagram.css` still carried literal
+  > `oklch()`/`#fff` values that never swapped in dark mode — flow-diagram nodes
+  > read `var(--color-surface, #fff)`, and `--color-surface` is not a token, so
+  > they rendered white in dark mode. The entries above remain excluded: this
+  > was a narrowing, not a lifting.
+
+  The scenario runner exclusion above is untouched by that work.
 
 ---
 
@@ -316,6 +331,7 @@ so `.tab-bar` drops into any existing tablist with no JS change.
 
 | Component | Classes | File | Notes |
 |-----------|---------|------|-------|
+| List rows | `.list-section`, `.list-row`, `.list-row--compact` | `lists.css` | Section + hairline-divided rows. `--compact` is the dense size (builder step list); same anatomy, tighter box — sized like `.btn--sm` is to `.btn` |
 | Tooltips | `.tooltip`, `.tooltip--bottom` | `tooltips.css` | Absolute, spring easing entrance |
 | Skeletons | `.skeleton`, `.skeleton--text`, `--heading`, `--card` | `skeleton.css` | Shimmer animation, use for loading states |
 | Pagination | `.pagination-bar`, `.pagination`, `.pagination__item`, `.is-active` | `pagination.css` | `.pagination-bar` is a three-zone grid: summary left, numbered nav centred, page-size right |
@@ -613,7 +629,8 @@ For page types not covered by a recipe, read these exemplary views. They demonst
 |-----------|-----------|----------|
 | `app/views/workflows/index.html.erb` | Index/list with sidebar | Two-column layout, search, filters, pagination, empty state |
 | `app/views/player/step.html.erb` | Step execution | Card-based UI, form variations, button bars, progress stepper |
-| `app/views/workflows/_builder.html.erb` | Builder/editor | Header with inline edit, panel system, toolbar, Stimulus wiring |
+| `app/views/workflows/_builder.html.erb` | Builder/editor | Header with inline edit, panel system, toolbar, Stimulus wiring. Its chrome now follows this guide; the editing internals it opens into are still excluded (see §Surfaces Deliberately Excluded) |
+| `app/views/workflows/_step_row.html.erb` | Dense list row | Composing `.list-row` + `.list-row--compact` with block-specific concerns, rather than redefining a row. Status/meta sits inline, not on a second line — a scanned list pays for two-line rows in steps visible at once |
 
 ---
 
@@ -640,7 +657,7 @@ For page types not covered by a recipe, read these exemplary views. They demonst
 | `skeleton.css` | components | Loading skeletons |
 | `pagination.css` | components | Page navigation (« ‹ 1 2 3 › » + summary) |
 | `tabs.css` | components | Underline tab bar (`.tab-bar`) |
-| `lists.css` | components | Section + row list pattern: `.list-section`, `.list-row` |
+| `lists.css` | components | Section + row list pattern: `.list-section`, `.list-row`, `.list-row--compact` |
 | `_tags.css` | components | Tag pills, autocomplete |
 | `_player.css` | components | Player-specific styles |
 | `_form_step.css` | components | FormStep builder UI |

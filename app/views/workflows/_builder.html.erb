@@ -36,7 +36,7 @@
         <% end %>
       </div>
 
-      <span class="builder__status builder__status--<%= workflow.status %>">
+      <span class="builder__status badge badge--<%= workflow.status %>">
         <%= workflow.status.titleize %>
       </span>
 
@@ -51,7 +51,7 @@
       <% end %>
 
       <% if mode == "view" %>
-        <%= link_to new_workflow_scenario_path(workflow), class: "btn btn--secondary btn--sm" do %>
+        <%= link_to new_workflow_scenario_path(workflow), class: "btn btn--primary btn--sm" do %>
           Run Scenario
         <% end %>
       <% end %>
@@ -82,15 +82,16 @@
       <button type="button" class="builder__toolbar-issues" data-step-warnings-target="toolbarIssues" data-action="click->builder#openHealth" hidden aria-live="polite"></button>
     </span>
     <div class="builder__toolbar-right">
-      <button class="builder__toolbar-btn"
+      <button class="btn btn--plain btn--sm"
               data-action="click->builder#openFlowDiagram"
               data-builder-flow-url-value="<%= workflow_flow_diagram_path(workflow) %>">
-        &#9724; View Flow
+        <%= icon "squares-2x2", class: "icon icon--xs" %>
+        View Flow
       </button>
       <div class="builder__toolbar-item builder__edit-only"
            data-controller="template-picker"
            data-template-picker-workflow-id-value="<%= workflow.id %>">
-        <button class="builder__toolbar-btn"
+        <button class="btn btn--plain btn--sm"
                 data-action="click->template-picker#toggle"
                 type="button">
           Templates
@@ -113,10 +114,11 @@
           <div class="builder__template-popover-footer">Replaces current steps</div>
         </div>
       </div>
-      <button class="builder__toolbar-btn"
+      <button class="btn btn--plain btn--sm"
               data-action="click->builder#openSettings"
               data-builder-settings-url-value="<%= workflow_settings_path(workflow) %>">
-        &#9881; Details
+        <%= icon "information-circle", class: "icon icon--xs" %>
+        Details
       </button>
     </div>
   </div>

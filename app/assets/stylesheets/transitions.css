@@ -45,7 +45,7 @@
 }
 
 .edge-delete-btn text {
-  fill: oklch(1 0 0);
+  fill: var(--color-on-negative);
   font-size: 0.75rem;
 }
 
@@ -74,11 +74,5 @@
 /* Non-interactive flowchart SVG (preview mode) */
 .flowchart-svg--non-interactive {
   pointer-events: none;
-}
-
-/* Flow path illustration dark mode */
-[data-theme="dark"] .flow-path,
-[data-theme="dark"] .flow-path-reverse {
-  stroke: oklch(0.35 0.01 75);
 }
 }

@@ -228,7 +228,7 @@ export default class extends Controller {
   getOtherSteps() {
     const steps = []
     // Support both builder step rows (data-step-uuid) and legacy step cards (.step-item)
-    const stepRows = document.querySelectorAll('.builder__list-row[data-step-uuid], .step-item')
+    const stepRows = document.querySelectorAll('.builder__step[data-step-uuid], .step-item')
 
     stepRows.forEach((item, index) => {
       let id, title
