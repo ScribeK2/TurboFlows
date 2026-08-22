@@ -157,7 +157,7 @@
 
   .builder__toolbar-btn--active {
     background: var(--color-primary);
-    color: white;
+    color: var(--color-on-primary);
     border-color: var(--color-primary);
   }
 
@@ -201,28 +201,21 @@
     background: var(--color-canvas-raised);
     cursor: pointer;
     transition: background var(--duration-snap) var(--ease-out),
-                border-color var(--duration-snap) var(--ease-out),
-                box-shadow var(--duration-snap) var(--ease-out);
+                border-color var(--duration-snap) var(--ease-out);
     border-left: 3px solid var(--color-border);
   }
 
+  /* Rows are flat: a hairline border and a canvas-alt fill do the work. The
+     per-step-type hover shadows this replaced violated two anti-patterns at
+     once - a shadow on a row, and colour signalling step type. */
   .builder__list-row:hover {
     border-color: var(--color-ink-muted);
     background: var(--color-canvas-alt);
-    box-shadow: 0 1px 4px oklch(0.25 0.02 245 / 0.06);
   }
-
-  .builder__list-row[data-step-type="question"]:hover { background: var(--color-canvas-alt); box-shadow: 0 1px 4px oklch(0.25 0.02 250 / 0.06); }
-  .builder__list-row[data-step-type="action"]:hover { background: var(--color-canvas-alt); box-shadow: 0 1px 4px oklch(0.25 0.02 145 / 0.06); }
-  .builder__list-row[data-step-type="message"]:hover { background: var(--color-canvas-alt); box-shadow: 0 1px 4px oklch(0.25 0.02 290 / 0.06); }
-  .builder__list-row[data-step-type="escalate"]:hover { background: var(--color-canvas-alt); box-shadow: 0 1px 4px oklch(0.25 0.02 25 / 0.06); }
-  .builder__list-row[data-step-type="resolve"]:hover { background: var(--color-canvas-alt); box-shadow: 0 1px 4px oklch(0.25 0.02 160 / 0.06); }
-  .builder__list-row[data-step-type="sub_flow"]:hover { background: var(--color-canvas-alt); box-shadow: 0 1px 4px oklch(0.25 0.02 310 / 0.06); }
-  .builder__list-row[data-step-type="form"]:hover { background: var(--color-canvas-alt); box-shadow: 0 1px 4px oklch(0.25 0.02 45 / 0.06); }
 
   .builder__list-row--selected {
     border-color: var(--color-primary);
-    background: oklch(0.97 0.02 250);
+    background: var(--color-primary-soft);
   }
 
   .drag-handle {
@@ -254,7 +247,8 @@
     justify-content: center;
     font-size: 0.6875rem;
     font-weight: 600;
-    color: white;
+    background: var(--step-solid);
+    color: var(--step-on-solid);
     flex-shrink: 0;
   }
 
@@ -323,7 +317,7 @@
 
   .builder__list-add:hover {
     border-color: var(--color-primary);
-    background: oklch(0.97 0.02 250);
+    background: var(--color-primary-soft);
   }
 
   /* ===== Type Picker Popover ===== */
@@ -437,33 +431,22 @@
   }
 
   .builder__panel-type-badge {
-    --_badge-l-bg: 0.93;
-    --_badge-c-bg: 0.05;
-    --_badge-l-fg: 0.4;
-    --_badge-c-fg: 0.15;
     font-size: 0.6875rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
     padding: 0.125rem var(--space-2);
     border-radius: var(--radius);
-    background: oklch(var(--_badge-l-bg) var(--_badge-c-bg) var(--_badge-hue, 250));
-    color: oklch(var(--_badge-l-fg) var(--_badge-c-fg) var(--_badge-hue, 250));
+    background: var(--step-bg);
+    color: var(--step-text);
   }
 
-  [data-theme="dark"] .builder__panel-type-badge {
-    --_badge-l-bg: 0.25;
-    --_badge-c-bg: 0.06;
-    --_badge-l-fg: 0.8;
-    --_badge-c-fg: 0.1;
-  }
-
-  .builder__panel-type-badge--question { --_badge-hue: var(--hue-question); }
-  .builder__panel-type-badge--action { --_badge-hue: var(--hue-action); }
-  .builder__panel-type-badge--message { --_badge-hue: var(--hue-message); }
-  .builder__panel-type-badge--escalate { --_badge-hue: var(--hue-escalate); }
-  .builder__panel-type-badge--resolve { --_badge-hue: var(--hue-resolve); }
-  .builder__panel-type-badge--sub_flow { --_badge-hue: var(--hue-subflow); }
+  .builder__panel-type-badge--question { --step-hue: var(--hue-question); }
+  .builder__panel-type-badge--action { --step-hue: var(--hue-action); }
+  .builder__panel-type-badge--message { --step-hue: var(--hue-message); }
+  .builder__panel-type-badge--escalate { --step-hue: var(--hue-escalate); }
+  .builder__panel-type-badge--resolve { --step-hue: var(--hue-resolve); }
+  .builder__panel-type-badge--sub_flow { --step-hue: var(--hue-subflow); }
 
   .builder__panel-close {
     border: none;
@@ -572,6 +555,15 @@
     margin: 0 auto;
   }
 
+  /* Templates carry their own hue (config/templates.yml) via an inline
+     --template-hue. Bridge it onto --step-hue so the composed --step-* tokens
+     apply, rather than standing up a parallel --template-* family. Declared on
+     the element, never on :root - see the composition note in _global.css. */
+  .builder__template-card,
+  .builder__template-popover-item {
+    --step-hue: var(--template-hue, 250);
+  }
+
   .builder__template-card {
     display: flex;
     flex-direction: column;
@@ -579,7 +571,7 @@
     gap: var(--space-1);
     background: var(--color-canvas-raised);
     border: 1px solid var(--color-border);
-    border-left: 3px solid oklch(0.55 0.20 var(--template-hue, 250));
+    border-left: 3px solid var(--step-dot);
     border-radius: var(--radius);
     padding: var(--space-2) var(--space-3);
     cursor: pointer;
@@ -591,8 +583,8 @@
   }
 
   .builder__template-card:hover {
-    border-color: oklch(0.55 0.20 var(--template-hue, 250));
-    background: oklch(0.96 0.01 var(--template-hue, 250));
+    border-color: var(--step-dot);
+    background: var(--step-bg);
   }
 
   .builder__template-card-name {
@@ -673,7 +665,7 @@
     width: 0.5rem;
     height: 0.5rem;
     border-radius: var(--radius-full);
-    background: oklch(0.55 0.20 var(--template-hue, 250));
+    background: var(--step-dot);
     flex-shrink: 0;
   }
 
@@ -694,14 +686,16 @@
     display: none;
   }
 
-  /* ===== Step Type Hue Badges ===== */
-  .builder__step-badge--question { background: var(--color-primary); }
-  .builder__step-badge--action { background: var(--color-positive); }
-  .builder__step-badge--message { background: oklch(0.50 0.14 290); }
-  .builder__step-badge--escalate { background: var(--color-negative); }
-  .builder__step-badge--resolve { background: var(--color-positive); }
-  .builder__step-badge--sub_flow { background: oklch(0.50 0.14 310); }
-  .builder__step-badge--form { background: oklch(0.50 0.14 45); }
+  /* ===== Step Type Hue Badges =====
+     Each modifier publishes --step-hue; the fill comes from the composed
+     --step-solid / --step-on-solid pair, which swap per theme. */
+  .builder__step-badge--question { --step-hue: var(--hue-question); }
+  .builder__step-badge--action   { --step-hue: var(--hue-action); }
+  .builder__step-badge--message  { --step-hue: var(--hue-message); }
+  .builder__step-badge--escalate { --step-hue: var(--hue-escalate); }
+  .builder__step-badge--resolve  { --step-hue: var(--hue-resolve); }
+  .builder__step-badge--sub_flow { --step-hue: var(--hue-subflow); }
+  .builder__step-badge--form     { --step-hue: var(--hue-form); }
 
   /* Step row left border accent by type (--step-hue set for ghost glow) */
   .builder__list-row[data-step-type="question"]  { --step-hue: var(--hue-question); }

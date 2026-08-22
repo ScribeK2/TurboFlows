@@ -166,10 +166,19 @@ without meeting its reopen condition.
   about the runner comes in.
 
 - **Builder internal panels** — `_builder`, `_step_row`, `_panel_edit`,
-  `_health_panel`, `_preview_pane`, `_visual_editor`. Colours were migrated;
-  the structure was not. It is a bespoke editing surface — drag handles, slide-in
-  panel, inline validation — that no reference screenshot covers, so restyling it
-  means inventing on the app's most complex interaction surface.
+  `_health_panel`, `_preview_pane`, `_visual_editor`. Colours are now tokenised
+  and both themes resolve; the structure was not migrated. It is a bespoke
+  editing surface — drag handles, slide-in panel, inline validation — that no
+  reference screenshot covers, so restyling it means inventing on the app's most
+  complex interaction surface.
+
+  > An earlier version of this entry claimed the colours had been migrated. They
+  > had not: `builder.css`, `steps.css`, `transitions.css` and `flow_diagram.css`
+  > carried literal `oklch()`/`#fff` values that never swapped in dark mode —
+  > including flow-diagram nodes that stayed white, because they read
+  > `var(--color-surface, #fff)` and `--color-surface` is not a token. That was
+  > fixed as a standalone pass; the structural exclusion below still stands.
+
   *Reopen when:* reference material exists, and then as a design consultation
   rather than a refactor.
 

@@ -53,7 +53,7 @@
     padding: 0.5rem 0.75rem;
     border-radius: var(--radius-md, 0.5rem);
     border: 2px solid;
-    background: var(--color-surface, #fff);
+    background: var(--color-canvas-raised);
     min-width: 8rem;
     max-width: 14rem;
     font-size: 0.8125rem;
@@ -93,7 +93,7 @@
     padding: 0.125rem 0.375rem;
     border-radius: var(--radius-full, 9999px);
     background: var(--color-primary);
-    color: #fff;
+    color: var(--color-on-primary);
     flex-shrink: 0;
   }
 
@@ -148,6 +148,6 @@
   /* Ghost class for SortableJS drag */
   .step-card--ghost {
     opacity: 0.4;
-    background: oklch(0.95 0.02 250);
+    background: var(--color-canvas-alt);
   }
 }
