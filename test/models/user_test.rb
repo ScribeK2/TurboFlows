@@ -473,4 +473,64 @@ class UserTest < ActiveSupport::TestCase
     ids = results.map(&:id)
     assert_operator ids.index(u2.id), :<, ids.index(u1.id), "newer user should come first"
   end
+  # --- sorted_by symmetry (prerequisite for clickable column headers) --------
+
+  test "SORT_OPTIONS pairs every sortable column with both directions" do
+    User::SORT_COLUMNS.each do |column|
+      assert_includes User::SORT_OPTIONS, "#{column}_asc"
+      assert_includes User::SORT_OPTIONS, "#{column}_desc"
+    end
+    assert_equal User::SORT_COLUMNS.size * 2, User::SORT_OPTIONS.size
+  end
+
+  test "sorted_by handles every option in SORT_OPTIONS without falling through" do
+    User::SORT_OPTIONS.each do |option|
+      column, direction = option.match(/\A(.+)_(asc|desc)\z/).captures
+      sql = User.sorted_by(option).to_sql
+
+      assert_match(/ORDER BY/i, sql, "#{option} produced no ORDER BY")
+      assert_match(/#{column}/i, sql, "#{option} did not order by #{column}")
+      assert_match(/#{direction}/i, sql, "#{option} did not order #{direction}")
+    end
+  end
+
+  test "sorted_by role_desc reverses role_asc" do
+    emails = %w[admin editor user].map do |role|
+      email = "#{role}-sortsym-#{SecureRandom.hex(4)}@test.com"
+      User.create!(email: email, password: "password123!",
+                   password_confirmation: "password123!", role: role)
+      email
+    end
+    scope = User.where(email: emails)
+
+    ascending = scope.sorted_by("role_asc").pluck(:role)
+    descending = scope.sorted_by("role_desc").pluck(:role)
+
+    # Ordering is on the DB values (admin, editor, "user"), which read back
+    # through the enum as admin, editor, regular — role :regular maps to the
+    # DB string "user" to avoid a User.user naming collision.
+    assert_equal %w[admin editor regular], ascending
+    assert_equal ascending.reverse, descending
+  end
+
+  test "sorted_by created_at_desc is reachable explicitly, not only via fallback" do
+    suffix = SecureRandom.hex(4)
+    old = User.create!(email: "old-explicit-#{suffix}@test.com", password: "password123!",
+                       password_confirmation: "password123!", created_at: 2.days.ago)
+    recent = User.create!(email: "new-explicit-#{suffix}@test.com", password: "password123!",
+                          password_confirmation: "password123!", created_at: 1.hour.ago)
+    scope = User.where(id: [old.id, recent.id])
+
+    assert_equal [recent.id, old.id], scope.sorted_by("created_at_desc").pluck(:id)
+    assert_equal [old.id, recent.id], scope.sorted_by("created_at_asc").pluck(:id)
+  end
+
+  test "sorted_by falls back to the default for unknown or injected values" do
+    [nil, "", "bogus", "email", "role_sideways", "email_asc; DROP TABLE users"].each do |bad|
+      sql = User.sorted_by(bad).to_sql
+      assert_match(/ORDER BY.*created_at.*desc/i, sql,
+                   "expected #{bad.inspect} to fall back to the default ordering")
+      assert_no_match(/DROP TABLE/i, sql, "#{bad.inspect} leaked into the SQL")
+    end
+  end
 end

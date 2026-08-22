@@ -36,14 +36,22 @@ class User < ApplicationRecord
     joins(:user_groups).where(user_groups: { group_id: group_id }).distinct
   }
 
+  # Sortable columns for the admin users table. Every column gets both
+  # directions by construction — the previous case statement had role_asc with
+  # no role_desc, and reached created_at_desc only by falling through `else`,
+  # which is not something clickable column headers can express.
+  #
+  # Groups and Workflows are deliberately absent: they are association counts,
+  # so ordering by them needs a join or a counter cache and the N+1 exposure
+  # that comes with it.
+  SORT_COLUMNS = %w[email role created_at].freeze
+  SORT_OPTIONS = SORT_COLUMNS.flat_map { |c| ["#{c}_asc", "#{c}_desc"] }.freeze
+  DEFAULT_SORT = "created_at_desc".freeze
+
   scope :sorted_by, lambda { |field|
-    case field
-    when "email_asc"      then order(email: :asc)
-    when "email_desc"     then order(email: :desc)
-    when "role_asc"       then order(role: :asc)
-    when "created_at_asc" then order(created_at: :asc)
-    else                       order(created_at: :desc)
-    end
+    key = SORT_OPTIONS.include?(field) ? field : DEFAULT_SORT
+    column, direction = key.match(/\A(.+)_(asc|desc)\z/).captures
+    order(column => direction)
   }
 
   # Keep ROLES for backward compatibility with any code referencing it

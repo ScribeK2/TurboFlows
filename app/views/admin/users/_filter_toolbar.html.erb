@@ -25,10 +25,9 @@
       {},
       { class: "form-select", data: { action: "change->admin-users-filter#filter" } } %>
 
-    <%= form.select :sort,
-      options_for_select([["Newest First", ""], ["Oldest First", "created_at_asc"], ["Email A-Z", "email_asc"], ["Email Z-A", "email_desc"]], params[:sort]),
-      {},
-      { class: "form-select", data: { action: "change->admin-users-filter#filter" } } %>
+    <%# Sorting lives on the column headers now. The value still rides along
+        here so searching or filtering does not silently reset the order. %>
+    <%= form.hidden_field :sort, value: params[:sort] %>
   </div>
 
   <% if params[:q].present? || params[:role].present? || params[:group].present? %>

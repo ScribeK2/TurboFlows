@@ -360,4 +360,115 @@ class Admin::UsersControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to root_path
   end
+  # --- Sortable column headers --------------------------------------------
+
+  test "index renders sortable headers for the query-backed columns" do
+    sign_in @admin
+    get admin_users_path
+
+    assert_response :success
+    assert_select "th a.table__sort", text: "Email"
+    assert_select "th a.table__sort", text: "Role"
+    assert_select "th a.table__sort", text: "Joined"
+  end
+
+  test "index leaves association-count columns unsorted" do
+    sign_in @admin
+    get admin_users_path
+
+    assert_response :success
+    # Groups and Workflows are counts; sorting them means a join or a counter
+    # cache. They must stay plain text, not links.
+    assert_select "th", text: "Groups"
+    assert_select "th", text: "Workflows"
+    assert_select "th a.table__sort", text: "Groups", count: 0
+    assert_select "th a.table__sort", text: "Workflows", count: 0
+  end
+
+  test "index marks the default ordering on the Joined column" do
+    sign_in @admin
+    get admin_users_path
+
+    assert_response :success
+    # With no ?sort the list is still ordered newest-first, so the header must
+    # say so rather than looking untouched.
+    assert_select "th[aria-sort=descending] a.table__sort.is-sorted-desc", text: "Joined"
+  end
+
+  test "index marks the active column and offers the opposite direction" do
+    sign_in @admin
+    get admin_users_path(sort: "email_asc")
+
+    assert_response :success
+    assert_select "th[aria-sort=ascending] a.table__sort.is-sorted-asc", text: "Email" do |links|
+      assert_includes links.first["href"], "sort=email_desc",
+                      "an ascending column must link to descending"
+    end
+  end
+
+  test "index toggles an active descending column back to ascending" do
+    sign_in @admin
+    get admin_users_path(sort: "email_desc")
+
+    assert_response :success
+    assert_select "a.table__sort.is-sorted-desc", text: "Email" do |links|
+      assert_includes links.first["href"], "sort=email_asc"
+    end
+  end
+
+  test "index opens Joined descending but Email ascending on first click" do
+    sign_in @admin
+    get admin_users_path(sort: "role_asc")
+
+    assert_response :success
+    assert_select "a.table__sort", text: "Email" do |links|
+      assert_includes links.first["href"], "sort=email_asc", "Email should open A-Z"
+    end
+    assert_select "a.table__sort", text: "Joined" do |links|
+      assert_includes links.first["href"], "sort=created_at_desc", "Joined should open newest-first"
+    end
+  end
+
+  test "sort links preserve active filters and reset the page" do
+    sign_in @admin
+    get admin_users_path(sort: "email_asc", q: "example", role: "admin", page: 3)
+
+    assert_response :success
+    assert_select "a.table__sort", text: "Role" do |links|
+      href = links.first["href"]
+      assert_includes href, "q=example", "sorting must not clear the search"
+      assert_includes href, "role=admin", "sorting must not clear the role filter"
+      assert_not_includes href, "page=3", "sorting must return to page 1"
+    end
+  end
+
+  test "index no longer renders the sort dropdown but carries sort through filtering" do
+    sign_in @admin
+    get admin_users_path(sort: "email_asc")
+
+    assert_response :success
+    assert_select "select[name=?]", "sort", count: 0
+    assert_select "form.admin-filter-toolbar input[type=hidden][name=?][value=?]", "sort", "email_asc"
+  end
+
+  test "index actually reorders the rows when sorted" do
+    sign_in @admin
+    User.create!(email: "aaa-sortcheck@example.com", password: "password123!",
+                 password_confirmation: "password123!", role: "editor")
+    User.create!(email: "zzz-sortcheck@example.com", password: "password123!",
+                 password_confirmation: "password123!", role: "editor")
+
+    # Email is the SECOND cell: the bulk-select column occupies the first.
+    # Selecting nth-child(1) here yields [] and the assertions below pass
+    # vacuously, which is exactly what an earlier version of this test did.
+    get admin_users_path(sort: "email_asc", per_page: 100)
+    ascending = css_select("tbody tr td:nth-child(2) span.font-medium").map { |cell| cell.text.strip }
+
+    get admin_users_path(sort: "email_desc", per_page: 100)
+    descending = css_select("tbody tr td:nth-child(2) span.font-medium").map { |cell| cell.text.strip }
+
+    assert_operator ascending.size, :>=, 2, "need at least two rows for ordering to mean anything"
+    assert_equal ascending.sort, ascending
+    assert_equal ascending.reverse, descending
+  end
 end
