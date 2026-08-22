@@ -65,4 +65,47 @@ class FoldersIntegrationTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_match "Flat WF", response.body
   end
+  # The Uncategorized bucket used to be a second, hand-written copy of the
+  # folder accordion markup. It drifted: its <summary> carried the class
+  # "folder-accordion__header", which no stylesheet defines, so it lost the
+  # flex row AND the ::-webkit-details-marker suppression — the native
+  # disclosure triangle showed through and the contents stacked vertically.
+  # These tests pin the two accordions to one shape.
+  test "uncategorized bucket renders the same accordion structure as a named folder" do
+    folder = Folder.create!(group: @group, name: "Email Issues", position: 0)
+
+    filed = Workflow.create!(title: "Filed Flow", user: @admin)
+    GroupWorkflow.create!(group: @group, workflow: filed, folder: folder, is_primary: true)
+
+    loose = Workflow.create!(title: "Loose Flow", user: @admin)
+    GroupWorkflow.create!(group: @group, workflow: loose, folder: nil, is_primary: true)
+
+    get workflows_path(group_id: @group.id)
+    assert_response :success
+
+    # Two accordions, both built the same way.
+    assert_select "details.folder-accordion", count: 2
+    assert_select "details.folder-accordion > summary.folder-accordion__summary", count: 2
+
+    # The class that caused the bug must not come back.
+    assert_select ".folder-accordion__header", count: 0
+
+    # Both bodies use the styled list, not a bare <ul>.
+    assert_select "details.folder-accordion .folder-accordion__body ul.wf-list", count: 2
+  end
+
+  test "uncategorized bucket keeps its own icon, italic name and open state" do
+    loose = Workflow.create!(title: "Loose Flow", user: @admin)
+    GroupWorkflow.create!(group: @group, workflow: loose, folder: nil, is_primary: true)
+    Folder.create!(group: @group, name: "Email Issues", position: 0)
+
+    get workflows_path(group_id: @group.id)
+    assert_response :success
+
+    # Sharing the partial must not flatten the two intentional differences:
+    # Uncategorized is a virtual bucket and should still read as one.
+    assert_select "details.folder-accordion[open]", count: 1
+    assert_select "details.folder-accordion[open] summary span.italic", text: "Uncategorized"
+    assert_select "details.folder-accordion:not([open]) summary span", text: "Email Issues"
+  end
 end
