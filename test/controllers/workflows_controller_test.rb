@@ -594,4 +594,91 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
     json = response.parsed_body
     assert_kind_of Array, json["variables"]
   end
+  # --- Page-size control (index) ------------------------------------------
+
+  test "index renders the page-size control with the allowlisted options" do
+    sign_in @editor
+    get workflows_path
+
+    assert_response :success
+    assert_select "select[name=?]", "per_page" do
+      WorkflowsFilter::PER_PAGE_OPTIONS.each do |size|
+        assert_select "option[value=?]", size.to_s
+      end
+    end
+  end
+
+  test "index page-size control marks the active size as selected" do
+    sign_in @editor
+    get workflows_path(per_page: 12)
+
+    assert_response :success
+    assert_select "select[name=?] option[selected=selected]", "per_page" do |options|
+      assert_equal "12", options.first["value"]
+    end
+  end
+
+  test "index honours per_page and limits the rendered list" do
+    sign_in @editor
+    10.times { |i| Workflow.create!(title: "Sizing #{i}", user: @editor, status: "published", is_public: true) }
+
+    get workflows_path(per_page: 6)
+    assert_equal 6, rendered_workflow_count
+
+    get workflows_path(per_page: 12)
+    assert_operator rendered_workflow_count, :>, 6
+  end
+
+  test "index pagination is a three-zone bar with the summary outside the nav" do
+    sign_in @editor
+    10.times { |i| Workflow.create!(title: "Zoning #{i}", user: @editor, status: "published", is_public: true) }
+
+    get workflows_path(per_page: 6)
+
+    assert_response :success
+    # The summary sits in the bar's left zone, not inside the nav — otherwise it
+    # rides along with the numbered buttons and pushes them off true centre.
+    assert_select ".pagination-bar > .pagination-bar__summary"
+    assert_select "nav.pagination .pagination__summary", count: 0
+    assert_select ".pagination-bar > nav.pagination"
+    assert_select ".pagination-bar > .pagination-bar__per-page"
+  end
+
+  test "index page-size control renders even when results fit on one page" do
+    sign_in @editor
+    get workflows_path(per_page: 24)
+
+    assert_response :success
+    # The nav is correctly absent at a single page, but the control must remain
+    # or there is no way back to a smaller size.
+    assert_select "nav.pagination", false
+    assert_select "select[name=?]", "per_page"
+  end
+
+  test "index preserves per_page across search, status and sort controls" do
+    sign_in @editor
+    get workflows_path(per_page: 12)
+
+    assert_response :success
+    assert_select "form.wf-toolbar__search input[name=?][value=?]", "per_page", "12"
+    assert_select ".wf-status-tabs__tab[href*=?]", "per_page=12"
+    assert_select ".wf-toolbar__sort option[value*=?]", "per_page=12"
+  end
+
+  test "index falls back to the default size for an off-allowlist per_page" do
+    sign_in @editor
+    get workflows_path(per_page: 999)
+
+    assert_response :success
+    assert_select "select[name=?] option[selected=selected]", "per_page" do |options|
+      assert_equal WorkflowsFilter::DEFAULT_PER_PAGE.to_s, options.first["value"]
+    end
+  end
+
+  private
+
+  # Only the flat workflow list — "ul li" would also pick up the group sidebar.
+  def rendered_workflow_count
+    css_select("li.wf-list-item").size
+  end
 end
