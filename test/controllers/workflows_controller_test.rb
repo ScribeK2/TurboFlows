@@ -629,6 +629,21 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
     assert_operator rendered_workflow_count, :>, 6
   end
 
+  test "index pagination is a three-zone bar with the summary outside the nav" do
+    sign_in @editor
+    10.times { |i| Workflow.create!(title: "Zoning #{i}", user: @editor, status: "published", is_public: true) }
+
+    get workflows_path(per_page: 6)
+
+    assert_response :success
+    # The summary sits in the bar's left zone, not inside the nav — otherwise it
+    # rides along with the numbered buttons and pushes them off true centre.
+    assert_select ".pagination-bar > .pagination-bar__summary"
+    assert_select "nav.pagination .pagination__summary", count: 0
+    assert_select ".pagination-bar > nav.pagination"
+    assert_select ".pagination-bar > .pagination-bar__per-page"
+  end
+
   test "index page-size control renders even when results fit on one page" do
     sign_in @editor
     get workflows_path(per_page: 24)

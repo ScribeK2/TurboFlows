@@ -16,6 +16,8 @@
 %>
 <div class="pagination-bar">
   <% if total_pages > 1 %>
+    <span class="pagination-bar__summary">Page <%= page %> of <%= total_pages %></span>
+
     <nav class="pagination" aria-label="Pagination">
       <%= link_to "«", url_for(keep.merge(page: 1)),
             class: "pagination__item #{'is-disabled' if page == 1}",
@@ -36,8 +38,6 @@
       <%= link_to "»", url_for(keep.merge(page: total_pages)),
             class: "pagination__item #{'is-disabled' if page == total_pages}",
             aria: { label: "Last page" } %>
-
-      <span class="pagination__summary">Page <%= page %> of <%= total_pages %></span>
     </nav>
   <% end %>
 
