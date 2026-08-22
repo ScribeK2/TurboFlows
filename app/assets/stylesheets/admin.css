@@ -290,12 +290,12 @@
 
 /* When admin-grid holds the two recent sections rather than the quick-action
    buttons, it must stay at 2 columns instead of expanding to 5. */
-.admin-grid:has(> .dash-section) {
+.admin-grid:has(> .list-section) {
   grid-template-columns: 1fr;
 }
 
 @media (min-width: 768px) {
-  .admin-grid:has(> .dash-section) {
+  .admin-grid:has(> .list-section) {
     grid-template-columns: repeat(2, 1fr);
   }
 }

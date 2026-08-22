@@ -193,7 +193,7 @@
 
 /* Already inside a container, so don't draw a second border. */
 .card .empty-state,
-.dash-section__body .empty-state,
+.list-section__body .empty-state,
 .table-wrap .empty-state,
 .folder-accordion .empty-state {
   background: none;

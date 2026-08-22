@@ -51,27 +51,27 @@
 
   <!-- Recent Activity -->
   <div class="admin-grid">
-    <section class="dash-section">
-      <div class="dash-section__head">
-        <h2 class="dash-section__title">Recent Users</h2>
+    <section class="list-section">
+      <div class="list-section__head">
+        <h2 class="list-section__title">Recent Users</h2>
         <% if @recent_users.any? %>
-          <span class="dash-section__count"><%= @recent_users.size %></span>
+          <span class="list-section__count"><%= @recent_users.size %></span>
         <% end %>
-        <%= link_to "View all", admin_users_path, class: "dash-section__link" %>
+        <%= link_to "View all", admin_users_path, class: "list-section__link" %>
       </div>
-      <div class="dash-section__body">
+      <div class="list-section__body">
         <% if @recent_users.any? %>
           <% @recent_users.each do |user| %>
-            <div class="dash-row">
-              <span class="dash-row__icon" aria-hidden="true">
+            <div class="list-row">
+              <span class="list-row__icon" aria-hidden="true">
                 <%= icon "user-group", class: "icon icon--sm" %>
               </span>
-              <div class="dash-row__body">
-                <div class="dash-row__title">
+              <div class="list-row__body">
+                <div class="list-row__title">
                   <%= user.email %>
                   <span class="badge <%= user.avatar_role_badge_classes %>"><%= user.role.capitalize %></span>
                 </div>
-                <p class="dash-row__sub">Joined <%= time_ago_in_words(user.created_at) %> ago</p>
+                <p class="list-row__sub">Joined <%= time_ago_in_words(user.created_at) %> ago</p>
               </div>
             </div>
           <% end %>
@@ -84,26 +84,26 @@
       </div>
     </section>
 
-    <section class="dash-section">
-      <div class="dash-section__head">
-        <h2 class="dash-section__title">Recent Workflows</h2>
+    <section class="list-section">
+      <div class="list-section__head">
+        <h2 class="list-section__title">Recent Workflows</h2>
         <% if @recent_workflows.any? %>
-          <span class="dash-section__count"><%= @recent_workflows.size %></span>
+          <span class="list-section__count"><%= @recent_workflows.size %></span>
         <% end %>
-        <%= link_to "View all", admin_workflows_path, class: "dash-section__link" %>
+        <%= link_to "View all", admin_workflows_path, class: "list-section__link" %>
       </div>
-      <div class="dash-section__body">
+      <div class="list-section__body">
         <% if @recent_workflows.any? %>
           <% @recent_workflows.each do |workflow| %>
-            <div class="dash-row">
-              <span class="dash-row__icon" aria-hidden="true">
+            <div class="list-row">
+              <span class="list-row__icon" aria-hidden="true">
                 <%= icon "document-text", class: "icon icon--sm" %>
               </span>
-              <div class="dash-row__body">
-                <div class="dash-row__title">
+              <div class="list-row__body">
+                <div class="list-row__title">
                   <%= link_to workflow.title, workflow_path(workflow) %>
                 </div>
-                <p class="dash-row__sub">
+                <p class="list-row__sub">
                   by <%= workflow.user.email %> &middot; <%= workflow.is_public? ? "Public" : "Private" %>
                   &middot; <%= time_ago_in_words(workflow.created_at) %> ago
                 </p>

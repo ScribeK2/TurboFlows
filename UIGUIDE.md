@@ -137,7 +137,11 @@ Dark mode is automatic. Use token names and they swap values via `[data-theme="d
 
 - **No Tailwind classes** — use component classes (`.btn--primary`) or utility classes from `utilities.css`
 - **No hardcoded colors** — always `var(--color-*)` or `var(--hue-*)` tokens
-- **No inline `style=""` attributes** — use component/utility classes instead
+- **No *literal* colour in an inline `style=""`** — the hardcoded-colour rule
+  above applies inside style attributes too, so `background: rgba(0,0,0,.5)`
+  is out and `background: var(--color-canvas)` is fine. Inline `style=""`
+  itself is not banned: for a one-off layout value (a grid template, a fixed
+  position) it is the right tool, and the recipes in Section 3 use it
 - **No gradients anywhere** — not on surfaces, not on buttons
 - **No shadows on cards, rows or inputs** — a 1px hairline border is the separator. Shadows are for popovers, dropdowns and dialogs only
 - **No second filled button** on the same screen
@@ -145,6 +149,29 @@ Dark mode is automatic. Use token names and they swap values via `[data-theme="d
 - **No `oklch()` written inline against `--step-hue`** — use `--step-bg` / `--step-text` / `--step-dot` / `--step-solid`
 - **No external fonts or CDN links** — system fonts only
 - **No raw px/rem for spacing** — use `var(--space-N)` tokens
+
+### Surfaces Deliberately Excluded
+
+Two surfaces were left out of the northwest-palette migration on purpose. They
+are **not** unfinished work, and tidying them into line with the rest of the
+system is a change of design, not a cascade fix. Do not restructure either one
+without meeting its reopen condition.
+
+- **Scenario runner mechanics** — the radio cards, button bar and progress rail
+  in `scenarios/step` and `scenarios/show`. Only the page chrome (back link, H1,
+  identifier) was adopted. No reference material shows a runner, and this is the
+  screen users operate under time pressure on live calls, where familiarity is
+  worth more than consistency.
+  *Reopen when:* reference material for a runner exists, or a real user complaint
+  about the runner comes in.
+
+- **Builder internal panels** — `_builder`, `_step_row`, `_panel_edit`,
+  `_health_panel`, `_preview_pane`, `_visual_editor`. Colours were migrated;
+  the structure was not. It is a bespoke editing surface — drag handles, slide-in
+  panel, inline validation — that no reference screenshot covers, so restyling it
+  means inventing on the app's most complex interaction surface.
+  *Reopen when:* reference material exists, and then as a design consultation
+  rather than a refactor.
 
 ---
 
@@ -365,27 +392,27 @@ Section heading sits **on the canvas**; the bordered container holds only rows.
   </div>
 
   <!-- Section: bold title + count badge + text link, ABOVE the container -->
-  <section class="dash-section">
-    <div class="dash-section__head">
-      <h2 class="dash-section__title">Recent Items</h2>
-      <span class="dash-section__count"><%= items.size %></span>
-      <%= link_to "View all", items_path, class: "dash-section__link" %>
+  <section class="list-section">
+    <div class="list-section__head">
+      <h2 class="list-section__title">Recent Items</h2>
+      <span class="list-section__count"><%= items.size %></span>
+      <%= link_to "View all", items_path, class: "list-section__link" %>
     </div>
 
-    <div class="dash-section__body">
+    <div class="list-section__body">
       <% items.each do |item| %>
-        <div class="dash-row">
-          <span class="dash-row__icon" aria-hidden="true">
+        <div class="list-row">
+          <span class="list-row__icon" aria-hidden="true">
             <%= icon "document-text", class: "icon icon--sm" %>
           </span>
-          <div class="dash-row__body">
-            <div class="dash-row__title">
+          <div class="list-row__body">
+            <div class="list-row__title">
               <%= link_to item.title, item_path(item) %>
               <span class="badge badge--published">Published</span>
             </div>
-            <p class="dash-row__sub">Created <%= time_ago_in_words(item.created_at) %> ago</p>
+            <p class="list-row__sub">Created <%= time_ago_in_words(item.created_at) %> ago</p>
           </div>
-          <div class="dash-row__actions">
+          <div class="list-row__actions">
             <%= link_to "View", item_path(item), class: "btn btn--secondary btn--sm" %>
           </div>
         </div>
@@ -613,6 +640,7 @@ For page types not covered by a recipe, read these exemplary views. They demonst
 | `skeleton.css` | components | Loading skeletons |
 | `pagination.css` | components | Page navigation (« ‹ 1 2 3 › » + summary) |
 | `tabs.css` | components | Underline tab bar (`.tab-bar`) |
+| `lists.css` | components | Section + row list pattern: `.list-section`, `.list-row` |
 | `_tags.css` | components | Tag pills, autocomplete |
 | `_player.css` | components | Player-specific styles |
 | `_form_step.css` | components | FormStep builder UI |
@@ -628,7 +656,7 @@ For page types not covered by a recipe, read these exemplary views. They demonst
 | `steps.css` | modules | Step editor styles |
 | `editor.css` | modules | Rich text editor (Lexxy) |
 | `transitions.css` | modules | Transition editor |
-| `dashboard.css` | modules | Dashboard: `.dash-section`, `.dash-row`, `.stat-panel`/`.stat-cell` |
+| `dashboard.css` | modules | Dashboard shell: `.dashboard-*`, `.stat-panel`/`.stat-cell` |
 | `auth.css` | modules | Login/signup pages |
 | `admin.css` | modules | Admin panel |
 | `utilities.css` | utilities | Layout utilities (.flex, .gap-*, .mb-*, .text-*) |
@@ -677,3 +705,7 @@ Before submitting a new or modified view, verify:
 13. **Verify in the browser, in both themes.** Passing tests prove nothing about
     color. Read `getComputedStyle` on the element — a token that silently fails to
     resolve renders as "no style applied", which looks plausible in a screenshot
+14. **Tabs match their job** — `.tab-bar` (underline) for *navigating* between
+    views of one record; `.wf-status-tabs` (segmented) for *filtering* a list.
+    Wearing the filter control for navigation was the most-repeated mistake of
+    the migration

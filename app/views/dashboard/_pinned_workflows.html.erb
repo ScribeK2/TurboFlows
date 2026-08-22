@@ -1,27 +1,27 @@
 <% pinned = dashboard.pinned_workflows %>
 
-<section class="dash-section animate-fade-in-up" id="pinned-workflows-section" aria-label="Your fast path">
-  <div class="dash-section__head">
-    <h2 class="dash-section__title">Your fast path</h2>
+<section class="list-section animate-fade-in-up" id="pinned-workflows-section" aria-label="Your fast path">
+  <div class="list-section__head">
+    <h2 class="list-section__title">Your fast path</h2>
     <% if pinned.any? %>
-      <span class="dash-section__count"><%= pinned.size %></span>
+      <span class="list-section__count"><%= pinned.size %></span>
     <% end %>
-    <%= link_to "Manage pins", workflows_path, class: "dash-section__link" %>
+    <%= link_to "Manage pins", workflows_path, class: "list-section__link" %>
   </div>
 
-  <div class="dash-section__body">
+  <div class="list-section__body">
     <% if pinned.any? %>
       <% pinned.each do |workflow| %>
         <% stats = dashboard.pinned_workflow_stats[workflow.id] || { runs: 0, last_run_at: nil } %>
-        <div class="dash-row">
-          <span class="dash-row__icon" aria-hidden="true">
+        <div class="list-row">
+          <span class="list-row__icon" aria-hidden="true">
             <%= icon "bookmark", class: "icon icon--sm" %>
           </span>
-          <div class="dash-row__body">
-            <div class="dash-row__title">
+          <div class="list-row__body">
+            <div class="list-row__title">
               <%= link_to workflow.title, workflow_path(workflow), aria: { label: "Open #{workflow.title}" } %>
             </div>
-            <p class="dash-row__sub">
+            <p class="list-row__sub">
               <% if stats[:runs].positive? %>
                 <%= pluralize(stats[:runs], "run") %><% if stats[:last_run_at] %> &middot; last run <%= time_ago_in_words(stats[:last_run_at]) %> ago<% end %>
               <% else %>
@@ -29,14 +29,14 @@
               <% end %>
             </p>
             <% if workflow.tags.any? %>
-              <div class="dash-row__tags flex flex-wrap gap-1">
+              <div class="list-row__tags flex flex-wrap gap-1">
                 <% workflow.tags.each do |tag| %>
                   <span class="tag-pill"><%= tag.name %></span>
                 <% end %>
               </div>
             <% end %>
           </div>
-          <div class="dash-row__actions">
+          <div class="list-row__actions">
             <%= button_to play_workflow_path(workflow), method: :post,
                   class: "btn btn--secondary btn--sm",
                   aria: { label: "Run #{workflow.title}" } do %>
@@ -47,13 +47,13 @@
         </div>
       <% end %>
 
-      <%= link_to workflows_path, class: "dash-row dash-row--prompt", aria: { label: "Pin a workflow" } do %>
-        <span class="dash-row__icon" aria-hidden="true">
+      <%= link_to workflows_path, class: "list-row list-row--prompt", aria: { label: "Pin a workflow" } do %>
+        <span class="list-row__icon" aria-hidden="true">
           <%= icon "plus", class: "icon icon--sm" %>
         </span>
-        <div class="dash-row__body">
-          <div class="dash-row__title">Pin a workflow</div>
-          <p class="dash-row__sub">One-click access for your go-to flows</p>
+        <div class="list-row__body">
+          <div class="list-row__title">Pin a workflow</div>
+          <p class="list-row__sub">One-click access for your go-to flows</p>
         </div>
       <% end %>
     <% else %>
