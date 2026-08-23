@@ -1,0 +1,32 @@
+<%# locals: step, results, next_url, stop_url, back_button, show_cancel %>
+<div class="step-content-box step-content-box--action mb-4" data-controller="clipboard">
+  <div class="step-content-box__accent"></div>
+  <div class="step-content-box__body">
+    <div class="scenario-content-layout--between">
+      <div class="scenario-content-layout flex-1">
+        <div class="step-content-box__icon-wrap mr-3 mt-0.5">
+          <%= icon "check", class: "icon icon--sm" %>
+        </div>
+        <div class="flex-1">
+          <h3 class="step-content-box__label">Instructions</h3>
+          <div class="text-sm" data-clipboard-target="source">
+            <%= render_step_content(step, 'instructions', results) %>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="btn btn--plain btn--sm ml-3 mt-1 flex-shrink-0"
+              title="Copy instructions to clipboard"
+              data-action="click->clipboard#copy" data-clipboard-target="button">
+        <%= icon "clipboard-document-list", class: "icon icon--sm" %>
+      </button>
+    </div>
+  </div>
+</div>
+
+<%= form_with url: next_url, method: :post, data: { scenario_step_target: "form" } do |form| %>
+  <%= form.hidden_field :answer, value: "" %>
+  <%= render "runner/button_bar",
+        form: form, back_button: back_button, stop_url: stop_url,
+        show_cancel: show_cancel, submit_label: "Continue",
+        can_resolve: step.try(:can_resolve) %>
+<% end %>

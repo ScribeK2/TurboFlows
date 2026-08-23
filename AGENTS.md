@@ -9,7 +9,7 @@ A straightforward workflow creator for call/chat centers to build, simulate, and
 - All workflows are graphs — every step connects via explicit Transitions (no separate "linear mode")
 - Every workflow must have at least one Resolve step (the only always-terminal type)
 - Scenario Mode: interactive step-by-step graph traversal with variable interpolation {{var}}, sub-flow recursion, safety limits
-- Player Mode: user-facing workflow execution UI for agents on live calls/training. Separate layout, read-only progress stepper, share links, embed mode
+- Player Mode: user-facing workflow execution UI for agents on live calls/training. Separate layout, share links, embed mode. Shares the step body with Scenario mode via `app/views/runner/` partials
 - Sharing: workflows can generate share tokens (`/s/:share_token`) for anonymous access, with optional iframe embedding
 - Tags: workflow categorization with tag pills, autocomplete, and search integration
 - Real-time collaboration via Action Cable (WorkflowChannel presence)
@@ -159,18 +159,34 @@ The Player is the user-facing workflow execution UI, separate from the builder's
 **Key files:**
 - `app/controllers/player_controller.rb` — start, step, next_step, back, show, show_shared
 - `app/views/layouts/player.html.erb` — standalone layout (header, main, footer)
-- `app/views/player/step.html.erb` — step execution with progress stepper, clipboard, cancel
+- `app/views/player/step.html.erb` — a thin shell: page chrome plus route-shaped locals, delegating the step body to `runner/_step_body`
 - `app/views/player/show.html.erb` — completion screen with stats
 - `app/views/player/index.html.erb` — workflow card grid
 - `app/helpers/player_helper.rb` — `player_back_button` helper (uses Player routes, not Scenario routes)
 - `app/assets/stylesheets/_player.css` — Player-specific layout and component styles
 
-**Key differences from Scenario mode:**
-- Operates on AR Step objects (`@current_step`), not execution path hashes (`step['field']`)
+**Key differences from Scenario mode:** only the shell differs. Both runners
+render `app/views/runner/_step_body`, which never calls a route helper —
+everything route-shaped (`next_url`, `stop_url`, `back_button`, `show_cancel`)
+arrives as a local. Add step-body behaviour in the partials, not in a shell.
+
 - Uses `player_scenario_*_path` routes, not `*_scenario_path` routes
-- Cancel button hidden for anonymous/shared scenarios (no Player index to return to)
-- Progress stepper is read-only minimal dots (not the builder's interactive pill breadcrumbs)
-- Supports all answer types: yes/no, multiple choice, dropdown, number, date, text, form
+- Its own layout (`layouts/player.html.erb`) and page chrome
+- Cancel is hidden for anonymous/shared scenarios (no Player index to return to)
+- Both runners operate on AR Step objects with method access (`step.title`), not
+  execution-path hashes. `step['field']` access was removed in the shared-partial
+  extraction; `execution_path` hashes remain only in the results view and trail.
+
+**No step numbers or progress bars.** Both were removed deliberately: two
+numbering systems disagreed inside sub-flows, and the bars divided by
+`workflow.steps.count`, which a branched run never visits in full. What replaced
+them is `runner/_trail` — the answered steps as plain text, read from the root
+scenario. See UIGUIDE.md § Surfaces Deliberately Excluded for the reasoning.
+
+**Auto-advance has one source of truth:** `RunnerHelper#runner_auto_advances?`.
+It drives both the Stimulus value on the shell and whether Continue renders in
+the partial. Those must agree — when they didn't, a question with options and an
+unexpected `answer_type` rendered radio cards with no way to submit.
 
 ## Navigation & Search
 

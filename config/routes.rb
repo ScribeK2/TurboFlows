@@ -34,7 +34,6 @@ Rails.application.routes.draw do
     get "versions/diff", to: "workflow_versions#diff", as: :diff_versions
     get "versions/:id", to: "workflow_versions#show", as: :version
     post "versions/:id/restore", to: "workflow_versions#restore", as: :restore_version
-    resources :scenarios, only: %i[new create]
     resources :steps, except: [:index] do
       collection do
         post :apply_template
@@ -79,6 +78,7 @@ Rails.application.routes.draw do
     get "step", to: "player#step", as: :player_scenario_step
     post "next", to: "player#next_step", as: :player_scenario_next
     post "back", to: "player#back", as: :player_scenario_back
+    post "stop", to: "player#stop", as: :player_scenario_stop
     get "show", to: "player#show", as: :player_scenario_show
   end
 

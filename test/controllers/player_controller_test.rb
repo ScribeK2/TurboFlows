@@ -108,7 +108,7 @@ class PlayerControllerTest < ActionDispatch::IntegrationTest
     scenario = Scenario.last
     get player_scenario_step_path(scenario)
     assert_response :success
-    assert_select "a.scenario-btn-cancel", text: "Cancel"
+    assert_select "a[href=?]", player_scenario_stop_path(scenario), text: "Cancel"
   end
 
   test "player step does not render cancel for shared anonymous scenario" do
@@ -119,7 +119,7 @@ class PlayerControllerTest < ActionDispatch::IntegrationTest
     scenario = Scenario.last
     get player_scenario_step_path(scenario)
     assert_response :success
-    assert_select "a.scenario-btn-cancel", text: "Cancel", count: 0
+    assert_select "a[href=?]", player_scenario_stop_path(scenario), text: "Cancel", count: 0
   end
 
   # === Answer Type Rendering ===
@@ -143,7 +143,8 @@ class PlayerControllerTest < ActionDispatch::IntegrationTest
     scenario = Scenario.last
     get player_scenario_step_path(scenario)
     assert_response :success
-    assert_select "select.scenario-select"
+    assert_select "select[name=?]", "answer"
+    assert_select "option", text: "A"
   end
 
   # === Concurrency / Stale Scenario ===

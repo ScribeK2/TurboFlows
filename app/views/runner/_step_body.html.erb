@@ -1,0 +1,44 @@
+<%#
+  Shared runner step body — the part of the runner that is genuinely the same
+  in Scenario and Player. Everything route-shaped arrives as a local, so this
+  never calls a route helper and the two shells stay the only place the
+  difference lives.
+
+  locals: step, results, next_url, stop_url, back_button, show_cancel
+%>
+<%
+  locals = {
+    step: step, results: results, next_url: next_url, stop_url: stop_url,
+    back_button: local_assigns.fetch(:back_button, nil),
+    show_cancel: local_assigns.fetch(:show_cancel, true)
+  }
+%>
+
+<% if step.help_text.present? %>
+  <div class="step-help-text" role="note"><%= step.help_text %></div>
+<% end %>
+
+<% if step.try(:reference_url).present? %>
+  <a href="<%= step.reference_url %>" target="_blank" rel="noopener" class="step-reference-link mb-3">
+    <%= icon "link", class: "icon icon--xs" %>
+    More info
+  </a>
+<% end %>
+
+<% if step.step_type != "message" && step.try(:description).present? %>
+  <div class="text-sm mb-4"><%= render_step_content(step, 'description', results) %></div>
+<% end %>
+
+<% case step.step_type %>
+<% when "question" %><%= render "runner/question", **locals %>
+<% when "action" %><%= render "runner/action", **locals %>
+<% when "message" %><%= render "runner/message", **locals %>
+<% when "escalate" %><%= render "runner/escalate", **locals %>
+<% when "resolve" %><%= render "runner/resolve", **locals %>
+<% when "form" %><%= render "runner/form", **locals %>
+<% when "sub_flow" %><%= render "runner/sub_flow", next_url: next_url %>
+<% end %>
+
+<% if step.respond_to?(:media_attachments) && step.media_attachments.any? %>
+  <%= render "steps/media_attachments", step: step %>
+<% end %>

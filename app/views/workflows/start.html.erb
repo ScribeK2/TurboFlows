@@ -1,87 +1,61 @@
-<div class="wizard-page" style="padding-bottom: 7rem;">
-  <!-- Header Section -->
-  <div class="wizard-page__header text-center">
-    <h1 class="page-header-section__title"><%= @workflow.title %></h1>
-    <% if @workflow.description? %>
-      <div class="mt-3 text-left">
-        <%= @workflow.description %>
-      </div>
-    <% end %>
-  </div>
-
-  <!-- Workflow Info Card -->
-  <div class="card mb-6">
-    <div class="card__body">
-      <div class="flex items-center justify-center gap-6 text-sm">
-        <div class="flex items-center gap-2">
-          <%= icon "clipboard", class: "icon icon--sm" %>
-          <span><%= pluralize(@workflow.steps.size, "step") %></span>
+<div class="page-content">
+  <div class="page-main">
+    <%# .page-header-section supplies spacing only, so the title/action row is
+        composed here with layout utilities, the same way the results page does. %>
+    <div class="page-header-section">
+      <div class="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <%= link_to workflows_path, class: "page-back" do %>
+            <%= icon "chevron-left", class: "icon icon--xs" %>
+            Back to workflows
+          <% end %>
+          <h1 class="page-header-section__title"><%= @workflow.title %></h1>
+          <p class="page-header-section__ident">
+            <%= pluralize(@workflow.steps.size, "step") %><%= " · Public" if @workflow.is_public? %>
+          </p>
         </div>
-        <% if @workflow.is_public? %>
-          <div class="flex items-center gap-2">
-            <%= icon "lock-closed", class: "icon icon--sm" %>
-            <span>Public</span>
-          </div>
+        <%= form_with url: workflow_execution_path(@workflow), method: :post, local: true,
+              data: { controller: "form-submit", action: "submit->form-submit#submit" } do |form| %>
+          <%= form.submit "Start Workflow",
+                data: { form_submit_target: "submit" },
+                aria: { label: "Start workflow: #{@workflow.title}" },
+                class: "btn btn--primary" %>
         <% end %>
       </div>
     </div>
-  </div>
 
-  <!-- Start Button -->
-  <div class="text-center" style="position: fixed; bottom: 0; left: 0; right: 0; background: var(--color-canvas); border-top: 1px solid var(--color-border); padding: 1rem; z-index: 10;">
-    <%= form_with url: workflow_execution_path(@workflow), method: :post, local: true,
-        class: "inline-block",
-        data: { controller: "form-submit", action: "submit->form-submit#submit" } do |form| %>
-      <%= form.submit "Start Workflow",
-          data: { form_submit_target: "submit" },
-          aria: { label: "Start workflow: #{@workflow.title}" },
-          class: "btn btn--primary btn--lg" %>
+    <% if @workflow.description? %>
+      <div class="card mb-4">
+        <div class="card__body"><%= @workflow.description %></div>
+      </div>
     <% end %>
-    <p class="text-sm mt-2 text-muted">Begin step-by-step guided execution</p>
-  </div>
 
-  <!-- Workflow Steps Preview -->
-  <% ar_steps = @workflow.steps.order(:position) %>
-  <% if ar_steps.any? %>
-    <div class="mt-6">
-      <div class="card">
-        <div class="card__header">
-          <h3 class="font-semibold">Workflow Steps (<%= ar_steps.size %> total)</h3>
+    <% ar_steps = @workflow.steps.order(:position) %>
+    <% if ar_steps.any? %>
+      <section class="list-section">
+        <div class="list-section__head">
+          <h2 class="list-section__title">Steps</h2>
+          <span class="list-section__count"><%= ar_steps.size %></span>
         </div>
-        <div class="card__body">
-          <div role="list" class="flex-col-gap-3">
-            <% ar_steps.each_with_index do |step, index| %>
-              <div class="step-list-item" role="listitem">
-                <span class="step-card__number flex-shrink-0">
-                  <%= index + 1 %>
-                </span>
-                <div class="flex-1 min-w-0">
-                  <h4 class="font-semibold flex items-center gap-1">
-                    <%= step_type_svg_icon(step.step_type, css_classes: "icon icon--sm") %> <%= step.title %>
-                  </h4>
-                  <% snippet = step.try(:question) || step.try(:content)&.to_s || step.try(:instructions)&.to_s %>
-                  <% if snippet.present? %>
-                    <div class="text-sm mt-1">
-                      <%= truncate(strip_tags(snippet.to_s), length: 200) %>
-                    </div>
-                  <% end %>
-                  <span class="badge badge--<%= step.step_type %> mt-2">
+        <div class="list-section__body">
+          <% ar_steps.each do |step| %>
+            <div class="list-row">
+              <div class="list-row__body">
+                <div class="list-row__title">
+                  <%= step.title %>
+                  <span class="<%= step_type_badge_classes(step.step_type) %>">
                     <%= step_type_label(step.step_type) %>
                   </span>
                 </div>
+                <% snippet = step.try(:question) || step.try(:content)&.to_s || step.try(:instructions)&.to_s %>
+                <% if snippet.present? %>
+                  <p class="list-row__sub"><%= truncate(strip_tags(snippet.to_s), length: 160) %></p>
+                <% end %>
               </div>
-            <% end %>
-          </div>
+            </div>
+          <% end %>
         </div>
-      </div>
-    </div>
-  <% end %>
-
-  <!-- Back Link -->
-  <div class="mt-6 text-center">
-    <%= link_to workflows_path, class: "btn btn--plain btn--sm" do %>
-      <%= icon "arrow-left", class: "icon icon--sm" %>
-      Back to Workflows
+      </section>
     <% end %>
   </div>
 </div>
