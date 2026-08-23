@@ -98,33 +98,6 @@
 }
 
 /* ============================================================================
-   Wizard Page Layout
-   ============================================================================ */
-
-.wizard-page {
-  max-width: 48rem;
-  margin-inline: auto;
-}
-
-.wizard-page__header {
-  margin-bottom: var(--space-6);
-}
-
-.wizard-page__subtitle {
-  font-size: var(--text-sm);
-  color: var(--color-ink-subtle);
-  margin-top: var(--space-1);
-}
-
-.wizard-page__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--color-border);
-}
-
-/* ============================================================================
    Wizard Card Body (vertical stack)
    ============================================================================ */
 

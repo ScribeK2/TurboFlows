@@ -1,0 +1,31 @@
+<%#
+  What has been answered so far, in plain text.
+
+  Replaces the stepper rail, which encoded the same facts as step-type-coloured
+  pills with truncated titles, truncated answers, index numbers, connectors and
+  a horizontal scrollbar. It also numbered pills by position within the current
+  scenario while the counter beside it counted across ancestors, so a sub-flow
+  showed "Step 1" next to "Step 4". There are no numbers here: on a branching
+  graph a step number is a running tally with no destination, and one honest
+  ordered list of answers is the thing an agent on a call actually wants.
+
+  locals: scenario
+%>
+<% entries = runner_trail_entries(scenario) %>
+<% if entries.any? %>
+  <% recent  = entries.last(3) %>
+  <% earlier = entries[0...-3] || [] %>
+  <div class="runner-trail">
+    <% if earlier.any? %>
+      <details class="runner-trail__earlier">
+        <summary><%= pluralize(earlier.size, "earlier step") %></summary>
+        <ol class="runner-trail__list">
+          <%= render partial: "runner/trail_item", collection: earlier, as: :entry %>
+        </ol>
+      </details>
+    <% end %>
+    <ol class="runner-trail__list">
+      <%= render partial: "runner/trail_item", collection: recent, as: :entry %>
+    </ol>
+  </div>
+<% end %>

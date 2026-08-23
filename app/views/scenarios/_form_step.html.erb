@@ -1,11 +1,8 @@
 <div class="player-form-fields">
   <% Array(step.fields).sort_by { |f| f["position"].to_i }.each do |field| %>
     <div class="player-form-field">
-      <label>
+      <label class="form-label<%= " is-required" if field["required"] %>">
         <%= field["label"] %>
-        <% if field["required"] %>
-          <span class="player-form-field__required">*</span>
-        <% end %>
       </label>
 
       <% case field["field_type"] %>

@@ -1,0 +1,43 @@
+<%# locals: step, results, next_url, stop_url, back_button, show_cancel %>
+<div class="step-content-box step-content-box--resolve mb-4">
+  <div class="step-content-box__accent"></div>
+  <div class="step-content-box__body">
+    <div class="scenario-content-layout">
+      <div class="step-content-box__icon-wrap mr-3 mt-0.5">
+        <%= icon "check-circle", class: "icon icon--sm" %>
+      </div>
+      <div class="flex-1">
+        <h3 class="step-content-box__label">Resolution</h3>
+        <% if step.try(:resolution_type).present? %>
+          <p class="text-sm mb-2">
+            <strong>Type:</strong>
+            <span class="badge <%= runner_resolution_badge_class(step.resolution_type) %>">
+              <%= step.resolution_type.titleize %>
+            </span>
+          </p>
+        <% end %>
+        <% resolve_desc = Steps::Resolve.default_description_for(step.try(:resolution_type)) %>
+        <% if resolve_desc.present? %>
+          <p class="text-sm" style="color: var(--color-ink-subtle);"><%= resolve_desc %></p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%= form_with url: next_url, method: :post, data: { scenario_step_target: "form" } do |form| %>
+  <% if step.try(:notes_required) %>
+    <div class="form-group mb-3">
+      <label class="form-label is-required">Resolution Notes</label>
+      <%= form.text_area :resolution_notes, class: "form-input", rows: 3,
+            required: true, aria: { required: true, describedby: "resolution-notes-error" },
+            placeholder: "Add notes about this resolution..." %>
+      <span id="resolution-notes-error" class="form-error" hidden>Resolution notes are required</span>
+    </div>
+  <% end %>
+  <%= form.hidden_field :answer, value: "" %>
+  <%= render "runner/button_bar",
+        form: form, back_button: back_button, stop_url: stop_url,
+        show_cancel: show_cancel, submit_label: "Complete Workflow",
+        submit_class: "btn btn--mint" %>
+<% end %>

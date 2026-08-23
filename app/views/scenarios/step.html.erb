@@ -7,474 +7,48 @@
       <%= icon "chevron-left", class: "icon icon--xs" %>
       Back to workflow
     <% end %>
-    <% if current_user&.regular? %>
-      <h1 class="page-header-section__title" title="<%= @workflow.title %>">
-        <%= truncate(@workflow.title, length: 60, omission: "...") %>
-      </h1>
-      <p class="page-header-section__ident">Step-by-step execution</p>
-    <% else %>
-      <h1 class="page-header-section__title">Running Scenario</h1>
-      <p class="page-header-section__ident"><%= @workflow.title %></p>
-    <% end %>
+    <h1 class="page-header-section__title" title="<%= @workflow.title %>">
+      <%= truncate(@workflow.title, length: 60, omission: "...") %>
+    </h1>
+    <p class="page-header-section__ident">Step-by-step execution</p>
   </div>
 
-
-  <% if @scenario.execution_path.present? && @scenario.execution_path.any? %>
-    <div class="card mb-4">
-      <div class="card__header">
-        <h2>Progress</h2>
-        <% unless @scenario.complete? %>
-          <span class="text-xs"><%= scenario_step_counter(@scenario, @workflow) %></span>
-        <% end %>
-      </div>
-      <div class="card__body">
-        <div class="overflow-x-auto overflow-y-hidden progress-scroll" style="width: 100%; max-width: 100%; box-sizing: border-box;">
-          <div class="flex items-center gap-2 pb-2" style="width: max-content;">
-            <% @scenario.execution_path.each_with_index do |path_item, index| %>
-              <div class="flex items-center flex-shrink-0">
-                <%
-                  # All execution_path items are completed — the current step being
-                  # displayed hasn't been added to the path yet (it's added on submit).
-                  is_current = false
-                  is_completed = true
-                %>
-                <a href="<%= step_scenario_path(@scenario, step: index) %>"
-                   class="<%= scenario_stepper_classes(is_completed, is_current, path_item['step_type'] || path_item['type']) %> flex-shrink-0"
-                   title="<%= path_item['step_title'] %>">
-                  <%= scenario_stepper_step_content(path_item, index, is_completed, is_current) %>
-                  <span class="scenario-stepper__label"><%= truncate(path_item['step_title'], length: 20) %></span>
-                  <% if path_item['answer'].present? && is_completed %>
-                    <span class="scenario-stepper__answer">(<%= truncate(path_item['answer'].to_s, length: 10) %>)</span>
-                  <% end %>
-                </a>
-                <% unless index == @scenario.execution_path.length - 1 %>
-                  <div class="scenario-step-connector flex-shrink-0"></div>
-                <% end %>
-              </div>
-            <% end %>
-            <% unless @scenario.complete? %>
-              <div class="flex items-center flex-shrink-0 ml-2">
-                <div class="scenario-step-current flex-shrink-0">
-                  <span class="text-xs font-bold"><%= scenario_step_counter(@scenario, @workflow).delete_prefix("Step ") %></span>
-                </div>
-              </div>
-            <% end %>
-          </div>
-        </div>
-        <%
-          # Walk the full ancestor chain for cumulative progress (supports deeply nested sub-flows)
-          total_steps = @scenario.workflow.steps.count
-          completed_steps = @scenario.execution_path&.length || 0
-          ancestor = @scenario.parent_scenario
-          while ancestor.present?
-            total_steps += ancestor.workflow.steps.count
-            completed_steps += (ancestor.execution_path&.length || 0)
-            ancestor = ancestor.parent_scenario
-          end
-          progress_pct = total_steps > 0 ? ((completed_steps.to_f / total_steps) * 100).round : 0
-        %>
-        <div class="scenario-progress-bar-wrap">
-          <div class="scenario-progress-bar" style="width: <%= progress_pct %>%"></div>
-        </div>
-      </div>
-    </div>
-  <% end %>
-
   <% if @scenario.complete? %>
-    <div class="card text-center">
+    <div class="card">
       <div class="card__body">
-        <h2>Scenario Complete!</h2>
-        <p class="mb-4">All steps have been completed.</p>
-        <%= link_to "View Results", scenario_path(@scenario), class: "btn btn--secondary" %>
+        <h2 class="mb-2">Run complete</h2>
+        <p class="mb-4">Every step of this workflow has been completed.</p>
+        <%= link_to "View Results", scenario_path(@scenario), class: "btn btn--primary" %>
       </div>
     </div>
   <% else %>
     <% step = @scenario.current_step %>
     <% if step %>
       <%
-        stype = step.step_type
-        step_info_text = "#{scenario_step_counter(@scenario, @workflow)}: #{step['title']}"
-        auto_advance = %w[yes_no multiple_choice].include?(step['answer_type'])
-        cancel_url = workflow_path(@workflow)
-        cancel_confirm = "Are you sure you want to cancel? Your scenario progress will be lost."
+        auto_advance = runner_auto_advances?(step)
+        step_info_text = VariableInterpolator.interpolate(step.title, @scenario.results || {})
       %>
+
+      <%= render "runner/trail", scenario: @scenario %>
 
       <div aria-live="polite" class="sr-only" data-scenario-step-target="announce"></div>
 
       <div class="card mb-4"
            data-controller="scenario-step image-lightbox"
-           data-scenario-step-cancel-url-value="<%= cancel_url %>"
            data-scenario-step-step-info-value="<%= step_info_text %>"
            data-scenario-step-auto-advance-value="<%= auto_advance %>">
         <div class="card__body">
           <div class="scenario-step-header">
-            <div class="scenario-step-header__info">
-              <span class="<%= scenario_step_number_classes(stype) %>">
-                <%= scenario_step_counter(@scenario, @workflow).delete_prefix("Step ") %>
-              </span>
-              <div>
-                <h2><%= VariableInterpolator.interpolate(step['title'], @scenario.results || {}) %></h2>
-                <span class="<%= step_type_badge_classes(stype) %>">
-                  <%= step_type_svg_icon(stype, css_classes: "icon icon--xs") %>
-                  <%= step_type_label(stype) %>
-                </span>
-              </div>
-            </div>
+            <h2><%= step_info_text %></h2>
           </div>
 
-          <%# ── Help Text (coaching callout) ── %>
-          <% if step['help_text'].present? %>
-            <div class="step-help-text" role="note">
-              <%= step['help_text'] %>
-            </div>
-          <% end %>
-
-          <%# ── Reference URL ── %>
-          <% if step['reference_url'].present? %>
-            <a href="<%= step['reference_url'] %>" target="_blank" rel="noopener"
-               class="step-reference-link mb-3">
-              <%= icon "link", class: "icon icon--xs" %>
-              More info
-            </a>
-          <% end %>
-
-          <% unless stype == 'message' %>
-            <% if step['description'].present? %>
-              <div class="text-sm mb-4"><%= render_step_content(step, 'description', @scenario.results || {}) %></div>
-            <% end %>
-          <% end %>
-
-          <% case stype %>
-          <% when 'question' %>
-            <%= form_with url: next_step_scenario_path(@scenario), method: :post, class: "space-y-4", data: { scenario_step_target: "form" } do |form| %>
-              <div>
-                <label class="form-label">
-                  <%= VariableInterpolator.interpolate(step['question'] || step['title'], @scenario.results || {}) %>
-                </label>
-
-                <% if step['answer_type'] == 'yes_no' %>
-                  <div class="radio-grid">
-                    <label class="radio-card radio-card-yes">
-                      <%= form.radio_button :answer, "yes", { required: true, data: { action: "change->scenario-step#inputChanged", scenario_step_target: "input" } } %>
-                      <span class="radio-icon radio-icon-yes">
-                        <%= icon "check", class: "icon icon--sm" %>
-                      </span>
-                      <span class="radio-dot"></span>
-                      <span class="radio-label">Yes</span>
-                    </label>
-                    <label class="radio-card radio-card-no">
-                      <%= form.radio_button :answer, "no", { required: true, data: { action: "change->scenario-step#inputChanged" } } %>
-                      <span class="radio-icon radio-icon-no">
-                        <%= icon "x-mark", class: "icon icon--sm" %>
-                      </span>
-                      <span class="radio-dot"></span>
-                      <span class="radio-label">No</span>
-                    </label>
-                  </div>
-                <% elsif step['answer_type'] == 'multiple_choice' %>
-                  <% if step['options'].present? %>
-                    <div class="radio-list">
-                      <% step['options'].each_with_index do |option, opt_idx| %>
-                        <label class="radio-card">
-                          <%= form.radio_button :answer, option['value'] || option['label'], { required: true, data: { action: "change->scenario-step#inputChanged" }.merge(opt_idx == 0 ? { scenario_step_target: "input" } : {}) } %>
-                          <span class="radio-dot"></span>
-                          <span class="radio-label"><%= option['label'] || option['value'] %></span>
-                        </label>
-                      <% end %>
-                    </div>
-                  <% else %>
-                    <div class="scenario-input-wrap">
-                      <span class="scenario-input-icon">
-                        <%= icon "pencil-square", class: "icon" %>
-                      </span>
-                      <%= form.text_field :answer, { class: "scenario-input", required: true, data: { action: "input->scenario-step#inputChanged", scenario_step_target: "input" } } %>
-                    </div>
-                  <% end %>
-                <% elsif step['answer_type'] == 'dropdown' %>
-                  <% if step['options'].present? %>
-                    <div class="scenario-input-wrap">
-                      <%= form.select :answer, step['options'].map { |opt| [opt['label'] || opt['value'], opt['value'] || opt['label']] }, { prompt: "-- Select an option --" }, { class: "scenario-input scenario-select", required: true, data: { action: "change->scenario-step#inputChanged", scenario_step_target: "input" } } %>
-                    </div>
-                  <% else %>
-                    <div class="scenario-input-wrap">
-                      <span class="scenario-input-icon">
-                        <%= icon "pencil-square", class: "icon" %>
-                      </span>
-                      <%= form.text_field :answer, { class: "scenario-input", required: true, data: { action: "input->scenario-step#inputChanged", scenario_step_target: "input" } } %>
-                    </div>
-                  <% end %>
-                <% else %>
-                  <%# Text, Number, Date inputs with type-specific icons %>
-                  <div class="scenario-input-wrap">
-                    <span class="scenario-input-icon">
-                      <% if step['answer_type'] == 'number' %>
-                        <%= icon "hashtag", class: "icon" %>
-                      <% elsif step['answer_type'] == 'date' %>
-                        <%= icon "calendar-days", class: "icon" %>
-                      <% else %>
-                        <%= icon "pencil-square", class: "icon" %>
-                      <% end %>
-                    </span>
-                    <%= form.text_field :answer, { class: "scenario-input", required: true, placeholder: step['answer_type'] == 'number' ? 'Enter a number' : step['answer_type'] == 'date' ? 'YYYY-MM-DD' : 'Type your answer...', data: { action: "input->scenario-step#inputChanged", scenario_step_target: "input" } } %>
-                  </div>
-                <% end %>
-              </div>
-
-              <div class="scenario-button-bar">
-                <div>
-                  <%= scenario_back_button(@scenario) %>
-                </div>
-                <div class="scenario-btn-group">
-                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
-                  <%= form.submit "Continue", class: "btn btn--primary", disabled: true, data: { scenario_step_target: "submit" } %>
-                </div>
-              </div>
-            <% end %>
-
-          <% when 'action' %>
-            <div class="step-content-box step-content-box--action mb-4" data-controller="clipboard">
-              <div class="step-content-box__accent"></div>
-              <div class="step-content-box__body">
-                <div class="scenario-content-layout--between">
-                  <div class="scenario-content-layout flex-1">
-                    <div class="step-content-box__icon-wrap mr-3 mt-0.5">
-                      <%= icon "check", class: "icon icon--sm" %>
-                    </div>
-                    <div class="flex-1">
-                      <h3 class="step-content-box__label">Instructions</h3>
-                      <div class="text-sm" data-clipboard-target="source"><%= render_step_content(step, 'instructions', @scenario.results || {}) %></div>
-                    </div>
-                  </div>
-                  <button type="button"
-                          class="btn btn--plain btn--sm ml-3 mt-1 flex-shrink-0"
-                          title="Copy instructions to clipboard"
-                          data-action="click->clipboard#copy"
-                          data-clipboard-target="button">
-                    <%= icon "clipboard-document-list", class: "icon icon--sm" %>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <%= form_with url: next_step_scenario_path(@scenario), method: :post, data: { scenario_step_target: "form" } do |form| %>
-              <%= form.hidden_field :answer, value: "" %>
-              <div class="scenario-button-bar">
-                <div>
-                  <%= scenario_back_button(@scenario) %>
-                </div>
-                <div class="scenario-btn-group">
-                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
-                  <% if step['can_resolve'] %>
-                    <%= button_tag type: "submit", name: "resolved_here", value: "true", class: "scenario-btn-resolve", data: { turbo_confirm: "Mark this step as having resolved the issue? The scenario will end." } do %>
-                      <%= icon "check-circle", class: "icon icon--sm" %>
-                      Resolved
-                    <% end %>
-                  <% end %>
-                  <%= form.submit "Continue", class: "btn btn--primary", data: { scenario_step_target: "submit" } %>
-                </div>
-              </div>
-            <% end %>
-
-          <% when 'message' %>
-            <div class="step-content-box step-content-box--message mb-4">
-              <div class="step-content-box__accent"></div>
-              <div class="step-content-box__body">
-                <div class="scenario-content-layout">
-                  <div class="step-content-box__icon-wrap mr-3 mt-0.5">
-                    <%= icon "chat-bubble-bottom-center-text", class: "icon icon--sm" %>
-                  </div>
-                  <div class="flex-1">
-                    <h3 class="step-content-box__label">Message</h3>
-                    <% if step_field(step, 'content').present? %>
-                      <div class="text-sm"><%= render_step_content(step, 'content', @scenario.results || {}) %></div>
-                    <% else %>
-                      <p class="text-sm italic">No message content provided.</p>
-                    <% end %>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <% if step['description'].present? %>
-              <div class="text-sm mb-4"><%= render_step_content(step, 'description', @scenario.results || {}) %></div>
-            <% end %>
-
-            <%= form_with url: next_step_scenario_path(@scenario), method: :post, data: { scenario_step_target: "form" } do |form| %>
-              <%= form.hidden_field :answer, value: "" %>
-              <div class="scenario-button-bar">
-                <div>
-                  <%= scenario_back_button(@scenario) %>
-                </div>
-                <div class="scenario-btn-group">
-                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
-                  <% if step['can_resolve'] %>
-                    <%= button_tag type: "submit", name: "resolved_here", value: "true", class: "scenario-btn-resolve", data: { turbo_confirm: "Mark this step as having resolved the issue? The scenario will end." } do %>
-                      <%= icon "check-circle", class: "icon icon--sm" %>
-                      Resolved
-                    <% end %>
-                  <% end %>
-                  <%= form.submit "Continue", class: "btn btn--primary", data: { scenario_step_target: "submit" } %>
-                </div>
-              </div>
-            <% end %>
-
-          <% when 'escalate' %>
-            <div class="step-content-box step-content-box--escalate mb-4">
-              <div class="step-content-box__accent"></div>
-              <div class="step-content-box__body">
-                <div class="scenario-content-layout">
-                  <div class="step-content-box__icon-wrap mr-3 mt-0.5">
-                    <%= icon "exclamation-triangle", class: "icon icon--sm" %>
-                  </div>
-                  <div class="flex-1">
-                    <h3 class="step-content-box__label">Escalation Required</h3>
-                    <% if step['target_type'].present? || step['target_value'].present? %>
-                      <p class="text-sm mb-2">
-                        <strong>Target:</strong>
-                        <%= step['target_type']&.titleize %><%= " - #{step['target_value']}" if step['target_value'].present? %>
-                      </p>
-                    <% end %>
-                    <% if step['priority'].present? && !%w[normal medium].include?(step['priority']) %>
-                      <p class="text-sm mb-2">
-                        <strong>Priority:</strong>
-                        <%
-                          priority_mod = if %w[urgent critical].include?(step['priority'])
-                            'badge--alert'
-                          elsif step['priority'] == 'high'
-                            'badge--warning'
-                          else
-                            ''
-                          end
-                        %>
-                        <span class="badge <%= priority_mod %>"><%= step['priority']&.titleize %></span>
-                      </p>
-                    <% end %>
-                    <% if step_field(step, 'notes').present? %>
-                      <div class="text-sm mt-2"><%= render_step_content(step, 'notes', @scenario.results || {}) %></div>
-                    <% end %>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <%= form_with url: next_step_scenario_path(@scenario), method: :post, data: { scenario_step_target: "form" } do |form| %>
-              <% if step['reason_required'] %>
-                <div class="form-group mb-3">
-                  <label class="form-label is-required">Escalation Reason</label>
-                  <%= form.text_area :escalation_reason, class: "form-input scenario-input", rows: 3,
-                      required: true, aria: { required: true },
-                      placeholder: "Describe why this is being escalated..." %>
-                </div>
-              <% end %>
-              <%= form.hidden_field :answer, value: "" %>
-              <div class="scenario-button-bar">
-                <div>
-                  <%= scenario_back_button(@scenario) %>
-                </div>
-                <div class="scenario-btn-group">
-                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
-                  <%= form.submit "Continue", class: "btn btn--primary", data: { scenario_step_target: "submit" } %>
-                </div>
-              </div>
-            <% end %>
-
-          <% when 'resolve' %>
-            <div class="step-content-box step-content-box--resolve mb-4">
-              <div class="step-content-box__accent"></div>
-              <div class="step-content-box__body">
-                <div class="scenario-content-layout">
-                  <div class="step-content-box__icon-wrap mr-3 mt-0.5">
-                    <%= icon "check-circle", class: "icon icon--sm" %>
-                  </div>
-                  <div class="flex-1">
-                    <h3 class="step-content-box__label">Resolution</h3>
-                    <% if step['resolution_type'].present? %>
-                      <p class="text-sm mb-2">
-                        <strong>Type:</strong>
-                        <%
-                          res_mod = case step['resolution_type']
-                          when 'success' then 'badge--resolve'
-                          when 'failure' then 'badge--alert'
-                          when 'transfer', 'ticket' then 'badge--info'
-                          when 'manager_escalation' then 'badge--warning'
-                          else ''
-                          end
-                        %>
-                        <span class="badge <%= res_mod %>"><%= step['resolution_type']&.titleize %></span>
-                      </p>
-                    <% end %>
-                    <% resolve_desc = Steps::Resolve.default_description_for(step['resolution_type']) %>
-                    <% if resolve_desc.present? %>
-                      <p class="text-sm" style="color: var(--color-ink-subtle);"><%= resolve_desc %></p>
-                    <% end %>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <%= form_with url: next_step_scenario_path(@scenario), method: :post, data: { scenario_step_target: "form" } do |form| %>
-              <% if step['notes_required'] %>
-                <div class="form-group mb-3">
-                  <label class="form-label is-required">Resolution Notes</label>
-                  <%= form.text_area :resolution_notes, class: "form-input scenario-input", rows: 3,
-                      required: true, aria: { required: true },
-                      placeholder: "Add notes about this resolution..." %>
-                </div>
-              <% end %>
-              <%= form.hidden_field :answer, value: "" %>
-              <div class="scenario-button-bar">
-                <div>
-                  <%= scenario_back_button(@scenario) %>
-                </div>
-                <div class="scenario-btn-group">
-                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
-                  <%= form.submit "Complete Workflow", class: "btn btn--mint", data: { scenario_step_target: "submit" } %>
-                </div>
-              </div>
-            <% end %>
-
-          <% when 'form' %>
-            <% if step.instructions.present? %>
-              <div class="step-content-box step-content-box--form mb-4">
-                <div class="step-content-box__accent"></div>
-                <div class="step-content-box__body">
-                  <div class="scenario-content-layout">
-                    <div class="step-content-box__icon-wrap mr-3 mt-0.5">
-                      <%= icon "document-text", class: "icon icon--sm" %>
-                    </div>
-                    <div class="flex-1">
-                      <h3 class="step-content-box__label">Instructions</h3>
-                      <div class="text-sm"><%= render_step_content(step, 'instructions', @scenario.results || {}) %></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            <% end %>
-            <%= form_with url: next_step_scenario_path(@scenario), method: :post, class: "space-y-4", data: { scenario_step_target: "form" } do |form| %>
-              <%= render "scenarios/form_step", step: step %>
-              <div class="scenario-button-bar">
-                <div>
-                  <%= scenario_back_button(@scenario) %>
-                </div>
-                <div class="scenario-btn-group">
-                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
-                  <%= form.submit "Submit Form", class: "btn btn--primary", data: { scenario_step_target: "submit" } %>
-                </div>
-              </div>
-            <% end %>
-
-          <% when 'sub_flow' %>
-            <%# Sub-flow steps are auto-processed by the controller. This hidden fallback %>
-            <%# auto-submits via JS in case auto-advance didn't redirect. %>
-            <%= form_with url: next_step_scenario_path(@scenario), method: :post, data: { controller: "auto-advance" } do |form| %>
-              <%= form.hidden_field :answer, value: "" %>
-            <% end %>
-          <% end %>
-
-          <%# Media attachments for the current step %>
-          <% if step.respond_to?(:media_attachments) && step.media_attachments.any? %>
-            <%= render "steps/media_attachments", step: step %>
-          <% end %>
+          <%= render "runner/step_body",
+                step: step,
+                results: @scenario.results || {},
+                next_url: next_step_scenario_path(@scenario),
+                stop_url: stop_scenario_path(@scenario),
+                back_button: scenario_back_button(@scenario),
+                show_cancel: true %>
         </div>
       </div>
     <% else %>
@@ -485,8 +59,4 @@
       </div>
     <% end %>
   <% end %>
-
-  <div class="mt-4">
-    <%= link_to "Back to Workflow", workflow_path(@workflow), class: "btn btn--plain btn--sm" %>
-  </div>
 </div>

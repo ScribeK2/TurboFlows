@@ -1,0 +1,45 @@
+<%# locals: step, results, next_url, stop_url, back_button, show_cancel %>
+<div class="step-content-box step-content-box--escalate mb-4">
+  <div class="step-content-box__accent"></div>
+  <div class="step-content-box__body">
+    <div class="scenario-content-layout">
+      <div class="step-content-box__icon-wrap mr-3 mt-0.5">
+        <%= icon "exclamation-triangle", class: "icon icon--sm" %>
+      </div>
+      <div class="flex-1">
+        <h3 class="step-content-box__label">Escalation Required</h3>
+        <% if step.try(:target_type).present? || step.try(:target_value).present? %>
+          <p class="text-sm mb-2">
+            <strong>Target:</strong>
+            <%= step.try(:target_type)&.titleize %><%= " - #{step.target_value}" if step.try(:target_value).present? %>
+          </p>
+        <% end %>
+        <% if step.try(:priority).present? && %w[normal medium].exclude?(step.priority) %>
+          <p class="text-sm mb-2">
+            <strong>Priority:</strong>
+            <span class="badge <%= runner_priority_badge_class(step.priority) %>"><%= step.priority.titleize %></span>
+          </p>
+        <% end %>
+        <% if step_field(step, 'notes').present? %>
+          <div class="text-sm mt-2"><%= render_step_content(step, 'notes', results) %></div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%= form_with url: next_url, method: :post, data: { scenario_step_target: "form" } do |form| %>
+  <% if step.try(:reason_required) %>
+    <div class="form-group mb-3">
+      <label class="form-label is-required">Escalation Reason</label>
+      <%= form.text_area :escalation_reason, class: "form-input", rows: 3,
+            required: true, aria: { required: true, describedby: "escalation-reason-error" },
+            placeholder: "Describe why this is being escalated..." %>
+      <span id="escalation-reason-error" class="form-error" hidden>Escalation reason is required</span>
+    </div>
+  <% end %>
+  <%= form.hidden_field :answer, value: "" %>
+  <%= render "runner/button_bar",
+        form: form, back_button: back_button, stop_url: stop_url,
+        show_cancel: show_cancel, submit_label: "Continue" %>
+<% end %>

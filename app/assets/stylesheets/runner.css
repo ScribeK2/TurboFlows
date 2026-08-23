@@ -1,0 +1,240 @@
+@layer modules {
+/* runner.css — the Scenario and Player runner surface.
+ *
+ * Replaces the runner half of scenarios.css, which predated the token
+ * migration: ~40 hand-written [data-theme="dark"] blocks, literal oklch()
+ * values, a gradient, and shadows on cards and inputs. None of that is here.
+ * Text inputs, selects and buttons use the catalog components; what remains is
+ * only what the catalog has no opinion about. */
+
+/* ============================================================================
+   Answer cards — the one genuinely runner-specific component.
+
+   Deliberately neutral. Yes/No used to carry a green check and a red cross,
+   but the polarity of a question is arbitrary ("Is the site down?" makes Yes
+   the bad news), so the colour miscommunicated and burned the scarce semantic
+   budget doing it. The label is the content; the border is the state.
+   ============================================================================ */
+
+.radio-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-canvas-raised);
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              background var(--duration-fast) var(--ease-out);
+}
+
+.radio-card input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.radio-card:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-canvas-alt);
+}
+
+.radio-card:has(input:focus-visible) {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.radio-card:has(input:checked) {
+  border-color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px var(--color-primary);
+}
+
+.radio-card:has(input:checked) .radio-label {
+  color: var(--color-primary-text);
+  font-weight: 500;
+}
+
+.radio-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+}
+
+.radio-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ============================================================================
+   Answer trail — what has been answered so far.
+
+   Replaces the stepper rail. That rail carried step-type colours, truncated
+   titles, truncated answers, index numbers and a horizontal scrollbar to say
+   what this says in plain text.
+   ============================================================================ */
+
+.runner-trail {
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.runner-trail__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.runner-trail__item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--color-ink-muted);
+}
+
+.runner-trail__answer {
+  color: var(--color-ink);
+  font-weight: 500;
+}
+
+.runner-trail__earlier > summary {
+  cursor: pointer;
+  color: var(--color-ink-muted);
+  padding-bottom: var(--space-1);
+}
+
+/* ============================================================================
+   Step content box — instructions, messages, escalation and resolution detail
+   ============================================================================ */
+
+.step-content-box {
+  position: relative;
+  display: flex;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  background: var(--color-canvas-alt);
+}
+
+.step-content-box__accent {
+  width: 3px;
+  flex-shrink: 0;
+  background: var(--color-border-strong);
+}
+
+.step-content-box__body {
+  flex: 1;
+  padding: var(--space-4);
+  min-width: 0;
+}
+
+.step-content-box__icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius);
+  background: var(--color-canvas-raised);
+  color: var(--color-ink-subtle);
+  flex-shrink: 0;
+}
+
+.step-content-box__label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-ink);
+  margin-bottom: var(--space-2);
+}
+
+/* Step type shows here and nowhere else on the runner, as a pale accent. */
+.step-content-box--action   { --step-hue: var(--hue-action); }
+.step-content-box--message  { --step-hue: var(--hue-message); }
+.step-content-box--escalate { --step-hue: var(--hue-escalate); }
+.step-content-box--resolve  { --step-hue: var(--hue-resolve); }
+.step-content-box--form     { --step-hue: var(--hue-form); }
+
+.step-content-box--action .step-content-box__accent,
+.step-content-box--message .step-content-box__accent,
+.step-content-box--escalate .step-content-box__accent,
+.step-content-box--resolve .step-content-box__accent,
+.step-content-box--form .step-content-box__accent { background: var(--step-dot); }
+
+.step-content-box--action .step-content-box__icon-wrap,
+.step-content-box--message .step-content-box__icon-wrap,
+.step-content-box--escalate .step-content-box__icon-wrap,
+.step-content-box--resolve .step-content-box__icon-wrap,
+.step-content-box--form .step-content-box__icon-wrap {
+  background: var(--step-bg);
+  color: var(--step-text);
+}
+
+/* ============================================================================
+   Step chrome and layout
+   ============================================================================ */
+
+.scenario-step-header { margin-bottom: var(--space-4); }
+
+.scenario-content-layout { display: flex; align-items: flex-start; }
+
+.scenario-content-layout--between {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.scenario-button-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  margin-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+}
+
+.scenario-btn-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Coaching callout and reference link. Moved here from steps.css: only the
+   runner uses them, and Player's layout does not load steps.css, so help text
+   rendered unstyled there. */
+.step-help-text {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  line-height: var(--line-height-normal);
+  color: var(--color-ink-subtle);
+  background: var(--color-canvas-alt);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-3);
+}
+
+.step-reference-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-primary-text);
+  text-decoration: none;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.step-reference-link:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+}

@@ -25,6 +25,9 @@ class Scenario < ApplicationRecord
   # Keep STATUSES for backward compatibility
   STATUSES = %w[active completed stopped timeout error awaiting_subflow].freeze
 
+  # End states: the run is over and its outcome is settled.
+  TERMINAL_STATUSES = %w[completed stopped timeout error].freeze
+
   # Scenario limits to prevent infinite loops and DoS
   MAX_ITERATIONS = ENV.fetch("SCENARIO_MAX_ITERATIONS", 1000).to_i
   MAX_EXECUTION_TIME = ENV.fetch("SCENARIO_MAX_SECONDS", 30).to_i # seconds
@@ -60,7 +63,7 @@ class Scenario < ApplicationRecord
   validates :outcome, inclusion: { in: OUTCOMES }, allow_nil: true
 
   # Cleanup scopes
-  scope :terminal, -> { where(status: %w[completed stopped timeout error]) }
+  scope :terminal, -> { where(status: TERMINAL_STATUSES) }
 
   scope :stale_simulations, lambda {
     terminal.where(purpose: "simulation")
@@ -153,13 +156,47 @@ class Scenario < ApplicationRecord
     current_node_uuid.nil? && !active?
   end
 
-  # Stop the workflow execution
+  # Stop the workflow execution.
+  #
+  # A run spans a whole scenario tree once sub-flows are involved, so stopping
+  # one frame of it is not stopping the run: cancelling inside a sub-flow used
+  # to leave the parent sitting in awaiting_subflow until the retention job
+  # reaped it. Stop the root and every unfinished scenario beneath it, leaving
+  # already-terminal children with the outcome they earned.
   def stop!(step_index = nil)
+    transaction do
+      stop_frame!(step_index)
+      root = root_scenario
+      root.stop_frame! unless root == self
+      root.unfinished_descendants.each(&:stop_frame!)
+    end
+  end
+
+  # True once the run reached an end state and its outcome is settled.
+  def terminal?
+    TERMINAL_STATUSES.include?(status)
+  end
+
+  # Stops this scenario alone. Use stop! unless you specifically mean one frame.
+  #
+  # Terminal scenarios are left alone: a POST to the stop route for a run that
+  # already completed would otherwise flip it to stopped and overwrite its
+  # outcome with "abandoned", destroying the record of a finished run.
+  def stop_frame!(step_index = nil)
+    return if terminal?
+
     record_completion("abandoned")
     update!(
       status: 'stopped',
       stopped_at_step_index: step_index || current_step_index
     )
+  end
+
+  # Every scenario below this one that is still running.
+  def unfinished_descendants
+    child_scenarios.where(status: %w[active awaiting_subflow]).flat_map do |child|
+      [child] + child.unfinished_descendants
+    end
   end
 
   # Process a single step and advance
