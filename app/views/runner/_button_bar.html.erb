@@ -1,0 +1,47 @@
+<%#
+  Shared runner button bar.
+
+  Route-shaped values arrive as locals so this partial stays shell-agnostic —
+  the Scenario/Player difference lives in the shells, not in here.
+
+  locals:
+    form            - the form builder (nil for bars with no submit)
+    back_button     - prerendered back link, or nil
+    stop_url        - POST target that stops the run
+    show_cancel     - false for anonymous shared runs, which have nowhere to go
+    submit_label    - nil to omit the submit button entirely
+    submit_class    - defaults to the one primary fill
+    submit_disabled - starts disabled; the scenario-step controller enables it
+    can_resolve     - offer "Resolved" as an early, confirmed exit
+%>
+<%
+  back_button     = local_assigns.fetch(:back_button, nil)
+  show_cancel     = local_assigns.fetch(:show_cancel, true)
+  submit_label    = local_assigns.fetch(:submit_label, nil)
+  submit_class    = local_assigns.fetch(:submit_class, "btn btn--primary")
+  submit_disabled = local_assigns.fetch(:submit_disabled, false)
+  can_resolve     = local_assigns.fetch(:can_resolve, false)
+%>
+<div class="scenario-button-bar">
+  <div><%= back_button %></div>
+  <div class="scenario-btn-group">
+    <% if show_cancel %>
+      <%= link_to "Cancel", stop_url, class: "scenario-btn-cancel",
+            data: { turbo_method: :post,
+                    turbo_confirm: "Stop this run? It will be recorded as stopped.",
+                    scenario_step_target: "cancel" } %>
+    <% end %>
+    <% if can_resolve %>
+      <%= button_tag type: "submit", name: "resolved_here", value: "true",
+            class: "scenario-btn-resolve",
+            data: { turbo_confirm: "Mark this step as having resolved the issue? The run will end." } do %>
+        <%= icon "check-circle", class: "icon icon--sm" %>
+        Resolved
+      <% end %>
+    <% end %>
+    <% if submit_label && form %>
+      <%= form.submit submit_label, class: submit_class, disabled: submit_disabled,
+            data: { scenario_step_target: "submit" } %>
+    <% end %>
+  </div>
+</div>

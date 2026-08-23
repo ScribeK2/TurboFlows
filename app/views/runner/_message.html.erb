@@ -1,0 +1,31 @@
+<%# locals: step, results, next_url, stop_url, back_button, show_cancel %>
+<div class="step-content-box step-content-box--message mb-4">
+  <div class="step-content-box__accent"></div>
+  <div class="step-content-box__body">
+    <div class="scenario-content-layout">
+      <div class="step-content-box__icon-wrap mr-3 mt-0.5">
+        <%= icon "chat-bubble-bottom-center-text", class: "icon icon--sm" %>
+      </div>
+      <div class="flex-1">
+        <h3 class="step-content-box__label">Message</h3>
+        <% if step_field(step, 'content').present? %>
+          <div class="text-sm"><%= render_step_content(step, 'content', results) %></div>
+        <% else %>
+          <p class="text-sm italic">No message content provided.</p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% if step.try(:description).present? %>
+  <div class="text-sm mb-4"><%= render_step_content(step, 'description', results) %></div>
+<% end %>
+
+<%= form_with url: next_url, method: :post, data: { scenario_step_target: "form" } do |form| %>
+  <%= form.hidden_field :answer, value: "" %>
+  <%= render "runner/button_bar",
+        form: form, back_button: back_button, stop_url: stop_url,
+        show_cancel: show_cancel, submit_label: "Continue",
+        can_resolve: step.try(:can_resolve) %>
+<% end %>

@@ -1,0 +1,80 @@
+<%#
+  Question step body. Adopted from the Player implementation, which handled
+  more than the Scenario copy did: a real date input type, options supplied as
+  plain strings rather than hashes, and `.presence` so an empty question string
+  falls back to the title (`||` did not).
+
+  locals: step, results, next_url, stop_url, back_button, show_cancel
+%>
+<%= form_with url: next_url, method: :post, class: "space-y-4",
+      data: { scenario_step_target: "form" } do |form| %>
+  <%
+    answer_type = step.try(:answer_type)
+    options     = step.try(:options)
+    radio_data  = { action: "change->scenario-step#inputChanged", scenario_step_target: "input" }
+  %>
+  <div>
+    <label class="form-label">
+      <%= VariableInterpolator.interpolate(step.try(:question).presence || step.title, results) %>
+    </label>
+
+    <% if answer_type == "yes_no" %>
+      <div class="radio-grid">
+        <label class="radio-card radio-card-yes">
+          <%= form.radio_button :answer, "yes", required: true, data: radio_data %>
+          <span class="radio-icon radio-icon-yes"><%= icon "check", class: "icon icon--sm" %></span>
+          <span class="radio-dot"></span>
+          <span class="radio-label">Yes</span>
+        </label>
+        <label class="radio-card radio-card-no">
+          <%= form.radio_button :answer, "no", required: true, data: radio_data %>
+          <span class="radio-icon radio-icon-no"><%= icon "x-mark", class: "icon icon--sm" %></span>
+          <span class="radio-dot"></span>
+          <span class="radio-label">No</span>
+        </label>
+      </div>
+
+    <% elsif answer_type == "dropdown" && options.present? %>
+      <div class="scenario-input-wrap">
+        <%= form.select :answer,
+              options.map { |opt| [runner_option_label(opt), runner_option_value(opt)] },
+              { prompt: "-- Select an option --" },
+              { class: "scenario-input scenario-select", required: true, data: radio_data } %>
+      </div>
+
+    <% elsif options.present? %>
+      <div class="radio-list">
+        <% options.each do |option| %>
+          <label class="radio-card">
+            <%= form.radio_button :answer, runner_option_value(option), required: true, data: radio_data %>
+            <span class="radio-dot"></span>
+            <span class="radio-label"><%= runner_option_label(option) %></span>
+          </label>
+        <% end %>
+      </div>
+
+    <% else %>
+      <div class="scenario-input-wrap">
+        <span class="scenario-input-icon">
+          <% if answer_type == "number" %>
+            <%= icon "hashtag", class: "icon icon--sm" %>
+          <% elsif answer_type == "date" %>
+            <%= icon "calendar-days", class: "icon icon--sm" %>
+          <% else %>
+            <%= icon "pencil-square", class: "icon icon--sm" %>
+          <% end %>
+        </span>
+        <%= form.text_field :answer,
+              type: runner_input_type(answer_type),
+              class: "scenario-input",
+              required: true,
+              placeholder: runner_input_placeholder(answer_type),
+              data: { action: "input->scenario-step#inputChanged", scenario_step_target: "input" } %>
+      </div>
+    <% end %>
+  </div>
+
+  <%= render "runner/button_bar",
+        form: form, back_button: back_button, stop_url: stop_url,
+        show_cancel: show_cancel, submit_label: "Continue", submit_disabled: true %>
+<% end %>

@@ -1,0 +1,5 @@
+<%# locals: next_url — sub-flow steps are auto-processed by the controller;
+    this hidden form re-submits if the redirect did not happen. %>
+<%= form_with url: next_url, method: :post, data: { controller: "auto-advance" } do |form| %>
+  <%= form.hidden_field :answer, value: "" %>
+<% end %>

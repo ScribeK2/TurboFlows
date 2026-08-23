@@ -12,13 +12,11 @@ import { Controller } from "@hotwired/stimulus"
 //   data-controller="scenario-step"
 //   data-scenario-step-auto-advance-value="true"
 //   data-scenario-step-step-info-value="Step 3: Ask customer name"
-//   data-scenario-step-cancel-url-value="/workflows/1"
 export default class extends Controller {
   static targets = ["form", "submit", "cancel", "input", "announce"]
   static values = {
     autoAdvance: { type: Boolean, default: false },
-    stepInfo: { type: String, default: "" },
-    cancelUrl: { type: String, default: "" }
+    stepInfo: { type: String, default: "" }
   }
 
   connect() {
@@ -132,16 +130,13 @@ export default class extends Controller {
     this.formTarget.requestSubmit()
   }
 
+  // Escape cancels the run by clicking the Cancel control, which carries the
+  // POST method and the confirmation. There is deliberately no fallback: the
+  // old one navigated to the cancel URL directly, which since Cancel became a
+  // POST-only stop route would have been a routing error — and before that it
+  // silently abandoned the run without stopping it. When there is no Cancel
+  // control (anonymous shared runs, sub-flow hand-off), Escape does nothing.
   cancelScenario() {
-    if (!this.cancelUrlValue) return
-
-    // Trigger Turbo confirmation if the cancel link has one
-    if (this.hasCancelTarget) {
-      this.cancelTarget.click()
-    } else {
-      if (confirm("Are you sure you want to cancel? Your scenario progress will be lost.")) {
-        window.location.href = this.cancelUrlValue
-      }
-    }
+    if (this.hasCancelTarget) this.cancelTarget.click()
   }
 }
