@@ -57,4 +57,22 @@ module RunnerHelper
   def runner_trail_entries(scenario)
     flattened_execution_path(scenario.root_scenario)
   end
+
+  # Whether selecting an answer submits the step on its own.
+  #
+  # Single source of truth, because it drives two things that MUST agree: the
+  # scenario-step controller's auto-advance value (set on the shell) and whether
+  # a Continue button renders (decided in the partial). When they disagreed, a
+  # question with options but an answer_type outside yes_no/multiple_choice
+  # rendered radio cards with no Continue and no auto-submit — a dead end the
+  # run could not leave.
+  #
+  # The rule mirrors the render branches: auto-advance exactly when the answer
+  # is a set of radio cards. Dropdowns and free-text keep their Continue button.
+  def runner_auto_advances?(step)
+    answer_type = step.try(:answer_type)
+    return true if answer_type == "yes_no"
+
+    answer_type != "dropdown" && step.try(:options).present?
+  end
 end

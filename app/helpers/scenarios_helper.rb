@@ -86,10 +86,14 @@ module ScenariosHelper
 
   def flatten_path_entries(path)
     flat = []
+    # One query per nesting level rather than one per sub-flow entry. The runner
+    # renders this on every step now, not just the results page, so a run with
+    # several sub-flows was issuing a query each per page view.
+    children = child_scenarios_for(path)
 
     path.each do |entry|
       if entry["subflow_started"].present? && entry["child_scenario_id"].present?
-        child = Scenario.find_by(id: entry["child_scenario_id"])
+        child = children[entry["child_scenario_id"]]
         if child
           child_path = child.execution_path || []
           if child_path.any?
@@ -105,5 +109,14 @@ module ScenariosHelper
     end
 
     flat
+  end
+
+  def child_scenarios_for(path)
+    ids = path.filter_map do |entry|
+      entry["child_scenario_id"] if entry["subflow_started"].present?
+    end
+    return {} if ids.empty?
+
+    Scenario.where(id: ids).index_by(&:id)
   end
 end

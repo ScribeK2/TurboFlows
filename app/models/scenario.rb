@@ -25,6 +25,9 @@ class Scenario < ApplicationRecord
   # Keep STATUSES for backward compatibility
   STATUSES = %w[active completed stopped timeout error awaiting_subflow].freeze
 
+  # End states: the run is over and its outcome is settled.
+  TERMINAL_STATUSES = %w[completed stopped timeout error].freeze
+
   # Scenario limits to prevent infinite loops and DoS
   MAX_ITERATIONS = ENV.fetch("SCENARIO_MAX_ITERATIONS", 1000).to_i
   MAX_EXECUTION_TIME = ENV.fetch("SCENARIO_MAX_SECONDS", 30).to_i # seconds
@@ -60,7 +63,7 @@ class Scenario < ApplicationRecord
   validates :outcome, inclusion: { in: OUTCOMES }, allow_nil: true
 
   # Cleanup scopes
-  scope :terminal, -> { where(status: %w[completed stopped timeout error]) }
+  scope :terminal, -> { where(status: TERMINAL_STATUSES) }
 
   scope :stale_simulations, lambda {
     terminal.where(purpose: "simulation")
@@ -169,9 +172,18 @@ class Scenario < ApplicationRecord
     end
   end
 
+  # True once the run reached an end state and its outcome is settled.
+  def terminal?
+    TERMINAL_STATUSES.include?(status)
+  end
+
   # Stops this scenario alone. Use stop! unless you specifically mean one frame.
+  #
+  # Terminal scenarios are left alone: a POST to the stop route for a run that
+  # already completed would otherwise flip it to stopped and overwrite its
+  # outcome with "abandoned", destroying the record of a finished run.
   def stop_frame!(step_index = nil)
-    return if stopped?
+    return if terminal?
 
     record_completion("abandoned")
     update!(

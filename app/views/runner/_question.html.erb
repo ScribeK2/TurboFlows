@@ -17,7 +17,6 @@
   <%
     answer_type   = step.try(:answer_type)
     options       = step.try(:options)
-    auto_advances = answer_type == "yes_no" || (answer_type != "dropdown" && options.present?)
     radio_data    = { action: "change->scenario-step#inputChanged", scenario_step_target: "input" }
   %>
   <%
@@ -73,6 +72,6 @@
   <%= render "runner/button_bar",
         form: form, back_button: back_button, stop_url: stop_url,
         show_cancel: show_cancel,
-        submit_label: (auto_advances ? nil : "Continue"),
+        submit_label: (runner_auto_advances?(step) ? nil : "Continue"),
         submit_disabled: true %>
 <% end %>

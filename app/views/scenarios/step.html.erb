@@ -25,7 +25,7 @@
     <% step = @scenario.current_step %>
     <% if step %>
       <%
-        auto_advance = %w[yes_no multiple_choice].include?(step.try(:answer_type))
+        auto_advance = runner_auto_advances?(step)
         step_info_text = VariableInterpolator.interpolate(step.title, @scenario.results || {})
       %>
 

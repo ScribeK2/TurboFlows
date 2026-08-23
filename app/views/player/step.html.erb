@@ -3,7 +3,7 @@
 
 <% if @current_step %>
   <%
-    auto_advance = %w[yes_no multiple_choice].include?(@current_step.try(:answer_type))
+    auto_advance = runner_auto_advances?(@current_step)
     step_info_text = VariableInterpolator.interpolate(@current_step.title, @scenario.results || {})
   %>
 

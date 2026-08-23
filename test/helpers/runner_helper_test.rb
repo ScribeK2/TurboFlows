@@ -74,6 +74,22 @@ class RunnerHelperTest < ActionView::TestCase
                  "the trail must span the whole run, not the sub-flow frame"
   end
 
+  test "trail costs one query per nesting level, not one per sub-flow" do
+    children = 3.times.map do
+      Scenario.create!(workflow: @workflow, user: @user, inputs: {},
+                       execution_path: [{ "step_title" => "child", "answer" => "yes", "step_type" => "question" }])
+    end
+    root = Scenario.create!(
+      workflow: @workflow, user: @user, inputs: {}, status: "awaiting_subflow",
+      execution_path: children.map { |c| { "subflow_started" => true, "child_scenario_id" => c.id, "step_type" => "sub_flow" } }
+    )
+    children.each { |c| c.update!(parent_scenario: root) }
+
+    # The runner renders the trail on every step, so a query per sub-flow entry
+    # would scale with the run's branching.
+    assert_queries_count(1) { runner_trail_entries(root) }
+  end
+
   test "trail is empty for a run that has not answered anything yet" do
     scenario = Scenario.create!(workflow: @workflow, user: @user, inputs: {}, execution_path: [])
 
