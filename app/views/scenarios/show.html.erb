@@ -10,35 +10,12 @@
         <h1 class="page-header-section__title">Scenario Results</h1>
         <p class="page-header-section__ident"><%= @workflow.title %></p>
         <% if @scenario.complete? && !@scenario.stopped? %>
-          <%
-            path = flattened_execution_path(@scenario)
-            duration_seconds = (@scenario.updated_at - @scenario.created_at).to_i
-            duration_text = duration_seconds < 60 ? "#{duration_seconds}s" : "#{duration_seconds / 60}m #{duration_seconds % 60}s"
-            questions_count = path.count { |p| p['step_type'] == 'question' || p['type'] == 'question' }
-          %>
-          <div class="scenario-stats">
-            <span class="badge flex items-center gap-1.5">
-              <%= icon "clock", class: "icon icon--xs" %>
-              <%= duration_text %>
-            </span>
-            <span class="badge flex items-center gap-1.5">
-              <%= icon "clipboard", class: "icon icon--xs" %>
-              <%= pluralize(path.length, 'step') %>
-            </span>
-            <% if questions_count > 0 %>
-              <span class="badge flex items-center gap-1.5">
-                <%= icon "question-mark-circle", class: "icon icon--xs" %>
-                <%= pluralize(questions_count, 'question') %> answered
-              </span>
-            <% end %>
-            <% resolution = @scenario.results&.dig('_resolution') %>
-            <% if resolution.present? && resolution['type'].present? %>
-              <span class="badge badge--resolve flex items-center gap-1.5">
-                <%= icon "check-circle", class: "icon icon--xs" %>
-                <%= resolution['type']&.titleize %>
-              </span>
-            <% end %>
-          </div>
+          <%# scenario_summary_sentence says all of this in a sentence: how long,
+              how many steps, how many questions, and how it ended. It rendered
+              as four pills for facts that are ordinary status, not exceptions. %>
+          <p class="mt-2 text-sm" style="color: var(--color-ink-muted);">
+            <%= scenario_summary_sentence(@scenario) %>
+          </p>
         <% else %>
           <p class="mt-2 text-sm">Execution path and results for <%= @workflow.title %></p>
         <% end %>
@@ -194,13 +171,7 @@
                         class="scenario-exec-toggle"
                         data-action="click->scenario-results#toggle"
                         aria-expanded="false">
-                  <span class="scenario-result-badge badge badge--published">
-                    <%= icon "check", class: "icon icon--sm" %>
-                  </span>
                   <div class="scenario-exec-toggle__body">
-                    <span class="mr-2 flex-shrink-0">
-                      <%= step_type_svg_icon(step_type, css_classes: "icon icon--sm") %>
-                    </span>
                     <h3 class="font-semibold truncate"><%= path_item['step_title'] %></h3>
                     <span class="ml-3 flex-shrink-0 <%= step_type_badge_classes(step_type) %>">
                       <%= step_type_label(step_type) %>
@@ -219,8 +190,7 @@
                   <% if path_item['condition_result'].present? %>
                     <p class="text-sm mt-1">
                       <strong>Routing:</strong>
-                      <span class="badge ml-1">
-                        <%= icon "arrows-up-down", class: "icon icon--xs inline mr-1" %>
+                      <span class="font-medium">
                         <% if path_item['condition_result'].is_a?(String) %>
                           <%= path_item['condition_result'] %>
                         <% else %>
