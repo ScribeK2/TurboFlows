@@ -153,13 +153,38 @@ class Scenario < ApplicationRecord
     current_node_uuid.nil? && !active?
   end
 
-  # Stop the workflow execution
+  # Stop the workflow execution.
+  #
+  # A run spans a whole scenario tree once sub-flows are involved, so stopping
+  # one frame of it is not stopping the run: cancelling inside a sub-flow used
+  # to leave the parent sitting in awaiting_subflow until the retention job
+  # reaped it. Stop the root and every unfinished scenario beneath it, leaving
+  # already-terminal children with the outcome they earned.
   def stop!(step_index = nil)
+    transaction do
+      stop_frame!(step_index)
+      root = root_scenario
+      root.stop_frame! unless root == self
+      root.unfinished_descendants.each(&:stop_frame!)
+    end
+  end
+
+  # Stops this scenario alone. Use stop! unless you specifically mean one frame.
+  def stop_frame!(step_index = nil)
+    return if stopped?
+
     record_completion("abandoned")
     update!(
       status: 'stopped',
       stopped_at_step_index: step_index || current_step_index
     )
+  end
+
+  # Every scenario below this one that is still running.
+  def unfinished_descendants
+    child_scenarios.where(status: %w[active awaiting_subflow]).flat_map do |child|
+      [child] + child.unfinished_descendants
+    end
   end
 
   # Process a single step and advance

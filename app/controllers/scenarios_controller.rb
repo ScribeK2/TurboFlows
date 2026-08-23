@@ -61,9 +61,10 @@ class ScenariosController < ApplicationController
     @scenario = current_user.scenarios.find(params[:id])
     @workflow = @scenario.workflow
 
-    # Stop the workflow
+    # Stops the whole scenario tree, so report on the run the user actually
+    # started rather than the sub-flow frame they happened to be inside.
     @scenario.stop!(@scenario.current_step_index)
-    redirect_to scenario_path(@scenario), notice: "Workflow stopped."
+    redirect_to scenario_path(@scenario.root_scenario), notice: "Workflow stopped."
   end
 
   def next_step

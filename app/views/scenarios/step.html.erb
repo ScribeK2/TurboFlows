@@ -95,8 +95,8 @@
         stype = step.step_type
         step_info_text = "#{scenario_step_counter(@scenario, @workflow)}: #{step['title']}"
         auto_advance = %w[yes_no multiple_choice].include?(step['answer_type'])
-        cancel_url = workflow_path(@workflow)
-        cancel_confirm = "Are you sure you want to cancel? Your scenario progress will be lost."
+        cancel_url = stop_scenario_path(@scenario)
+        cancel_confirm = "Stop this run? It will be recorded as stopped."
       %>
 
       <div aria-live="polite" class="sr-only" data-scenario-step-target="announce"></div>
@@ -225,7 +225,7 @@
                   <%= scenario_back_button(@scenario) %>
                 </div>
                 <div class="scenario-btn-group">
-                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
+                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_method: :post, turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
                   <%= form.submit "Continue", class: "btn btn--primary", disabled: true, data: { scenario_step_target: "submit" } %>
                 </div>
               </div>
@@ -263,7 +263,7 @@
                   <%= scenario_back_button(@scenario) %>
                 </div>
                 <div class="scenario-btn-group">
-                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
+                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_method: :post, turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
                   <% if step['can_resolve'] %>
                     <%= button_tag type: "submit", name: "resolved_here", value: "true", class: "scenario-btn-resolve", data: { turbo_confirm: "Mark this step as having resolved the issue? The scenario will end." } do %>
                       <%= icon "check-circle", class: "icon icon--sm" %>
@@ -306,7 +306,7 @@
                   <%= scenario_back_button(@scenario) %>
                 </div>
                 <div class="scenario-btn-group">
-                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
+                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_method: :post, turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
                   <% if step['can_resolve'] %>
                     <%= button_tag type: "submit", name: "resolved_here", value: "true", class: "scenario-btn-resolve", data: { turbo_confirm: "Mark this step as having resolved the issue? The scenario will end." } do %>
                       <%= icon "check-circle", class: "icon icon--sm" %>
@@ -372,7 +372,7 @@
                   <%= scenario_back_button(@scenario) %>
                 </div>
                 <div class="scenario-btn-group">
-                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
+                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_method: :post, turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
                   <%= form.submit "Continue", class: "btn btn--primary", data: { scenario_step_target: "submit" } %>
                 </div>
               </div>
@@ -427,7 +427,7 @@
                   <%= scenario_back_button(@scenario) %>
                 </div>
                 <div class="scenario-btn-group">
-                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
+                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_method: :post, turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
                   <%= form.submit "Complete Workflow", class: "btn btn--mint", data: { scenario_step_target: "submit" } %>
                 </div>
               </div>
@@ -457,7 +457,7 @@
                   <%= scenario_back_button(@scenario) %>
                 </div>
                 <div class="scenario-btn-group">
-                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
+                  <%= link_to "Cancel", cancel_url, class: "scenario-btn-cancel", data: { turbo_method: :post, turbo_confirm: cancel_confirm, scenario_step_target: "cancel" } %>
                   <%= form.submit "Submit Form", class: "btn btn--primary", data: { scenario_step_target: "submit" } %>
                 </div>
               </div>
@@ -486,7 +486,4 @@
     <% end %>
   <% end %>
 
-  <div class="mt-4">
-    <%= link_to "Back to Workflow", workflow_path(@workflow), class: "btn btn--plain btn--sm" %>
-  </div>
 </div>

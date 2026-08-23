@@ -74,6 +74,17 @@ class PlayerExecutionTest < ApplicationSystemTestCase
     assert_current_step "Do you need help?"
   end
 
+  test "cancelling records the run as stopped" do
+    start_workflow
+
+    assert_current_step "Do you need help?"
+
+    accept_confirm { click_on "Cancel" }
+
+    assert_selector "h1", text: "Workflow Stopped", wait: 5
+    assert_equal "stopped", Scenario.where(workflow: @workflow).order(:created_at).last.status
+  end
+
   test "cancel is hidden for an anonymous shared run" do
     @workflow.generate_share_token!
     Capybara.reset_sessions!

@@ -137,6 +137,41 @@ class ScenarioTest < ActiveSupport::TestCase
     assert_not_nil scenario.completed_at
   end
 
+  test "stopping a sub-flow child stops the whole run, not one frame of it" do
+    parent = Scenario.create!(workflow: @workflow, user: @user, inputs: {}, status: "awaiting_subflow")
+    child = Scenario.create!(workflow: @workflow, user: @user, inputs: {}, status: "active",
+                             parent_scenario: parent)
+
+    child.stop!
+
+    assert_equal "stopped", child.reload.status
+    assert_equal "stopped", parent.reload.status,
+                 "parent left dangling — the exact leak Cancel was supposed to fix"
+  end
+
+  test "stopping a parent stops its active sub-flow children" do
+    parent = Scenario.create!(workflow: @workflow, user: @user, inputs: {}, status: "awaiting_subflow")
+    child = Scenario.create!(workflow: @workflow, user: @user, inputs: {}, status: "active",
+                             parent_scenario: parent)
+
+    parent.stop!
+
+    assert_equal "stopped", parent.reload.status
+    assert_equal "stopped", child.reload.status
+  end
+
+  test "stopping does not reopen an already-completed sub-flow child" do
+    parent = Scenario.create!(workflow: @workflow, user: @user, inputs: {}, status: "active")
+    done_child = Scenario.create!(workflow: @workflow, user: @user, inputs: {}, status: "completed",
+                                  parent_scenario: parent)
+
+    parent.stop!
+
+    assert_equal "stopped", parent.reload.status
+    assert_equal "completed", done_child.reload.status,
+                 "a finished sub-flow keeps its own outcome"
+  end
+
   test "should set outcome to resolved when hitting resolve step" do
     resolve_workflow = Workflow.create!(title: "Resolve Workflow", user: @user, graph_mode: true)
     resolve_step = Steps::Resolve.create!(workflow: resolve_workflow, position: 0, uuid: "step-1", title: "Issue Resolved", resolution_type: "success")

@@ -79,6 +79,7 @@ Rails.application.routes.draw do
     get "step", to: "player#step", as: :player_scenario_step
     post "next", to: "player#next_step", as: :player_scenario_next
     post "back", to: "player#back", as: :player_scenario_back
+    post "stop", to: "player#stop", as: :player_scenario_stop
     get "show", to: "player#show", as: :player_scenario_show
   end
 

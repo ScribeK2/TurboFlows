@@ -120,6 +120,55 @@ class ScenarioExecutionTest < ApplicationSystemTestCase
     assert_current_step "Did the client verify?"
   end
 
+  test "cancelling records the run as stopped" do
+    start_scenario
+
+    assert_current_step "Is the site down?"
+    choose_answer "Yes"
+    assert_current_step "Check hosting status"
+
+    accept_confirm { click_on "Cancel" }
+
+    # Cancel must actually stop the run, not just navigate away and leave it
+    # dangling as active until the retention job reaps it.
+    assert_text "Workflow Stopped", wait: 5
+    assert_equal "stopped", @scenario_record.reload.status
+  end
+
+  test "cancelling inside a sub-flow stops the whole run" do
+    child = Workflow.create!(title: "Verification Sub-Flow", user: @user, status: "published")
+    child_question = Steps::Question.create!(
+      workflow: child, title: "Did the client verify?", position: 0,
+      question: "Did the client verify?", answer_type: "yes_no"
+    )
+    child_resolve = Steps::Resolve.create!(
+      workflow: child, title: "Verification complete", position: 1,
+      resolution_type: "success"
+    )
+    Transition.create!(step: child_question, target_step: child_resolve, position: 0)
+    child.update!(start_step: child_question)
+
+    sub_flow = Steps::SubFlow.create!(
+      workflow: @workflow, title: "Run verification", position: 4,
+      sub_flow_workflow_id: child.id
+    )
+    Transition.where(step: @question, condition: "yes").destroy_all
+    Transition.create!(step: @question, target_step: sub_flow, condition: "yes", position: 0)
+    Transition.create!(step: sub_flow, target_step: @down_branch, position: 0)
+
+    start_scenario
+    choose_answer "Yes"
+    assert_current_step "Did the client verify?"
+
+    accept_confirm { click_on "Cancel" }
+
+    # The parent must not be left sitting in awaiting_subflow, and the results
+    # shown should be the run the user started — not the sub-flow frame.
+    assert_text "Workflow Stopped", wait: 5
+    assert_equal "stopped", @scenario_record.reload.status
+    assert_equal "Scenario E2E Workflow", @scenario_record.workflow.title
+  end
+
   test "an unanswered question does not advance" do
     start_scenario
 
@@ -136,5 +185,7 @@ class ScenarioExecutionTest < ApplicationSystemTestCase
   def start_scenario
     visit new_workflow_execution_path(@workflow)
     click_on "Start Workflow"
+    assert_selector RUNNER_STEP_CARD, wait: 5
+    @scenario_record = Scenario.where(workflow: @workflow).order(:created_at).last
   end
 end

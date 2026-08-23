@@ -4,7 +4,7 @@ class PlayerController < ApplicationController
   layout "player"
 
   before_action :authenticate_user!, except: %i[show_shared step next_step back show]
-  before_action :set_scenario, only: %i[step next_step back show]
+  before_action :set_scenario, only: %i[step next_step back show stop]
 
   def index
     # Use subquery for "has steps" filter to avoid group/includes conflict
@@ -104,6 +104,13 @@ class PlayerController < ApplicationController
     navigator = ScenarioNavigator.new(@scenario, @scenario.workflow)
     navigator.go_back
     redirect_to player_scenario_step_path(@scenario)
+  end
+
+  def stop
+    # Stops the whole scenario tree, so report on the run the user actually
+    # started rather than the sub-flow frame they happened to be inside.
+    @scenario.stop!(@scenario.current_step_index)
+    redirect_to player_scenario_show_path(@scenario.root_scenario), notice: "Workflow stopped."
   end
 
   def show
