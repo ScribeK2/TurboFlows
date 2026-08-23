@@ -26,14 +26,14 @@
   <div><%= back_button %></div>
   <div class="scenario-btn-group">
     <% if show_cancel %>
-      <%= link_to "Cancel", stop_url, class: "scenario-btn-cancel",
+      <%= link_to "Cancel", stop_url, class: "btn btn--plain",
             data: { turbo_method: :post,
                     turbo_confirm: "Stop this run? It will be recorded as stopped.",
                     scenario_step_target: "cancel" } %>
     <% end %>
     <% if can_resolve %>
       <%= button_tag type: "submit", name: "resolved_here", value: "true",
-            class: "scenario-btn-resolve",
+            class: "btn btn--secondary",
             data: { turbo_confirm: "Mark this step as having resolved the issue? The run will end." } do %>
         <%= icon "check-circle", class: "icon icon--sm" %>
         Resolved

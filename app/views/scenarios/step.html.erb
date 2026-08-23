@@ -13,83 +13,23 @@
     <p class="page-header-section__ident">Step-by-step execution</p>
   </div>
 
-  <% if @scenario.execution_path.present? && @scenario.execution_path.any? %>
-    <div class="card mb-4">
-      <div class="card__header">
-        <h2>Progress</h2>
-        <% unless @scenario.complete? %>
-          <span class="text-xs"><%= scenario_step_counter(@scenario, @workflow) %></span>
-        <% end %>
-      </div>
-      <div class="card__body">
-        <div class="overflow-x-auto overflow-y-hidden progress-scroll" style="width: 100%; max-width: 100%; box-sizing: border-box;">
-          <div class="flex items-center gap-2 pb-2" style="width: max-content;">
-            <% @scenario.execution_path.each_with_index do |path_item, index| %>
-              <div class="flex items-center flex-shrink-0">
-                <%
-                  # All execution_path items are completed — the current step being
-                  # displayed hasn't been added to the path yet (it's added on submit).
-                  is_current = false
-                  is_completed = true
-                %>
-                <a href="<%= step_scenario_path(@scenario, step: index) %>"
-                   class="<%= scenario_stepper_classes(is_completed, is_current, path_item['step_type'] || path_item['type']) %> flex-shrink-0"
-                   title="<%= path_item['step_title'] %>">
-                  <%= scenario_stepper_step_content(path_item, index, is_completed, is_current) %>
-                  <span class="scenario-stepper__label"><%= truncate(path_item['step_title'], length: 20) %></span>
-                  <% if path_item['answer'].present? && is_completed %>
-                    <span class="scenario-stepper__answer">(<%= truncate(path_item['answer'].to_s, length: 10) %>)</span>
-                  <% end %>
-                </a>
-                <% unless index == @scenario.execution_path.length - 1 %>
-                  <div class="scenario-step-connector flex-shrink-0"></div>
-                <% end %>
-              </div>
-            <% end %>
-            <% unless @scenario.complete? %>
-              <div class="flex items-center flex-shrink-0 ml-2">
-                <div class="scenario-step-current flex-shrink-0">
-                  <span class="text-xs font-bold"><%= scenario_step_counter(@scenario, @workflow).delete_prefix("Step ") %></span>
-                </div>
-              </div>
-            <% end %>
-          </div>
-        </div>
-        <%
-          # Walk the full ancestor chain for cumulative progress (supports deeply nested sub-flows)
-          total_steps = @scenario.workflow.steps.count
-          completed_steps = @scenario.execution_path&.length || 0
-          ancestor = @scenario.parent_scenario
-          while ancestor.present?
-            total_steps += ancestor.workflow.steps.count
-            completed_steps += (ancestor.execution_path&.length || 0)
-            ancestor = ancestor.parent_scenario
-          end
-          progress_pct = total_steps > 0 ? ((completed_steps.to_f / total_steps) * 100).round : 0
-        %>
-        <div class="scenario-progress-bar-wrap">
-          <div class="scenario-progress-bar" style="width: <%= progress_pct %>%"></div>
-        </div>
-      </div>
-    </div>
-  <% end %>
-
   <% if @scenario.complete? %>
-    <div class="card text-center">
+    <div class="card">
       <div class="card__body">
-        <h2>Scenario Complete!</h2>
-        <p class="mb-4">All steps have been completed.</p>
-        <%= link_to "View Results", scenario_path(@scenario), class: "btn btn--secondary" %>
+        <h2 class="mb-2">Run complete</h2>
+        <p class="mb-4">Every step of this workflow has been completed.</p>
+        <%= link_to "View Results", scenario_path(@scenario), class: "btn btn--primary" %>
       </div>
     </div>
   <% else %>
     <% step = @scenario.current_step %>
     <% if step %>
       <%
-        stype = step.step_type
-        step_info_text = "#{scenario_step_counter(@scenario, @workflow)}: #{step.title}"
         auto_advance = %w[yes_no multiple_choice].include?(step.try(:answer_type))
+        step_info_text = VariableInterpolator.interpolate(step.title, @scenario.results || {})
       %>
+
+      <%= render "runner/trail", scenario: @scenario %>
 
       <div aria-live="polite" class="sr-only" data-scenario-step-target="announce"></div>
 
@@ -99,18 +39,7 @@
            data-scenario-step-auto-advance-value="<%= auto_advance %>">
         <div class="card__body">
           <div class="scenario-step-header">
-            <div class="scenario-step-header__info">
-              <span class="<%= scenario_step_number_classes(stype) %>">
-                <%= scenario_step_counter(@scenario, @workflow).delete_prefix("Step ") %>
-              </span>
-              <div>
-                <h2><%= VariableInterpolator.interpolate(step.title, @scenario.results || {}) %></h2>
-                <span class="<%= step_type_badge_classes(stype) %>">
-                  <%= step_type_svg_icon(stype, css_classes: "icon icon--xs") %>
-                  <%= step_type_label(stype) %>
-                </span>
-              </div>
-            </div>
+            <h2><%= step_info_text %></h2>
           </div>
 
           <%= render "runner/step_body",

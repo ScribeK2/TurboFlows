@@ -32,7 +32,7 @@
   <% if step.try(:reason_required) %>
     <div class="form-group mb-3">
       <label class="form-label is-required">Escalation Reason</label>
-      <%= form.text_area :escalation_reason, class: "form-input scenario-input", rows: 3,
+      <%= form.text_area :escalation_reason, class: "form-input", rows: 3,
             required: true, aria: { required: true },
             placeholder: "Describe why this is being escalated..." %>
     </div>

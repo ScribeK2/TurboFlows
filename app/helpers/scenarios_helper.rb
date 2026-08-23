@@ -3,83 +3,10 @@ module ScenariosHelper
     return nil unless scenario.execution_path.present? && scenario.execution_path.length.positive?
 
     link_to step_scenario_path(scenario, back: true),
-            class: "scenario-btn-cancel" do
+            class: "btn btn--plain" do
       back_icon = '<svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">' \
                   '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>'
       raw(back_icon) + "Back" # rubocop:disable Style/StringConcatenation -- SafeBuffer#+ preserves html_safe
-    end
-  end
-
-  # Returns "Step X" for the user's current position.
-  # For child scenarios, sums all ancestor execution path lengths + own path length + 1.
-  # Walks the full parent chain to support deeply nested sub-flows.
-  def scenario_step_counter(scenario, workflow)
-    total = (scenario.execution_path&.length || 0) + 1
-    ancestor = scenario.parent_scenario
-    while ancestor.present?
-      total += ancestor.execution_path&.length || 0
-      ancestor = ancestor.parent_scenario
-    end
-    "Step #{total}"
-  end
-
-  # Returns the inner content for a stepper pill: green checkmark for completed,
-  # number badge for current/future, with a small step type icon.
-  def scenario_stepper_step_content(path_item, index, is_completed, is_current)
-    step_type = path_item['step_type'] || path_item['type']
-    type_icon = step_type.present? ? step_type_svg_icon(step_type, css_classes: "icon icon--xs inline flex-shrink-0") : ""
-
-    if is_completed
-      checkmark = tag.svg(
-        tag.path(d: "M5 13l4 4L19 7", 'stroke-linecap': "round", 'stroke-linejoin': "round", 'stroke-width': "2"),
-        class: "icon icon--xs inline flex-shrink-0",
-        fill: "none",
-        stroke: "currentColor",
-        viewBox: "0 0 24 24",
-        xmlns: "http://www.w3.org/2000/svg"
-      )
-      safe_join([checkmark, type_icon, tag.span(index + 1, class: "font-semibold")])
-    else
-      safe_join([type_icon, tag.span(index + 1, class: "font-semibold")])
-    end
-  end
-
-  # CSS classes for the step number badge based on step type.
-  STEP_NUMBER_CLASSES = {
-    'question' => 'badge badge--question',
-    'action' => 'badge badge--action',
-    'message' => 'badge badge--message',
-    'sub_flow' => 'badge badge--sub-flow',
-    'escalate' => 'badge badge--escalate',
-    'resolve' => 'badge badge--resolve',
-    'form' => 'badge badge--form'
-  }.freeze
-
-  def scenario_step_number_classes(step_type)
-    STEP_NUMBER_CLASSES[step_type] || 'badge'
-  end
-
-  # CSS classes for a stepper pill based on its state and step type.
-  STEPPER_TYPE_CLASSES = {
-    'question' => 'stepper-pill--question',
-    'action' => 'stepper-pill--action',
-    'message' => 'stepper-pill--message',
-    'sub_flow' => 'stepper-pill--sub-flow',
-    'escalate' => 'stepper-pill--escalate',
-    'resolve' => 'stepper-pill--resolve',
-    'form' => 'stepper-pill--form'
-  }.freeze
-
-  def scenario_stepper_classes(is_completed, is_current, step_type = nil)
-    base = "stepper-pill"
-
-    if is_current
-      "#{base} stepper-pill--current"
-    elsif is_completed
-      modifier = STEPPER_TYPE_CLASSES[step_type] || 'stepper-pill--completed'
-      "#{base} #{modifier}"
-    else
-      "#{base} stepper-pill--pending"
     end
   end
 

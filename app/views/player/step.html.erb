@@ -3,23 +3,12 @@
 
 <% if @current_step %>
   <%
-    stype = @current_step.step_type
-    step_number = (@scenario.execution_path&.size || 0) + 1
-    total_steps = @workflow.steps.size
-    progress_pct = total_steps > 0 ? ((step_number.to_f / total_steps) * 100).clamp(0, 100).round : 0
     auto_advance = %w[yes_no multiple_choice].include?(@current_step.try(:answer_type))
-    step_info_text = "Step #{step_number}: #{@current_step.title}"
+    step_info_text = VariableInterpolator.interpolate(@current_step.title, @scenario.results || {})
   %>
 
-  <%# ── Progress Bar ── %>
-  <div class="player-progress">
-    <div class="player-progress__bar">
-      <div class="player-progress__fill" style="width: <%= progress_pct %>%"></div>
-    </div>
-    <div class="player-progress__text">Step <%= step_number %> of <%= total_steps %></div>
-  </div>
+  <%= render "runner/trail", scenario: @scenario %>
 
-  <%# ── Step Card ── %>
   <div class="card player-step-card"
        data-controller="scenario-step"
        data-scenario-step-auto-advance-value="<%= auto_advance %>"
@@ -27,20 +16,8 @@
     <div class="card__body">
       <div aria-live="polite" class="sr-only" data-scenario-step-target="announce"></div>
 
-      <%# ── Step Header ── %>
       <div class="scenario-step-header">
-        <div class="scenario-step-header__info">
-          <span class="<%= scenario_step_number_classes(stype) %>">
-            <%= step_number %>
-          </span>
-          <div>
-            <h2 class="player-step-card__title"><%= VariableInterpolator.interpolate(@current_step.title, @scenario.results || {}) %></h2>
-            <span class="<%= step_type_badge_classes(stype) %>">
-              <%= step_type_svg_icon(stype, css_classes: "icon icon--xs") %>
-              <%= step_type_label(stype) %>
-            </span>
-          </div>
-        </div>
+        <h2 class="player-step-card__title"><%= step_info_text %></h2>
       </div>
 
       <%= render "runner/step_body",

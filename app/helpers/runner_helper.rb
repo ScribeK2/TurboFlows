@@ -47,4 +47,14 @@ module RunnerHelper
     else ""
     end
   end
+
+  # The answered steps of the whole run, oldest first.
+  #
+  # Reads from the root scenario so a sub-flow shows the steps that led into it
+  # rather than restarting at one. flattened_execution_path splices each child
+  # scenario's own path in at the point its sub-flow began, which is what makes
+  # a single uninterrupted list possible.
+  def runner_trail_entries(scenario)
+    flattened_execution_path(scenario.root_scenario)
+  end
 end

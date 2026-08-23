@@ -169,6 +169,14 @@ class ScenarioExecutionTest < ApplicationSystemTestCase
     assert_equal "Scenario E2E Workflow", @scenario_record.workflow.title
   end
 
+  test "a question matching its step title is not printed twice" do
+    start_scenario
+
+    # "Is the site down?" is both the step title and the question text, which is
+    # how authors normally write them. It should appear once.
+    assert_equal 1, page.text.scan("Is the site down?").length
+  end
+
   test "an unanswered question does not advance" do
     start_scenario
 
