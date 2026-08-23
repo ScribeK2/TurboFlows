@@ -18,6 +18,25 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
     User.where("email LIKE ?", "wf-system-test-%").destroy_all
   end
 
+  # ── Runner helpers (shared by the Scenario and Player system tests) ──
+  #
+  # Both runners put the scenario-step Stimulus controller on their step card.
+  # That hook is behavioural rather than decorative, so scoping to it survives
+  # restyling and keeps assertions off step titles echoed elsewhere on the page
+  # (the answered-so-far trail, the page header).
+  RUNNER_STEP_CARD = "[data-controller~='scenario-step']".freeze
+
+  # Asserts the given title is the step currently being presented.
+  def assert_current_step(title)
+    assert_selector "#{RUNNER_STEP_CARD} h2", text: title, wait: 5
+  end
+
+  # Selects a radio answer by its visible label. The input is visually hidden by
+  # design, so the label is the real affordance — and what a user clicks.
+  def choose_answer(label)
+    choose label, allow_label_click: true
+  end
+
   # Sign in via the login form (works with any Capybara driver)
   def sign_in_as(user, password: "password123!")
     visit "/users/sign_in"

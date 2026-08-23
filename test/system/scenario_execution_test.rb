@@ -8,11 +8,6 @@ require "application_system_test_case"
 # number badges and the radio-card icon vocabulary; this test must survive all
 # of that and still prove the runner routes, reverses and resolves correctly.
 class ScenarioExecutionTest < ApplicationSystemTestCase
-  # The step card carries the scenario-step Stimulus controller. That hook is
-  # behavioural, not decorative, so scoping to it stays valid after the redesign
-  # and keeps assertions off steps listed in the answered-so-far trail.
-  STEP_CARD = "[data-controller~='scenario-step']".freeze
-
   setup do
     @user = User.create!(
       email: "wf-system-test-#{SecureRandom.hex(4)}@example.com",
@@ -52,41 +47,41 @@ class ScenarioExecutionTest < ApplicationSystemTestCase
   test "a yes answer routes down the yes branch" do
     start_scenario
 
-    assert_step "Is the site down?"
-    answer "Yes"
+    assert_current_step "Is the site down?"
+    choose_answer "Yes"
 
-    assert_step "Check hosting status"
+    assert_current_step "Check hosting status"
   end
 
   test "a no answer routes down the no branch" do
     start_scenario
 
-    assert_step "Is the site down?"
-    answer "No"
+    assert_current_step "Is the site down?"
+    choose_answer "No"
 
-    assert_step "No outage detected"
+    assert_current_step "No outage detected"
   end
 
   test "back returns to the previous step" do
     start_scenario
 
-    assert_step "Is the site down?"
-    answer "Yes"
-    assert_step "Check hosting status"
+    assert_current_step "Is the site down?"
+    choose_answer "Yes"
+    assert_current_step "Check hosting status"
 
     click_on "Back"
 
-    assert_step "Is the site down?"
+    assert_current_step "Is the site down?"
   end
 
   test "completing a resolve step ends the run and shows results" do
     start_scenario
 
-    answer "Yes"
-    assert_step "Check hosting status"
+    choose_answer "Yes"
+    assert_current_step "Check hosting status"
     click_on "Continue"
 
-    assert_step "Issue closed"
+    assert_current_step "Issue closed"
     click_on "Complete Workflow"
 
     assert_text "Scenario Results", wait: 5
@@ -117,18 +112,18 @@ class ScenarioExecutionTest < ApplicationSystemTestCase
 
     start_scenario
 
-    assert_step "Is the site down?"
-    answer "Yes"
+    assert_current_step "Is the site down?"
+    choose_answer "Yes"
 
     # The sub-flow is auto-processed: the runner should land on the child
     # workflow's first step, not on the sub-flow step itself.
-    assert_step "Did the client verify?"
+    assert_current_step "Did the client verify?"
   end
 
   test "an unanswered question does not advance" do
     start_scenario
 
-    assert_step "Is the site down?"
+    assert_current_step "Is the site down?"
 
     # Nothing selected: the runner must stay put rather than submitting a blank
     # answer and routing on the fallback transition.
@@ -141,18 +136,5 @@ class ScenarioExecutionTest < ApplicationSystemTestCase
   def start_scenario
     visit new_workflow_execution_path(@workflow)
     click_on "Start Workflow"
-  end
-
-  # Asserts the given title is the step currently being presented, scoped to the
-  # step card so a title echoed in the answered-so-far trail cannot satisfy it.
-  def assert_step(title)
-    assert_selector "#{STEP_CARD} h2", text: title, wait: 5
-  end
-
-  # Selects a radio answer by its visible label. The underlying input is
-  # visually hidden by design, so the label is the real affordance — which is
-  # also what a user clicks.
-  def answer(label)
-    choose label, allow_label_click: true
   end
 end
