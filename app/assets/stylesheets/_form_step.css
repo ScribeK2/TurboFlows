@@ -23,5 +23,4 @@
   .player-form-field .form-select,
   .player-form-field textarea { width: 100%; }
   .player-form-field textarea { min-height: 4rem; resize: vertical; }
-  .player-form-field__required { color: var(--color-negative); margin-left: var(--space-1); }
-}
+  }

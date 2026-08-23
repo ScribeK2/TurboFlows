@@ -30,8 +30,9 @@
     <div class="form-group mb-3">
       <label class="form-label is-required">Resolution Notes</label>
       <%= form.text_area :resolution_notes, class: "form-input", rows: 3,
-            required: true, aria: { required: true },
+            required: true, aria: { required: true, describedby: "resolution-notes-error" },
             placeholder: "Add notes about this resolution..." %>
+      <span id="resolution-notes-error" class="form-error" hidden>Resolution notes are required</span>
     </div>
   <% end %>
   <%= form.hidden_field :answer, value: "" %>

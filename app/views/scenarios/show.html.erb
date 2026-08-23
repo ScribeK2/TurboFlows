@@ -65,7 +65,7 @@
           <p class="text-xs mb-4">
             Stopped on <%= @scenario.updated_at.strftime("%B %d, %Y at %I:%M %p") %>
           </p>
-          <%= link_to new_workflow_scenario_path(@workflow), class: "btn btn--sm flex items-center gap-1.5" do %>
+          <%= link_to new_workflow_execution_path(@workflow), class: "btn btn--sm flex items-center gap-1.5" do %>
             <%= icon "arrow-path", class: "icon icon--xs" %>
             Run Again
           <% end %>
@@ -86,7 +86,7 @@
           <p class="text-xs mb-4">
             Timed out on <%= @scenario.updated_at.strftime("%B %d, %Y at %I:%M %p") %>
           </p>
-          <%= link_to new_workflow_scenario_path(@workflow), class: "btn btn--sm flex items-center gap-1.5" do %>
+          <%= link_to new_workflow_execution_path(@workflow), class: "btn btn--sm flex items-center gap-1.5" do %>
             <%= icon "arrow-path", class: "icon icon--xs" %>
             Try Again
           <% end %>
@@ -105,7 +105,7 @@
           <p class="text-xs mb-4">
             Error occurred on <%= @scenario.updated_at.strftime("%B %d, %Y at %I:%M %p") %>
           </p>
-          <%= link_to new_workflow_scenario_path(@workflow), class: "btn btn--sm flex items-center gap-1.5" do %>
+          <%= link_to new_workflow_execution_path(@workflow), class: "btn btn--sm flex items-center gap-1.5" do %>
             <%= icon "arrow-path", class: "icon icon--xs" %>
             Try Again
           <% end %>
@@ -361,7 +361,7 @@
           Copy Link
         </button>
       </div>
-      <%= link_to new_workflow_scenario_path(@workflow), class: "btn btn--secondary flex items-center gap-1.5" do %>
+      <%= link_to new_workflow_execution_path(@workflow), class: "btn btn--secondary flex items-center gap-1.5" do %>
         <%= icon "arrow-path", class: "icon icon--sm" %>
         Run Again
       <% end %>

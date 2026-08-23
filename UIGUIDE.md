@@ -154,16 +154,30 @@ Dark mode is automatic. Use token names and they swap values via `[data-theme="d
 
 Some surfaces were left out of the northwest-palette migration on purpose. They
 are **not** unfinished work, and tidying them into line with the rest of the
-system is a change of design, not a cascade fix. Do not restructure either one
-without meeting its reopen condition.
+system is a change of design, not a cascade fix. Do not restructure one without
+meeting its reopen condition.
 
-- **Scenario runner mechanics** — the radio cards, button bar and progress rail
-  in `scenarios/step` and `scenarios/show`. Only the page chrome (back link, H1,
-  identifier) was adopted. No reference material shows a runner, and this is the
-  screen users operate under time pressure on live calls, where familiarity is
-  worth more than consistency.
-  *Reopen when:* reference material for a runner exists, or a real user complaint
-  about the runner comes in.
+Entries that have since been migrated are kept here rather than deleted: the
+record of *why* a surface was excluded, and what met the condition, is what
+stops the next person re-litigating it. One live exclusion remains.
+
+- **Scenario runner mechanics** — *no longer excluded.* This entry used to park
+  the radio cards, button bar and progress rail in `scenarios/step` and
+  `scenarios/show`, with the reopen condition "reference material for a runner
+  exists, or a real user complaint about the runner comes in." A complaint came
+  in, and the rationale — that familiarity is worth more than consistency on a
+  screen operated under time pressure on live calls — had no one to protect,
+  since nobody was using the tool yet. That was the window, and it was taken.
+
+  What the migration found is worth keeping: the exclusion had been reading as
+  "leave this alone" when the surface was not a considered design at all. It had
+  simply never been migrated — ~40 hand-written `[data-theme="dark"]` blocks,
+  literal `oklch()` values, a banned gradient and shadows on cards and inputs.
+  Nearly every fix was deleting bespoke code in favour of a catalog component,
+  which is the opposite of the "restyling means inventing" objection that
+  justified the exclusion. **Both runners** — Scenario and Player — now share
+  one set of step-body partials in `app/views/runner/`, so the two cannot drift
+  apart again.
 
 - **Builder editing internals** — `_panel_edit` and its form surface in
   `steps.css`, `_preview_pane`, `_visual_editor` / `_visual_condition` and
@@ -331,6 +345,8 @@ so `.tab-bar` drops into any existing tablist with no JS change.
 
 | Component | Classes | File | Notes |
 |-----------|---------|------|-------|
+| Answer cards | `.radio-card`, `.radio-grid`, `.radio-list` | `runner.css` | The runner's answer choices. Deliberately **neutral** — no icons, no radio dot, no semantic colour. A question's polarity is arbitrary ("Is the site down?" makes Yes the bad news), so green/red miscommunicates while spending the scarce semantic budget. Label is the content, border is the state |
+| Answer trail | `.runner-trail`, `__item`, `__answer` | `runner.css` | What has been answered so far, as plain text `title → answer`. Replaced a stepper rail of step-type-coloured pills |
 | List rows | `.list-section`, `.list-row`, `.list-row--compact` | `lists.css` | Section + hairline-divided rows. `--compact` is the dense size (builder step list); same anatomy, tighter box — sized like `.btn--sm` is to `.btn` |
 | Tooltips | `.tooltip`, `.tooltip--bottom` | `tooltips.css` | Absolute, spring easing entrance |
 | Skeletons | `.skeleton`, `.skeleton--text`, `--heading`, `--card` | `skeleton.css` | Shimmer animation, use for loading states |
@@ -628,8 +644,9 @@ For page types not covered by a recipe, read these exemplary views. They demonst
 | View file | Page type | Good for |
 |-----------|-----------|----------|
 | `app/views/workflows/index.html.erb` | Index/list with sidebar | Two-column layout, search, filters, pagination, empty state |
-| `app/views/player/step.html.erb` | Step execution | Card-based UI, form variations, button bars, progress stepper |
+| `app/views/player/step.html.erb` | Step execution | A thin shell: page chrome and route-shaped locals only, with the body delegated to `runner/_step_body`. No progress stepper — see the Scenario runner entry in §Surfaces Deliberately Excluded for why the numbers and bars went |
 | `app/views/workflows/_builder.html.erb` | Builder/editor | Header with inline edit, panel system, toolbar, Stimulus wiring. Its chrome now follows this guide; the editing internals it opens into are still excluded (see §Surfaces Deliberately Excluded) |
+| `app/views/runner/_step_body.html.erb` | Shared body across two shells | Keeping two surfaces from drifting: route-shaped values (`next_url`, `stop_url`, `back_button`, `show_cancel`) arrive as locals, so the partial never calls a route helper and the Scenario/Player difference lives only in the two shells |
 | `app/views/workflows/_step_row.html.erb` | Dense list row | Composing `.list-row` + `.list-row--compact` with block-specific concerns, rather than redefining a row. Status/meta sits inline, not on a second line — a scanned list pays for two-line rows in steps visible at once |
 
 ---
@@ -669,7 +686,8 @@ For page types not covered by a recipe, read these exemplary views. They demonst
 | `layout.css` | modules | Page structure (.page-body, .page-main) |
 | `builder.css` | components | Builder-specific styles (includes health panel, inline warnings, popover) |
 | `workflows.css` | modules | Workflow list/show styles |
-| `scenarios.css` | modules | Scenario execution styles |
+| `runner.css` | modules | The Scenario + Player runner: answer cards, answer trail, step content box |
+| `scenarios.css` | modules | Scenario **results** page only — the runner half lives in `runner.css` |
 | `steps.css` | modules | Step editor styles |
 | `editor.css` | modules | Rich text editor (Lexxy) |
 | `transitions.css` | modules | Transition editor |

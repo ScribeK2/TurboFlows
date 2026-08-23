@@ -33,8 +33,9 @@
     <div class="form-group mb-3">
       <label class="form-label is-required">Escalation Reason</label>
       <%= form.text_area :escalation_reason, class: "form-input", rows: 3,
-            required: true, aria: { required: true },
+            required: true, aria: { required: true, describedby: "escalation-reason-error" },
             placeholder: "Describe why this is being escalated..." %>
+      <span id="escalation-reason-error" class="form-error" hidden>Escalation reason is required</span>
     </div>
   <% end %>
   <%= form.hidden_field :answer, value: "" %>
