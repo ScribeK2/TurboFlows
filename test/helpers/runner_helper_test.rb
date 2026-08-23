@@ -47,14 +47,14 @@ class RunnerHelperTest < ActionView::TestCase
 
     entries = runner_trail_entries(scenario)
 
-    assert_equal ["Confirm Issue", "Check hosting"], entries.map { |e| e["step_title"] }
+    assert_equal(["Confirm Issue", "Check hosting"], entries.pluck("step_title"))
     assert_equal "yes", entries.first["answer"]
   end
 
   test "trail inside a sub-flow shows the steps that led into it" do
     child = Scenario.create!(
       workflow: @workflow, user: @user, inputs: {},
-      execution_path: [ { "step_title" => "Verify identity", "answer" => "yes", "step_type" => "question" } ]
+      execution_path: [{ "step_title" => "Verify identity", "answer" => "yes", "step_type" => "question" }]
     )
     parent = Scenario.create!(
       workflow: @workflow, user: @user, inputs: {}, status: "awaiting_subflow",
@@ -70,12 +70,12 @@ class RunnerHelperTest < ActionView::TestCase
     # that counted across ancestors — "Step 1" sitting next to "Step 4".
     entries = runner_trail_entries(child)
 
-    assert_equal ["Confirm Issue", "Verify identity"], entries.map { |e| e["step_title"] },
+    assert_equal ["Confirm Issue", "Verify identity"], entries.pluck("step_title"),
                  "the trail must span the whole run, not the sub-flow frame"
   end
 
   test "trail costs one query per nesting level, not one per sub-flow" do
-    children = 3.times.map do
+    children = Array.new(3) do
       Scenario.create!(workflow: @workflow, user: @user, inputs: {},
                        execution_path: [{ "step_title" => "child", "answer" => "yes", "step_type" => "question" }])
     end

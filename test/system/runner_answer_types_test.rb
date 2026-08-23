@@ -9,7 +9,7 @@ require "application_system_test_case"
 class RunnerAnswerTypesTest < ApplicationSystemTestCase
   test "a question with options but a non-standard answer_type can still be answered" do
     u = User.create!(email: "wf-system-test-#{SecureRandom.hex(4)}@example.com",
-      password: "password123!", password_confirmation: "password123!", role: "editor")
+                     password: "password123!", password_confirmation: "password123!", role: "editor")
     wf = Workflow.create!(title: "Deadend Probe", user: u, status: "published")
     # answer_type outside %w[yes_no multiple_choice], but options present.
     q = Steps::Question.create!(workflow: wf, title: "Pick a tier", position: 0,
@@ -36,7 +36,7 @@ class RunnerAnswerTypesTest < ApplicationSystemTestCase
 
   test "a multiple_choice question with no options does not submit mid-typing" do
     u = User.create!(email: "wf-system-test-#{SecureRandom.hex(4)}@example.com",
-      password: "password123!", password_confirmation: "password123!", role: "editor")
+                     password: "password123!", password_confirmation: "password123!", role: "editor")
     wf = Workflow.create!(title: "Typing Probe", user: u, status: "published")
     # Authored as multiple_choice but with no options, so it falls through to a
     # free-text field. The old shell auto-advanced on answer_type alone, so the
