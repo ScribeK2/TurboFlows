@@ -19,7 +19,7 @@ gem "tzinfo-data", platforms: %i[windows jruby]
 
 # Rich text editing via Action Text + Lexxy (Lexical-based editor)
 gem "image_processing", "~> 1.2"
-gem "lexxy", "~> 0.8.0.beta"
+gem "lexxy", "~> 0.9.0"
 
 # SVG icons (Heroicons)
 gem "rails_icons"
