@@ -8,7 +8,7 @@ gem "csv"
 gem "importmap-rails"
 gem "pg", "~> 1.1", group: [:production]
 gem "propshaft"
-gem "puma", "~> 7.2"
+gem "puma", "~> 8.0"
 gem "rails", "~> 8.1.0"
 gem "redis", "~> 6.0"
 gem "solid_queue"

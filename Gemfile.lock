@@ -214,7 +214,7 @@ GEM
       activesupport (>= 7.0.0)
       rack
     public_suffix (7.0.5)
-    puma (7.2.1)
+    puma (8.0.2)
       nio4r (~> 2.0)
     raabro (1.5.0)
     racc (1.8.1)
@@ -405,7 +405,7 @@ DEPENDENCIES
   pg (~> 1.1)
   prawn
   propshaft
-  puma (~> 7.2)
+  puma (~> 8.0)
   rack-attack
   rack-mini-profiler
   rails (~> 8.1.0)
