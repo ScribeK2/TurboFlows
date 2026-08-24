@@ -116,56 +116,6 @@
     margin: 0;
   }
 
-  /* ─── Workflow Grid ─── */
-  .player-workflow-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--space-4);
-    width: 100%;
-  }
-
-  @media (min-width: 640px) {
-    .player-workflow-grid {
-      grid-template-columns: 1fr 1fr;
-    }
-  }
-
-  .player-workflow-card {
-    display: flex;
-    align-items: flex-start;
-    padding: var(--space-5) var(--space-6);
-    background: var(--color-canvas-raised);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    text-decoration: none;
-    color: var(--color-ink);
-    text-align: left;
-    cursor: pointer;
-    transition: border-color 0.15s ease, box-shadow 0.2s ease, transform 0.15s ease;
-    width: 100%;
-    min-height: 10rem;
-  }
-
-  .player-workflow-card:hover {
-    border-color: var(--color-primary);
-    box-shadow: var(--shadow), 0 0 0 1px oklch(0.55 0.20 250 / 0.08);
-    transform: translateY(-1px);
-  }
-
-  .player-workflow-card:active {
-    transform: translateY(0);
-    box-shadow: var(--shadow-sm);
-  }
-
-  /* ─── Step-Type Accent Borders ─── */
-  .player-workflow-card--question  { --step-hue: var(--hue-question); }
-  .player-workflow-card--action  { --step-hue: var(--hue-action); }
-  .player-workflow-card--message  { --step-hue: var(--hue-message); }
-  .player-workflow-card--escalate  { --step-hue: var(--hue-escalate); }
-  .player-workflow-card--resolve  { --step-hue: var(--hue-resolve); }
-  .player-workflow-card--sub_flow  { --step-hue: var(--hue-subflow); }
-  .player-workflow-card--form  { --step-hue: var(--hue-form); }
-
   /* ─── Search Filter ─── */
   .player-search {
     position: relative;
@@ -206,68 +156,6 @@
     box-shadow: 0 0 0 2px oklch(0.55 0.20 250 / 0.15);
   }
 
-  .player-workflow-card__body {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-  }
-
-  .player-workflow-card__title {
-    font-size: var(--text-lg);
-    font-weight: 600;
-    color: var(--color-ink);
-    margin-bottom: var(--space-1);
-    line-height: var(--line-height-tight);
-  }
-
-  .player-workflow-card__desc {
-    font-size: var(--text-sm);
-    color: var(--color-ink-muted);
-    line-height: var(--line-height-relaxed);
-    margin: 0 0 var(--space-3) 0;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .player-workflow-card__footer {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    flex-wrap: wrap;
-    margin-top: auto;
-  }
-
-  .player-workflow-card__meta {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    font-size: var(--text-sm);
-    color: var(--color-ink-subtle);
-    white-space: nowrap;
-  }
-
-  .player-workflow-card__tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1);
-    margin-top: var(--space-2);
-  }
-
-  .player-workflow-card__arrow {
-    flex-shrink: 0;
-    color: var(--color-ink-muted);
-    margin-left: var(--space-3);
-    transition: color 0.15s ease, transform 0.15s ease;
-  }
-
-  .player-workflow-card:hover .player-workflow-card__arrow {
-    color: var(--color-primary-text);
-    transform: translateX(2px);
-  }
 
   /* ─── Empty State ─── */
   .player-empty {
@@ -457,9 +345,6 @@
     box-shadow: 0 1px 3px oklch(0 0 0 / 0.3);
   }
 
-  [data-theme="dark"] .player-workflow-card:hover {
-    box-shadow: var(--shadow), 0 0 0 1px oklch(0.55 0.20 250 / 0.15);
-  }
 
   [data-theme="dark"] .player-completion__icon-wrap--success {
     --step-hue: var(--hue-resolve);
