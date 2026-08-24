@@ -7,9 +7,24 @@ class RackAttackTest < ActionDispatch::IntegrationTest
     Rack::Attack.reset!
   end
 
+  # A fixed instant `offset` seconds into the current rack-attack period, so a
+  # run can never straddle the boundary between two counters.
+  def bucket_start_plus(offset, period: 60)
+    Time.zone.at(((Time.now.to_i / period) * period) + offset)
+  end
+
   test "throttles excessive login attempts" do
-    11.times do
-      post user_session_path, params: { user: { email: "test@example.com", password: "wrongpassword!" } }
+    # rack-attack buckets by wall clock, not by a sliding window: the cache key
+    # embeds (Time.now.to_i / period), so eleven requests that happen to straddle
+    # a minute boundary split into two counters of six and five. Neither exceeds
+    # the limit of ten, nothing throttles, and the test fails with 200. That is
+    # the whole story behind this test's intermittent failures — it read as
+    # order-dependent only because test order changes where in the minute the
+    # test lands. Pin the clock inside one bucket so it cannot straddle.
+    travel_to bucket_start_plus(5) do
+      11.times do
+        post user_session_path, params: { user: { email: "test@example.com", password: "wrongpassword!" } }
+      end
     end
 
     assert_equal 429, response.status
