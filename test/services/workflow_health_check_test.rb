@@ -28,7 +28,7 @@ class WorkflowHealthCheckTest < ActiveSupport::TestCase
 
     result = WorkflowHealthCheck.call(@workflow.reload)
 
-    assert result.clean?
+    assert_predicate result, :clean?
     assert_equal 0, result.summary[:total]
     assert_equal 0, result.summary[:errors]
     assert_equal 0, result.summary[:warnings]
@@ -49,8 +49,8 @@ class WorkflowHealthCheckTest < ActiveSupport::TestCase
 
     assert_not result.clean?
     step_issues = result.issues[q.uuid]
-    assert step_issues.any? { |i| i[:message].include?("No outgoing connections") }
-    assert step_issues.any? { |i| i[:severity] == :warning }
+    assert(step_issues.any? { |i| i[:message].include?("No outgoing connections") })
+    assert(step_issues.any? { |i| i[:severity] == :warning })
   end
 
   test "dead-end step offers connect_next fix" do
@@ -86,7 +86,7 @@ class WorkflowHealthCheckTest < ActiveSupport::TestCase
     result = WorkflowHealthCheck.call(@workflow.reload)
     action_issues = result.issues[a.uuid]
 
-    assert action_issues.present?
+    assert_predicate action_issues, :present?
     resolve_issue = action_issues.find { |i| i[:message].include?("not a Resolve step") }
     assert resolve_issue, "Expected terminal-not-Resolve error on action step"
     assert resolve_issue[:fixable]
@@ -96,7 +96,7 @@ class WorkflowHealthCheckTest < ActiveSupport::TestCase
   test "empty workflow returns clean result" do
     result = WorkflowHealthCheck.call(@workflow)
 
-    assert result.clean?
+    assert_predicate result, :clean?
   end
 
   test "question without title gets warning" do
@@ -114,7 +114,7 @@ class WorkflowHealthCheckTest < ActiveSupport::TestCase
     result = WorkflowHealthCheck.call(@workflow.reload)
     step_issues = result.issues[q.uuid]
 
-    assert step_issues.any? { |i| i[:message].include?("Question text is required") }
+    assert(step_issues.any? { |i| i[:message].include?("Question text is required") })
   end
 
   test "summary counts errors and warnings separately" do
@@ -131,7 +131,7 @@ class WorkflowHealthCheckTest < ActiveSupport::TestCase
 
     result = WorkflowHealthCheck.call(@workflow.reload)
 
-    assert result.summary[:total] > 0
+    assert_operator result.summary[:total], :>, 0
     assert_equal result.summary[:errors] + result.summary[:warnings], result.summary[:total]
   end
 
@@ -152,7 +152,7 @@ class WorkflowHealthCheckTest < ActiveSupport::TestCase
     # Resolve steps are excluded from the dead-end check
     resolve_issues = result.issues[r.uuid]
     if resolve_issues
-      assert_not resolve_issues.any? { |i| i[:message].include?("No outgoing connections") }
+      assert_not(resolve_issues.any? { |i| i[:message].include?("No outgoing connections") })
     end
   end
 
@@ -179,7 +179,7 @@ class WorkflowHealthCheckTest < ActiveSupport::TestCase
     result = WorkflowHealthCheck.call(@workflow.reload)
     step_issues = result.issues[sf.uuid]
 
-    assert step_issues.any? { |i| i[:message].include?("Sub-flow target is required") }
+    assert(step_issues.any? { |i| i[:message].include?("Sub-flow target is required") })
   end
 
   test "Result data object supports clean? method" do
@@ -188,7 +188,7 @@ class WorkflowHealthCheckTest < ActiveSupport::TestCase
       summary: { errors: 0, warnings: 0, total: 0 }
     )
 
-    assert result.clean?
+    assert_predicate result, :clean?
   end
 
   test "Result data object clean? returns false when issues exist" do

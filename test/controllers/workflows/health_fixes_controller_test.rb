@@ -33,12 +33,12 @@ module Workflows
 
       assert_difference "Transition.count", 1 do
         post workflow_health_fix_path(@workflow),
-          params: { fix_type: "connect_next", step_uuid: q.uuid },
-          as: :turbo_stream
+             params: { fix_type: "connect_next", step_uuid: q.uuid },
+             as: :turbo_stream
       end
 
       assert_response :success
-      assert q.reload.transitions.any? { |t| t.target_step_id == r.id }
+      assert(q.reload.transitions.any? { |t| t.target_step_id == r.id })
     end
 
     test "add_resolve_after creates resolve step and transition" do
@@ -55,14 +55,14 @@ module Workflows
 
       assert_difference "Steps::Resolve.count", 1 do
         post workflow_health_fix_path(@workflow),
-          params: { fix_type: "add_resolve_after", step_uuid: a.uuid },
-          as: :turbo_stream
+             params: { fix_type: "add_resolve_after", step_uuid: a.uuid },
+             as: :turbo_stream
       end
 
       assert_response :success
       new_resolve = Steps::Resolve.where(workflow: @workflow).order(:position).last
       assert_equal 2, new_resolve.position
-      assert a.reload.transitions.any? { |t| t.target_step_id == new_resolve.id }
+      assert(a.reload.transitions.any? { |t| t.target_step_id == new_resolve.id })
     end
 
     test "add_resolve_after shifts subsequent step positions" do
@@ -82,8 +82,8 @@ module Workflows
       @workflow.update!(start_step: q)
 
       post workflow_health_fix_path(@workflow),
-        params: { fix_type: "add_resolve_after", step_uuid: a.uuid },
-        as: :turbo_stream
+           params: { fix_type: "add_resolve_after", step_uuid: a.uuid },
+           as: :turbo_stream
 
       assert_response :success
       assert_equal 3, r.reload.position
@@ -97,8 +97,8 @@ module Workflows
       @workflow.update!(start_step: a)
 
       post workflow_health_fix_path(@workflow),
-        params: { fix_type: "connect_next", step_uuid: a.uuid },
-        as: :turbo_stream
+           params: { fix_type: "connect_next", step_uuid: a.uuid },
+           as: :turbo_stream
 
       assert_redirected_to workflow_path(@workflow, edit: true)
       assert_match(/no next step/i, flash[:alert])
@@ -111,16 +111,16 @@ module Workflows
       )
 
       post workflow_health_fix_path(@workflow),
-        params: { fix_type: "invalid", step_uuid: q.uuid },
-        as: :turbo_stream
+           params: { fix_type: "invalid", step_uuid: q.uuid },
+           as: :turbo_stream
 
-      assert_response :unprocessable_entity
+      assert_response :unprocessable_content
     end
 
     test "nonexistent step returns 404" do
       post workflow_health_fix_path(@workflow),
-        params: { fix_type: "connect_next", step_uuid: "nonexistent-uuid" },
-        as: :turbo_stream
+           params: { fix_type: "connect_next", step_uuid: "nonexistent-uuid" },
+           as: :turbo_stream
 
       assert_response :not_found
     end
@@ -128,8 +128,8 @@ module Workflows
     test "requires authentication" do
       sign_out @editor
       post workflow_health_fix_path(@workflow),
-        params: { fix_type: "connect_next", step_uuid: "any" },
-        as: :turbo_stream
+           params: { fix_type: "connect_next", step_uuid: "any" },
+           as: :turbo_stream
 
       assert_response :unauthorized
     end
@@ -149,8 +149,8 @@ module Workflows
       )
 
       post workflow_health_fix_path(@workflow),
-        params: { fix_type: "connect_next", step_uuid: q.uuid },
-        as: :turbo_stream
+           params: { fix_type: "connect_next", step_uuid: q.uuid },
+           as: :turbo_stream
 
       assert_redirected_to workflows_path
     end

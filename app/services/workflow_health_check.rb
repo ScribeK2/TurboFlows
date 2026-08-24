@@ -25,7 +25,7 @@ class WorkflowHealthCheck
     issues = Hash.new { |h, k| h[k] = [] }
 
     run_graph_validation(issues)
-    run_subflow_validation(issues) if has_subflow_steps?
+    run_subflow_validation(issues) if subflow_steps?
     run_step_validations(issues)
 
     summary = { errors: 0, warnings: 0, total: 0 }
@@ -84,7 +84,7 @@ class WorkflowHealthCheck
   def classify_graph_error(error, issues, graph_hash)
     case error
     when /Cycle detected: (.+)/
-      cycle_titles = $1.split(" -> ")
+      cycle_titles = ::Regexp.last_match(1).split(" -> ")
       # Attach to the first step in the cycle
       uuid = find_uuid_by_title(cycle_titles.first, graph_hash)
       add_issue(issues, uuid, :error, error, fixable: false)
@@ -102,7 +102,7 @@ class WorkflowHealthCheck
       add_issue(issues, :workflow, :error, "Workflow has no ending steps", fixable: false)
 
     when /Terminal node '(.+)' is not a Resolve step/
-      title = $1
+      title = ::Regexp.last_match(1)
       uuid = find_uuid_by_title(title, graph_hash)
       add_issue(issues, uuid, :error, "Terminal step is not a Resolve step", fixable: true, fix_type: "add_resolve_after")
 
@@ -123,7 +123,7 @@ class WorkflowHealthCheck
         add_issue(issues, :workflow, :warning, "Sub-flow nesting exceeds 10 levels", fixable: false)
       when /non-existent workflow.*ID: (\d+)/
         # Find the sub-flow step referencing this missing workflow
-        missing_id = $1.to_i
+        missing_id = ::Regexp.last_match(1).to_i
         subflow_step = steps_collection.find { |s| s.is_a?(Steps::SubFlow) && s.sub_flow_workflow_id == missing_id }
         uuid = subflow_step&.uuid || :workflow
         add_issue(issues, uuid, :error, "Sub-flow references a missing workflow", fixable: false)
@@ -152,8 +152,8 @@ class WorkflowHealthCheck
     end
   end
 
-  def has_subflow_steps?
-    steps_collection.any? { |s| s.is_a?(Steps::SubFlow) }
+  def subflow_steps?
+    steps_collection.any?(Steps::SubFlow)
   end
 
   def add_issue(issues, uuid, severity, message, fixable: false, fix_type: nil)

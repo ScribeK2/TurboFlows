@@ -36,16 +36,16 @@ class RackAttackTest < ActionDispatch::IntegrationTest
     # First user hits login limit
     11.times do
       post user_session_path,
-        params: { user: { email: "user1@example.com", password: "wrongpassword!" } },
-        headers: { "REMOTE_ADDR" => proxy_ip, "HTTP_X_FORWARDED_FOR" => "192.168.1.10" }
+           params: { user: { email: "user1@example.com", password: "wrongpassword!" } },
+           headers: { "REMOTE_ADDR" => proxy_ip, "HTTP_X_FORWARDED_FOR" => "192.168.1.10" }
     end
 
     assert_equal 429, response.status, "First user should be throttled after 11 attempts"
 
     # Second user from same proxy but different forwarded IP should NOT be throttled
     post user_session_path,
-      params: { user: { email: "user2@example.com", password: "wrongpassword!" } },
-      headers: { "REMOTE_ADDR" => proxy_ip, "HTTP_X_FORWARDED_FOR" => "192.168.1.20" }
+         params: { user: { email: "user2@example.com", password: "wrongpassword!" } },
+         headers: { "REMOTE_ADDR" => proxy_ip, "HTTP_X_FORWARDED_FOR" => "192.168.1.20" }
 
     assert_not_equal 429, response.status, "Second user should not be throttled by first user's attempts"
   end

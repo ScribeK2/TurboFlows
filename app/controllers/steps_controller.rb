@@ -69,8 +69,8 @@ class StepsController < ApplicationController
                                 locals: { step: @step, workflow: @workflow }),
             turbo_stream.remove("builder-empty-state"),
             turbo_stream.replace("builder-panel",
-                                partial: "steps/panel_edit",
-                                locals: { step: @step, workflow: @workflow, readonly: false }),
+                                 partial: "steps/panel_edit",
+                                 locals: { step: @step, workflow: @workflow, readonly: false }),
             turbo_stream.update("step-count-text",
                                 helpers.pluralize(@workflow.steps.count, "step"))
           ]

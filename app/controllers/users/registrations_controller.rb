@@ -13,7 +13,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
     else
       clean_up_passwords resource
       set_minimum_password_length
-      render :new, status: :unprocessable_entity
+      render :new, status: :unprocessable_content
     end
   end
 

@@ -229,7 +229,7 @@ class Scenario < ApplicationRecord
     if iteration_count > MAX_ITERATIONS
       self.status = 'error'
       self.results ||= {}
-      self.results['_error'] = "Scenario exceeded maximum iterations (#{MAX_ITERATIONS})"
+      results['_error'] = "Scenario exceeded maximum iterations (#{MAX_ITERATIONS})"
       save
       raise ScenarioIterationLimit, "Scenario exceeded maximum of #{MAX_ITERATIONS} steps"
     end
@@ -289,10 +289,10 @@ class Scenario < ApplicationRecord
 
         if reverse_mapping.key?(key)
           # Explicitly mapped: always overwrite parent value
-          self.results[reverse_mapping[key]] = value
+          results[reverse_mapping[key]] = value
         else
           # Non-mapped: only add if parent doesn't already have this key
-          self.results[key] = value unless self.results.key?(key)
+          results[key] = value unless results.key?(key)
         end
       end
     end
@@ -302,7 +302,7 @@ class Scenario < ApplicationRecord
 
     resolver = StepResolver.new(workflow)
     resume_step = workflow.steps.find_by(uuid: resume_node_uuid)
-    next_step = resolver.resolve_next_after_subflow(resume_step, self.results) if resume_step
+    next_step = resolver.resolve_next_after_subflow(resume_step, results) if resume_step
     next_uuid = next_step.is_a?(Step) ? next_step.uuid : nil
 
     # Guard against self-loop: if the resolved next step is the same sub_flow step
@@ -337,7 +337,7 @@ class Scenario < ApplicationRecord
   rescue ScenarioTimeout
     self.status = 'timeout'
     self.results ||= {}
-    self.results['_error'] = "Scenario timed out after #{MAX_EXECUTION_TIME} seconds"
+    results['_error'] = "Scenario timed out after #{MAX_EXECUTION_TIME} seconds"
     record_completion("error")
     save
     Rails.logger.warn "Scenario #{id} timed out for workflow #{workflow_id}"
@@ -364,10 +364,10 @@ class Scenario < ApplicationRecord
   # Resolve the scenario at the current step (mid-step resolution via can_resolve flag)
   def resolve_at_current_step(step)
     # Mark the last execution path entry as resolved
-    self.execution_path.last[:resolved] = true if execution_path.present?
+    execution_path.last[:resolved] = true if execution_path.present?
 
     self.results ||= {}
-    self.results['_resolution'] = {
+    results['_resolution'] = {
       'type' => 'success',
       'resolved_at_step' => step.uuid
     }
@@ -380,7 +380,7 @@ class Scenario < ApplicationRecord
   # Advance to the next step using graph-based resolution
   def advance_to_next_step(step)
     resolver = StepResolver.new(workflow)
-    next_result = resolver.resolve_next(step, self.results)
+    next_result = resolver.resolve_next(step, results)
 
     if next_result.is_a?(StepResolver::SubflowMarker)
       # Will be handled in next process_step call

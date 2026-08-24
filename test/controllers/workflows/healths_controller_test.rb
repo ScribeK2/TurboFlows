@@ -35,7 +35,7 @@ module Workflows
       get workflow_health_path(@workflow, format: :json)
 
       assert_response :success
-      json = JSON.parse(response.body)
+      json = response.parsed_body
       assert_includes json.keys, "issues"
       assert_includes json.keys, "summary"
       assert_includes json.keys, "clean"
@@ -56,9 +56,9 @@ module Workflows
       get workflow_health_path(@workflow, format: :json)
 
       assert_response :success
-      json = JSON.parse(response.body)
+      json = response.parsed_body
       assert_not json["clean"]
-      assert json["summary"]["total"] > 0
+      assert_operator json["summary"]["total"], :>, 0
     end
 
     test "show requires authentication" do
@@ -120,7 +120,7 @@ module Workflows
       get workflow_health_path(@workflow, format: :json)
 
       assert_response :success
-      json = JSON.parse(response.body)
+      json = response.parsed_body
       summary = json["summary"]
       assert_kind_of Integer, summary["total"]
       assert_kind_of Integer, summary["errors"]
