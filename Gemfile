@@ -18,8 +18,12 @@ gem "turbo-rails"
 gem "tzinfo-data", platforms: %i[windows jruby]
 
 # Rich text editing via Action Text + Lexxy (Lexical-based editor)
-gem "image_processing", "~> 1.2"
+gem "image_processing", "~> 2.0"
 gem "lexxy", "~> 0.9.0"
+# image_processing 2.0 made the backends soft dependencies, so the processor
+# Active Storage is configured to use has to be declared here explicitly.
+# config.active_storage.variant_processor = :mini_magick in all environments.
+gem "mini_magick"
 
 # SVG icons (Heroicons)
 gem "rails_icons"
