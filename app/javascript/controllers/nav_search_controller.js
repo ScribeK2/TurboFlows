@@ -152,7 +152,9 @@ export default class extends Controller {
 
     const badge = document.createElement("span")
     const isPublished = item.status === "published"
-    badge.className = `nav__search-badge ${isPublished ? "nav__search-badge--published" : "nav__search-badge--draft"}`
+    // Catalog badge, not a bespoke one: ordinary status reads as plain text so
+    // a list of results does not become a wall of pastel. See UIGUIDE badges.
+    badge.className = `nav__search-badge badge ${isPublished ? "badge--published" : "badge--draft"}`
     badge.textContent = isPublished ? "Published" : "Draft"
 
     link.append(content, badge)
