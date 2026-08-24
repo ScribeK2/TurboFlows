@@ -15,8 +15,8 @@ module Workflows
       when "add_resolve_after"
         add_resolve_after(step)
       else
-        head :unprocessable_entity
-        return
+        head :unprocessable_content
+        nil
       end
     rescue ActiveRecord::RecordNotFound
       head :not_found
@@ -43,7 +43,7 @@ module Workflows
       new_position = step.position + 1
 
       # Shift positions of steps that come after
-      @workflow.steps.where("position >= ?", new_position).update_all("position = position + 1") # rubocop:disable Rails/SkipsModelValidations
+      @workflow.steps.where(position: new_position..).update_all("position = position + 1")
 
       resolve_step = Steps::Resolve.create!(
         workflow: @workflow,

@@ -23,7 +23,7 @@ module Users
              params: { user: { email: "newuser@example.com", password: "short", password_confirmation: "short" } }
       end
 
-      assert_response :unprocessable_entity
+      assert_response :unprocessable_content
       assert_select "#error_explanation"
     end
 
