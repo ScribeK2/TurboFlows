@@ -460,27 +460,12 @@
   white-space: nowrap;
 }
 
+/* Colour and weight come from the catalog .badge--published / .badge--draft.
+   All this class carries is the one layout concern the catalog cannot know
+   about: the badge must not shrink when a long result title competes for
+   width in the palette row. */
 .nav__search-badge {
-  padding: 0.15rem 0.5rem;
-  border-radius: var(--radius-full);
-  font-size: var(--text-xs);
-  font-weight: 600;
   flex-shrink: 0;
-}
-
-.nav__search-badge--published {
-  background: var(--color-positive-soft);
-  color: var(--color-positive);
-}
-
-[data-theme="dark"] .nav__search-badge--published {
-  background: var(--color-positive-soft);
-  color: var(--color-positive);
-}
-
-.nav__search-badge--draft {
-  background: var(--color-canvas-alt);
-  color: var(--color-ink-muted);
 }
 
 .nav__search-hint,
