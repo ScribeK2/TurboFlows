@@ -10,7 +10,7 @@ gem "pg", "~> 1.1", group: [:production]
 gem "propshaft"
 gem "puma", "~> 7.2"
 gem "rails", "~> 8.1.0"
-gem "redis", "~> 5.0"
+gem "redis", "~> 6.0"
 gem "solid_queue"
 gem "sqlite3", ">= 2.1", group: %i[development test]
 gem "stimulus-rails"
