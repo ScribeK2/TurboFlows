@@ -87,4 +87,72 @@ class SubflowValidatorTest < ActiveSupport::TestCase
     assert SubflowValidator.valid?(wf.id)
     assert_empty SubflowValidator.errors_for(wf.id)
   end
+
+  # ---------------------------------------------------------------------------
+  # Findings — the structured half. The #errors assertions above prove the
+  # message text is unchanged; these prove the code and details a consumer
+  # switches on, so WorkflowHealthCheck never has to regex the sentence.
+  # ---------------------------------------------------------------------------
+
+  test "errors is exactly the messages of findings, in order" do
+    wf_a = Workflow.create!(title: "Workflow A", user: @user)
+    wf_b = Workflow.create!(title: "Workflow B", user: @user)
+    Steps::SubFlow.create!(workflow: wf_a, position: 0, title: "Call B", sub_flow_workflow_id: wf_b.id)
+    step = Steps::SubFlow.new(workflow: wf_b, position: 0, title: "Call A",
+                              sub_flow_workflow_id: wf_a.id, uuid: SecureRandom.uuid)
+    step.save(validate: false)
+
+    validator = SubflowValidator.new(wf_a.id)
+
+    assert_not validator.valid?
+    assert_equal validator.findings.map(&:message), validator.errors
+  end
+
+  test "circular_subflow finding carries the workflow ids in the cycle" do
+    wf_a = Workflow.create!(title: "Workflow A", user: @user)
+    wf_b = Workflow.create!(title: "Workflow B", user: @user)
+    Steps::SubFlow.create!(workflow: wf_a, position: 0, title: "Call B", sub_flow_workflow_id: wf_b.id)
+    step = Steps::SubFlow.new(workflow: wf_b, position: 0, title: "Call A",
+                              sub_flow_workflow_id: wf_a.id, uuid: SecureRandom.uuid)
+    step.save(validate: false)
+
+    validator = SubflowValidator.new(wf_a.id)
+    validator.valid?
+    finding = validator.findings.find { |f| f.code == :circular_subflow }
+
+    assert finding, "Expected circular_subflow, got: #{validator.findings.map(&:code).inspect}"
+    assert_includes finding.details[:cycle_workflow_ids], wf_a.id
+    assert_includes finding.details[:cycle_workflow_ids], wf_b.id
+  end
+
+  test "subflow_target_missing finding carries the missing workflow id" do
+    wf = Workflow.create!(title: "Missing Target", user: @user)
+    step = Steps::SubFlow.new(workflow: wf, position: 0, title: "Call Ghost",
+                              sub_flow_workflow_id: 999_999, uuid: SecureRandom.uuid)
+    step.save(validate: false)
+
+    validator = SubflowValidator.new(wf.id)
+    validator.valid?
+    finding = validator.findings.find { |f| f.code == :subflow_target_missing }
+
+    assert finding
+    assert_equal 999_999, finding.details[:target_workflow_id]
+    assert_equal wf.id, finding.details[:workflow_id]
+  end
+
+  test "max_depth_exceeded finding carries the depth it reached" do
+    workflows = Array.new(12) { |i| Workflow.create!(title: "Depth #{i}", user: @user) }
+    workflows.each_cons(2) do |parent, child|
+      Steps::SubFlow.create!(workflow: parent, position: 0, title: "Call Next", sub_flow_workflow_id: child.id)
+    end
+    Steps::Action.create!(workflow: workflows.last, position: 0, title: "End")
+
+    validator = SubflowValidator.new(workflows.first.id)
+    validator.valid?
+    finding = validator.findings.find { |f| f.code == :max_depth_exceeded }
+
+    assert finding
+    assert_equal SubflowValidator::MAX_DEPTH, finding.details[:max_depth]
+    assert_operator finding.details[:depth], :>, SubflowValidator::MAX_DEPTH
+  end
 end

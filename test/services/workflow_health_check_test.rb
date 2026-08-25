@@ -93,6 +93,34 @@ class WorkflowHealthCheckTest < ActiveSupport::TestCase
     assert_equal "add_resolve_after", resolve_issue[:fix_type]
   end
 
+  # Regression: step titles are not unique, and the health check used to find a
+  # step by matching the validator's English error message back to a title. Two
+  # steps sharing a title meant the issue — and its Fix button — could attach to
+  # the wrong one.
+  test "duplicate step titles attach the terminal error to the correct step" do
+    first = Steps::Question.create!(
+      workflow: @workflow, uuid: SecureRandom.uuid, position: 0,
+      title: "Check account status", question: "What?", answer_type: "text"
+    )
+    second = Steps::Question.create!(
+      workflow: @workflow, uuid: SecureRandom.uuid, position: 1,
+      title: "Check account status", question: "What?", answer_type: "text"
+    )
+    Transition.create!(step: first, target_step: second, position: 0)
+    @workflow.update!(start_step: first)
+
+    result = WorkflowHealthCheck.call(@workflow.reload)
+
+    terminal_issue = lambda do |uuid|
+      Array(result.issues[uuid]).find { |i| i[:fix_type] == "add_resolve_after" }
+    end
+
+    assert terminal_issue.call(second.uuid),
+           "Expected the terminal-not-Resolve error on the dead-end step, got issues: #{result.issues.inspect}"
+    assert_nil terminal_issue.call(first.uuid),
+               "The first step has an outgoing transition and is not terminal — it must not carry the fix"
+  end
+
   test "empty workflow returns clean result" do
     result = WorkflowHealthCheck.call(@workflow)
 
