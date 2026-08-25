@@ -37,7 +37,8 @@
       <% when "checkbox" %>
         <label class="form-checkbox-label">
           <input type="checkbox" name="answer[<%= field['name'] %>]" value="true" class="form-checkbox"
-                 <%= "checked" if value.present? %>>
+                 <%= "checked" if value.present? %>
+                 <%= "required" if field["required"] %>>
           <%= field["label"] %>
         </label>
       <% end %>

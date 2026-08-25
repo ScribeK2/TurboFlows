@@ -58,6 +58,23 @@ class RunnerBlockedStepTest < ActionDispatch::IntegrationTest
     assert_unchanged scenario
   end
 
+  # A required checkbox now renders `required`, so this refusal is a backstop
+  # too: it stays the server's answer for any client that skips the attribute.
+  test "form step reports an unchecked required checkbox" do
+    form = Steps::Form.create!(
+      workflow: @workflow, title: "Verify", position: 3,
+      options: [{ "name" => "identity_confirmed", "label" => "Confirmed identity",
+                  "field_type" => "checkbox", "required" => true, "position" => 0 }]
+    )
+    scenario = scenario_at(form)
+
+    post next_step_scenario_path(scenario)
+
+    assert_response :unprocessable_content
+    assert_includes response.body, "Confirmed identity is required"
+    assert_unchanged scenario
+  end
+
   test "a supplied reason advances the run, so the backstop is not simply blocking everything" do
     scenario = scenario_at(escalate_step)
 
