@@ -199,40 +199,30 @@ class Scenario < ApplicationRecord
     end
   end
 
-  # Process a single step and advance
-  # Returns false if step can't be processed, true otherwise
-  # Raises ScenarioIterationLimit if max iterations exceeded
+  # Process a single step and advance.
+  #
+  # Returns a ScenarioStepProcessor::Outcome describing what happened, so a
+  # caller can tell "moved on" from "refused, and here is why" — a distinction
+  # the old boolean could not carry.
+  #
+  # A :blocked outcome leaves this record untouched: nothing is saved, so a
+  # refused attempt adds no entry to the execution path and no visit to the
+  # trail. Raises ScenarioIterationLimit if max iterations exceeded.
   def process_step(answer = nil, resolved_here: false)
-    return false if complete?
-    return false if stopped?
-    return false if timed_out? || errored?
-
-    # If awaiting sub-flow completion, check child status
-    if awaiting_subflow?
-      return process_subflow_completion
-    end
+    return ScenarioStepProcessor::Outcome.halted(:not_runnable) if complete? || stopped? || timed_out? || errored?
+    return subflow_completion_outcome if awaiting_subflow?
 
     step = current_step
-    return false unless step
+    return ScenarioStepProcessor::Outcome.halted(:no_step) unless step
 
     # Idempotency guard: prevent re-processing the same non-interactive step.
     # Question and form steps are excluded because users can legitimately re-answer after back navigation.
     if execution_path.present? && %w[question form].exclude?(step.step_type)
       last_entry = execution_path.last
-      return false if last_entry&.dig('step_uuid') == step.uuid
+      return ScenarioStepProcessor::Outcome.halted(:already_processed) if last_entry&.dig('step_uuid') == step.uuid
     end
 
-    # Track iterations to prevent infinite loops in step-by-step mode
-    self.iteration_count ||= execution_path&.length || 0
-    self.iteration_count += 1
-
-    if iteration_count > MAX_ITERATIONS
-      self.status = 'error'
-      self.results ||= {}
-      results['_error'] = "Scenario exceeded maximum iterations (#{MAX_ITERATIONS})"
-      save
-      raise ScenarioIterationLimit, "Scenario exceeded maximum of #{MAX_ITERATIONS} steps"
-    end
+    count_iteration!
 
     # Initialize execution_path if needed
     initialize_execution_data
@@ -240,9 +230,9 @@ class Scenario < ApplicationRecord
     # Add step to execution path
     path_entry = build_path_entry(step)
 
-    processor = ScenarioStepProcessor.new(self)
-    result = processor.process(step, answer, path_entry, resolved_here: resolved_here)
-    return result if step.step_type == 'sub_flow'
+    outcome = ScenarioStepProcessor.new(self).process(step, answer, path_entry, resolved_here: resolved_here)
+    # Blocked changed nothing and must not be persisted; a sub-flow saved itself.
+    return outcome unless outcome.advanced? || outcome.resolved?
 
     # Mark as completed if we've reached the end
     check_completion
@@ -251,8 +241,12 @@ class Scenario < ApplicationRecord
       save!
     rescue ActiveRecord::StaleObjectError
       Rails.logger.warn "[Scenario ##{id}] Stale object on process_step — concurrent modification detected"
-      false
+      return ScenarioStepProcessor::Outcome.halted(:conflict)
     end
+
+    # Advancing to no next node ends the run just as a Resolve step does, so
+    # the outcome is decided by where the run actually stands after the save.
+    complete? ? ScenarioStepProcessor::Outcome.resolved : ScenarioStepProcessor::Outcome.advanced
   end
 
   # Process completion of a sub-flow
@@ -393,6 +387,28 @@ class Scenario < ApplicationRecord
   end
 
   private
+
+  # Resuming a parent after its sub-flow. process_subflow_completion still
+  # answers with a boolean — nothing consults more than that — so translate it
+  # here rather than leaving process_step with two return types.
+  def subflow_completion_outcome
+    return ScenarioStepProcessor::Outcome.halted(:not_runnable) unless process_subflow_completion
+
+    complete? ? ScenarioStepProcessor::Outcome.resolved : ScenarioStepProcessor::Outcome.advanced
+  end
+
+  def count_iteration!
+    # Track iterations to prevent infinite loops in step-by-step mode
+    self.iteration_count ||= execution_path&.length || 0
+    self.iteration_count += 1
+    return if iteration_count <= MAX_ITERATIONS
+
+    self.status = 'error'
+    self.results ||= {}
+    results['_error'] = "Scenario exceeded maximum iterations (#{MAX_ITERATIONS})"
+    save
+    raise ScenarioIterationLimit, "Scenario exceeded maximum of #{MAX_ITERATIONS} steps"
+  end
 
   def set_started_at
     self.started_at ||= Time.current
