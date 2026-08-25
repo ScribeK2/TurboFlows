@@ -63,4 +63,10 @@ end
 group :development do
   gem "brakeman"
   gem "web-console"
+
+  # Gem CVE audit. Declared here rather than installed globally so that
+  # `bundle exec bundle-audit` resolves through the bundle: the binary on PATH
+  # may be a version manager's shim pointing at a different Ruby, in which case
+  # the command errors instead of auditing and the check silently stops running.
+  gem "bundler-audit", require: false
 end
