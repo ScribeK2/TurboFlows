@@ -113,7 +113,7 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
   # Scenario 5: Error Conditions - Stopped Scenario
   # ==========================================================================
 
-  test "process_step returns false on stopped scenario" do
+  test "process_step halts as not runnable on stopped scenario" do
     workflow = Workflow.create!(title: "Stopped Workflow", user: @user)
     Steps::Question.create!(workflow: workflow, position: 0, uuid: "step-1", title: "Question", question: "Answer?")
 
@@ -126,14 +126,15 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
       inputs: {}
     )
 
-    result = scenario.process_step("answer")
+    outcome = scenario.process_step("answer")
 
-    assert_not result
+    assert_predicate outcome, :halted?
+    assert_equal :not_runnable, outcome.reason
     # Should not have processed the step
     assert_nil scenario.results["Question"]
   end
 
-  test "process_step returns false on error status scenario" do
+  test "process_step halts as not runnable on error status scenario" do
     workflow = Workflow.create!(title: "Error Workflow", user: @user)
     Steps::Question.create!(workflow: workflow, position: 0, uuid: "step-1", title: "Question", question: "Answer?")
 
@@ -146,12 +147,13 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
       inputs: {}
     )
 
-    result = scenario.process_step("answer")
+    outcome = scenario.process_step("answer")
 
-    assert_not result
+    assert_predicate outcome, :halted?
+    assert_equal :not_runnable, outcome.reason
   end
 
-  test "process_step returns false on timeout status scenario" do
+  test "process_step halts as not runnable on timeout status scenario" do
     workflow = Workflow.create!(title: "Timeout Workflow", user: @user)
     Steps::Question.create!(workflow: workflow, position: 0, uuid: "step-1", title: "Question", question: "Answer?")
 
@@ -164,9 +166,10 @@ class WorkflowEdgeCasesTest < ActiveSupport::TestCase
       inputs: {}
     )
 
-    result = scenario.process_step("answer")
+    outcome = scenario.process_step("answer")
 
-    assert_not result
+    assert_predicate outcome, :halted?
+    assert_equal :not_runnable, outcome.reason
   end
 
   # ==========================================================================

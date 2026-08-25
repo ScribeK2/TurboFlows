@@ -124,14 +124,16 @@ class ScenarioStepProcessorTest < ActiveSupport::TestCase
 
   # --- sub_flow step (missing workflow) ---
 
-  test "subflow step returns false when target workflow not found" do
+  test "subflow step halts as failed when target workflow not found" do
     sub = Steps::SubFlow.create!(workflow: @workflow, title: "Sub", position: 2, sub_flow_workflow_id: 999_999)
     @scenario.update!(current_node_uuid: sub.uuid)
 
     processor  = ScenarioStepProcessor.new(@scenario)
     path_entry = @scenario.send(:build_path_entry, sub)
-    result = processor.process(sub, nil, path_entry)
-    assert_not result
+    outcome = processor.process(sub, nil, path_entry)
+
+    assert_predicate outcome, :halted?
+    assert_equal :failed, outcome.reason
     assert_predicate @scenario, :errored?
   end
 
@@ -148,9 +150,28 @@ class ScenarioStepProcessorTest < ActiveSupport::TestCase
   # --- full delegation from Scenario#process_step ---
 
   test "Scenario#process_step delegates to ScenarioStepProcessor (integration)" do
-    result = @scenario.process_step("Maybe")
-    assert result, "Expected process_step to return truthy"
+    outcome = @scenario.process_step("Maybe")
+    assert_predicate outcome, :advanced?
     assert_equal "Maybe", @scenario.results[@question.title]
+  end
+
+  # The outcome has to survive the trip out through Scenario, or the caller is
+  # back to guessing. It used to not: process_step ignored the processor's
+  # return for every step type but sub_flow and answered with save!.
+  test "Scenario#process_step returns the blocked outcome and saves nothing" do
+    escalate = Steps::Escalate.create!(workflow: @workflow, title: "Esc", position: 2,
+                                       reason_required: true, target_type: "supervisor")
+    scenario = Scenario.create!(workflow: @workflow, user: @user, purpose: "simulation",
+                                current_node_uuid: escalate.uuid, execution_path: [],
+                                results: {}, inputs: {})
+
+    outcome = scenario.process_step("")
+
+    assert_predicate outcome, :blocked?
+    assert_includes outcome.errors, "Escalation reason is required"
+    assert_equal escalate.uuid, scenario.reload.current_node_uuid, "the run must not have moved"
+    assert_empty scenario.execution_path
+    assert_predicate scenario, :active?
   end
 
   # --- escalate reason_required server-side validation ---
@@ -163,9 +184,11 @@ class ScenarioStepProcessorTest < ActiveSupport::TestCase
                                 results: {}, inputs: {})
     processor = ScenarioStepProcessor.new(scenario)
     path_entry = scenario.send(:build_path_entry, escalate)
-    result = processor.process(escalate, "", path_entry)
-    assert_not result
-    assert_includes path_entry["escalation_errors"], "Escalation reason is required"
+    outcome = processor.process(escalate, "", path_entry)
+
+    assert_predicate outcome, :blocked?
+    assert_includes outcome.errors, "Escalation reason is required"
+    assert_empty scenario.execution_path, "a refused attempt is not a visited step"
   end
 
   test "escalate step with reason_required stores reason in metadata" do
@@ -191,9 +214,11 @@ class ScenarioStepProcessorTest < ActiveSupport::TestCase
                                 results: {}, inputs: {})
     processor = ScenarioStepProcessor.new(scenario)
     path_entry = scenario.send(:build_path_entry, resolve)
-    result = processor.process(resolve, "", path_entry)
-    assert_not result
-    assert_includes path_entry["resolution_errors"], "Resolution notes are required"
+    outcome = processor.process(resolve, "", path_entry)
+
+    assert_predicate outcome, :blocked?
+    assert_includes outcome.errors, "Resolution notes are required"
+    assert_empty scenario.execution_path, "a refused attempt is not a visited step"
   end
 
   test "resolve step with notes_required stores notes in metadata" do

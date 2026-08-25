@@ -1,5 +1,13 @@
+<%#
+  Form step fields.
+
+  locals: step, submitted — values from a refused submit, so a blocked form
+  does not throw away what the user already typed. Empty on a fresh render.
+%>
+<% submitted = local_assigns.fetch(:submitted, {}) || {} %>
 <div class="player-form-fields">
   <% Array(step.fields).sort_by { |f| f["position"].to_i }.each do |field| %>
+    <% value = submitted[field["name"]] %>
     <div class="player-form-field">
       <label class="form-label<%= " is-required" if field["required"] %>">
         <%= field["label"] %>
@@ -10,23 +18,27 @@
         <input type="<%= field['field_type'] == 'phone' ? 'tel' : field['field_type'] %>"
                name="answer[<%= field['name'] %>]"
                class="form-input"
+               value="<%= value %>"
                placeholder="<%= field['label'] %>"
                <%= "required" if field["required"] %>>
       <% when "textarea" %>
         <textarea name="answer[<%= field['name'] %>]"
                   class="form-input"
                   placeholder="<%= field['label'] %>"
-                  <%= "required" if field["required"] %>></textarea>
+                  <%= "required" if field["required"] %>><%= value %></textarea>
       <% when "select" %>
         <select name="answer[<%= field['name'] %>]" class="form-select" <%= "required" if field["required"] %>>
           <option value="">Select...</option>
           <% Array(field["select_options"]).each do |opt| %>
-            <option value="<%= opt["value"] || opt["label"] %>"><%= opt["label"] %></option>
+            <% opt_value = opt["value"] || opt["label"] %>
+            <option value="<%= opt_value %>" <%= "selected" if value.to_s == opt_value.to_s %>><%= opt["label"] %></option>
           <% end %>
         </select>
       <% when "checkbox" %>
         <label class="form-checkbox-label">
-          <input type="checkbox" name="answer[<%= field['name'] %>]" value="true" class="form-checkbox">
+          <input type="checkbox" name="answer[<%= field['name'] %>]" value="true" class="form-checkbox"
+                 <%= "checked" if value.present? %>
+                 <%= "required" if field["required"] %>>
           <%= field["label"] %>
         </label>
       <% end %>

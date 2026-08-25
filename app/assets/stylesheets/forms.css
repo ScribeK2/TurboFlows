@@ -70,6 +70,23 @@
   box-shadow: 0 0 0 3px var(--color-negative-soft);
 }
 
+/* Validation message for a field or a refused submit. UIGUIDE documents this
+   class under Error/Validation States; it had never been written, so the
+   runner's error markup would have rendered unstyled had it ever been shown. */
+.form-error {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  line-height: var(--line-height-normal);
+  color: var(--color-negative);
+}
+
+.form-error__list {
+  margin: 0;
+  padding-left: var(--space-4);
+  list-style: disc;
+}
+
 .form-textarea {
   display: block;
   width: 100%;

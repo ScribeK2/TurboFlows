@@ -3,13 +3,39 @@
 # Handles all step-type-specific processing logic during scenario execution.
 # Scenario#process_step delegates to this class, keeping the Scenario model thin.
 class ScenarioStepProcessor
+  # What processing a step decided.
+  #
+  # This used to be a bare boolean, which could not carry the one thing a
+  # caller most needs to know: that the step refused to advance and why. The
+  # validation messages were written into the path_entry hash, which is
+  # discarded on the refusing branch, so a run blocked on a required field
+  # showed the user nothing at all.
+  #
+  # :advanced          moved on to another step
+  # :resolved          the run ended here
+  # :awaiting_subflow  a child scenario is now running
+  # :blocked           refused, with messages for the user; nothing was saved
+  # :halted            could not run, with a reason the caller may log or ignore
+  Outcome = Data.define(:status, :errors, :reason) do
+    def self.advanced = new(status: :advanced, errors: [], reason: nil)
+    def self.resolved = new(status: :resolved, errors: [], reason: nil)
+    def self.awaiting_subflow = new(status: :awaiting_subflow, errors: [], reason: nil)
+    def self.blocked(errors) = new(status: :blocked, errors: Array(errors), reason: nil)
+    def self.halted(reason) = new(status: :halted, errors: [], reason: reason)
+
+    def advanced? = status == :advanced
+    def resolved? = status == :resolved
+    def awaiting_subflow? = status == :awaiting_subflow
+    def blocked? = status == :blocked
+    def halted? = status == :halted
+  end
+
   def initialize(scenario)
     @scenario = scenario
   end
 
   # Dispatch to the correct process_*_step method based on step type.
-  # Returns the result of the processing method, or calls advance_to_next_step
-  # for unknown step types.
+  # Every branch returns an Outcome.
   def process(step, answer, path_entry, resolved_here: false)
     case step.step_type
     when "question" then process_question_step(step, answer, path_entry)
@@ -19,7 +45,9 @@ class ScenarioStepProcessor
     when "message"  then process_message_step(step, path_entry, resolved_here: resolved_here)
     when "escalate" then process_escalate_step(step, path_entry)
     when "resolve"  then process_resolve_step(step, path_entry)
-    else            @scenario.advance_to_next_step(step)
+    else
+      @scenario.advance_to_next_step(step)
+      Outcome.advanced
     end
   end
 
@@ -40,6 +68,7 @@ class ScenarioStepProcessor
     @scenario.execution_path << path_entry
 
     @scenario.advance_to_next_step(step)
+    Outcome.advanced
   end
 
   # Process a form step — validates field responses, persists a StepResponse, and merges values into results
@@ -47,11 +76,7 @@ class ScenarioStepProcessor
     responses = answer.is_a?(Hash) ? answer : {}
 
     validation_errors = step.validate_responses(responses)
-    if validation_errors.any?
-      # Store errors on the path entry so the view can display them, but don't advance
-      path_entry["form_errors"] = validation_errors
-      return false
-    end
+    return Outcome.blocked(validation_errors) if validation_errors.any?
 
     StepResponse.create!(
       scenario: @scenario,
@@ -67,6 +92,7 @@ class ScenarioStepProcessor
 
     @scenario.execution_path << path_entry
     @scenario.advance_to_next_step(step)
+    Outcome.advanced
   end
 
   # Process an action step
@@ -92,8 +118,10 @@ class ScenarioStepProcessor
     # Handle mid-step resolution if the agent indicated this step resolved the issue
     if resolved_here && step.can_resolve
       @scenario.resolve_at_current_step(step)
+      Outcome.resolved
     else
       @scenario.advance_to_next_step(step)
+      Outcome.advanced
     end
   end
 
@@ -115,8 +143,10 @@ class ScenarioStepProcessor
     # Handle mid-step resolution if the agent indicated this step resolved the issue
     if resolved_here && step.can_resolve
       @scenario.resolve_at_current_step(step)
+      Outcome.resolved
     else
       @scenario.advance_to_next_step(step)
+      Outcome.advanced
     end
   end
 
@@ -126,10 +156,7 @@ class ScenarioStepProcessor
     # Server-side validation: require escalation reason when flag is set
     if step.reason_required
       reason = (@scenario.inputs || {})["escalation_reason"]
-      if reason.blank?
-        path_entry["escalation_errors"] = ["Escalation reason is required"]
-        return false
-      end
+      return Outcome.blocked(["Escalation reason is required"]) if reason.blank?
     end
 
     path_entry[:escalated] = true
@@ -150,6 +177,7 @@ class ScenarioStepProcessor
     @scenario.execution_path << path_entry
     @scenario.record_completion("escalated")
     @scenario.advance_to_next_step(step)
+    Outcome.advanced
   end
 
   # Process a resolve step (Graph Mode)
@@ -158,10 +186,7 @@ class ScenarioStepProcessor
     # Server-side validation: require resolution notes when flag is set
     if step.notes_required
       notes = (@scenario.inputs || {})["resolution_notes"]
-      if notes.blank?
-        path_entry["resolution_errors"] = ["Resolution notes are required"]
-        return false
-      end
+      return Outcome.blocked(["Resolution notes are required"]) if notes.blank?
     end
 
     path_entry[:resolved] = true
@@ -183,6 +208,7 @@ class ScenarioStepProcessor
     @scenario.record_completion("resolved")
     @scenario.status = 'completed'
     @scenario.current_node_uuid = nil
+    Outcome.resolved
   end
 
   # Process a sub-flow step - creates child scenario
@@ -199,7 +225,7 @@ class ScenarioStepProcessor
       rescue ActiveRecord::StaleObjectError
         Rails.logger.warn "[Scenario ##{@scenario.id}] Stale object on subflow error save — concurrent modification detected"
       end
-      return false
+      return Outcome.halted(:failed)
     end
 
     # Save current position for resumption
@@ -254,9 +280,9 @@ class ScenarioStepProcessor
       @scenario.save
     rescue ActiveRecord::StaleObjectError
       Rails.logger.warn "[Scenario ##{@scenario.id}] Stale object on subflow await save — concurrent modification detected"
-      return false
+      return Outcome.halted(:conflict)
     end
 
-    true
+    Outcome.awaiting_subflow
   end
 end

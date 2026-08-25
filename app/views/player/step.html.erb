@@ -26,7 +26,9 @@
             next_url: player_scenario_next_path(@scenario),
             stop_url: player_scenario_stop_path(@scenario),
             back_button: player_back_button(@scenario),
-            show_cancel: current_user.present? %>
+            show_cancel: current_user.present?,
+            errors: @step_errors || [],
+            submitted: @submitted || {} %>
     </div>
   </div>
 <% else %>

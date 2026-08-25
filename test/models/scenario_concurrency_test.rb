@@ -58,17 +58,18 @@ class ScenarioConcurrencyTest < ActiveSupport::TestCase
     end
   end
 
-  test 'StaleObjectError on stale process_step returns false' do
+  test 'StaleObjectError on stale process_step halts as a conflict' do
     scenario = create_scenario
     stale = Scenario.find(scenario.id)
 
     # First instance advances successfully
-    assert scenario.process_step('answer1')
+    assert_predicate scenario.process_step('answer1'), :advanced?
 
-    # Stale instance should return false (not raise)
-    result = stale.process_step('answer2')
+    # Stale instance should report the conflict (not raise)
+    outcome = stale.process_step('answer2')
 
-    assert_not result
+    assert_predicate outcome, :halted?
+    assert_equal :conflict, outcome.reason
   end
 
   test 'StaleObjectError on stale process_subflow_completion returns false' do
