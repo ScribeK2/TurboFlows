@@ -137,16 +137,10 @@ class WorkflowGraphConverter
   def validate_converted_graph(steps)
     return false if steps.empty?
 
-    graph_steps = {}
-    steps.each do |step|
-      step_hash = {
-        "id" => step.uuid,
-        "type" => step.type.demodulize.underscore,
-        "title" => step.title,
-        "transitions" => step.transitions.reload.map { |t| { "target_uuid" => t.target_step.uuid, "condition" => t.condition } }
-      }
-      graph_steps[step.uuid] = step_hash
-    end
+    # Transitions were just written by #convert, so reload before building —
+    # GraphHashBuilder reads step.transitions as the caller leaves it.
+    steps.each { |step| step.transitions.reload }
+    graph_steps = GraphHashBuilder.call(steps)
 
     start_uuid = steps.first.uuid
     validator = GraphValidator.new(graph_steps, start_uuid)

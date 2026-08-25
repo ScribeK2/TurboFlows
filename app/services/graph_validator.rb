@@ -7,15 +7,22 @@
 # - Reachability: All nodes can be reached from the start node
 # - Terminals: At least one terminal node exists (node with no outgoing transitions)
 #
+# Reporting: validations append Findings, which carry the code and the UUID of
+# the step at fault. #errors is a projection of those findings for callers that
+# only want sentences (AR validation, publish, import, conversion). Consumers
+# that need to know *which* step failed read #findings and switch on the code —
+# never regex the message back into a step, because titles are not unique.
+#
 # Usage:
 #   validator = GraphValidator.new(graph_steps_hash, start_node_uuid)
 #   if validator.valid?
 #     # Graph is valid
 #   else
-#     validator.errors # => ["Cycle detected: A -> B -> A", ...]
+#     validator.findings # => [#<ValidationFinding code: :cycle_detected, step_uuid: "...">]
+#     validator.errors   # => ["Cycle detected: A -> B -> A", ...]
 #   end
 class GraphValidator
-  attr_reader :errors
+  attr_reader :findings
 
   # Initialize with a hash of steps keyed by UUID and the start node UUID
   # @param steps_hash [Hash] Steps hash { "uuid" => step_hash, ... }
@@ -23,15 +30,22 @@ class GraphValidator
   def initialize(steps_hash, start_uuid)
     @steps = steps_hash || {}
     @start_uuid = start_uuid
-    @errors = []
+    @findings = []
+  end
+
+  # Human-readable messages, in findings order. Kept so callers that only
+  # surface text (Workflow validation, WorkflowPublisher, WorkflowImporter,
+  # WorkflowGraphConverter, TransitionBuilder) need no knowledge of findings.
+  def errors
+    @findings.map(&:message)
   end
 
   # Run all validations and return true if graph is valid
   def valid?
-    @errors = []
+    @findings = []
 
     validate_has_steps
-    return false if @errors.any?
+    return false if @findings.any?
 
     validate_start_node_exists
     validate_acyclic
@@ -39,7 +53,7 @@ class GraphValidator
     validate_reachability
     validate_terminals
 
-    @errors.empty?
+    @findings.empty?
   end
 
   # Check if graph is acyclic (no cycles)
@@ -58,7 +72,8 @@ class GraphValidator
       next unless cycle
 
       cycle_path = cycle.map { |id| step_title(id) }.join(' -> ')
-      @errors << "Cycle detected: #{cycle_path}"
+      add_finding(:cycle_detected, "Cycle detected: #{cycle_path}",
+                  step_uuid: cycle.first, details: { cycle_uuids: cycle })
       break # Stop at first cycle found
     end
   end
@@ -70,11 +85,13 @@ class GraphValidator
       transitions.each_with_index do |transition, index|
         target_uuid = transition['target_uuid']
         next if target_uuid.blank?
+        next if @steps.key?(target_uuid)
 
-        unless @steps.key?(target_uuid)
-          step_name = step['title'] || uuid
-          @errors << "Step '#{step_name}', Transition #{index + 1}: References non-existent step ID: #{target_uuid}"
-        end
+        step_name = step['title'] || uuid
+        add_finding(:transition_target_missing,
+                    "Step '#{step_name}', Transition #{index + 1}: References non-existent step ID: #{target_uuid}",
+                    step_uuid: uuid,
+                    details: { target_uuid: target_uuid, transition_index: index })
       end
     end
   end
@@ -90,7 +107,8 @@ class GraphValidator
     unreachable.each do |uuid|
       step = @steps[uuid]
       step_name = step['title'] || uuid
-      @errors << "Step '#{step_name}' is not reachable from the start node"
+      add_finding(:unreachable_step, "Step '#{step_name}' is not reachable from the start node",
+                  step_uuid: uuid)
     end
   end
 
@@ -104,32 +122,36 @@ class GraphValidator
     end.keys
 
     if terminal_uuids.empty?
-      @errors << "No terminal nodes found. At least one Resolve step is required."
+      add_finding(:no_terminal_nodes, "No terminal nodes found. At least one Resolve step is required.")
       return
     end
 
     terminal_uuids.each do |uuid|
       node = @steps[uuid]
-      unless node && node["type"] == "resolve"
-        @errors << "Terminal node '#{node&.dig('title') || uuid}' is not a Resolve step. All terminal nodes must be Resolve steps."
-      end
+      next if node && node["type"] == "resolve"
+
+      add_finding(:terminal_not_resolve,
+                  "Terminal node '#{node&.dig('title') || uuid}' is not a Resolve step. All terminal nodes must be Resolve steps.",
+                  step_uuid: uuid)
     end
   end
 
   private
 
+  def add_finding(code, message, step_uuid: nil, details: {})
+    @findings << ValidationFinding.new(code:, step_uuid:, message:, details:)
+  end
+
   def validate_has_steps
-    if @steps.empty?
-      @errors << "Workflow has no steps"
-    end
+    add_finding(:no_steps, "Workflow has no steps") if @steps.empty?
   end
 
   def validate_start_node_exists
     return if @start_uuid.blank?
+    return if @steps.key?(@start_uuid)
 
-    unless @steps.key?(@start_uuid)
-      @errors << "Start node '#{@start_uuid}' does not exist in the workflow"
-    end
+    add_finding(:start_node_missing, "Start node '#{@start_uuid}' does not exist in the workflow",
+                details: { start_uuid: @start_uuid })
   end
 
   # DFS cycle detection with path tracking
