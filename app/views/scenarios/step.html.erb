@@ -48,7 +48,9 @@
                 next_url: next_step_scenario_path(@scenario),
                 stop_url: stop_scenario_path(@scenario),
                 back_button: scenario_back_button(@scenario),
-                show_cancel: true %>
+                show_cancel: true,
+                errors: @step_errors || [],
+                submitted: @submitted || {} %>
         </div>
       </div>
     <% else %>

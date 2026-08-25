@@ -86,17 +86,15 @@ class PlayerController < ApplicationController
     @scenario.inputs["escalation_reason"] = params[:escalation_reason] if params[:escalation_reason].present?
     @scenario.inputs["resolution_notes"] = params[:resolution_notes] if params[:resolution_notes].present?
     @scenario.record_step_ended
-    unless @scenario.process_step(answer, resolved_here: params[:resolved].present?)
-      @scenario.reload
-      redirect_to player_scenario_step_path(@scenario) and return
-    end
 
-    return if redirect_to_subflow_if_awaiting?(@scenario)
-
-    if @scenario.completed? || @scenario.stopped?
-      handle_child_completion(@scenario)
+    case @scenario.process_step(answer, resolved_here: params[:resolved].present?)
+    in { status: :blocked, errors: } then render_blocked_step(errors)
+    in { status: :awaiting_subflow } then redirect_to_subflow_if_awaiting?(@scenario)
+    in { status: :resolved }         then handle_child_completion(@scenario)
+    in { status: :advanced }         then redirect_to subflow_step_path(@scenario)
     else
-      redirect_to subflow_step_path(@scenario)
+      @scenario.reload
+      redirect_to player_scenario_step_path(@scenario)
     end
   end
 
@@ -140,6 +138,23 @@ class PlayerController < ApplicationController
   end
 
   private
+
+  # A refused step re-renders where the user already is, with the reasons.
+  # 422 because Turbo discards a 200 that is not a redirect.
+  def render_blocked_step(errors)
+    @workflow = @scenario.workflow
+    @current_step = resolve_current_step
+    @step_errors = errors
+    @submitted = submitted_form_values
+    render :step, status: :unprocessable_content
+  end
+
+  # Values from the refused submit, so a blocked form keeps what was typed.
+  # Duplicated in ScenariosController — the two shells share no seam yet.
+  def submitted_form_values
+    raw = params[:answer]
+    raw.is_a?(ActionController::Parameters) ? raw.permit!.to_h : {}
+  end
 
   # SubflowOrchestration template methods
   def subflow_step_path(scenario)

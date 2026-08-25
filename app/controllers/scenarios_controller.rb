@@ -41,7 +41,9 @@ class ScenariosController < ApplicationController
 
   def next_step
     @scenario = current_user.scenarios.find(params[:id])
-    @workflow = @scenario.workflow
+    # root_workflow, matching #step: a blocked step re-renders this shell, and
+    # the header names the run the user started, not the sub-flow frame.
+    @workflow = @scenario.root_workflow
 
     # Prevent processing if stopped
     if @scenario.stopped?
@@ -61,22 +63,31 @@ class ScenariosController < ApplicationController
     answer = params[:answer]
     resolved_here = ActiveModel::Type::Boolean.new.cast(params[:resolved_here]) || false
 
-    # Process the current step
-    # Note: checkpoint steps won't process here - they use resolve_checkpoint instead
-    if @scenario.process_step(answer, resolved_here: resolved_here)
-      return if redirect_to_subflow_if_awaiting?(@scenario)
-
-      if @scenario.complete?
-        handle_child_completion(@scenario)
-      else
-        redirect_to subflow_step_path(@scenario)
-      end
-    else
-      redirect_to step_scenario_path(@scenario), alert: "Failed to process step."
+    case @scenario.process_step(answer, resolved_here: resolved_here)
+    in { status: :blocked, errors: }        then render_blocked_step(errors)
+    in { status: :awaiting_subflow }        then redirect_to_subflow_if_awaiting?(@scenario)
+    in { status: :resolved }                then handle_child_completion(@scenario)
+    in { status: :advanced }                then redirect_to subflow_step_path(@scenario)
+    else redirect_to step_scenario_path(@scenario), alert: "Failed to process step."
     end
   end
 
   private
+
+  # A refused step re-renders where the user already is, with the reasons.
+  # 422 because Turbo discards a 200 that is not a redirect.
+  def render_blocked_step(errors)
+    @step_errors = errors
+    @submitted = submitted_form_values
+    render :step, status: :unprocessable_content
+  end
+
+  # Values from the refused submit, so a blocked form keeps what was typed.
+  # Duplicated in PlayerController — the two shells share no seam yet.
+  def submitted_form_values
+    raw = params[:answer]
+    raw.is_a?(ActionController::Parameters) ? raw.permit!.to_h : {}
+  end
 
   # Returns true if a redirect was issued (caller should return), false otherwise.
   def handle_step_guard_redirects
