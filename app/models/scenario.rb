@@ -1,5 +1,3 @@
-require 'timeout'
-
 class Scenario < ApplicationRecord
   include ScenarioExecution
 
@@ -30,7 +28,6 @@ class Scenario < ApplicationRecord
 
   # Scenario limits to prevent infinite loops and DoS
   MAX_ITERATIONS = ENV.fetch("SCENARIO_MAX_ITERATIONS", 1000).to_i
-  MAX_EXECUTION_TIME = ENV.fetch("SCENARIO_MAX_SECONDS", 30).to_i # seconds
   MAX_CONDITION_DEPTH = 50 # Max nested condition evaluations per step
 
   # Retention periods for cleanup (days)
@@ -42,8 +39,7 @@ class Scenario < ApplicationRecord
     ENV.fetch("SCENARIO_RETENTION_LIVE_DAYS", 90).to_i
   end
 
-  # Custom error classes
-  class ScenarioTimeout < StandardError; end
+  # Custom error class
   class ScenarioIterationLimit < StandardError; end
 
   # JSON columns - automatically serialized/deserialized
@@ -319,28 +315,6 @@ class Scenario < ApplicationRecord
     end
 
     true
-  end
-
-  def execute
-    return false unless workflow.present? && inputs.present?
-
-    # Wrap execution with timeout protection
-    Timeout.timeout(MAX_EXECUTION_TIME, ScenarioTimeout) do
-      execute_with_limits
-    end
-  rescue ScenarioTimeout
-    self.status = 'timeout'
-    self.results ||= {}
-    results['_error'] = "Scenario timed out after #{MAX_EXECUTION_TIME} seconds"
-    record_completion("error")
-    save
-    Rails.logger.warn "Scenario #{id} timed out for workflow #{workflow_id}"
-    false
-  rescue ScenarioIterationLimit
-    record_completion("error")
-    save
-    Rails.logger.warn "Scenario #{id} hit iteration limit for workflow #{workflow_id}"
-    false
   end
 
   # ============================================================================

@@ -14,9 +14,6 @@ class ScenarioLimitsTest < ActiveSupport::TestCase
     assert_operator Scenario::MAX_ITERATIONS, :>=, 100, "MAX_ITERATIONS should allow reasonable workflow size"
     assert_operator Scenario::MAX_ITERATIONS, :<=, 10_000, "MAX_ITERATIONS should prevent DoS"
 
-    assert_operator Scenario::MAX_EXECUTION_TIME, :>=, 10, "MAX_EXECUTION_TIME should allow reasonable workflows"
-    assert_operator Scenario::MAX_EXECUTION_TIME, :<=, 120, "MAX_EXECUTION_TIME should prevent resource hogging"
-
     assert_operator Scenario::MAX_CONDITION_DEPTH, :>=, 10, "MAX_CONDITION_DEPTH should allow nested conditions"
   end
 
@@ -54,29 +51,6 @@ class ScenarioLimitsTest < ActiveSupport::TestCase
     assert_equal 'errored', scenario.status
     assert_predicate scenario.results['_error'], :present?
     assert_includes scenario.results['_error'], 'iterations'
-  end
-
-  test "normal workflows complete within limits" do
-    workflow = Workflow.create!(title: "Normal Workflow", user: @user)
-    Steps::Question.create!(workflow: workflow, position: 0, title: "Name", question: "What is your name?", variable_name: "name")
-    Steps::Action.create!(workflow: workflow, position: 1, title: "Greet")
-
-    scenario = Scenario.create!(
-      workflow: workflow,
-      user: @user,
-      status: 'active',
-      inputs: { "name" => "Test User" }
-    )
-
-    # Should complete normally
-    result = scenario.execute
-
-    assert result, "Normal workflow should complete successfully"
-
-    scenario.reload
-
-    assert_equal 2, scenario.execution_path.length
-    assert_predicate scenario.results['name'], :present?
   end
 
   test "step-by-step processing tracks iterations" do

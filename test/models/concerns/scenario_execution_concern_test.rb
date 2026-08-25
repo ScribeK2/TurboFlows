@@ -148,59 +148,6 @@ class ScenarioExecutionConcernTest < ActiveSupport::TestCase
   end
 
   # ---------------------------------------------------------------------------
-  # determine_next_step_index (legacy index-based resolution)
-  # ---------------------------------------------------------------------------
-
-  test "determine_next_step_index returns next index by default" do
-    scenario = build_scenario(@question)
-    scenario.current_step_index = 0
-
-    next_idx = scenario.determine_next_step_index(@question, {})
-    assert_equal 1, next_idx
-  end
-
-  # ---------------------------------------------------------------------------
-  # execute_with_limits (batch execution)
-  # ---------------------------------------------------------------------------
-
-  test "execute_with_limits processes workflow to completion" do
-    scenario = build_scenario(@question, inputs: { "q1" => "test answer" })
-
-    scenario.execute_with_limits
-
-    assert_equal "completed", scenario.status
-    assert_predicate scenario.execution_path, :any?, "Should have execution path entries"
-    assert_equal "test answer", scenario.results["Q1"]
-  end
-
-  test "execute_with_limits records action steps in execution path" do
-    wf = Workflow.create!(title: "Multi Step WF", user: @user)
-    a1 = Steps::Action.create!(workflow: wf, title: "Step A", position: 0)
-    a2 = Steps::Action.create!(workflow: wf, title: "Step B", position: 1)
-    r  = Steps::Resolve.create!(workflow: wf, title: "End", position: 2, resolution_type: "success")
-    Transition.create!(step: a1, target_step: a2, position: 0)
-    Transition.create!(step: a2, target_step: r, position: 0)
-    wf.update!(start_step: a1)
-
-    scenario = Scenario.create!(
-      workflow: wf, user: @user, purpose: "simulation",
-      status: "active", current_node_uuid: a1.uuid,
-      execution_path: [], results: {}, inputs: {}
-    )
-
-    scenario.execute_with_limits
-
-    assert_equal "completed", scenario.status
-    # Batch execution records one path entry per step
-    assert_equal 3, scenario.execution_path.size
-    assert_equal "Step A", scenario.execution_path[0]["step_title"]
-    assert_equal "Step B", scenario.execution_path[1]["step_title"]
-    assert_equal "End", scenario.execution_path[2]["step_title"]
-    assert_equal "Action executed", scenario.results["Step A"]
-    assert_equal "Action executed", scenario.results["Step B"]
-  end
-
-  # ---------------------------------------------------------------------------
   # build_path_entry (private, but exercised via process_step)
   # ---------------------------------------------------------------------------
 

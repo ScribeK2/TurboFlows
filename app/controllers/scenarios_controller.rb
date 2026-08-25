@@ -15,9 +15,8 @@ class ScenariosController < ApplicationController
     # Guard clauses for terminal/waiting states
     return if handle_step_guard_redirects
 
-    # Handle navigation (back or jump-to-step)
+    # Handle back navigation
     handle_back_navigation if params[:back].present?
-    handle_jump_navigation if params[:step].present?
 
     # Auto-advance sub_flow steps immediately without user interaction
     return if auto_advance_non_interactive_step
@@ -129,48 +128,6 @@ class ScenariosController < ApplicationController
 
   def handle_back_navigation
     ScenarioNavigator.new(@scenario, @workflow).go_back
-  end
-
-  def handle_jump_navigation
-    step_index = params[:step].to_i
-    return unless step_index >= 0 && step_index < @scenario.execution_path.length
-
-    path_item = @scenario.execution_path[step_index]
-    return unless path_item && path_item['step_index'].present?
-
-    target_step_index = path_item['step_index']
-    @scenario.execution_path = @scenario.execution_path[0..step_index]
-
-    # Rebuild results and inputs from execution path up to this point
-    ordered_steps = @workflow.steps.order(:position).to_a
-    @scenario.results = {}
-    @scenario.inputs = {}
-    @scenario.execution_path.each do |path_entry|
-      next if path_entry['answer'].blank?
-
-      entry_step_index = path_entry['step_index'].to_i
-      next unless entry_step_index >= 0 && entry_step_index < ordered_steps.size
-
-      step = ordered_steps[entry_step_index]
-      next unless step.is_a?(Steps::Question)
-
-      input_key = step.variable_name.presence || entry_step_index.to_s
-      @scenario.inputs[input_key] = path_entry['answer']
-      @scenario.inputs[step.title] = path_entry['answer']
-      @scenario.results[step.title] = path_entry['answer']
-      @scenario.results[step.variable_name] = path_entry['answer'] if step.variable_name.present?
-    end
-
-    next_step_index = target_step_index.to_i + 1
-    total_steps = @workflow.steps.size
-    if next_step_index >= total_steps
-      @scenario.status = 'completed'
-      @scenario.current_step_index = total_steps
-    else
-      @scenario.current_step_index = next_step_index
-    end
-
-    @scenario.save
   end
 
   # Returns true if a redirect was issued (caller should return), false otherwise.

@@ -49,44 +49,6 @@ class ScenarioTest < ActiveSupport::TestCase
     assert_equal @user, scenario.user
   end
 
-  test "execute should process workflow steps" do
-    scenario = Scenario.create!(
-      workflow: @workflow,
-      user: @user,
-      inputs: { "Question 1" => "John Doe" }
-    )
-
-    assert scenario.execute
-    assert_predicate scenario.execution_path, :present?
-    assert_predicate scenario.results, :present?
-    assert_predicate scenario.execution_path, :any?
-  end
-
-  test "execute should track execution path" do
-    scenario = Scenario.create!(
-      workflow: @workflow,
-      user: @user,
-      inputs: { "Question 1" => "John Doe" }
-    )
-
-    scenario.execute
-
-    assert_kind_of Array, scenario.execution_path
-    assert_predicate scenario.execution_path.first["step_title"], :present?
-  end
-
-  test "execute should store results" do
-    scenario = Scenario.create!(
-      workflow: @workflow,
-      user: @user,
-      inputs: { "Question 1" => "John Doe" }
-    )
-
-    scenario.execute
-
-    assert_kind_of Hash, scenario.results
-  end
-
   # --- Analytics tracking tests ---
 
   test "should set started_at on creation" do
@@ -110,18 +72,29 @@ class ScenarioTest < ActiveSupport::TestCase
     assert_equal "simulation", scenario.purpose
   end
 
+  # A run that falls off the end of the graph without reaching a Resolve or
+  # Escalate step completes with the "completed" outcome — the one branch of
+  # check_completion that no other outcome test covers.
   test "should set outcome to completed when scenario completes normally" do
+    plain_workflow = Workflow.create!(title: "Falls Off The End", user: @user, graph_mode: true)
+    last_step = Steps::Action.create!(workflow: plain_workflow, position: 0, uuid: "step-1", title: "Do The Thing")
+    plain_workflow.update_column(:start_step_id, last_step.id)
+
     scenario = Scenario.create!(
-      workflow: @workflow,
+      workflow: plain_workflow,
       user: @user,
-      inputs: { "Question 1" => "John Doe" }
+      inputs: {},
+      current_node_uuid: "step-1"
     )
+    # Backdate the start so duration_seconds is asserted on a real value, not just presence.
+    scenario.update_column(:started_at, 60.seconds.ago)
 
-    scenario.execute
+    scenario.process_step
 
+    assert_nil scenario.current_node_uuid, "Advancing past the last step should leave no current node"
     assert_equal "completed", scenario.outcome
     assert_not_nil scenario.completed_at
-    assert_not_nil scenario.duration_seconds
+    assert_operator scenario.duration_seconds, :>=, 59, "Duration should be at least 59 seconds"
   end
 
   test "should set outcome to abandoned when scenario is stopped" do
@@ -216,21 +189,6 @@ class ScenarioTest < ActiveSupport::TestCase
     scenario.process_step
 
     assert_equal "escalated", scenario.outcome
-  end
-
-  test "should calculate duration_seconds on completion" do
-    scenario = Scenario.create!(
-      workflow: @workflow,
-      user: @user,
-      inputs: { "Question 1" => "John Doe" }
-    )
-    # Manually set started_at to 60 seconds ago to test duration
-    scenario.update_column(:started_at, 60.seconds.ago)
-
-    scenario.execute
-
-    assert_not_nil scenario.duration_seconds
-    assert_operator scenario.duration_seconds, :>=, 59, "Duration should be at least 59 seconds"
   end
 
   test "process_subflow_step does not crash when results is nil" do
