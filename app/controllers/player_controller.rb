@@ -53,7 +53,7 @@ class PlayerController < ApplicationController
 
     # Auto-advance sub_flow steps (they don't need user interaction)
     if @current_step&.step_type == "sub_flow"
-      unless @scenario.process_step(nil)
+      if auto_advance_failed?(@scenario.process_step(nil))
         @scenario.reload
         redirect_to player_scenario_step_path(@scenario) and return
       end
@@ -65,7 +65,7 @@ class PlayerController < ApplicationController
 
     # Auto-advance resolve steps in child scenarios (so sub-flows complete seamlessly)
     if @scenario.parent_scenario.present? && @current_step&.step_type == "resolve"
-      unless @scenario.process_step(nil)
+      if auto_advance_failed?(@scenario.process_step(nil))
         @scenario.reload
         redirect_to player_scenario_step_path(@scenario) and return
       end
@@ -138,6 +138,15 @@ class PlayerController < ApplicationController
   end
 
   private
+
+  # Auto-advancing a step the user never saw. Blocked and halted both mean it
+  # did not move, which is what the boolean used to say — the outcome is always
+  # a truthy object, so this has to be asked explicitly now.
+  #
+  # Duplicated in ScenariosController — the two shells share no seam yet.
+  def auto_advance_failed?(outcome)
+    outcome.blocked? || outcome.halted?
+  end
 
   # A refused step re-renders where the user already is, with the reasons.
   # 422 because Turbo discards a 200 that is not a redirect.
