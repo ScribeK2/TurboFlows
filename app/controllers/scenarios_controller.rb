@@ -15,9 +15,6 @@ class ScenariosController < ApplicationController
     # Guard clauses for terminal/waiting states
     return if handle_step_guard_redirects
 
-    # Handle back navigation
-    handle_back_navigation if params[:back].present?
-
     # Auto-advance sub_flow steps immediately without user interaction
     return if auto_advance_non_interactive_step
 
@@ -26,6 +23,12 @@ class ScenariosController < ApplicationController
 
     # NOTE: escalate and resolve steps show UI first, then process on Continue click
     # They are NOT auto-advanced here - they need user acknowledgment
+  end
+
+  def back
+    @scenario = current_user.scenarios.find(params[:id])
+    ScenarioNavigator.new(@scenario, @scenario.workflow).go_back
+    redirect_to step_scenario_path(@scenario)
   end
 
   def stop
@@ -124,10 +127,6 @@ class ScenariosController < ApplicationController
 
   def subflow_completion_path(scenario)
     scenario_path(scenario)
-  end
-
-  def handle_back_navigation
-    ScenarioNavigator.new(@scenario, @workflow).go_back
   end
 
   # Returns true if a redirect was issued (caller should return), false otherwise.

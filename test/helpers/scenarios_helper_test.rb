@@ -181,4 +181,27 @@ class ScenariosHelperTest < ActionView::TestCase
     assert_equal "S1", flat[0]["step_title"]
     assert_equal "S2", flat[1]["step_title"]
   end
+  test "scenario_back_button posts rather than linking to a GET" do
+    wf = Workflow.create!(title: "Back WF", user: @user)
+    scenario = Scenario.create!(
+      workflow: wf, user: @user, purpose: "simulation", inputs: {}, results: {},
+      execution_path: [{ "step_title" => "S1", "step_type" => "question", "results_delta" => {} }]
+    )
+
+    result = scenario_back_button(scenario)
+
+    assert_includes result, back_scenario_path(scenario)
+    assert_includes result, "post",
+                    "a GET that rewinds the run is fired by Turbo's hover prefetch"
+  end
+
+  test "scenario_back_button is hidden for a run whose entries predate the undo log" do
+    wf = Workflow.create!(title: "Back WF", user: @user)
+    scenario = Scenario.create!(
+      workflow: wf, user: @user, purpose: "simulation", inputs: {}, results: {},
+      execution_path: [{ "step_title" => "S1", "step_type" => "question" }]
+    )
+
+    assert_nil scenario_back_button(scenario)
+  end
 end

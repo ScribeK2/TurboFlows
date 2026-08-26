@@ -396,6 +396,11 @@ class Scenario < ApplicationRecord
   #
   # Internal keys are excluded: _resolution / _escalation / _error are rewritten
   # wholesale by the step that owns them, so undoing them per-key means nothing.
+  # Whether this run can step backwards. See ScenarioNavigator#can_go_back?.
+  def can_go_back?
+    ScenarioNavigator.new(self, workflow).can_go_back?
+  end
+
   def append_path_entry(entry)
     entry[:results_delta] = delta_between(results_before_step, results)
     entry[:inputs_delta]  = delta_between(inputs_before_step, inputs, except: TRANSIENT_INPUT_KEYS)

@@ -15,7 +15,7 @@ class PlayerHelperTest < ActionView::TestCase
   test "player_back_button returns link when execution_path has entries" do
     scenario = Scenario.create!(
       workflow: @workflow, user: @user, purpose: "live",
-      execution_path: [{ "step_title" => "S1", "step_type" => "question" }],
+      execution_path: [{ "step_title" => "S1", "step_type" => "question", "results_delta" => {} }],
       inputs: {}
     )
     result = player_back_button(scenario)
@@ -31,5 +31,15 @@ class PlayerHelperTest < ActionView::TestCase
       inputs: {}
     )
     assert_nil player_back_button(scenario)
+  end
+  test "player_back_button is hidden for a run whose entries predate the undo log" do
+    scenario = Scenario.create!(
+      workflow: @workflow, user: @user, purpose: "live",
+      execution_path: [{ "step_title" => "S1", "step_type" => "question" }],
+      inputs: {}
+    )
+
+    assert_nil player_back_button(scenario),
+               "offering Back on a run it cannot rewind is how the old rebuild lost data"
   end
 end

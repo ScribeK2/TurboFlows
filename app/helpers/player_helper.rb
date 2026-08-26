@@ -1,6 +1,6 @@
 module PlayerHelper
   def player_back_button(scenario)
-    return nil unless scenario.execution_path.present? && scenario.execution_path.length.positive?
+    return nil unless scenario.can_go_back?
 
     link_to player_scenario_back_path(scenario),
             class: "btn btn--plain",
