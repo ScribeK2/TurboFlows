@@ -36,7 +36,7 @@ class ScenarioExecutionTimingTest < ActiveSupport::TestCase
 
     entry = scenario.send(:build_path_entry, @resolve_step)
 
-    assert_equal pending_ts, entry[:started_at]
+    assert_equal pending_ts, entry["started_at"]
     assert_nil scenario.step_started_at_pending, "pending timestamp should be consumed"
   end
 
@@ -45,7 +45,7 @@ class ScenarioExecutionTimingTest < ActiveSupport::TestCase
 
     freeze_time do
       entry = scenario.send(:build_path_entry, @resolve_step)
-      assert_equal Time.current.iso8601(3), entry[:started_at]
+      assert_equal Time.current.iso8601(3), entry["started_at"]
     end
   end
 

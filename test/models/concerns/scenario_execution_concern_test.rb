@@ -118,7 +118,7 @@ class ScenarioExecutionConcernTest < ActiveSupport::TestCase
 
     scenario.resolve_at_current_step(@question)
 
-    assert scenario.execution_path.last[:resolved]
+    assert scenario.execution_path.last["resolved"]
     assert_equal "resolved", scenario.outcome
     assert_equal "completed", scenario.status
     assert_nil scenario.current_node_uuid

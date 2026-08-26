@@ -349,7 +349,7 @@ class Scenario < ApplicationRecord
   # Resolve the scenario at the current step (mid-step resolution via can_resolve flag)
   def resolve_at_current_step(step)
     # Mark the last execution path entry as resolved
-    execution_path.last[:resolved] = true if execution_path.present?
+    execution_path.last["resolved"] = true if execution_path.present?
 
     self.results ||= {}
     results['_resolution'] = {
@@ -402,8 +402,8 @@ class Scenario < ApplicationRecord
   end
 
   def append_path_entry(entry)
-    entry[:results_delta] = delta_between(results_before_step, results)
-    entry[:inputs_delta]  = delta_between(inputs_before_step, inputs, except: TRANSIENT_INPUT_KEYS)
+    entry["results_delta"] = delta_between(results_before_step, results)
+    entry["inputs_delta"] = delta_between(inputs_before_step, inputs, except: TRANSIENT_INPUT_KEYS)
     execution_path << entry
   end
 
@@ -458,10 +458,10 @@ class Scenario < ApplicationRecord
   # Build execution path entry for a step
   def build_path_entry(step)
     entry = {
-      step_title: step.title,
-      step_type: step.step_type,
-      step_uuid: step.uuid,
-      started_at: step_started_at_pending || Time.current.iso8601(3)
+      "step_title" => step.title,
+      "step_type" => step.step_type,
+      "step_uuid" => step.uuid,
+      "started_at" => step_started_at_pending || Time.current.iso8601(3)
     }
     self.step_started_at_pending = nil
     entry

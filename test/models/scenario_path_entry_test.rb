@@ -113,4 +113,74 @@ class ScenarioPathEntryTest < ActiveSupport::TestCase
     assert_equal first_delta.size, last_delta.size,
                  "a full snapshot made this O(n^2); the 30th entry must be no heavier than the first"
   end
+  test "action entry captures the script the agent actually saw" do
+    scripted = Workflow.create!(title: "Scripted WF", user: @user)
+    act = Steps::Action.create!(workflow: scripted, title: "Read script", position: 0)
+    act.instructions = "Tell the customer about ticket {{ticket_id}}."
+    act.save!
+    done = Steps::Resolve.create!(workflow: scripted, title: "Done", position: 1)
+    Transition.create!(step: act, target_step: done, position: 0)
+    scripted.update!(start_step: act)
+
+    scenario = Scenario.create!(
+      workflow: scripted, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: act.uuid, execution_path: [],
+      results: { "ticket_id" => "T-42" }, inputs: {}
+    )
+    scenario.process_step(nil)
+
+    assert_equal "Tell the customer about ticket T-42.",
+                 scenario.execution_path.last["body"],
+                 "interpolated as the agent read it, not as the variables stand later"
+  end
+
+  test "message entry captures its body under the same key as other step types" do
+    messaging = Workflow.create!(title: "Message WF", user: @user)
+    msg = Steps::Message.create!(workflow: messaging, title: "Notice", position: 0)
+    msg.content = "Please hold."
+    msg.save!
+    done = Steps::Resolve.create!(workflow: messaging, title: "Done", position: 1)
+    Transition.create!(step: msg, target_step: done, position: 0)
+    messaging.update!(start_step: msg)
+
+    scenario = Scenario.create!(
+      workflow: messaging, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: msg.uuid, execution_path: [], results: {}, inputs: {}
+    )
+    scenario.process_step(nil)
+
+    assert_equal "Please hold.", scenario.execution_path.last["body"],
+                 "one key means the thread reads bodies the same way for every step type"
+  end
+
+  test "captured body is capped" do
+    scripted = Workflow.create!(title: "Long Script WF", user: @user)
+    act = Steps::Action.create!(workflow: scripted, title: "Long", position: 0)
+    act.instructions = "x" * (Scenario::ENTRY_TEXT_LIMIT + 500)
+    act.save!
+    done = Steps::Resolve.create!(workflow: scripted, title: "Done", position: 1)
+    Transition.create!(step: act, target_step: done, position: 0)
+    scripted.update!(start_step: act)
+
+    scenario = Scenario.create!(
+      workflow: scripted, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: act.uuid, execution_path: [], results: {}, inputs: {}
+    )
+    scenario.process_step(nil)
+
+    assert_operator scenario.execution_path.last["body"].length, :<=, Scenario::ENTRY_TEXT_LIMIT
+  end
+  # Characterisation, not a regression guard: symbol keys are currently
+  # harmless, because save! round-trips a json attribute through its serialised
+  # form and every reader runs after a save. The window between appending an
+  # entry and saving it is the exception, and it is where the streamed runner's
+  # renderers will live — so it is pinned rather than left to be rediscovered.
+  test "an entry is string-keyed before it is saved" do
+    entry = @scenario.send(:build_path_entry, @action)
+    @scenario.append_path_entry(entry)
+
+    symbol_keys = @scenario.execution_path.last.keys.grep_v(String)
+
+    assert_empty symbol_keys, "an entry read before save must not answer nil to a string key"
+  end
 end

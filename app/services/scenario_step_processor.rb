@@ -30,6 +30,16 @@ class ScenarioStepProcessor
     def halted? = status == :halted
   end
 
+  # The step body as the agent read it: interpolated, plain text, capped.
+  #
+  # Stored on the entry rather than fetched from the Step later, because steps
+  # are edited and deleted after runs — reading the live record would replay a
+  # call with text nobody ever saw, or blow up on a missing uuid.
+  #
+  # Plain text, not the Action Text markup: a read-only re-read does not need
+  # it, and HTML in a json column invites an escaping review with no upside.
+  BODY_FIELDS = { "action" => :instructions, "message" => :content }.freeze
+
   def initialize(scenario)
     @scenario = scenario
   end
@@ -53,6 +63,17 @@ class ScenarioStepProcessor
 
   private
 
+  def capture_body(step)
+    field = BODY_FIELDS[step.step_type]
+    return nil unless field
+
+    rich = step.try(field)
+    return nil if rich.blank?
+
+    plain = rich.respond_to?(:to_plain_text) ? rich.to_plain_text : rich.to_s
+    VariableInterpolator.interpolate(plain, @scenario.results || {}).truncate(Scenario::ENTRY_TEXT_LIMIT)
+  end
+
   # Process a question step
   def process_question_step(step, answer, path_entry)
     input_key = step.variable_name.presence || @scenario.current_step_index.to_s
@@ -64,7 +85,7 @@ class ScenarioStepProcessor
     @scenario.results[step.title] = answer if answer.present?
     @scenario.results[step.variable_name] = answer if step.variable_name.present? && answer.present?
 
-    path_entry[:answer] = answer
+    path_entry["answer"] = answer
     @scenario.append_path_entry(path_entry)
 
     @scenario.advance_to_next_step(step)
@@ -97,7 +118,8 @@ class ScenarioStepProcessor
 
   # Process an action step
   def process_action_step(step, path_entry, resolved_here: false)
-    path_entry[:action_completed] = true
+    path_entry["action_completed"] = true
+    path_entry["body"] = capture_body(step)
     @scenario.results ||= {}
     @scenario.results[step.title] = "Action executed"
 
@@ -128,15 +150,11 @@ class ScenarioStepProcessor
   # Process a message step (Graph Mode)
   # Message steps display information to the CSR and auto-advance
   def process_message_step(step, path_entry, resolved_here: false)
-    path_entry[:message_displayed] = true
+    path_entry["message_displayed"] = true
     @scenario.results ||= {}
     @scenario.results[step.title] = "Message displayed"
 
-    # Interpolate content if present (Action Text or plain string)
-    content_text = step.respond_to?(:content) && step.content.present? ? step.content.to_plain_text : nil
-    if content_text.present?
-      path_entry[:content] = VariableInterpolator.interpolate(content_text, @scenario.results)
-    end
+    path_entry["body"] = capture_body(step)
 
     @scenario.append_path_entry(path_entry)
 
@@ -159,7 +177,7 @@ class ScenarioStepProcessor
       return Outcome.blocked(["Escalation reason is required"]) if reason.blank?
     end
 
-    path_entry[:escalated] = true
+    path_entry["escalated"] = true
     @scenario.results ||= {}
     @scenario.results[step.title] = "Escalated"
 
@@ -195,7 +213,7 @@ class ScenarioStepProcessor
       return Outcome.blocked(["Resolution notes are required"]) if notes.blank?
     end
 
-    path_entry[:resolved] = true
+    path_entry["resolved"] = true
     @scenario.results ||= {}
     @scenario.results[step.title] = "Issue resolved"
 
@@ -276,9 +294,9 @@ class ScenarioStepProcessor
     start_uuid = target_workflow.start_step&.uuid || target_workflow.steps.first&.uuid
     child_scenario.update!(current_node_uuid: start_uuid)
 
-    path_entry[:subflow_started] = true
-    path_entry[:child_scenario_id] = child_scenario.id
-    path_entry[:target_workflow_title] = target_workflow.title
+    path_entry["subflow_started"] = true
+    path_entry["child_scenario_id"] = child_scenario.id
+    path_entry["target_workflow_title"] = target_workflow.title
     @scenario.append_path_entry(path_entry)
 
     # Mark parent as awaiting sub-flow
