@@ -30,6 +30,12 @@ module RunnerHelper
   # is. Without it the card outdents while the run is still inside one, which
   # reads as the sub-flow having ended — the opposite of what indentation is
   # here to say.
+  # One query per level, unlike ScenarioSettler.auto_processable? which was
+  # changed to read parent_scenario_id precisely to avoid that. The id cannot
+  # answer this one — depth is the length of the chain, not whether it exists —
+  # and SubflowValidator caps nesting at 10, so this is a bounded walk once per
+  # render rather than per advance. Batch it if a run ever nests deeply enough
+  # to notice.
   def runner_thread_current_depth(scenario)
     depth = 0
     frame = scenario

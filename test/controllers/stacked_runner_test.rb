@@ -258,4 +258,32 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
                   "share links are the surface least able to report what they saw — " \
                   "they must not get a different runner from the author"
   end
+  # A stopped run leaves the thread in both shells. "Stopped" is abandonment,
+  # not an ending worth reading back — and _thread_complete says "this run is
+  # complete", which a stopped run is not. Pinned in both shells because
+  # Scenario#complete? returns true for stopped runs, so the only thing keeping
+  # a stopped run off the thread is guard order.
+  test "a stopped run leaves the thread rather than claiming to be complete" do
+    scenario = scenario_at(@q1)
+    ScenarioSettler.new(scenario).settle("Yes")
+    scenario.stop!
+
+    with_stacked_runner { get step_scenario_path(scenario) }
+
+    assert_redirected_to scenario_path(scenario)
+  end
+
+  test "the Player also leaves a stopped run" do
+    @workflow.update!(status: "published")
+    scenario = Scenario.create!(
+      workflow: @workflow, user: @user, purpose: "live", started_at: Time.current,
+      current_node_uuid: @q1.uuid, execution_path: [], results: {}, inputs: {}
+    )
+    ScenarioSettler.new(scenario).settle("Yes")
+    scenario.stop!
+
+    with_stacked_runner { get player_scenario_step_path(scenario) }
+
+    assert_redirected_to player_scenario_show_path(scenario)
+  end
 end
