@@ -270,6 +270,7 @@ class Scenario < ApplicationRecord
     return false if child && !child.complete?
 
     # Merge child results back to parent
+    results_before_merge = (results || {}).dup
     if child&.results.present?
       self.results ||= {}
 
@@ -303,6 +304,8 @@ class Scenario < ApplicationRecord
         end
       end
     end
+
+    stamp_subflow_merge(results_before_merge)
 
     # Move to next step after sub-flow
     self.status = 'active'
@@ -398,7 +401,7 @@ class Scenario < ApplicationRecord
   # wholesale by the step that owns them, so undoing them per-key means nothing.
   # Whether this run can step backwards. See ScenarioNavigator#can_go_back?.
   def can_go_back?
-    ScenarioNavigator.new(self, workflow).can_go_back?
+    ScenarioNavigator.new(self).can_go_back?
   end
 
   def append_path_entry(entry)
@@ -408,6 +411,25 @@ class Scenario < ApplicationRecord
   end
 
   private
+
+  # Fold what a completed sub-flow merged in onto the sub_flow entry's undo log.
+  #
+  # The merge happens here, long after that entry was appended, so without this
+  # the child's contribution belongs to no entry and Back cannot reverse it —
+  # backing past a finished sub-flow left the child's values in the parent's bag.
+  #
+  # Merged onto the existing delta rather than replacing it, and existing keys
+  # win: the entry may already record what the sub_flow step itself changed, and
+  # that prior value is the older, more correct one to restore.
+  def stamp_subflow_merge(results_before_merge)
+    entry = execution_path.rfind do |candidate|
+      candidate["subflow_started"] && candidate["step_uuid"] == resume_node_uuid
+    end
+    return unless entry
+
+    merged = delta_between(results_before_merge, results)
+    entry["results_delta"] = merged.merge(entry["results_delta"] || {})
+  end
 
   # What changed between two bags, as {key => {"was" => prior_value}}.
   #

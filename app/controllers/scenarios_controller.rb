@@ -27,7 +27,7 @@ class ScenariosController < ApplicationController
 
   def back
     @scenario = current_user.scenarios.find(params[:id])
-    ScenarioNavigator.new(@scenario, @scenario.workflow).go_back
+    ScenarioNavigator.new(@scenario).go_back
     redirect_to step_scenario_path(@scenario)
   end
 

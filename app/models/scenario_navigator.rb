@@ -11,9 +11,13 @@
 # reversed by applying its own delta rather than by reconstructing everything
 # that came before it.
 class ScenarioNavigator
-  def initialize(scenario, workflow)
+  # Outcome blobs a step wrote wholesale, keyed by the flag that step leaves on
+  # its own entry. They are excluded from the delta — undoing them key by key
+  # means nothing — so undoing the step has to drop them outright.
+  OUTCOME_BLOBS = { "resolved" => "_resolution", "escalated" => "_escalation" }.freeze
+
+  def initialize(scenario)
     @scenario = scenario
-    @workflow = workflow
   end
 
   # Whether this run can step backwards.
@@ -66,6 +70,20 @@ class ScenarioNavigator
   def undo(entry)
     @scenario.results = apply_delta(@scenario.results, entry["results_delta"])
     @scenario.inputs  = apply_delta(@scenario.inputs, entry["inputs_delta"])
+    drop_outcome_blobs(entry)
+  end
+
+  # The old rebuild emptied the whole bag, so it cleared these as a side effect
+  # of destroying everything else. Undoing precisely means clearing them on
+  # purpose: a reopened run still carrying _resolution reports "resolved as
+  # Success" even after it goes on to escalate, because scenario_summary_sentence
+  # reads _resolution first.
+  def drop_outcome_blobs(entry)
+    OUTCOME_BLOBS.each do |flag, key|
+      next unless entry[flag]
+
+      @scenario.results = (@scenario.results || {}).except(key)
+    end
   end
 
   def apply_delta(bag, delta)

@@ -99,7 +99,7 @@ class PlayerController < ApplicationController
   end
 
   def back
-    navigator = ScenarioNavigator.new(@scenario, @scenario.workflow)
+    navigator = ScenarioNavigator.new(@scenario)
     navigator.go_back
     redirect_to player_scenario_step_path(@scenario)
   end
