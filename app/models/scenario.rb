@@ -127,10 +127,13 @@ class Scenario < ApplicationRecord
   # Get the current step via UUID lookup
   # Returns an AR Step object or nil
   def current_step
-    return nil unless workflow&.steps&.any?
+    # Cheap guard first, and no separate existence check: find_by already
+    # answers nil for a workflow with no steps, so `steps.any?` was a query
+    # asked before every lookup to learn nothing. This runs on every advance and
+    # again on every render.
     return nil if current_node_uuid.blank?
 
-    workflow.steps.find_by(uuid: current_node_uuid)
+    workflow&.steps&.find_by(uuid: current_node_uuid)
   end
 
   # Get the current step UUID

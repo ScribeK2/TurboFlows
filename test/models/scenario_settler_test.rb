@@ -249,4 +249,26 @@ class ScenarioSettlerTest < ActiveSupport::TestCase
     assert_equal q.uuid, landed.current_node_uuid
     assert_empty landed.execution_path, "a run that has not been answered has no history"
   end
+  test "traversed includes steps processed inside a child scenario" do
+    child_wf, = child_workflow
+    workflow = Workflow.create!(title: "Traversal WF", user: @user)
+    sf = Steps::SubFlow.create!(workflow: workflow, title: "SF", position: 0, sub_flow_workflow_id: child_wf.id)
+    after = Steps::Question.create!(workflow: workflow, title: "After", position: 1, variable_name: "av")
+    done = Steps::Resolve.create!(workflow: workflow, title: "Done", position: 2)
+    Transition.create!(step: sf, target_step: after, position: 0)
+    Transition.create!(step: after, target_step: done, position: 0)
+    workflow.update!(start_step: sf)
+
+    scenario = Scenario.create!(
+      workflow: workflow, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: sf.uuid, execution_path: [], results: {}, inputs: {}
+    )
+    child = ScenarioSettler.new(scenario).settle.scenario
+
+    settled = ScenarioSettler.new(child).settle("ChildAnswer")
+
+    assert_equal %w[question resolve], settled.traversed.pluck("step_type"),
+                 "the child's question and its closing resolve were both processed by this move, " \
+                 "and a transcript with holes is worse than no transcript"
+  end
 end

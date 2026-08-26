@@ -36,7 +36,11 @@ class ScenarioSettler
   def self.auto_processable?(scenario, step)
     return true if step.step_type == "sub_flow"
 
-    step.step_type == "resolve" && scenario.parent_scenario.present?
+    # parent_scenario_id, not parent_scenario: "is this a child" is answered by
+    # the foreign key, and this runs in the settle loop and again in
+    # Scenario#parked? on every render. Loading the association to ask cost a
+    # query per advance for nothing.
+    step.step_type == "resolve" && scenario.parent_scenario_id.present?
   end
 
   def initialize(scenario)
@@ -46,9 +50,9 @@ class ScenarioSettler
   # Process one answer, then keep going while the run is on a node nobody can
   # answer. Returns Settled.
   def settle(answer = nil, resolved_here: false)
+    @traversed = []
     current = @scenario
-    before = path_length(current.root_scenario)
-    outcome = current.process_step(answer, resolved_here: resolved_here)
+    outcome = process(current, answer, resolved_here: resolved_here)
 
     loop do
       break if outcome.blocked? || outcome.halted?
@@ -65,10 +69,10 @@ class ScenarioSettler
       step = current.current_step
       break unless step && auto_processable?(current, step)
 
-      outcome = current.process_step(nil)
+      outcome = process(current)
     end
 
-    settled(current, outcome, before)
+    Settled.new(scenario: current, outcome: outcome, traversed: @traversed)
   end
 
   # Move a freshly created run off an opening step that has no UI.
@@ -121,16 +125,16 @@ class ScenarioSettler
     self.class.auto_processable?(scenario, step)
   end
 
-  def settled(current, outcome, before)
-    Settled.new(scenario: current, outcome: outcome, traversed: traversed_since(current, before))
-  end
-
-  def path_length(scenario)
-    (scenario.execution_path || []).length
-  end
-
-  def traversed_since(current, before)
-    root = current.root_scenario.reload
-    (root.execution_path || []).drop(before)
+  # Process one step, keeping whatever it appended.
+  #
+  # Recorded here, as it happens, rather than diffed from the root's path
+  # afterwards: a child scenario's entries live on the child, so a root-level
+  # diff saw nothing at all for the steps inside a sub-flow — exactly the steps
+  # a transcript most needs, since the user answered them.
+  def process(scenario, answer = nil, resolved_here: false)
+    before = (scenario.execution_path || []).length
+    outcome = scenario.process_step(answer, resolved_here: resolved_here)
+    @traversed.concat((scenario.execution_path || []).drop(before))
+    outcome
   end
 end
