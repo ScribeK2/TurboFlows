@@ -30,6 +30,11 @@ class Scenario < ApplicationRecord
   MAX_ITERATIONS = ENV.fetch("SCENARIO_MAX_ITERATIONS", 1000).to_i
   MAX_CONDITION_DEPTH = 50 # Max nested condition evaluations per step
 
+  # Cap on free text stored on an execution_path entry (snapshot values and the
+  # captured step body). An action's instructions is the largest free-text field
+  # in the system and these entries live in a json column.
+  ENTRY_TEXT_LIMIT = 2000
+
   # Retention periods for cleanup (days)
   def self.simulation_retention_days
     ENV.fetch("SCENARIO_RETENTION_SIMULATION_DAYS", 7).to_i
@@ -97,6 +102,11 @@ class Scenario < ApplicationRecord
 
   # Pending timestamp set when a step is displayed, consumed when path entry is built
   attr_accessor :step_started_at_pending
+
+  # The variable bag as it stood before the current step ran, so append_path_entry
+  # can diff against it. Mirrors step_started_at_pending: per-step state that has
+  # to reach the entry builder without becoming a column.
+  attr_accessor :results_before_step
 
   def initialize_execution_data
     self.execution_path ||= []
@@ -226,6 +236,7 @@ class Scenario < ApplicationRecord
     # Add step to execution path
     path_entry = build_path_entry(step)
 
+    self.results_before_step = (results || {}).dup
     outcome = ScenarioStepProcessor.new(self).process(step, answer, path_entry, resolved_here: resolved_here)
     # Blocked changed nothing and must not be persisted; a sub-flow saved itself.
     return outcome unless outcome.advanced? || outcome.resolved?
@@ -360,7 +371,49 @@ class Scenario < ApplicationRecord
     end
   end
 
+  # Append an entry to the execution path, recording what this step changed.
+  #
+  # The entry carries an undo log — the keys this step touched, each with the
+  # value it held beforehand — not a copy of the whole variable bag.
+  #
+  # Back needs this. Results written by anything other than a Question cannot be
+  # reconstructed from the rest of the entry: an action's output_fields land in
+  # results and leave only action_completed behind, escalate leaves escalated.
+  # Rebuilding the bag by replaying entries, which is what ScenarioNavigator
+  # used to do, therefore destroyed every non-question value.
+  #
+  # A full snapshot per entry would also have worked, and is what an earlier
+  # draft specified — but it is O(n) per entry and so O(n^2) per run. Measured:
+  # 161KB of json for a 100-step run, which tripped the execution benchmark. The
+  # delta is O(1) per entry, and any point in the run is recoverable by
+  # replaying deltas forward from an empty bag.
+  #
+  # Internal keys are excluded: _resolution / _escalation / _error are rewritten
+  # wholesale by the step that owns them, so undoing them per-key means nothing.
+  def append_path_entry(entry)
+    entry[:results_delta] = results_delta
+    execution_path << entry
+  end
+
   private
+
+  # What this step changed, as {key => {"was" => prior_value}}.
+  #
+  # A key the step added records "was" => nil, which Back reads as "delete on
+  # undo". That is unambiguous here because no processor ever writes nil into
+  # results — every write is guarded by .present? or is an interpolated string.
+  def results_delta
+    before = results_before_step || {}
+    after  = results || {}
+
+    (after.keys | before.keys).each_with_object({}) do |key, delta|
+      next if key.to_s.start_with?("_")
+      next if before[key] == after[key]
+
+      prior = before[key]
+      delta[key] = { "was" => prior.is_a?(String) ? prior.truncate(ENTRY_TEXT_LIMIT) : prior }
+    end
+  end
 
   # Resuming a parent after its sub-flow. process_subflow_completion still
   # answers with a boolean — nothing consults more than that — so translate it

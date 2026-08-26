@@ -65,7 +65,7 @@ class ScenarioStepProcessor
     @scenario.results[step.variable_name] = answer if step.variable_name.present? && answer.present?
 
     path_entry[:answer] = answer
-    @scenario.execution_path << path_entry
+    @scenario.append_path_entry(path_entry)
 
     @scenario.advance_to_next_step(step)
     Outcome.advanced
@@ -90,7 +90,7 @@ class ScenarioStepProcessor
 
     responses.each { |k, v| (@scenario.results ||= {})[k] = v }
 
-    @scenario.execution_path << path_entry
+    @scenario.append_path_entry(path_entry)
     @scenario.advance_to_next_step(step)
     Outcome.advanced
   end
@@ -113,7 +113,7 @@ class ScenarioStepProcessor
       end
     end
 
-    @scenario.execution_path << path_entry
+    @scenario.append_path_entry(path_entry)
 
     # Handle mid-step resolution if the agent indicated this step resolved the issue
     if resolved_here && step.can_resolve
@@ -138,7 +138,7 @@ class ScenarioStepProcessor
       path_entry[:content] = VariableInterpolator.interpolate(content_text, @scenario.results)
     end
 
-    @scenario.execution_path << path_entry
+    @scenario.append_path_entry(path_entry)
 
     # Handle mid-step resolution if the agent indicated this step resolved the issue
     if resolved_here && step.can_resolve
@@ -174,7 +174,7 @@ class ScenarioStepProcessor
       'notes' => step.respond_to?(:notes) ? step.notes&.to_plain_text : nil
     }.compact
 
-    @scenario.execution_path << path_entry
+    @scenario.append_path_entry(path_entry)
     @scenario.record_completion("escalated")
     @scenario.advance_to_next_step(step)
     Outcome.advanced
@@ -203,7 +203,7 @@ class ScenarioStepProcessor
       'survey_trigger' => step.survey_trigger || false
     }.compact
 
-    @scenario.execution_path << path_entry
+    @scenario.append_path_entry(path_entry)
 
     @scenario.record_completion("resolved")
     @scenario.status = 'completed'
@@ -272,7 +272,7 @@ class ScenarioStepProcessor
     path_entry[:subflow_started] = true
     path_entry[:child_scenario_id] = child_scenario.id
     path_entry[:target_workflow_title] = target_workflow.title
-    @scenario.execution_path << path_entry
+    @scenario.append_path_entry(path_entry)
 
     # Mark parent as awaiting sub-flow
     @scenario.status = 'awaiting_subflow'
