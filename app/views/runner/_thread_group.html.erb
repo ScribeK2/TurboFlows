@@ -1,0 +1,16 @@
+<%#
+  Where the call moved into another script.
+
+  Opening mark only — the outdent of the rows beneath it is the closing bracket.
+  A paired close row would spend two rows per sub-flow saying what indentation
+  says for free, and vertical space is the scarce resource here.
+
+  It answers the question a bare list cannot: am I still inside the sub-flow
+  right now, i.e. which script am I reading from.
+
+  locals: entry
+%>
+<li class="runner-thread__group" style="--thread-depth: <%= runner_thread_indent(entry) %>;">
+  <%= icon "arrow-right", class: "icon icon--xs" %>
+  <span><%= entry["target_workflow_title"].presence || "Sub-flow" %></span>
+</li>

@@ -1,0 +1,19 @@
+<%#
+  One answered step, collapsed.
+
+  Reads the entry and only the entry. Steps get edited and deleted after runs,
+  so a row built from the live Step record would replay a call with text nobody
+  ever saw, or fail on a uuid that no longer resolves.
+
+  Single line on purpose: this is a scanning surface, and a run pays for
+  two-line rows in how much of the call stays visible at once.
+
+  locals: entry
+%>
+<% summary = runner_row_summary(entry) %>
+<li class="runner-thread__row" style="--thread-depth: <%= runner_thread_indent(entry) %>;">
+  <span class="runner-thread__title"><%= entry["step_title"] %></span>
+  <% if summary.present? %>
+    <span class="runner-thread__summary"><%= summary %></span>
+  <% end %>
+</li>

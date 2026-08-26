@@ -1,0 +1,37 @@
+<%#
+  The step being answered now — the one open card at the bottom of the thread.
+
+  Everything route-shaped arrives as a local, exactly as runner/_step_body
+  requires, so this stays shell-agnostic.
+
+  locals: scenario, step, next_url, stop_url, back_button, show_cancel, errors,
+          submitted, auto_advance
+%>
+<%
+  step_info_text = VariableInterpolator.interpolate(step.title, scenario.results || {})
+%>
+<li class="runner-thread__current" id="runner-card-current" style="--thread-depth: <%= runner_thread_current_depth(scenario) %>;">
+  <div class="card"
+       id="runner-card-<%= step.uuid %>"
+       data-controller="scenario-step image-lightbox"
+       data-scenario-step-step-info-value="<%= step_info_text %>"
+       data-scenario-step-auto-advance-value="<%= auto_advance %>">
+    <div class="card__body">
+      <div aria-live="polite" class="sr-only" data-scenario-step-target="announce"></div>
+
+      <div class="scenario-step-header">
+        <h2><%= step_info_text %></h2>
+      </div>
+
+      <%= render "runner/step_body",
+            step: step,
+            results: scenario.results || {},
+            next_url: next_url,
+            stop_url: stop_url,
+            back_button: back_button,
+            show_cancel: show_cancel,
+            errors: errors,
+            submitted: submitted %>
+    </div>
+  </div>
+</li>

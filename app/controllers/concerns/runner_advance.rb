@@ -13,6 +13,13 @@
 module RunnerAdvance
   extend ActiveSupport::Concern
 
+  included do
+    # One definition of the flag, not two. The helper owns it; controllers ask
+    # the helper. A switch defined in two places is a switch that eventually
+    # disagrees with itself.
+    delegate :stacked_runner?, to: :helpers
+  end
+
   private
 
   # Template methods — each including controller MUST define these.

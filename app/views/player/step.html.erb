@@ -1,7 +1,21 @@
 <% content_for(:workflow_title) { @workflow.title } %>
 <% content_for(:title) { "#{@workflow.title} — TurboFlows Player" } %>
 
-<% if @parked %>
+<% if stacked_runner? %>
+  <%= render "runner/thread",
+        scenario: @scenario,
+        step: @parked ? nil : @current_step,
+        next_url: player_scenario_next_path(@scenario),
+        stop_url: player_scenario_stop_path(@scenario),
+        back_button: player_back_button(@scenario),
+        show_cancel: current_user.present?,
+        errors: @step_errors || [],
+        submitted: @submitted || {},
+        auto_advance: @current_step && !@parked ? runner_auto_advances?(@current_step) : false %>
+  <% if @parked %>
+    <%= render "runner/parked", next_url: player_scenario_next_path(@scenario) %>
+  <% end %>
+<% elsif @parked %>
   <%= render "runner/parked", next_url: player_scenario_next_path(@scenario) %>
 <% elsif @current_step %>
   <%

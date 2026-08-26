@@ -14,6 +14,29 @@ module RunnerHelper
     Rails.configuration.x.stacked_runner.present?
   end
 
+  # How far a thread entry is indented, in levels.
+  #
+  # Capped: SubflowValidator allows nesting to depth 10, and the Player's layout
+  # is tighter than the Scenario's with embed tighter still. Two levels is
+  # enough to say "we are inside something"; past that the reader gets the fact
+  # without the run walking off the right edge.
+  THREAD_MAX_INDENT = 2
+
+  def runner_thread_indent(entry)
+    [entry["depth"].to_i, THREAD_MAX_INDENT].min
+  end
+
+  # The depth the open card sits at: how many sub-flows deep the run currently
+  # is. Without it the card outdents while the run is still inside one, which
+  # reads as the sub-flow having ended — the opposite of what indentation is
+  # here to say.
+  def runner_thread_current_depth(scenario)
+    depth = 0
+    frame = scenario
+    depth += 1 while (frame = frame.parent_scenario)
+    [depth, THREAD_MAX_INDENT].min
+  end
+
   # What a completed step says once it has collapsed into a row.
   #
   # Reads the entry and only the entry. Steps get edited and deleted after runs,
