@@ -41,7 +41,7 @@ class ScenarioStepProcessorTest < ActiveSupport::TestCase
     processor  = ScenarioStepProcessor.new(@scenario)
     path_entry = @scenario.send(:build_path_entry, @question)
     processor.process(@question, "42", path_entry)
-    assert_equal "42", @scenario.execution_path.last[:answer]
+    assert_equal "42", @scenario.execution_path.last["answer"]
   end
 
   # --- resolve step ---
@@ -76,7 +76,7 @@ class ScenarioStepProcessorTest < ActiveSupport::TestCase
     processor  = ScenarioStepProcessor.new(@scenario)
     path_entry = @scenario.send(:build_path_entry, @resolve)
     processor.process(@resolve, nil, path_entry)
-    assert @scenario.execution_path.last[:resolved]
+    assert @scenario.execution_path.last["resolved"]
   end
 
   # --- action step ---
@@ -90,7 +90,7 @@ class ScenarioStepProcessorTest < ActiveSupport::TestCase
     path_entry = @scenario.send(:build_path_entry, action)
     processor.process(action, nil, path_entry)
     assert_equal "Action executed", @scenario.results[action.title]
-    assert @scenario.execution_path.last[:action_completed]
+    assert @scenario.execution_path.last["action_completed"]
   end
 
   # --- message step ---
@@ -104,7 +104,7 @@ class ScenarioStepProcessorTest < ActiveSupport::TestCase
     path_entry = @scenario.send(:build_path_entry, message)
     processor.process(message, nil, path_entry)
     assert_equal "Message displayed", @scenario.results[message.title]
-    assert @scenario.execution_path.last[:message_displayed]
+    assert @scenario.execution_path.last["message_displayed"]
   end
 
   # --- escalate step ---
@@ -118,7 +118,7 @@ class ScenarioStepProcessorTest < ActiveSupport::TestCase
     path_entry = @scenario.send(:build_path_entry, escalate)
     processor.process(escalate, nil, path_entry)
     assert_equal "Escalated", @scenario.results[escalate.title]
-    assert @scenario.execution_path.last[:escalated]
+    assert @scenario.execution_path.last["escalated"]
     assert @scenario.results.key?("_escalation")
   end
 

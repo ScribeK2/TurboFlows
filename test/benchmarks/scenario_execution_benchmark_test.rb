@@ -80,8 +80,12 @@ class ScenarioExecutionBenchmarkTest < ActiveSupport::TestCase
       scenario.process_step(step&.step_type == 'question' ? 'yes' : nil) if step
     end
 
-    assert_operator queries.size, :<=, 8,
-                    "Expected <= 8 queries per advance, got #{queries.size}:\n#{queries.join("\n")}"
+    # 9, not 8: capturing an action or message body onto the execution_path
+    # entry loads its Action Text record, and does so even when the step has no
+    # body to capture. That is one query per advance, not one per step visited —
+    # the constant-per-advance property this test exists to protect is intact.
+    assert_operator queries.size, :<=, 9,
+                    "Expected <= 9 queries per advance, got #{queries.size}:\n#{queries.join("\n")}"
   end
 
   test 'scenario creation throughput' do

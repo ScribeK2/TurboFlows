@@ -30,6 +30,16 @@ class Scenario < ApplicationRecord
   MAX_ITERATIONS = ENV.fetch("SCENARIO_MAX_ITERATIONS", 1000).to_i
   MAX_CONDITION_DEPTH = 50 # Max nested condition evaluations per step
 
+  # Cap on free text stored on an execution_path entry (snapshot values and the
+  # captured step body). An action's instructions is the largest free-text field
+  # in the system and these entries live in a json column.
+  ENTRY_TEXT_LIMIT = 2000
+
+  # Inputs the runner controllers stash for one step, which that step consumes.
+  # They are deliberately absent from an entry's undo log: backing out of an
+  # escalate step must not hand the next one a reason the user already spent.
+  TRANSIENT_INPUT_KEYS = %w[escalation_reason resolution_notes].freeze
+
   # Retention periods for cleanup (days)
   def self.simulation_retention_days
     ENV.fetch("SCENARIO_RETENTION_SIMULATION_DAYS", 7).to_i
@@ -97,6 +107,11 @@ class Scenario < ApplicationRecord
 
   # Pending timestamp set when a step is displayed, consumed when path entry is built
   attr_accessor :step_started_at_pending
+
+  # The variable bag as it stood before the current step ran, so append_path_entry
+  # can diff against it. Mirrors step_started_at_pending: per-step state that has
+  # to reach the entry builder without becoming a column.
+  attr_accessor :results_before_step, :inputs_before_step
 
   def initialize_execution_data
     self.execution_path ||= []
@@ -226,6 +241,8 @@ class Scenario < ApplicationRecord
     # Add step to execution path
     path_entry = build_path_entry(step)
 
+    self.results_before_step = (results || {}).dup
+    self.inputs_before_step = (inputs || {}).dup
     outcome = ScenarioStepProcessor.new(self).process(step, answer, path_entry, resolved_here: resolved_here)
     # Blocked changed nothing and must not be persisted; a sub-flow saved itself.
     return outcome unless outcome.advanced? || outcome.resolved?
@@ -253,6 +270,7 @@ class Scenario < ApplicationRecord
     return false if child && !child.complete?
 
     # Merge child results back to parent
+    results_before_merge = (results || {}).dup
     if child&.results.present?
       self.results ||= {}
 
@@ -286,6 +304,8 @@ class Scenario < ApplicationRecord
         end
       end
     end
+
+    stamp_subflow_merge(results_before_merge)
 
     # Move to next step after sub-flow
     self.status = 'active'
@@ -332,7 +352,7 @@ class Scenario < ApplicationRecord
   # Resolve the scenario at the current step (mid-step resolution via can_resolve flag)
   def resolve_at_current_step(step)
     # Mark the last execution path entry as resolved
-    execution_path.last[:resolved] = true if execution_path.present?
+    execution_path.last["resolved"] = true if execution_path.present?
 
     self.results ||= {}
     results['_resolution'] = {
@@ -360,7 +380,76 @@ class Scenario < ApplicationRecord
     end
   end
 
+  # Append an entry to the execution path, recording what this step changed.
+  #
+  # The entry carries an undo log — the keys this step touched, each with the
+  # value it held beforehand — not a copy of the whole variable bag.
+  #
+  # Back needs this. Results written by anything other than a Question cannot be
+  # reconstructed from the rest of the entry: an action's output_fields land in
+  # results and leave only action_completed behind, escalate leaves escalated.
+  # Rebuilding the bag by replaying entries, which is what ScenarioNavigator
+  # used to do, therefore destroyed every non-question value.
+  #
+  # A full snapshot per entry would also have worked, and is what an earlier
+  # draft specified — but it is O(n) per entry and so O(n^2) per run. Measured:
+  # 161KB of json for a 100-step run, which tripped the execution benchmark. The
+  # delta is O(1) per entry, and any point in the run is recoverable by
+  # replaying deltas forward from an empty bag.
+  #
+  # Internal keys are excluded: _resolution / _escalation / _error are rewritten
+  # wholesale by the step that owns them, so undoing them per-key means nothing.
+  # Whether this run can step backwards. See ScenarioNavigator#can_go_back?.
+  def can_go_back?
+    ScenarioNavigator.new(self).can_go_back?
+  end
+
+  def append_path_entry(entry)
+    entry["results_delta"] = delta_between(results_before_step, results)
+    entry["inputs_delta"] = delta_between(inputs_before_step, inputs, except: TRANSIENT_INPUT_KEYS)
+    execution_path << entry
+  end
+
   private
+
+  # Fold what a completed sub-flow merged in onto the sub_flow entry's undo log.
+  #
+  # The merge happens here, long after that entry was appended, so without this
+  # the child's contribution belongs to no entry and Back cannot reverse it —
+  # backing past a finished sub-flow left the child's values in the parent's bag.
+  #
+  # Merged onto the existing delta rather than replacing it, and existing keys
+  # win: the entry may already record what the sub_flow step itself changed, and
+  # that prior value is the older, more correct one to restore.
+  def stamp_subflow_merge(results_before_merge)
+    entry = execution_path.rfind do |candidate|
+      candidate["subflow_started"] && candidate["step_uuid"] == resume_node_uuid
+    end
+    return unless entry
+
+    merged = delta_between(results_before_merge, results)
+    entry["results_delta"] = merged.merge(entry["results_delta"] || {})
+  end
+
+  # What changed between two bags, as {key => {"was" => prior_value}}.
+  #
+  # A key the step added records "was" => nil, which the navigator reads as
+  # "delete on undo". That is unambiguous here because no processor writes nil
+  # into results or inputs — every write is guarded by .present? or is an
+  # interpolated string.
+  def delta_between(before, after, except: [])
+    before ||= {}
+    after  ||= {}
+
+    (after.keys | before.keys).each_with_object({}) do |key, delta|
+      next if key.to_s.start_with?("_")
+      next if except.include?(key.to_s)
+      next if before[key] == after[key]
+
+      prior = before[key]
+      delta[key] = { "was" => prior.is_a?(String) ? prior.truncate(ENTRY_TEXT_LIMIT) : prior }
+    end
+  end
 
   # Resuming a parent after its sub-flow. process_subflow_completion still
   # answers with a boolean — nothing consults more than that — so translate it
@@ -391,10 +480,10 @@ class Scenario < ApplicationRecord
   # Build execution path entry for a step
   def build_path_entry(step)
     entry = {
-      step_title: step.title,
-      step_type: step.step_type,
-      step_uuid: step.uuid,
-      started_at: step_started_at_pending || Time.current.iso8601(3)
+      "step_title" => step.title,
+      "step_type" => step.step_type,
+      "step_uuid" => step.uuid,
+      "started_at" => step_started_at_pending || Time.current.iso8601(3)
     }
     self.step_started_at_pending = nil
     entry

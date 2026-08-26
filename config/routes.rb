@@ -64,6 +64,7 @@ Rails.application.routes.draw do
     member do
       post :next_step
       get :step
+      post :back
       post :stop
     end
   end

@@ -223,4 +223,58 @@ class ScenariosControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_no_match(/back=true/, response.body)
   end
+
+  # Turbo 8 prefetches links on hover by default and this app opts out nowhere,
+  # so a GET that rewinds the run fires when the pointer merely passes over the
+  # control — and go_back is not idempotent, so twice over is two steps back.
+  test "GET step does not rewind the run" do
+    workflow = Workflow.create!(title: "Prefetch WF", user: @user)
+    action = Steps::Action.create!(
+      workflow: workflow, position: 0, uuid: SecureRandom.uuid, title: "Act",
+      output_fields: [{ "name" => "ticket_id", "value" => "T-42" }]
+    )
+    resolve = Steps::Resolve.create!(workflow: workflow, position: 1, uuid: SecureRandom.uuid, title: "Done")
+    Transition.create!(step: action, target_step: resolve, position: 0)
+    workflow.update!(start_step: action)
+
+    scenario = Scenario.create!(
+      workflow: workflow, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: action.uuid, execution_path: [], results: {}, inputs: {}
+    )
+    scenario.process_step(nil)
+    node_before = scenario.reload.current_node_uuid
+    path_before = scenario.execution_path.length
+
+    get step_scenario_path(scenario, back: true)
+
+    scenario.reload
+    assert_equal node_before, scenario.current_node_uuid, "a GET must not move the run"
+    assert_equal path_before, scenario.execution_path.length
+    assert_equal "T-42", scenario.results["ticket_id"]
+  end
+
+  test "back is a POST and rewinds one step" do
+    workflow = Workflow.create!(title: "Back WF", user: @user)
+    q1 = Steps::Question.create!(workflow: workflow, position: 0, uuid: SecureRandom.uuid,
+                                 title: "Q1", question: "Q1?", variable_name: "q1_var")
+    q2 = Steps::Question.create!(workflow: workflow, position: 1, uuid: SecureRandom.uuid,
+                                 title: "Q2", question: "Q2?", variable_name: "q2_var")
+    resolve = Steps::Resolve.create!(workflow: workflow, position: 2, uuid: SecureRandom.uuid, title: "Done")
+    Transition.create!(step: q1, target_step: q2, position: 0)
+    Transition.create!(step: q2, target_step: resolve, position: 0)
+    workflow.update!(start_step: q1)
+
+    scenario = Scenario.create!(
+      workflow: workflow, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: q1.uuid, execution_path: [], results: {}, inputs: {}
+    )
+    scenario.process_step("Yes")
+
+    post back_scenario_path(scenario)
+
+    assert_redirected_to step_scenario_path(scenario)
+    scenario.reload
+    assert_equal q1.uuid, scenario.current_node_uuid
+    assert_not scenario.results.key?("q1_var")
+  end
 end
