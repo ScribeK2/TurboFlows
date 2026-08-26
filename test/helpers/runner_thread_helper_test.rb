@@ -44,7 +44,7 @@ class RunnerThreadHelperTest < ActionView::TestCase
   test "the thread marks where a sub-flow began" do
     scenario = run_through_subflow
 
-    kinds = runner_thread_entries(scenario).map { |entry| entry["kind"] }
+    kinds = runner_thread_entries(scenario).pluck("kind")
 
     assert_includes kinds, "group_start",
                     "entering a sub-flow is a fact about the call, not just about the engine"
@@ -72,7 +72,7 @@ class RunnerThreadHelperTest < ActionView::TestCase
   test "the results page sees a flat list with no grouping marks" do
     scenario = run_through_subflow
 
-    kinds = flattened_execution_path(scenario).map { |entry| entry["kind"] }
+    kinds = flattened_execution_path(scenario).pluck("kind")
 
     assert_not_includes kinds, "group_start",
                         "an audit list wants the steps, not the structure"
