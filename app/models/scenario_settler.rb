@@ -24,6 +24,21 @@ class ScenarioSettler
     delegate :resolved?, to: :outcome
   end
 
+  # A node the user is never shown.
+  #
+  # A sub_flow has no UI. A resolve inside a child is the sub-flow finishing,
+  # not the run finishing, so the agent should not be asked to acknowledge it —
+  # a top-level resolve is a different thing and does get acknowledged.
+  #
+  # Scenario#parked? asks the same question, which is why this is public: "a
+  # node the settler would move past" and "a node the run cannot rest on" have
+  # to be one rule. They were two, and drifted.
+  def self.auto_processable?(scenario, step)
+    return true if step.step_type == "sub_flow"
+
+    step.step_type == "resolve" && scenario.parent_scenario.present?
+  end
+
   def initialize(scenario)
     @scenario = scenario
   end
@@ -56,6 +71,23 @@ class ScenarioSettler
     settled(current, outcome, before)
   end
 
+  # Move a freshly created run off an opening step that has no UI.
+  #
+  # Nothing POSTs between creating a scenario and its first GET — every creation
+  # site sets current_node_uuid to the workflow's start node and redirects — so
+  # a workflow whose first step is a sub_flow would land on a node the runner
+  # cannot render now that GET no longer moves the run.
+  #
+  # Returns the scenario the run now lives on. Unlike #settle it processes
+  # nothing when the opening step is an ordinary one, so an unanswered run keeps
+  # an empty history.
+  def settle_from_start
+    step = @scenario.current_step
+    return @scenario unless step && auto_processable?(@scenario, step)
+
+    settle.scenario
+  end
+
   private
 
   # Into the child a sub_flow step just started.
@@ -85,14 +117,8 @@ class ScenarioSettler
     [parent, outcome]
   end
 
-  # A node the user is never shown.
-  #
-  # A sub_flow has no UI. A resolve inside a child is the sub-flow finishing,
-  # not the run finishing, so the agent should not be asked to acknowledge it.
   def auto_processable?(scenario, step)
-    return true if step.step_type == "sub_flow"
-
-    step.step_type == "resolve" && scenario.parent_scenario.present?
+    self.class.auto_processable?(scenario, step)
   end
 
   def settled(current, outcome, before)

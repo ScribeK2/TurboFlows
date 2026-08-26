@@ -1,5 +1,5 @@
 class PlayerController < ApplicationController
-  include SubflowOrchestration
+  include RunnerAdvance
 
   layout "player"
 
@@ -34,68 +34,44 @@ class PlayerController < ApplicationController
       results: {},
       inputs: {}
     )
-    redirect_to player_scenario_step_path(scenario)
+    # Settle before redirecting: a workflow whose first step is a sub_flow opens
+    # on a node with no UI, and GET step no longer moves the run.
+    redirect_to player_scenario_step_path(ScenarioSettler.new(scenario).settle_from_start)
   end
 
+  # A pure read. It renders the run; it never moves it. See
+  # ScenariosController#step for why that matters.
   def step
     @workflow = @scenario.workflow
-    @current_step = resolve_current_step
 
     if @scenario.completed? || @scenario.stopped?
-      redirect_to player_scenario_show_path(@scenario)
+      redirect_to player_scenario_show_path(@scenario.root_scenario)
       return
     end
 
-    if @scenario.awaiting_subflow?
-      handle_awaiting_subflow(@scenario)
+    # A run waiting on a child that is still going belongs at the child's URL.
+    # A redirect writes nothing; a finished child needs a POST, and #parked?
+    # surfaces that as a Resume control instead of healing it here.
+    active_child = @scenario.awaiting_subflow? ? @scenario.active_child_scenario : nil
+    if active_child && !active_child.complete?
+      redirect_to runner_step_path(active_child)
       return
     end
 
-    # Auto-advance sub_flow steps (they don't need user interaction)
-    if @current_step&.step_type == "sub_flow"
-      if auto_advance_failed?(@scenario.process_step(nil))
-        @scenario.reload
-        redirect_to player_scenario_step_path(@scenario) and return
-      end
-      return if redirect_to_subflow_if_awaiting?(@scenario)
-
-      redirect_to @scenario.complete? ? subflow_completion_path(@scenario) : subflow_step_path(@scenario)
-      return
-    end
-
-    # Auto-advance resolve steps in child scenarios (so sub-flows complete seamlessly)
-    if @scenario.parent_scenario.present? && @current_step&.step_type == "resolve"
-      if auto_advance_failed?(@scenario.process_step(nil))
-        @scenario.reload
-        redirect_to player_scenario_step_path(@scenario) and return
-      end
-      if @scenario.complete?
-        handle_child_completion(@scenario)
-      else
-        redirect_to subflow_step_path(@scenario)
-      end
-      return
-    end
-
+    @parked = @scenario.parked?
+    @current_step = resolve_current_step
     @scenario.step_started_at_pending = Time.current.iso8601(3)
   end
 
   def next_step
-    answer = params[:answer] || params[:selected_option]
+    @workflow = @scenario.workflow
     @scenario.inputs ||= {}
     @scenario.inputs["escalation_reason"] = params[:escalation_reason] if params[:escalation_reason].present?
     @scenario.inputs["resolution_notes"] = params[:resolution_notes] if params[:resolution_notes].present?
     @scenario.record_step_ended
 
-    case @scenario.process_step(answer, resolved_here: params[:resolved].present?)
-    in { status: :blocked, errors: } then render_blocked_step(errors)
-    in { status: :awaiting_subflow } then redirect_to_subflow_if_awaiting?(@scenario)
-    in { status: :resolved }         then handle_child_completion(@scenario)
-    in { status: :advanced }         then redirect_to subflow_step_path(@scenario)
-    else
-      @scenario.reload
-      redirect_to player_scenario_step_path(@scenario)
-    end
+    advance_runner(@scenario, params[:answer] || params[:selected_option],
+                   resolved_here: params[:resolved].present?)
   end
 
   def back
@@ -132,21 +108,12 @@ class PlayerController < ApplicationController
       inputs: {}
     )
 
-    redirect_to player_scenario_step_path(scenario)
+    redirect_to player_scenario_step_path(ScenarioSettler.new(scenario).settle_from_start)
   rescue ActiveRecord::RecordNotFound
     head :not_found
   end
 
   private
-
-  # Auto-advancing a step the user never saw. Blocked and halted both mean it
-  # did not move, which is what the boolean used to say — the outcome is always
-  # a truthy object, so this has to be asked explicitly now.
-  #
-  # Duplicated in ScenariosController — the two shells share no seam yet.
-  def auto_advance_failed?(outcome)
-    outcome.blocked? || outcome.halted?
-  end
 
   # A refused step re-renders where the user already is, with the reasons.
   # 422 because Turbo discards a 200 that is not a redirect.
@@ -159,18 +126,17 @@ class PlayerController < ApplicationController
   end
 
   # Values from the refused submit, so a blocked form keeps what was typed.
-  # Duplicated in ScenariosController — the two shells share no seam yet.
   def submitted_form_values
     raw = params[:answer]
     raw.is_a?(ActionController::Parameters) ? raw.permit!.to_h : {}
   end
 
-  # SubflowOrchestration template methods
-  def subflow_step_path(scenario)
+  # RunnerAdvance template methods
+  def runner_step_path(scenario)
     player_scenario_step_path(scenario)
   end
 
-  def subflow_completion_path(scenario)
+  def runner_results_path(scenario)
     player_scenario_show_path(scenario)
   end
 

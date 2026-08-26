@@ -176,30 +176,68 @@ class ScenariosControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to step_scenario_path(parent_scenario)
   end
 
-  test "empty sub-flow auto-progresses silently back to parent" do
+  # An "empty" sub-flow is one whose child workflow opens straight onto a
+  # Resolve. The user should never see it — but that traversal is POST work now,
+  # so this drives it through next_step rather than constructing the halfway
+  # state and expecting GET to finish the job.
+  test "empty sub-flow is traversed in a single answer" do
     child_wf = Workflow.create!(title: "Empty Child WF", user: @user)
+    Steps::Resolve.create!(workflow: child_wf, position: 0, uuid: SecureRandom.uuid, title: "CDone")
+
+    workflow = Workflow.create!(title: "Empty SF Parent", user: @user)
+    q = Steps::Question.create!(workflow: workflow, position: 0, uuid: SecureRandom.uuid,
+                                title: "Q", question: "Q?", variable_name: "qv")
+    sf_step = Steps::SubFlow.create!(workflow: workflow, position: 1, uuid: SecureRandom.uuid,
+                                     title: "SubStep", sub_flow_workflow_id: child_wf.id)
+    parent_resolve = Steps::Resolve.create!(workflow: workflow, position: 2, uuid: SecureRandom.uuid, title: "Done")
+    Transition.create!(step: q, target_step: sf_step, position: 0)
+    Transition.create!(step: sf_step, target_step: parent_resolve, position: 0)
+    workflow.update!(start_step: q)
+
+    scenario = Scenario.create!(
+      workflow: workflow, user: @user, inputs: {}, results: {}, purpose: "simulation",
+      status: "active", current_node_uuid: q.uuid, execution_path: []
+    )
+
+    post next_step_scenario_path(scenario), params: { answer: "yes" }
+
+    scenario.reload
+    assert_equal parent_resolve.uuid, scenario.current_node_uuid,
+                 "the sub-flow had nothing to ask, so one answer should carry the run past it"
+    assert_redirected_to step_scenario_path(scenario)
+  end
+
+  # The halfway state the previous version of the test built by hand. It should
+  # not arise any more, but if it does the runner says so rather than healing it
+  # inside a GET.
+  test "a run stranded mid-sub-flow offers to resume rather than moving itself" do
+    child_wf = Workflow.create!(title: "Stranded Child WF", user: @user)
     resolve_step = Steps::Resolve.create!(workflow: child_wf, position: 0, uuid: SecureRandom.uuid, title: "CDone")
 
-    # Create a real SubFlow step in the parent workflow so process_subflow_completion
-    # can find resume_node_uuid and advance to the next parent step
-    sf_step = Steps::SubFlow.create!(workflow: @workflow, position: 1, uuid: SecureRandom.uuid, title: "SubStep")
-    parent_resolve = Steps::Resolve.create!(workflow: @workflow, position: 2, uuid: SecureRandom.uuid, title: "Done")
+    workflow = Workflow.create!(title: "Stranded Parent", user: @user)
+    sf_step = Steps::SubFlow.create!(workflow: workflow, position: 0, uuid: SecureRandom.uuid,
+                                     title: "SubStep", sub_flow_workflow_id: child_wf.id)
+    parent_resolve = Steps::Resolve.create!(workflow: workflow, position: 1, uuid: SecureRandom.uuid, title: "Done")
     Transition.create!(step: sf_step, target_step: parent_resolve, position: 0)
+    workflow.update!(start_step: sf_step)
 
     parent_scenario = Scenario.create!(
-      workflow: @workflow, user: @user, inputs: {}, purpose: "simulation",
+      workflow: workflow, user: @user, inputs: {}, results: {}, purpose: "simulation",
       status: "awaiting_subflow", resume_node_uuid: sf_step.uuid,
       execution_path: [{ "step_title" => "Sub", "step_type" => "sub_flow", "subflow_started" => true }],
       current_node_uuid: sf_step.uuid
     )
     child_scenario = Scenario.create!(
       workflow: child_wf, user: @user, parent_scenario: parent_scenario,
-      inputs: {}, purpose: "simulation", status: "active",
+      inputs: {}, results: {}, purpose: "simulation", status: "active",
       current_node_uuid: resolve_step.uuid, execution_path: []
     )
 
     get step_scenario_path(child_scenario)
-    assert_response :redirect
+
+    assert_response :success
+    assert_predicate child_scenario.reload, :parked?
+    assert_equal "active", child_scenario.status, "a read must not move the run"
   end
 
   test "step view disables back button on first child step" do

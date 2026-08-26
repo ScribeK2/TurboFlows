@@ -158,4 +158,95 @@ class ScenarioSettlerTest < ActiveSupport::TestCase
     assert_predicate settled, :resolved?
     assert_equal scenario.id, settled.scenario.id, "a top-level resolve has nowhere to climb to"
   end
+  test "a run sitting on a sub_flow node is parked" do
+    child_wf, = child_workflow
+    workflow = Workflow.create!(title: "Parked WF", user: @user)
+    sf = Steps::SubFlow.create!(workflow: workflow, title: "SF", position: 0, sub_flow_workflow_id: child_wf.id)
+    done = Steps::Resolve.create!(workflow: workflow, title: "Done", position: 1)
+    Transition.create!(step: sf, target_step: done, position: 0)
+    workflow.update!(start_step: sf)
+
+    scenario = Scenario.create!(
+      workflow: workflow, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: sf.uuid, execution_path: [], results: {}, inputs: {}
+    )
+
+    assert_predicate scenario, :parked?, "a sub_flow node has no UI — the run cannot rest here"
+  end
+
+  test "a run awaiting a child that already finished is parked" do
+    child_wf, = child_workflow
+    workflow = Workflow.create!(title: "Parked WF", user: @user)
+    sf = Steps::SubFlow.create!(workflow: workflow, title: "SF", position: 0, sub_flow_workflow_id: child_wf.id)
+    after = Steps::Question.create!(workflow: workflow, title: "After", position: 1, variable_name: "av")
+    done = Steps::Resolve.create!(workflow: workflow, title: "Done", position: 2)
+    Transition.create!(step: sf, target_step: after, position: 0)
+    Transition.create!(step: after, target_step: done, position: 0)
+    workflow.update!(start_step: sf)
+
+    scenario = Scenario.create!(
+      workflow: workflow, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: sf.uuid, execution_path: [], results: {}, inputs: {}
+    )
+    child = ScenarioSettler.new(scenario).settle.scenario
+    child.process_step("Answer")   # child reaches its resolve
+    child.process_step(nil)        # child completes, parent never resumed
+    scenario.reload
+
+    assert_predicate child, :complete?, "precondition"
+    assert_predicate scenario, :parked?,
+                     "the parent needs a POST to resume — GET must not heal it silently"
+  end
+
+  test "a run waiting on a step the user can answer is not parked" do
+    workflow = Workflow.create!(title: "Live WF", user: @user)
+    q = Steps::Question.create!(workflow: workflow, title: "Q", position: 0, variable_name: "qv")
+    done = Steps::Resolve.create!(workflow: workflow, title: "Done", position: 1)
+    Transition.create!(step: q, target_step: done, position: 0)
+    workflow.update!(start_step: q)
+
+    scenario = Scenario.create!(
+      workflow: workflow, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: q.uuid, execution_path: [], results: {}, inputs: {}
+    )
+
+    assert_not_predicate scenario, :parked?
+  end
+  test "settle_from_start moves a run whose very first step is a sub_flow" do
+    child_wf, cq = child_workflow
+    workflow = Workflow.create!(title: "Starts With Subflow", user: @user)
+    sf = Steps::SubFlow.create!(workflow: workflow, title: "SF", position: 0, sub_flow_workflow_id: child_wf.id)
+    done = Steps::Resolve.create!(workflow: workflow, title: "Done", position: 1)
+    Transition.create!(step: sf, target_step: done, position: 0)
+    workflow.update!(start_step: sf)
+
+    scenario = Scenario.create!(
+      workflow: workflow, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: sf.uuid, execution_path: [], results: {}, inputs: {}
+    )
+
+    landed = ScenarioSettler.new(scenario).settle_from_start
+
+    assert_equal cq.uuid, landed.current_node_uuid,
+                 "nothing POSTs between creating a run and its first GET, so creation has to settle it"
+  end
+
+  test "settle_from_start leaves an ordinary opening step alone" do
+    workflow = Workflow.create!(title: "Ordinary Start", user: @user)
+    q = Steps::Question.create!(workflow: workflow, title: "Q", position: 0, variable_name: "qv")
+    done = Steps::Resolve.create!(workflow: workflow, title: "Done", position: 1)
+    Transition.create!(step: q, target_step: done, position: 0)
+    workflow.update!(start_step: q)
+
+    scenario = Scenario.create!(
+      workflow: workflow, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: q.uuid, execution_path: [], results: {}, inputs: {}
+    )
+
+    landed = ScenarioSettler.new(scenario).settle_from_start
+
+    assert_equal scenario, landed
+    assert_equal q.uuid, landed.current_node_uuid
+    assert_empty landed.execution_path, "a run that has not been answered has no history"
+  end
 end

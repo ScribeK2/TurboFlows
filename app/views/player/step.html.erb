@@ -1,7 +1,9 @@
 <% content_for(:workflow_title) { @workflow.title } %>
 <% content_for(:title) { "#{@workflow.title} — TurboFlows Player" } %>
 
-<% if @current_step %>
+<% if @parked %>
+  <%= render "runner/parked", next_url: player_scenario_next_path(@scenario) %>
+<% elsif @current_step %>
   <%
     auto_advance = runner_auto_advances?(@current_step)
     step_info_text = VariableInterpolator.interpolate(@current_step.title, @scenario.results || {})

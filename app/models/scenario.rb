@@ -399,6 +399,24 @@ class Scenario < ApplicationRecord
   #
   # Internal keys are excluded: _resolution / _escalation / _error are rewritten
   # wholesale by the step that owns them, so undoing them per-key means nothing.
+  # Sitting somewhere it cannot rest, needing a POST to move on.
+  #
+  # Two shapes: on a sub_flow node, which has no UI of its own; or awaiting a
+  # child that has already finished, where the parent still needs to fold the
+  # child's results in and advance. Both used to be healed inside GET step,
+  # which made a read mutate state. The runner shows a Resume control instead,
+  # so a run that got stuck is visible rather than silently repaired.
+  #
+  # Normal runs never park: ScenarioSettler leaves every POST on a step someone
+  # can answer.
+  def parked?
+    return true if awaiting_subflow? && active_child_scenario.nil?
+    return false if terminal?
+
+    step = current_step
+    step.present? && ScenarioSettler.auto_processable?(self, step)
+  end
+
   # Whether this run can step backwards. See ScenarioNavigator#can_go_back?.
   def can_go_back?
     ScenarioNavigator.new(self).can_go_back?
