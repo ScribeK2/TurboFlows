@@ -163,8 +163,14 @@ class ScenarioStepProcessor
     @scenario.results ||= {}
     @scenario.results[step.title] = "Escalated"
 
-    # Store escalation metadata in results
-    escalation_reason = (@scenario.inputs || {})["escalation_reason"]
+    # Store escalation metadata in results.
+    #
+    # The reason is *consumed* here, not just read: it is stashed on inputs by
+    # the runner controllers for this one step and has no reader afterwards.
+    # Leaving it behind let a later escalate step satisfy its own
+    # reason_required check with a value the user typed for a different step —
+    # including after backing out of this one.
+    escalation_reason = (@scenario.inputs || {}).delete("escalation_reason")
     @scenario.results['_escalation'] = {
       'type' => step.target_type,
       'value' => step.target_value,
@@ -193,8 +199,9 @@ class ScenarioStepProcessor
     @scenario.results ||= {}
     @scenario.results[step.title] = "Issue resolved"
 
-    # Store resolution metadata in results
-    resolution_notes = (@scenario.inputs || {})["resolution_notes"]
+    # Store resolution metadata in results. Consumed, for the same reason the
+    # escalation reason is — see process_escalate_step.
+    resolution_notes = (@scenario.inputs || {}).delete("resolution_notes")
     @scenario.results['_resolution'] = {
       'type' => step.resolution_type || 'success',
       'code' => step.resolution_code,
