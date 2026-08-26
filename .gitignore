@@ -130,6 +130,11 @@ semgrep-results*/
 # Playwright MCP
 .playwright-mcp/
 
+# Screenshots dropped in the repo root by browser tooling. There is a
+# hand-maintained list of these further down; this rule is what stops it
+# growing. App images live under app/assets, so nothing real is at the root.
+/*.png
+
 # Superpowers brainstorm
 .superpowers/
 
