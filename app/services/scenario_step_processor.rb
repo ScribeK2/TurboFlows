@@ -178,6 +178,12 @@ class ScenarioStepProcessor
     end
 
     path_entry["escalated"] = true
+    # Where the call went, on the entry rather than only in _escalation, because
+    # a transcript row is historical: results carry one _escalation blob that a
+    # later escalate step overwrites, and the step record can be edited or
+    # deleted after the run.
+    path_entry["target_type"] = step.target_type
+    path_entry["priority"] = step.priority.presence || "medium"
     @scenario.results ||= {}
     @scenario.results[step.title] = "Escalated"
 
@@ -214,6 +220,7 @@ class ScenarioStepProcessor
     end
 
     path_entry["resolved"] = true
+    path_entry["resolution_type"] = step.resolution_type.presence || "success"
     @scenario.results ||= {}
     @scenario.results[step.title] = "Issue resolved"
 

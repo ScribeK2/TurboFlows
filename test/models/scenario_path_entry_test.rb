@@ -183,4 +183,41 @@ class ScenarioPathEntryTest < ActiveSupport::TestCase
 
     assert_empty symbol_keys, "an entry read before save must not answer nil to a string key"
   end
+  test "escalate entry records where it sent the call" do
+    escalating = Workflow.create!(title: "Escalate Detail WF", user: @user)
+    esc = Steps::Escalate.create!(
+      workflow: escalating, title: "Escalate", position: 0,
+      target_type: "supervisor", target_value: "Tier 2", priority: "urgent"
+    )
+    done = Steps::Resolve.create!(workflow: escalating, title: "Done", position: 1)
+    Transition.create!(step: esc, target_step: done, position: 0)
+    escalating.update!(start_step: esc)
+
+    scenario = Scenario.create!(
+      workflow: escalating, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: esc.uuid, execution_path: [], results: {}, inputs: {}
+    )
+    scenario.process_step(nil)
+
+    entry = scenario.execution_path.last
+
+    assert_equal "supervisor", entry["target_type"]
+    assert_equal "urgent", entry["priority"]
+  end
+
+  test "resolve entry records how the run ended" do
+    resolving = Workflow.create!(title: "Resolve Detail WF", user: @user)
+    res = Steps::Resolve.create!(
+      workflow: resolving, title: "Fixed", position: 0, resolution_type: "transfer"
+    )
+    resolving.update!(start_step: res)
+
+    scenario = Scenario.create!(
+      workflow: resolving, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: res.uuid, execution_path: [], results: {}, inputs: {}
+    )
+    scenario.process_step(nil)
+
+    assert_equal "transfer", scenario.execution_path.last["resolution_type"]
+  end
 end
