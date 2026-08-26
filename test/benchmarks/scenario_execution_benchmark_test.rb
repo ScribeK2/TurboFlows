@@ -72,20 +72,42 @@ class ScenarioExecutionBenchmarkTest < ActiveSupport::TestCase
       inputs: {}
     )
 
-    step = scenario.current_step
-    scenario.process_step(step&.step_type == 'question' ? 'yes' : nil) if step
+    # Through ScenarioSettler, because that is what the runner calls. Measuring
+    # process_step directly guarded a path production stopped using when
+    # traversal moved off GET, and would not have noticed the settler's own
+    # per-advance cost at all.
+    #
+    # Warm up across three steps, not one. build_linear_workflow alternates
+    # question/action, and the first advance past an action is the first thing
+    # in the process to touch action_text_rich_texts — which drags in SQLite
+    # schema introspection (PRAGMA table_xinfo, sqlite_master). That is a
+    # one-time cost, so measuring it as though it were per-advance reported 14.
+    3.times do
+      step = scenario.current_step
+      break unless step
+
+      ScenarioSettler.new(scenario).settle(step.step_type == 'question' ? 'yes' : nil)
+    end
 
     queries = count_queries do
       step = scenario.current_step
-      scenario.process_step(step&.step_type == 'question' ? 'yes' : nil) if step
+      ScenarioSettler.new(scenario).settle(step&.step_type == 'question' ? 'yes' : nil) if step
     end
 
-    # 9, not 8: capturing an action or message body onto the execution_path
-    # entry loads its Action Text record, and does so even when the step has no
-    # body to capture. That is one query per advance, not one per step visited —
-    # the constant-per-advance property this test exists to protect is intact.
-    assert_operator queries.size, :<=, 9,
-                    "Expected <= 9 queries per advance, got #{queries.size}:\n#{queries.join("\n")}"
+    # 10, not the original 8. Two deliberate changes account for it, each one
+    # query and each constant per advance — which is the property this test
+    # protects, and it still holds:
+    #
+    #   +1  capturing an action or message body loads its Action Text record,
+    #       and does so even when the step has no body to capture
+    #   +1  the settler asks whether the node it landed on is one the user can
+    #       answer, which is what moving traversal off GET costs
+    #
+    # The second is removable if it ever matters: advance_to_next_step already
+    # resolves the landing Step and keeps only its uuid, so the engine knows the
+    # answer and throws it away. Not worth an engine change for one query.
+    assert_operator queries.size, :<=, 10,
+                    "Expected <= 10 queries per advance, got #{queries.size}:\n#{queries.join("\n")}"
   end
 
   test 'scenario creation throughput' do

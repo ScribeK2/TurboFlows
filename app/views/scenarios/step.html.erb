@@ -21,6 +21,8 @@
         <%= link_to "View Results", scenario_path(@scenario), class: "btn btn--primary" %>
       </div>
     </div>
+  <% elsif @parked %>
+    <%= render "runner/parked", next_url: next_step_scenario_path(@scenario) %>
   <% else %>
     <% step = @scenario.current_step %>
     <% if step %>
