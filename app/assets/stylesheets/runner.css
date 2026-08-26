@@ -112,6 +112,76 @@
 }
 
 /* ============================================================================
+   Thread — the run as a growing list of answered steps plus one open card
+
+   Replaces the wizard's single card. Rows are one line each: this is a scanning
+   surface, and a long call pays for two-line rows in how much of it stays
+   visible at once. Surfaces stay neutral — step type lives in the badge on the
+   open card, never as a row background or border.
+   ============================================================================ */
+
+.runner-thread {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Indentation is the sub-flow's closing bracket: rows inside one sit a level
+   deeper, and coming back out is what tells a reader it ended. Capped at two
+   levels in the helper. Collapses to zero on narrow screens, where the Player
+   and embed have no room to spend on it. */
+.runner-thread__row,
+.runner-thread__group,
+.runner-thread__current {
+  padding-inline-start: calc(var(--thread-depth, 0) * var(--space-4));
+}
+
+.runner-thread__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+}
+
+.runner-thread__title {
+  color: var(--color-ink-muted);
+}
+
+.runner-thread__summary {
+  color: var(--color-ink);
+  font-weight: 500;
+}
+
+.runner-thread__group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-xs);
+  color: var(--color-ink-subtle);
+}
+
+/* The open card carries its own surface, so it needs air above the rows rather
+   than a rule between them. */
+.runner-thread__current {
+  margin-block-start: var(--space-4);
+}
+
+@media (max-width: 640px) {
+  .runner-thread__row,
+  .runner-thread__group,
+  .runner-thread__current {
+    padding-inline-start: 0;
+  }
+}
+
+/* ============================================================================
    Step content box — instructions, messages, escalation and resolution detail
    ============================================================================ */
 

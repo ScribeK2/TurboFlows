@@ -48,8 +48,17 @@ class PlayerController < ApplicationController
       # A finished child is a finished sub-flow, not a finished run — see
       # ScenariosController#handle_step_guard_redirects.
       parent = @scenario.parent_scenario if @scenario.completed?
-      redirect_to(parent ? runner_step_path(parent) : player_scenario_show_path(@scenario.root_scenario))
-      return
+      if parent
+        redirect_to runner_step_path(parent)
+        return
+      end
+
+      # Stacked keeps a finished run on its transcript; stopped still leaves,
+      # since there is no ending to read.
+      unless stacked_runner? && @scenario.completed?
+        redirect_to player_scenario_show_path(@scenario.root_scenario)
+        return
+      end
     end
 
     # A run waiting on a child that is still going belongs at the child's URL.

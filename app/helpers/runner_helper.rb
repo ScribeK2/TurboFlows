@@ -4,6 +4,65 @@
 # strings, depending on how the step was authored. Both runners open-coded the
 # same normalization; it lives here now so they cannot drift again.
 module RunnerHelper
+  # Whether this deployment renders the run as a growing thread rather than one
+  # card at a time. See config/initializers/stacked_runner.rb, which carries the
+  # removal condition.
+  #
+  # Read through the config every time rather than memoized, so a test or a
+  # console can flip it.
+  def stacked_runner?
+    Rails.configuration.x.stacked_runner.present?
+  end
+
+  # How far a thread entry is indented, in levels.
+  #
+  # Capped: SubflowValidator allows nesting to depth 10, and the Player's layout
+  # is tighter than the Scenario's with embed tighter still. Two levels is
+  # enough to say "we are inside something"; past that the reader gets the fact
+  # without the run walking off the right edge.
+  THREAD_MAX_INDENT = 2
+
+  def runner_thread_indent(entry)
+    [entry["depth"].to_i, THREAD_MAX_INDENT].min
+  end
+
+  # The depth the open card sits at: how many sub-flows deep the run currently
+  # is. Without it the card outdents while the run is still inside one, which
+  # reads as the sub-flow having ended — the opposite of what indentation is
+  # here to say.
+  # One query per level, unlike ScenarioSettler.auto_processable? which was
+  # changed to read parent_scenario_id precisely to avoid that. The id cannot
+  # answer this one — depth is the length of the chain, not whether it exists —
+  # and SubflowValidator caps nesting at 10, so this is a bounded walk once per
+  # render rather than per advance. Batch it if a run ever nests deeply enough
+  # to notice.
+  def runner_thread_current_depth(scenario)
+    depth = 0
+    frame = scenario
+    depth += 1 while (frame = frame.parent_scenario)
+    [depth, THREAD_MAX_INDENT].min
+  end
+
+  # What a completed step says once it has collapsed into a row.
+  #
+  # Reads the entry and only the entry. Steps get edited and deleted after runs,
+  # so a row built from the live Step record would replay a call with text
+  # nobody ever saw, or fail outright on a uuid that no longer resolves. The
+  # entry is the historical record; the Step is current state.
+  #
+  # nil when there is nothing honest to say — the row still shows its title, and
+  # a blank beats an invented summary.
+  def runner_row_summary(entry)
+    case entry["step_type"]
+    when "question" then entry["answer"].presence
+    when "form"     then entry["response_summary"].presence
+    when "action"   then "Done"
+    when "message"  then "Read"
+    when "escalate" then escalation_summary(entry)
+    when "resolve"  then ["Resolved", entry["resolution_type"].presence].compact.join(" — ")
+    end
+  end
+
   def runner_option_value(option)
     option.is_a?(Hash) ? (option["value"] || option["label"]) : option
   end
@@ -26,6 +85,15 @@ module RunnerHelper
     when "date" then "YYYY-MM-DD"
     else "Type your answer..."
     end
+  end
+
+  # Older entries predate recording the target, so this degrades to the bare
+  # fact rather than printing an em dash with nothing after it.
+  def escalation_summary(entry)
+    target = entry["target_type"].presence
+    return "Escalated" unless target
+
+    ["Escalated to #{target}", entry["priority"].presence].compact.join(" — ")
   end
 
   # Priority and resolution keep their pills: both mark an exceptional state,

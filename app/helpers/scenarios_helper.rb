@@ -58,12 +58,27 @@ module ScenariosHelper
     parts.join(" — ")
   end
 
-  # Merges child scenario execution paths into the parent's path at display time.
-  # Replaces subflow_started entries with the child's steps (excluding terminal Resolve/Escalate).
-  # Handles nested sub-flows recursively. Returns a flat array for seamless display.
+  # The steps of a run, with sub-flows spliced in where they happened.
+  #
+  # A flat audit list: the grouping marks the traversal emits are dropped, so
+  # this reads exactly as it did before the thread existed.
   def flattened_execution_path(scenario)
-    path = scenario.execution_path || []
-    flatten_path_entries(path)
+    flatten_path_entries(scenario.execution_path || []).reject { |entry| entry["kind"] == "group_start" }
+  end
+
+  # The same traversal, keeping the structure: each entry tagged "step" or
+  # "group_start" and carrying the depth it sits at.
+  #
+  # One walk, two readers. The results page wants the audit list above; the
+  # runner thread wants to show where the call moved into a sub-flow and, by
+  # outdenting again, where it came back. Sharing the traversal — recursive,
+  # subtle, and already carrying a fix for a query per sub-flow — while
+  # differing only at the call site is what stops the two drifting.
+  #
+  # Reads from the root, because a thread is the whole run: a sub-flow shows the
+  # steps that led into it rather than restarting at one.
+  def runner_thread_entries(scenario)
+    flatten_path_entries(scenario.root_scenario.execution_path || [])
   end
 
   # Humanizes raw result keys: strips step_ prefix, replaces underscores, titleizes.
@@ -93,7 +108,10 @@ module ScenariosHelper
 
   private
 
-  def flatten_path_entries(path)
+  # Tagged "kind", not "type": entries already use "type" as a legacy fallback
+  # for step_type, and a second meaning on the same key is how a reader ends up
+  # treating a grouping mark as a step.
+  def flatten_path_entries(path, depth = 0)
     flat = []
     # One query per nesting level rather than one per sub-flow entry. The runner
     # renders this on every step now, not just the results page, so a run with
@@ -102,18 +120,25 @@ module ScenariosHelper
 
     path.each do |entry|
       if entry["subflow_started"].present? && entry["child_scenario_id"].present?
+        # Emitted even when the child is gone. The mark is a fact about the call
+        # — it went into another script — and saying so with the title the entry
+        # already carries beats silence.
+        flat << entry.merge("kind" => "group_start", "depth" => depth)
+
         child = children[entry["child_scenario_id"]]
-        if child
-          child_path = child.execution_path || []
-          if child_path.any?
-            last_entry = child_path.last
-            last_type = last_entry["step_type"] || last_entry["type"]
-            child_path = child_path[0..-2] if %w[resolve escalate].include?(last_type)
-          end
-          flat.concat(flatten_path_entries(child_path))
+        next unless child
+
+        child_path = child.execution_path || []
+        if child_path.any?
+          last_entry = child_path.last
+          last_type = last_entry["step_type"] || last_entry["type"]
+          # The child's own terminal is the sub-flow ending, not the run ending;
+          # the next card already implies it.
+          child_path = child_path[0..-2] if %w[resolve escalate].include?(last_type)
         end
+        flat.concat(flatten_path_entries(child_path, depth + 1))
       else
-        flat << entry
+        flat << entry.merge("kind" => "step", "depth" => depth)
       end
     end
 

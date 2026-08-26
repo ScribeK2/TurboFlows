@@ -178,6 +178,12 @@ class ScenarioStepProcessor
     end
 
     path_entry["escalated"] = true
+    # Where the call went, on the entry rather than only in _escalation, because
+    # a transcript row is historical: results carry one _escalation blob that a
+    # later escalate step overwrites, and the step record can be edited or
+    # deleted after the run.
+    path_entry["target_type"] = step.target_type
+    path_entry["priority"] = step.priority.presence || "medium"
     @scenario.results ||= {}
     @scenario.results[step.title] = "Escalated"
 
@@ -214,6 +220,7 @@ class ScenarioStepProcessor
     end
 
     path_entry["resolved"] = true
+    path_entry["resolution_type"] = step.resolution_type.presence || "success"
     @scenario.results ||= {}
     @scenario.results[step.title] = "Issue resolved"
 
@@ -281,10 +288,22 @@ class ScenarioStepProcessor
       end
     end
 
+    # purpose and shared_access describe the *run*, not the frame, so a child
+    # inherits them.
+    #
+    # Without purpose, a live run's sub-flow took the column default of
+    # "simulation" and was reaped by the 7-day tier while its parent lived for
+    # 90 — a completed live run silently lost the answers recorded inside its
+    # sub-flow, and flattened_execution_path was left splicing against nothing.
+    #
+    # Without shared_access, an anonymous visitor following a share link was
+    # refused their own run the moment a sub-flow opened.
     child_scenario = Scenario.create!(
       workflow: target_workflow,
       user: @scenario.user,
       parent_scenario: @scenario,
+      purpose: @scenario.purpose,
+      shared_access: @scenario.shared_access?,
       results: child_results,
       inputs: {},
       status: 'active'

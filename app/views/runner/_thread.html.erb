@@ -1,0 +1,33 @@
+<%#
+  The run as one growing list: every step answered so far, then the step being
+  answered now.
+
+  This is what replaces the wizard's one-card-at-a-time page. The problem it
+  solves is orientation — an agent on a call losing their place because the page
+  jumps and resets every step — not re-reading, which is why rows carry a
+  summary rather than the script. Expanding a row read-only is a later change,
+  and the entries already record what it will need.
+
+  Both runners render this; the difference between them lives in the shells,
+  which pass everything route-shaped as a local.
+
+  locals: scenario, step, next_url, stop_url, back_button, show_cancel,
+          errors, submitted, auto_advance
+%>
+<% entries = runner_thread_entries(scenario) %>
+<ol class="runner-thread" id="runner-thread">
+  <% entries.each do |entry| %>
+    <% if entry["kind"] == "group_start" %>
+      <%= render "runner/thread_group", entry: entry %>
+    <% else %>
+      <%= render "runner/thread_row", entry: entry %>
+    <% end %>
+  <% end %>
+
+  <% if step %>
+    <%= render "runner/thread_card",
+          scenario: scenario, step: step, next_url: next_url, stop_url: stop_url,
+          back_button: back_button, show_cancel: show_cancel,
+          errors: errors, submitted: submitted, auto_advance: auto_advance %>
+  <% end %>
+</ol>
