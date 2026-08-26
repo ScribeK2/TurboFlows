@@ -209,4 +209,53 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
     assert_select "#runner-card-current[style*='--thread-depth: 1']", 1,
                   "the run is still inside the sub-flow, so the card must not outdent"
   end
+  # Both shells ship together — diverging them is what the shared step body and
+  # the shared advance seam exist to prevent — so the Player gets the same
+  # assertions, not a promise that it works because the Scenario runner does.
+  test "the Player renders the thread too" do
+    @workflow.update!(status: "published")
+    scenario = Scenario.create!(
+      workflow: @workflow, user: @user, purpose: "live", started_at: Time.current,
+      current_node_uuid: @q1.uuid, execution_path: [], results: {}, inputs: {}
+    )
+    ScenarioSettler.new(scenario).settle("Yes")
+
+    with_stacked_runner { get player_scenario_step_path(scenario) }
+
+    assert_response :success
+    assert_select "ol#runner-thread"
+    assert_select ".runner-thread__row", 1
+    assert_select ".runner-thread__row .runner-thread__summary", text: "Yes"
+    assert_select "#runner-card-current", 1
+    assert_select ".runner-trail", 0
+  end
+
+  test "the Player classic shell is untouched with the flag off" do
+    @workflow.update!(status: "published")
+    scenario = Scenario.create!(
+      workflow: @workflow, user: @user, purpose: "live", started_at: Time.current,
+      current_node_uuid: @q1.uuid, execution_path: [], results: {}, inputs: {}
+    )
+    ScenarioSettler.new(scenario).settle("Yes")
+
+    get player_scenario_step_path(scenario)
+
+    assert_select "ol#runner-thread", 0
+    assert_select ".runner-trail", 1
+  end
+
+  test "an anonymous shared run gets the thread" do
+    @workflow.update!(status: "published", share_token: SecureRandom.hex(8))
+    sign_out @user
+
+    with_stacked_runner do
+      get shared_player_path(@workflow.share_token)
+      follow_redirect!
+    end
+
+    assert_response :success
+    assert_select "ol#runner-thread", 1,
+                  "share links are the surface least able to report what they saw — " \
+                  "they must not get a different runner from the author"
+  end
 end
