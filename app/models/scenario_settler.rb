@@ -22,6 +22,7 @@ class ScenarioSettler
   Settled = Data.define(:scenario, :outcome, :traversed) do
     delegate :blocked?, to: :outcome
     delegate :resolved?, to: :outcome
+    delegate :halted?, to: :outcome
   end
 
   # A node the user is never shown.

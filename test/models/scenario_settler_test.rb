@@ -271,4 +271,24 @@ class ScenarioSettlerTest < ActiveSupport::TestCase
                  "the child's question and its closing resolve were both processed by this move, " \
                  "and a transcript with holes is worse than no transcript"
   end
+  # The plan's named regression: settle must not swallow the iteration limit.
+  # The loop calls process_step repeatedly, so a graph that never reaches an
+  # answerable step would otherwise spin inside one request.
+  test "settle lets the iteration limit escape rather than looping" do
+    workflow = Workflow.create!(title: "Looping WF", user: @user)
+    q = Steps::Question.create!(workflow: workflow, title: "Q", position: 0, variable_name: "qv")
+    done = Steps::Resolve.create!(workflow: workflow, title: "Done", position: 1)
+    Transition.create!(step: q, target_step: done, position: 0)
+    workflow.update!(start_step: q)
+
+    scenario = Scenario.create!(
+      workflow: workflow, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: q.uuid, execution_path: [], results: {}, inputs: {},
+      iteration_count: Scenario::MAX_ITERATIONS
+    )
+
+    assert_raises(Scenario::ScenarioIterationLimit) do
+      ScenarioSettler.new(scenario).settle("Yes")
+    end
+  end
 end

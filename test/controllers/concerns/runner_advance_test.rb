@@ -146,4 +146,60 @@ class RunnerAdvanceTest < ActionDispatch::IntegrationTest
     assert_predicate scenario, :present?, "creation should have settled into the child"
     assert_redirected_to step_scenario_path(scenario)
   end
+  # Replaces "completed child scenario in step action triggers parent
+  # advancement", which the old concern satisfied by resuming the parent inside
+  # the GET. A read cannot do that any more, but sending the user to the results
+  # page for a run that is still going is not the answer either.
+  test "step on a completed child goes to the parent, not to results" do
+    parent = parent_scenario
+    parent.process_step
+    child = parent.child_scenarios.first
+    child.process_step("answer")
+    child.reload.process_step
+    assert_predicate child.reload, :complete?, "precondition"
+    assert_not_predicate parent.reload, :complete?, "precondition: the run is not over"
+
+    get step_scenario_path(child)
+
+    assert_redirected_to step_scenario_path(parent)
+  end
+  # The plan's named regression: "GET step performs zero writes — the only thing
+  # that keeps purity true as people add code to that action." Deliberately a
+  # blanket assertion rather than a check of particular fields, because the
+  # point is to catch the *next* write, not the ones removed here.
+  test "step writes nothing, on every branch it can take" do
+    # 1. an ordinary answerable step
+    plain_wf = Workflow.create!(title: "Plain WF", user: @user)
+    q = Steps::Question.create!(workflow: plain_wf, position: 0, uuid: SecureRandom.uuid,
+                                title: "Q", question: "Q?", variable_name: "qv")
+    r = Steps::Resolve.create!(workflow: plain_wf, position: 1, uuid: SecureRandom.uuid, title: "Done")
+    Transition.create!(step: q, target_step: r, position: 0)
+    plain_wf.update!(start_step: q)
+    plain = Scenario.create!(
+      workflow: plain_wf, user: @user, purpose: "simulation", status: "active",
+      current_node_uuid: q.uuid, execution_path: [], results: {}, inputs: {}
+    )
+
+    # 2. a parent whose child is still running (redirect branch)
+    waiting = parent_scenario
+    waiting.process_step
+    running_child = waiting.child_scenarios.first
+
+    # 3. a parent whose child has finished (parked branch)
+    stuck = parent_scenario
+    stuck.process_step
+    finished_child = stuck.child_scenarios.first
+    finished_child.process_step("answer")
+    finished_child.reload.process_step
+
+    [plain, waiting, stuck, running_child].each do |scenario|
+      scenario.reload
+      before = scenario.attributes
+
+      get step_scenario_path(scenario)
+
+      assert_equal before, scenario.reload.attributes,
+                   "GET step changed #{scenario.id}: a read must not move the run"
+    end
+  end
 end

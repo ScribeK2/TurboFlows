@@ -43,11 +43,32 @@ module RunnerAdvance
     scenario = settled.scenario
 
     if settled.blocked?
+      # NOTE: for the streamed response in a later PR: this renders the
+      # controller's own @scenario. If a run is ever refused *after* settle
+      # descended into a child — a sub-flow opening on a notes-required resolve
+      # — that is the parent, and the errors go nowhere. The old code
+      # redirect-looped on the same input, so this is not a regression, but the
+      # stream rebuild is the moment to render settled.scenario instead.
       render_blocked_step(settled.outcome.errors)
+    elsif settled.halted?
+      redirect_to runner_step_path(scenario), alert: halted_message(settled.outcome.reason)
     elsif scenario.complete?
       redirect_to runner_results_path(scenario)
     else
       redirect_to runner_step_path(scenario)
+    end
+  end
+
+  # A run that could not move, as opposed to one that was refused.
+  #
+  # :conflict is a lost optimistic-locking race — two tabs on the same run, or a
+  # double submit. Saying nothing drops the user's answer silently, which is how
+  # the old shells behaved for every halt except this one.
+  def halted_message(reason)
+    case reason
+    when :conflict then "Someone else changed this run while you were answering. Your last answer was not saved."
+    when :not_runnable then "This run has already finished."
+    else "That step could not be processed."
     end
   end
 end

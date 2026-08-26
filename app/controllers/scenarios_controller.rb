@@ -89,7 +89,11 @@ class ScenariosController < ApplicationController
     end
 
     if @scenario.complete?
-      redirect_to runner_results_path(@scenario.root_scenario)
+      # A finished *child* is a finished sub-flow, not a finished run. Sending
+      # the user to the root's results page would show a summary for a run still
+      # in progress; the parent's step page is where they belong, and it offers
+      # Resume because a parent whose child has finished is parked.
+      redirect_to(@scenario.parent_scenario ? runner_step_path(@scenario.parent_scenario) : runner_results_path(@scenario))
       return true
     end
 

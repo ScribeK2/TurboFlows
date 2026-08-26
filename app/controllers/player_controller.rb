@@ -45,7 +45,10 @@ class PlayerController < ApplicationController
     @workflow = @scenario.workflow
 
     if @scenario.completed? || @scenario.stopped?
-      redirect_to player_scenario_show_path(@scenario.root_scenario)
+      # A finished child is a finished sub-flow, not a finished run — see
+      # ScenariosController#handle_step_guard_redirects.
+      parent = @scenario.parent_scenario if @scenario.completed?
+      redirect_to(parent ? runner_step_path(parent) : player_scenario_show_path(@scenario.root_scenario))
       return
     end
 
