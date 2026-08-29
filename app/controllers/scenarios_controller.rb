@@ -51,20 +51,12 @@ class ScenariosController < ApplicationController
     end
 
     @scenario.record_step_ended
-    stash_step_inputs
+    stash_runner_inputs(@scenario)
 
-    advance_runner(@scenario, params[:answer],
-                   resolved_here: ActiveModel::Type::Boolean.new.cast(params[:resolved_here]) || false)
+    advance_runner(@scenario, runner_answer, resolved_here: runner_resolved_here?)
   end
 
   private
-
-  # Escalation reason and resolution notes reach the processor through inputs.
-  def stash_step_inputs
-    @scenario.inputs ||= {}
-    @scenario.inputs["escalation_reason"] = params[:escalation_reason] if params[:escalation_reason].present?
-    @scenario.inputs["resolution_notes"] = params[:resolution_notes] if params[:resolution_notes].present?
-  end
 
   # A refused step re-renders where the user already is, with the reasons.
   # 422 because Turbo discards a 200 that is not a redirect.

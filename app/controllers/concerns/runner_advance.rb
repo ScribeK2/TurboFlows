@@ -42,6 +42,28 @@ module RunnerAdvance
     raise NotImplementedError, "#{self.class} must implement #render_blocked_step"
   end
 
+  # The answer the user gave, read the same way by both shells.
+  #
+  # These were parsed per-controller and had already drifted: the shared button
+  # bar submits `resolved_here`, the Scenario runner read that, and the Player
+  # read `resolved` — a name nothing submits. Its "Resolved" button therefore
+  # advanced the run instead of ending it, silently. Reading inputs is part of
+  # the seam, not something each shell gets its own opinion about.
+  def runner_answer
+    params[:answer] || params[:selected_option]
+  end
+
+  def runner_resolved_here?
+    ActiveModel::Type::Boolean.new.cast(params[:resolved_here]).present?
+  end
+
+  # Escalation reason and resolution notes reach the processor through inputs.
+  def stash_runner_inputs(scenario)
+    scenario.inputs ||= {}
+    scenario.inputs["escalation_reason"] = params[:escalation_reason] if params[:escalation_reason].present?
+    scenario.inputs["resolution_notes"] = params[:resolution_notes] if params[:resolution_notes].present?
+  end
+
   def advance_runner(scenario, answer, resolved_here: false)
     # How much thread already exists, so the stream can send only what this
     # answer added. Counted through the same traversal the thread renders from,
@@ -93,6 +115,19 @@ module RunnerAdvance
       return
     end
 
+    # A halt is not a refusal and not a move: the run could not act on this
+    # answer at all. Classic says so; streaming has to as well, or a stale tab
+    # or a lost optimistic-locking race drops the agent's answer in silence.
+    # Nothing appends — the empty tail is what keeps a second open card off the
+    # page when the idempotency guard fires.
+    if settled.halted?
+      flash.now[:alert] = halted_message(settled.outcome.reason)
+      @thread_tail = []
+      @open_step = @scenario.complete? || @scenario.parked? ? nil : @scenario.current_step
+      render :advance, formats: [:turbo_stream]
+      return
+    end
+
     @thread_tail = helpers.runner_thread_entries(@scenario).drop(thread_before)
     @open_step = @scenario.complete? || @scenario.parked? ? nil : @scenario.current_step
     render :advance, formats: [:turbo_stream]
@@ -102,12 +137,12 @@ module RunnerAdvance
     scenario = settled.scenario
 
     if settled.blocked?
-      # NOTE: for the streamed response in a later PR: this renders the
-      # controller's own @scenario. If a run is ever refused *after* settle
-      # descended into a child — a sub-flow opening on a notes-required resolve
-      # — that is the parent, and the errors go nowhere. The old code
-      # redirect-looped on the same input, so this is not a regression, but the
-      # stream rebuild is the moment to render settled.scenario instead.
+      # Classic only. This renders the controller's own @scenario, so a run
+      # refused *after* settle descended into a child — a sub-flow opening on a
+      # notes-required resolve — shows the parent and drops the errors. The old
+      # code redirect-looped on the same input, so it is not a regression, and
+      # the streamed path does not share it: that one renders settled.scenario.
+      # This goes when classic goes.
       render_blocked_step(settled.outcome.errors)
     elsif settled.halted?
       redirect_to runner_step_path(scenario), alert: halted_message(settled.outcome.reason)

@@ -70,6 +70,14 @@ class PlayerController < ApplicationController
       return
     end
 
+    # Re-checked, not trusted: asking for embed is not the same as the workflow
+    # having enabled it.
+    #
+    # Checked against the root workflow, not this frame's. Embed describes the
+    # run the visitor opened — like shared_access and purpose do — and a
+    # sub-flow's own workflow carries no share token, so reading it off the
+    # frame turned embed off the moment the run entered a sub-flow.
+    @embed_mode = params[:embed] == "1" && @scenario.root_workflow.embeddable?
     @parked = @scenario.parked?
     @current_step = resolve_current_step
     @scenario.step_started_at_pending = Time.current.iso8601(3)
@@ -77,13 +85,10 @@ class PlayerController < ApplicationController
 
   def next_step
     @workflow = @scenario.workflow
-    @scenario.inputs ||= {}
-    @scenario.inputs["escalation_reason"] = params[:escalation_reason] if params[:escalation_reason].present?
-    @scenario.inputs["resolution_notes"] = params[:resolution_notes] if params[:resolution_notes].present?
+    stash_runner_inputs(@scenario)
     @scenario.record_step_ended
 
-    advance_runner(@scenario, params[:answer] || params[:selected_option],
-                   resolved_here: params[:resolved].present?)
+    advance_runner(@scenario, runner_answer, resolved_here: runner_resolved_here?)
   end
 
   def back
@@ -118,7 +123,10 @@ class PlayerController < ApplicationController
       inputs: {}
     )
 
-    redirect_to player_scenario_step_path(ScenarioSettler.new(scenario).settle_from_start)
+    # Carry embed through the hop. This action redirects, so a flag set here
+    # renders nothing — the visitor lands on #step, which has to be told.
+    landed = ScenarioSettler.new(scenario).settle_from_start
+    redirect_to player_scenario_step_path(landed, embed: ("1" if @embed_mode))
   rescue ActiveRecord::RecordNotFound
     head :not_found
   end

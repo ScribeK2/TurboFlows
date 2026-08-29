@@ -167,6 +167,18 @@
   color: var(--color-ink-subtle);
 }
 
+/* A run that could not act on an answer — a stale tab, or a lost race with
+   another tab. Exceptional, so it gets a pill's worth of colour where the rest
+   of the thread stays quiet. */
+.runner-thread__notice {
+  padding: var(--space-3);
+  margin-block-end: var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-warning-soft);
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+}
+
 /* The open card carries its own surface, so it needs air above the rows rather
    than a rule between them. The ending sits in the same position and gets the
    same air. */

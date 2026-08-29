@@ -113,16 +113,38 @@ class StackedRunnerSystemTest < ApplicationSystemTestCase
                  "a streamed thread and a reloaded one must not disagree"
   end
 
-  test "Enter submits when focus is in the card" do
-    scenario = start_scenario
+  # Keydown is scoped to the card rather than the document now, so focus landing
+  # inside it is what makes the shortcut work at all. A free-text question,
+  # because a radio auto-advances on selection and would pass this test without
+  # Enter ever being involved.
+  test "Enter submits the open card" do
+    wf = Workflow.create!(title: "Typed WF", user: @user, status: "published")
+    q = Steps::Question.create!(
+      workflow: wf, title: "What is the account number", position: 0,
+      variable_name: "acct", question: "What is the account number?", answer_type: "text"
+    )
+    nxt = Steps::Question.create!(
+      workflow: wf, title: "Anything else", position: 1,
+      variable_name: "more", question: "Anything else?", answer_type: "text"
+    )
+    done = Steps::Resolve.create!(workflow: wf, title: "Close", position: 2, resolution_type: "success")
+    Transition.create!(step: q, target_step: nxt, position: 0)
+    Transition.create!(step: nxt, target_step: done, position: 0)
+    wf.update!(start_step: q)
+
+    scenario = Scenario.create!(
+      workflow: wf, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: q.uuid, execution_path: [], results: {}, inputs: {}
+    )
     sign_in_as(@user)
     visit step_scenario_path(scenario)
+    assert_current_step "What is the account number"
 
-    # Keydown is scoped to the card now, so focus being inside it is what makes
-    # the shortcut work at all.
-    choose_answer "Yes"
+    field = find("#{RUNNER_STEP_CARD} input[type='text']")
+    field.send_keys("12345", :enter)
 
-    assert_current_step "Did the email arrive"
+    assert_current_step "Anything else"
+    assert_selector ".runner-thread__row .runner-thread__summary", text: "12345"
   end
 
   test "the Player streams too" do

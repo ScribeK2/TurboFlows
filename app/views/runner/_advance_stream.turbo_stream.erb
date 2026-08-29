@@ -12,6 +12,17 @@
   locals: scenario, tail, step, parked, results_url, next_url, stop_url,
           back_button, show_cancel, errors, submitted
 %>
+<% if flash.now[:alert].present? %>
+  <%#
+    A halt has no new markup of its own — nothing collapsed, nothing opened — so
+    without this the response is indistinguishable from success and the reason
+    the answer did not land never reaches the agent.
+  %>
+  <%= turbo_stream.prepend "runner-thread" do %>
+    <li class="runner-thread__notice" role="alert"><%= flash.now[:alert] %></li>
+  <% end %>
+<% end %>
+
 <%= turbo_stream.replace "runner-card-current" do %>
   <% tail.each do |entry| %>
     <% if entry["kind"] == "group_start" %>

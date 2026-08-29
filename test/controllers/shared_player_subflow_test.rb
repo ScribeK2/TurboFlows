@@ -84,4 +84,28 @@ class SharedPlayerSubflowTest < ActionDispatch::IntegrationTest
     assert Scenario.exists?(child.id),
            "the parent is a 90-day live run; its sub-flow must not vanish at 7 days"
   end
+  # Embed mode sets a body class that strips the Player's chrome for an iframe.
+  # It was computed in show_shared, which redirects — so the flag was set on a
+  # request that renders nothing, and the page the visitor actually lands on
+  # never saw it.
+  test "an embedded shared run keeps embed mode through the redirect" do
+    @workflow.update!(share_token: SecureRandom.hex(8), embed_enabled: true)
+
+    get shared_player_path(@workflow.share_token, embed: "1")
+    follow_redirect!
+
+    assert_response :success
+    assert_select "body.player-layout--embed", 1,
+                  "the chrome-free layout must survive the hop to the step page"
+  end
+
+  test "embed mode is refused for a workflow that has not enabled it" do
+    @workflow.update!(share_token: SecureRandom.hex(8), embed_enabled: false)
+
+    get shared_player_path(@workflow.share_token, embed: "1")
+    follow_redirect!
+
+    assert_select "body.player-layout--embed", 0,
+                  "asking for embed is not the same as being allowed it"
+  end
 end
