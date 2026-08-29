@@ -58,6 +58,22 @@ module RunnerAdvance
     end
   end
 
+  # Rewinding, answered the same way as an answer: without a redirect, so the
+  # page the agent is reading stays put.
+  def rewind_runner(scenario)
+    ScenarioNavigator.new(scenario).go_back
+
+    unless stacked_runner?
+      redirect_to runner_step_path(scenario)
+      return
+    end
+
+    @scenario = scenario
+    @workflow = scenario.root_workflow
+    @open_step = scenario.complete? || scenario.parked? ? nil : scenario.current_step
+    render :back, formats: [:turbo_stream]
+  end
+
   # Stacked answers the POST rather than redirecting away from it, which is what
   # keeps the page — and the transcript on it — in place.
   def respond_to_stacked(settled, thread_before)

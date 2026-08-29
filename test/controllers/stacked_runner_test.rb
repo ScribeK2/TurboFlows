@@ -348,4 +348,41 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
     assert_match(/runner-card-current/, response.body)
     assert_no_match(/runner-thread__row/, response.body, "nothing was answered, so nothing collapses")
   end
+  test "going back streams the thread without a redirect" do
+    scenario = scenario_at(@q1)
+    ScenarioSettler.new(scenario).settle("Yes")
+
+    with_stacked_runner do
+      post back_scenario_path(scenario),
+           headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+
+    assert_response :success
+    assert_equal "text/vnd.turbo-stream.html", response.media_type
+  end
+
+  test "going back reopens the step it undid and drops its row" do
+    scenario = scenario_at(@q1)
+    ScenarioSettler.new(scenario).settle("Yes")
+
+    with_stacked_runner do
+      post back_scenario_path(scenario),
+           headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+
+    assert_match(/runner-card-current/, response.body)
+    assert_match(/Verify the account/, response.body, "the step just undone is open again")
+    assert_no_match(/runner-thread__summary/, response.body,
+                    "and its row is gone, because the thread shrank")
+  end
+
+  test "back still redirects when the flag is off" do
+    scenario = scenario_at(@q1)
+    ScenarioSettler.new(scenario).settle("Yes")
+
+    post back_scenario_path(scenario),
+         headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_redirected_to step_scenario_path(scenario)
+  end
 end

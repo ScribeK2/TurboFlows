@@ -26,8 +26,7 @@ class ScenariosController < ApplicationController
 
   def back
     @scenario = current_user.scenarios.find(params[:id])
-    ScenarioNavigator.new(@scenario).go_back
-    redirect_to step_scenario_path(@scenario)
+    rewind_runner(@scenario)
   end
 
   def stop
