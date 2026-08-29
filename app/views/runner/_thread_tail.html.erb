@@ -8,7 +8,7 @@
   locals: as runner/_thread
 %>
 <% if parked %>
-  <li class="runner-thread__current" id="runner-card-current">
+  <li class="runner-thread__current" id="runner-card-current" data-thread-target="current">
     <%= render "runner/parked", next_url: next_url %>
   </li>
 <% elsif step %>
@@ -17,7 +17,7 @@
         back_button: back_button, show_cancel: show_cancel,
         errors: errors, submitted: submitted, auto_advance: auto_advance %>
 <% elsif scenario.complete? %>
-  <li class="runner-thread__complete-item">
+  <li class="runner-thread__complete-item" data-thread-target="current">
     <%= render "runner/thread_complete", results_url: results_url %>
   </li>
 <% end %>
