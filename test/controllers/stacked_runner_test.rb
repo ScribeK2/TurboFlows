@@ -286,4 +286,66 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to player_scenario_show_path(scenario)
   end
+  # --- streaming the answer -------------------------------------------------
+
+  test "answering streams the thread forward instead of redirecting" do
+    scenario = scenario_at(@q1)
+
+    with_stacked_runner do
+      post next_step_scenario_path(scenario), params: { answer: "Yes" },
+                                              headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+
+    assert_response :success
+    assert_equal "text/vnd.turbo-stream.html", response.media_type
+    assert_match(/turbo-stream/, response.body)
+  end
+
+  test "the answered step becomes a row and the next step becomes the open card" do
+    scenario = scenario_at(@q1)
+
+    with_stacked_runner do
+      post next_step_scenario_path(scenario), params: { answer: "Yes" },
+                                              headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+
+    assert_match(/runner-thread__row/, response.body, "the step just answered collapses into a row")
+    assert_match(/Verify the account/, response.body)
+    assert_match(/runner-card-current/, response.body, "and the next one opens")
+    assert_match(/Check the balance/, response.body)
+  end
+
+  test "classic still redirects when the flag is off" do
+    scenario = scenario_at(@q1)
+
+    post next_step_scenario_path(scenario), params: { answer: "Yes" },
+                                            headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_redirected_to step_scenario_path(scenario)
+  end
+
+  test "a refused step re-renders the card without appending anything" do
+    wf = Workflow.create!(title: "Blocking WF", user: @user)
+    esc = Steps::Escalate.create!(
+      workflow: wf, title: "Escalate", position: 0,
+      target_type: "supervisor", reason_required: true
+    )
+    done = Steps::Resolve.create!(workflow: wf, title: "Done", position: 1)
+    Transition.create!(step: esc, target_step: done, position: 0)
+    wf.update!(start_step: esc)
+    scenario = Scenario.create!(
+      workflow: wf, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: esc.uuid, execution_path: [], results: {}, inputs: {}
+    )
+
+    with_stacked_runner do
+      post next_step_scenario_path(scenario),
+           headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+
+    assert_response :unprocessable_entity, "a refusal is not a new step"
+    assert_match(/Escalation reason is required/, response.body)
+    assert_match(/runner-card-current/, response.body)
+    assert_no_match(/runner-thread__row/, response.body, "nothing was answered, so nothing collapses")
+  end
 end

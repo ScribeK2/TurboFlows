@@ -1,0 +1,23 @@
+<%#
+  Whatever the run is waiting on, at the bottom of the thread.
+
+  Exactly one of: the open card, a Resume control for a run that stopped
+  somewhere it cannot rest, or the ending. Each carries id="runner-card-current"
+  while the run can still move, which is the anchor a streamed answer replaces.
+
+  locals: as runner/_thread
+%>
+<% if parked %>
+  <li class="runner-thread__current" id="runner-card-current">
+    <%= render "runner/parked", next_url: next_url %>
+  </li>
+<% elsif step %>
+  <%= render "runner/thread_card",
+        scenario: scenario, step: step, next_url: next_url, stop_url: stop_url,
+        back_button: back_button, show_cancel: show_cancel,
+        errors: errors, submitted: submitted, auto_advance: auto_advance %>
+<% elsif scenario.complete? %>
+  <li class="runner-thread__complete-item">
+    <%= render "runner/thread_complete", results_url: results_url %>
+  </li>
+<% end %>

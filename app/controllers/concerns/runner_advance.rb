@@ -43,7 +43,43 @@ module RunnerAdvance
   end
 
   def advance_runner(scenario, answer, resolved_here: false)
-    respond_to_settled(ScenarioSettler.new(scenario).settle(answer, resolved_here: resolved_here))
+    # How much thread already exists, so the stream can send only what this
+    # answer added. Counted through the same traversal the thread renders from,
+    # so the tail is tagged and depthed by construction rather than by the
+    # controller trying to reproduce it.
+    thread_before = stacked_runner? ? helpers.runner_thread_entries(scenario).length : 0
+
+    settled = ScenarioSettler.new(scenario).settle(answer, resolved_here: resolved_here)
+
+    if stacked_runner?
+      respond_to_stacked(settled, thread_before)
+    else
+      respond_to_settled(settled)
+    end
+  end
+
+  # Stacked answers the POST rather than redirecting away from it, which is what
+  # keeps the page — and the transcript on it — in place.
+  def respond_to_stacked(settled, thread_before)
+    @scenario = settled.scenario
+    @workflow = @scenario.root_workflow
+
+    if settled.blocked?
+      # A refusal is not a new step: nothing collapses, nothing appends, and the
+      # run has not moved. The card is re-rendered in place with the reasons —
+      # which also rebuilds the form, clearing the submit guard and the spinner
+      # that sit outside the errors node.
+      @step_errors = settled.outcome.errors
+      @submitted = submitted_form_values
+      @thread_tail = []
+      @open_step = @scenario.current_step
+      render :advance, formats: [:turbo_stream], status: :unprocessable_content
+      return
+    end
+
+    @thread_tail = helpers.runner_thread_entries(@scenario).drop(thread_before)
+    @open_step = @scenario.complete? || @scenario.parked? ? nil : @scenario.current_step
+    render :advance, formats: [:turbo_stream]
   end
 
   def respond_to_settled(settled)

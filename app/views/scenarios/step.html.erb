@@ -26,12 +26,9 @@
           show_cancel: true,
           errors: @step_errors || [],
           submitted: @submitted || {},
-          auto_advance: step ? runner_auto_advances?(step) : false %>
-    <% if @parked %>
-      <%= render "runner/parked", next_url: next_step_scenario_path(@scenario) %>
-    <% elsif @scenario.complete? %>
-      <%= render "runner/thread_complete", results_url: scenario_path(@scenario) %>
-    <% end %>
+          auto_advance: step ? runner_auto_advances?(step) : false,
+          parked: @parked,
+          results_url: scenario_path(@scenario) %>
   <% elsif @scenario.complete? %>
     <div class="card">
       <div class="card__body">

@@ -1,0 +1,29 @@
+<%#
+  The answer, streamed.
+
+  Replaces only the tail of the thread: the rows this answer produced, then
+  whatever the run is now waiting on. Everything above is untouched, which is
+  the whole point — the transcript the agent was reading stays exactly where it
+  was instead of the page repainting under them.
+
+  The tail is computed through the same traversal the page renders from, so a
+  streamed thread and a refreshed one cannot disagree.
+
+  locals: scenario, tail, step, parked, results_url, next_url, stop_url,
+          back_button, show_cancel, errors, submitted
+%>
+<%= turbo_stream.replace "runner-card-current" do %>
+  <% tail.each do |entry| %>
+    <% if entry["kind"] == "group_start" %>
+      <%= render "runner/thread_group", entry: entry %>
+    <% else %>
+      <%= render "runner/thread_row", entry: entry %>
+    <% end %>
+  <% end %>
+
+  <%= render "runner/thread_tail",
+        scenario: scenario, step: step, parked: parked, results_url: results_url,
+        next_url: next_url, stop_url: stop_url, back_button: back_button,
+        show_cancel: show_cancel, errors: errors, submitted: submitted,
+        auto_advance: step ? runner_auto_advances?(step) : false %>
+<% end %>
