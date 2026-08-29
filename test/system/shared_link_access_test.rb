@@ -29,7 +29,7 @@ class SharedLinkAccessTest < ApplicationSystemTestCase
     visit shared_player_path(share_token: @workflow.share_token)
 
     # Should land on the step page (redirected from show_shared)
-    assert_selector ".player-step-card__title", text: "What is your issue?", wait: 5
+    assert_current_step "What is your issue?"
 
     # No cancel or exit buttons for anonymous users
     assert_no_selector ".scenario-btn-cancel"
@@ -39,12 +39,13 @@ class SharedLinkAccessTest < ApplicationSystemTestCase
     click_on "Continue"
 
     # Should see resolve step
-    assert_selector ".player-step-card__title", text: "Issue resolved", wait: 5
+    assert_current_step "Issue resolved"
 
     # Complete
     click_on "Complete Workflow"
 
     # Completion screen
+    view_results
     assert_selector ".player-completion__title", text: "Workflow Complete", wait: 5
   end
 end

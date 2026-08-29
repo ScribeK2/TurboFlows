@@ -108,7 +108,8 @@ class RunnerAdvanceTest < ActionDispatch::IntegrationTest
 
     child = parent.reload.active_child_scenario
     assert_predicate child, :present?, "the sub_flow should have spawned a child"
-    assert_redirected_to step_scenario_path(child)
+    assert_response :success, "the answer is streamed onto the page, not redirected away from"
+    assert_match(/Child Q/, response.body, "the child's first question is the card now open")
     assert_equal @child_q.uuid, child.current_node_uuid,
                  "one POST crosses the sub_flow node and stops at something answerable"
   end
@@ -123,7 +124,7 @@ class RunnerAdvanceTest < ActionDispatch::IntegrationTest
     parent.reload
     assert_equal @parent_r.uuid, parent.current_node_uuid,
                  "the child's resolve ends the sub-flow, not the run"
-    assert_redirected_to step_scenario_path(parent)
+    assert_response :success, "climbing back out streams, it does not redirect"
     assert_not_predicate parent, :awaiting_subflow?
   end
 

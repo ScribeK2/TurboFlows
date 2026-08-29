@@ -4,16 +4,6 @@
 # strings, depending on how the step was authored. Both runners open-coded the
 # same normalization; it lives here now so they cannot drift again.
 module RunnerHelper
-  # Whether this deployment renders the run as a growing thread rather than one
-  # card at a time. See config/initializers/stacked_runner.rb, which carries the
-  # removal condition.
-  #
-  # Read through the config every time rather than memoized, so a test or a
-  # console can flip it.
-  def stacked_runner?
-    Rails.configuration.x.stacked_runner.present?
-  end
-
   # How far a thread entry is indented, in levels.
   #
   # Capped: SubflowValidator allows nesting to depth 10, and the Player's layout
@@ -114,16 +104,6 @@ module RunnerHelper
     when "manager_escalation" then "badge--warning"
     else ""
     end
-  end
-
-  # The answered steps of the whole run, oldest first.
-  #
-  # Reads from the root scenario so a sub-flow shows the steps that led into it
-  # rather than restarting at one. flattened_execution_path splices each child
-  # scenario's own path in at the point its sub-flow began, which is what makes
-  # a single uninterrupted list possible.
-  def runner_trail_entries(scenario)
-    flattened_execution_path(scenario.root_scenario)
   end
 
   # Whether selecting an answer submits the step on its own.

@@ -114,4 +114,54 @@ class RunnerThreadHelperTest < ActionView::TestCase
   test "a row with nothing to report says nothing rather than guessing" do
     assert_nil runner_row_summary("step_type" => "question")
   end
+
+  # These three came from the trail's tests when the trail was deleted. They are
+  # properties of the traversal, not of the surface that used to render it: the
+  # thread reads from the root exactly as the trail did, and the query guard and
+  # the empty case matter more now that this is the only reader on the page.
+
+  test "the thread spans the whole run, not the sub-flow frame it is read from" do
+    child = Scenario.create!(
+      workflow: @workflow, user: @user, inputs: {},
+      execution_path: [{ "step_title" => "Verify identity", "answer" => "yes", "step_type" => "question" }]
+    )
+    parent = Scenario.create!(
+      workflow: @workflow, user: @user, inputs: {}, status: "awaiting_subflow",
+      execution_path: [
+        { "step_title" => "Confirm Issue", "answer" => "yes", "step_type" => "question" },
+        { "subflow_started" => true, "child_scenario_id" => child.id, "step_type" => "sub_flow" }
+      ]
+    )
+    child.update!(parent_scenario: parent)
+
+    # Read from the child, as the runner does while inside a sub-flow. The old
+    # stepper showed only the child's own path numbered from 1, beside a counter
+    # that counted across ancestors — "Step 1" sitting next to "Step 4".
+    titles = runner_thread_entries(child).select { |e| e["kind"] == "step" }.pluck("step_title")
+
+    assert_equal ["Confirm Issue", "Verify identity"], titles,
+                 "the thread must span the whole run, oldest first"
+  end
+
+  test "the thread costs one query per nesting level, not one per sub-flow" do
+    children = Array.new(3) do
+      Scenario.create!(workflow: @workflow, user: @user, inputs: {},
+                       execution_path: [{ "step_title" => "child", "answer" => "yes", "step_type" => "question" }])
+    end
+    root = Scenario.create!(
+      workflow: @workflow, user: @user, inputs: {}, status: "awaiting_subflow",
+      execution_path: children.map { |c| { "subflow_started" => true, "child_scenario_id" => c.id, "step_type" => "sub_flow" } }
+    )
+    children.each { |c| c.update!(parent_scenario: root) }
+
+    # The thread re-renders on every step, so a query per sub-flow entry would
+    # scale with the run's branching.
+    assert_queries_count(1) { runner_thread_entries(root) }
+  end
+
+  test "the thread is empty for a run that has not answered anything yet" do
+    scenario = Scenario.create!(workflow: @workflow, user: @user, inputs: {}, execution_path: [])
+
+    assert_empty runner_thread_entries(scenario)
+  end
 end

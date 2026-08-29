@@ -301,4 +301,34 @@ class ScenarioTest < ActiveSupport::TestCase
     assert_equal parent_wf, child.root_workflow
     assert_equal parent_wf, parent.root_workflow
   end
+
+  # The lost optimistic-locking race, held as two live objects — the only way to
+  # get one, since a controller request loads the row fresh and can never see a
+  # bump that happened before it started. RunnerAdvance#halted_message turns
+  # this reason into the "your last answer was not saved" the agent reads, so
+  # without a test here that message has nothing proving it can ever fire.
+  test "a concurrent modification halts with :conflict rather than raising" do
+    workflow = Workflow.create!(title: "Race WF", user: @user)
+    q = Steps::Question.create!(workflow: workflow, position: 0, title: "Name",
+                                question: "Name?", variable_name: "name_v")
+    done = Steps::Resolve.create!(workflow: workflow, position: 1, title: "Done")
+    Transition.create!(step: q, target_step: done, position: 0)
+    workflow.update!(start_step: q)
+
+    scenario = Scenario.create!(
+      workflow: workflow, user: @user, purpose: "simulation", status: "active",
+      current_node_uuid: q.uuid, execution_path: [], results: {}, inputs: {}
+    )
+
+    # Two handles on the same row. The second saves first, so the first is stale
+    # by the time it tries — exactly the two-tabs case.
+    stale = Scenario.find(scenario.id)
+    Scenario.find(scenario.id).touch
+
+    outcome = stale.process_step("Ada")
+
+    assert_predicate outcome, :halted?
+    assert_equal :conflict, outcome.reason,
+                 "a lost race must be reported, not swallowed or raised"
+  end
 end

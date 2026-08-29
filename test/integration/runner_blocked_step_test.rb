@@ -80,7 +80,7 @@ class RunnerBlockedStepTest < ActionDispatch::IntegrationTest
 
     post next_step_scenario_path(scenario), params: { escalation_reason: "Customer waiting 15 min" }
 
-    assert_response :redirect
+    assert_response :success, "an accepted answer streams forward; only a refusal is a 422"
     assert_equal "Customer waiting 15 min", scenario.reload.results.dig("_escalation", "reason")
   end
 

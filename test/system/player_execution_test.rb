@@ -4,7 +4,7 @@ require "application_system_test_case"
 #
 # Written against semantics — visible text, radio labels, button text and the
 # scenario-step behaviour hook — not CSS classes. The previous version targeted
-# `.player-workflow-card`, `.player-step-card__title` and `.player-completion__*`;
+# `.player-workflow-card` and `.player-completion__*`;
 # the first of those had already been deleted when the player index moved onto
 # `.list-row`, and the rest are due to change in the runner redesign.
 class PlayerExecutionTest < ApplicationSystemTestCase
@@ -40,6 +40,7 @@ class PlayerExecutionTest < ApplicationSystemTestCase
     assert_current_step "All done"
     click_on "Complete Workflow"
 
+    view_results
     assert_selector "h1", text: "Workflow Complete", wait: 5
     # Rendered uppercase by CSS, so match case-insensitively.
     assert_text(/steps completed/i)

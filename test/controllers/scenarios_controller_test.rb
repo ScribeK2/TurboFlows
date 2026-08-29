@@ -173,7 +173,11 @@ class ScenariosControllerTest < ActionDispatch::IntegrationTest
 
     post next_step_scenario_path(child_scenario), params: { answer: "" }
 
-    assert_redirected_to step_scenario_path(parent_scenario)
+    assert_response :success, "the climb back out is streamed, not redirected"
+    assert_not_predicate parent_scenario.reload, :awaiting_subflow?,
+                         "the finished child releases the parent"
+    assert_equal parent_resolve.uuid, parent_scenario.current_node_uuid,
+                 "and the run resumes at the step after the sub-flow"
   end
 
   # An "empty" sub-flow is one whose child workflow opens straight onto a
@@ -204,7 +208,7 @@ class ScenariosControllerTest < ActionDispatch::IntegrationTest
     scenario.reload
     assert_equal parent_resolve.uuid, scenario.current_node_uuid,
                  "the sub-flow had nothing to ask, so one answer should carry the run past it"
-    assert_redirected_to step_scenario_path(scenario)
+    assert_response :success, "one POST, one streamed response — no bounce through a redirect"
   end
 
   # The halfway state the previous version of the test built by hand. It should
@@ -310,7 +314,8 @@ class ScenariosControllerTest < ActionDispatch::IntegrationTest
 
     post back_scenario_path(scenario)
 
-    assert_redirected_to step_scenario_path(scenario)
+    assert_response :success, "Back streams the thread back a step rather than reloading the page"
+    assert_match(/Q1/, response.body, "the step it undid is open again")
     scenario.reload
     assert_equal q1.uuid, scenario.current_node_uuid
     assert_not scenario.results.key?("q1_var")

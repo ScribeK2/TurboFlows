@@ -1,20 +1,18 @@
 require "application_system_test_case"
 
-# The stacked runner in a real browser.
+# The runner thread in a real browser.
 #
 # The point of streaming is that answering a step does not reload the page, and
 # that is exactly what a request test cannot see — it can confirm the response
 # is a turbo-stream, but not that the browser applied it in place. These tests
 # stamp a value on `window` and assert it survives the answer: a full navigation
 # would wipe it.
-class StackedRunnerSystemTest < ApplicationSystemTestCase
+class RunnerThreadSystemTest < ApplicationSystemTestCase
   setup do
     @user = User.create!(
       email: "wf-system-test-stacked-#{SecureRandom.hex(4)}@example.com",
       password: "password123!", password_confirmation: "password123!", role: "editor"
     )
-    Rails.configuration.x.stacked_runner = true
-
     @workflow = Workflow.create!(title: "Stacked System WF", user: @user, status: "published")
     @q1 = Steps::Question.create!(
       workflow: @workflow, title: "Is the account verified", position: 0,
@@ -28,10 +26,6 @@ class StackedRunnerSystemTest < ApplicationSystemTestCase
     Transition.create!(step: @q1, target_step: @q2, position: 0)
     Transition.create!(step: @q2, target_step: @workflow.steps.find_by(title: "Close the call"), position: 0)
     @workflow.update!(start_step: @q1)
-  end
-
-  teardown do
-    Rails.configuration.x.stacked_runner = false
   end
 
   def start_scenario(purpose: "simulation")

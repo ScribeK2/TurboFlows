@@ -159,29 +159,44 @@ The Player is the user-facing workflow execution UI, separate from the builder's
 **Key files:**
 - `app/controllers/player_controller.rb` — start, step, next_step, back, show, show_shared
 - `app/views/layouts/player.html.erb` — standalone layout (header, main, footer)
-- `app/views/player/step.html.erb` — a thin shell: page chrome plus route-shaped locals, delegating the step body to `runner/_step_body`
+- `app/views/player/step.html.erb` — a thin shell: page chrome plus route-shaped locals, delegating everything below to `runner/_thread`
 - `app/views/player/show.html.erb` — completion screen with stats
 - `app/views/player/index.html.erb` — workflow card grid
 - `app/helpers/player_helper.rb` — `player_back_button` helper (uses Player routes, not Scenario routes)
 - `app/assets/stylesheets/_player.css` — Player-specific layout and component styles
 
 **Key differences from Scenario mode:** only the shell differs. Both runners
-render `app/views/runner/_step_body`, which never calls a route helper —
-everything route-shaped (`next_url`, `stop_url`, `back_button`, `show_cancel`)
-arrives as a local. Add step-body behaviour in the partials, not in a shell.
+render `app/views/runner/_thread`, and through it `runner/_step_body`, which
+never calls a route helper — everything route-shaped (`next_url`, `stop_url`,
+`back_button`, `show_cancel`) arrives as a local. Add runner behaviour in the
+partials, not in a shell. Both shells are now branchless: neither contains an
+`if` about how to render the run.
 
 - Uses `player_scenario_*_path` routes, not `*_scenario_path` routes
 - Its own layout (`layouts/player.html.erb`) and page chrome
 - Cancel is hidden for anonymous/shared scenarios (no Player index to return to)
 - Both runners operate on AR Step objects with method access (`step.title`), not
   execution-path hashes. `step['field']` access was removed in the shared-partial
-  extraction; `execution_path` hashes remain only in the results view and trail.
+  extraction; `execution_path` hashes remain only in the results view and in the
+  thread's rows.
+
+**The run renders as a thread, and that is the only rendering.** Answering a step
+collapses it into a row and appends the next card below it, streamed — no
+navigation, so the transcript the agent is reading stays put. `runner/_thread`
+renders the rows and delegates the open card to `runner/_thread_card`; the tail
+(`runner/_thread_tail`) is whatever the run is waiting on — the open card, a
+Resume control, or the ending — and always carries `id="runner-card-current"`, so
+a streamed answer always has a target to replace.
+
+This shipped behind `STACKED_RUNNER` and the flag was removed on 2026-08-29 once
+the thread had carried real traffic. There is no second runner and no config to
+render one; `runner/_trail` and the classic one-card-at-a-time branches are gone.
 
 **No step numbers or progress bars.** Both were removed deliberately: two
 numbering systems disagreed inside sub-flows, and the bars divided by
-`workflow.steps.count`, which a branched run never visits in full. What replaced
-them is `runner/_trail` — the answered steps as plain text, read from the root
-scenario. See UIGUIDE.md § Surfaces Deliberately Excluded for the reasoning.
+`workflow.steps.count`, which a branched run never visits in full. The thread's
+rows carry that orientation now, read from the root scenario. See UIGUIDE.md
+§ Surfaces Deliberately Excluded for the reasoning.
 
 **Auto-advance has one source of truth:** `RunnerHelper#runner_auto_advances?`.
 It drives both the Stimulus value on the shell and whether Continue renders in

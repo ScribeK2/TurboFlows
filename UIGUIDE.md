@@ -346,7 +346,7 @@ so `.tab-bar` drops into any existing tablist with no JS change.
 | Component | Classes | File | Notes |
 |-----------|---------|------|-------|
 | Answer cards | `.radio-card`, `.radio-grid`, `.radio-list` | `runner.css` | The runner's answer choices. Deliberately **neutral** — no icons, no radio dot, no semantic colour. A question's polarity is arbitrary ("Is the site down?" makes Yes the bad news), so green/red miscommunicates while spending the scarce semantic budget. Label is the content, border is the state |
-| Answer trail | `.runner-trail`, `__item`, `__answer` | `runner.css` | What has been answered so far, as plain text `title → answer`. Replaced a stepper rail of step-type-coloured pills |
+| Runner thread | `.runner-thread`, `__row`, `__current`, `__complete` | `runner.css` | The run as one growing list: answered steps as plain-text rows (`title → answer`), then the open card. Replaced both the stepper rail of step-type-coloured pills and the short-lived `.runner-trail` that followed it |
 | List rows | `.list-section`, `.list-row`, `.list-row--compact` | `lists.css` | Section + hairline-divided rows. `--compact` is the dense size (builder step list); same anatomy, tighter box — sized like `.btn--sm` is to `.btn` |
 | Tooltips | `.tooltip`, `.tooltip--bottom` | `tooltips.css` | Absolute, spring easing entrance |
 | Skeletons | `.skeleton`, `.skeleton--text`, `--heading`, `--card` | `skeleton.css` | Shimmer animation, use for loading states |
@@ -613,22 +613,26 @@ Player pages use a **separate layout** (`layouts/player.html.erb`) and **separat
 ```erb
 <%% content_for(:title) { "Workflow Title — TurboFlows Player" } %>
 
-<!-- Progress bar -->
-<div class="player-progress">
-  <div class="player-progress__bar">
-    <div class="player-progress__fill" style="width: 40%"></div>
-  </div>
-  <div class="player-progress__text">Step 2 of 5</div>
-</div>
-
-<!-- Step Card -->
-<div class="card player-step-card" data-controller="scenario-step">
-  <div class="card__body">
-    <!-- Step header, content, and form go here -->
-    <!-- See app/views/player/step.html.erb for full implementation -->
-  </div>
-</div>
+<!-- The whole page below the chrome. No progress bar and no step numbers:
+     see §Surfaces Deliberately Excluded for why both were removed. -->
+<%= render "runner/thread",
+      scenario: @scenario,
+      step: @parked ? nil : @current_step,
+      next_url: player_scenario_next_path(@scenario),
+      stop_url: player_scenario_stop_path(@scenario),
+      back_button: player_back_button(@scenario),
+      show_cancel: current_user.present?,
+      errors: @step_errors || [],
+      submitted: @submitted || {},
+      auto_advance: @current_step && !@parked ? runner_auto_advances?(@current_step) : false,
+      parked: @parked,
+      results_url: player_scenario_show_path(@scenario) %>
 ```
+
+**The shell has no branches.** Everything route-shaped is a local, and the
+thread decides what to render — the open card, a Resume control, or the run's
+ending. Do not add an `if` about how the run renders to a shell; that split is
+what the shared partials exist to prevent.
 
 **Key files:** `app/views/layouts/player.html.erb`, `app/assets/stylesheets/_player.css`, `app/controllers/player_controller.rb`.
 
@@ -644,7 +648,7 @@ For page types not covered by a recipe, read these exemplary views. They demonst
 | View file | Page type | Good for |
 |-----------|-----------|----------|
 | `app/views/workflows/index.html.erb` | Index/list with sidebar | Two-column layout, search, filters, pagination, empty state |
-| `app/views/player/step.html.erb` | Step execution | A thin shell: page chrome and route-shaped locals only, with the body delegated to `runner/_step_body`. No progress stepper — see the Scenario runner entry in §Surfaces Deliberately Excluded for why the numbers and bars went |
+| `app/views/player/step.html.erb` | Step execution | A thin shell: page chrome and route-shaped locals only, with everything below delegated to `runner/_thread`. Fifteen lines and no branches — the whole file. No progress stepper: see the Scenario runner entry in §Surfaces Deliberately Excluded for why the numbers and bars went |
 | `app/views/workflows/_builder.html.erb` | Builder/editor | Header with inline edit, panel system, toolbar, Stimulus wiring. Its chrome now follows this guide; the editing internals it opens into are still excluded (see §Surfaces Deliberately Excluded) |
 | `app/views/runner/_step_body.html.erb` | Shared body across two shells | Keeping two surfaces from drifting: route-shaped values (`next_url`, `stop_url`, `back_button`, `show_cancel`) arrive as locals, so the partial never calls a route helper and the Scenario/Player difference lives only in the two shells |
 | `app/views/workflows/_step_row.html.erb` | Dense list row | Composing `.list-row` + `.list-row--compact` with block-specific concerns, rather than redefining a row. Status/meta sits inline, not on a second line — a scanned list pays for two-line rows in steps visible at once |
@@ -686,7 +690,7 @@ For page types not covered by a recipe, read these exemplary views. They demonst
 | `layout.css` | modules | Page structure (.page-body, .page-main) |
 | `builder.css` | components | Builder-specific styles (includes health panel, inline warnings, popover) |
 | `workflows.css` | modules | Workflow list/show styles |
-| `runner.css` | modules | The Scenario + Player runner: answer cards, answer trail, step content box |
+| `runner.css` | modules | The Scenario + Player runner: answer cards, the runner thread, step content box |
 | `scenarios.css` | modules | Scenario **results** page only — the runner half lives in `runner.css` |
 | `steps.css` | modules | Step editor styles |
 | `editor.css` | modules | Rich text editor (Lexxy) |

@@ -58,14 +58,6 @@ class ScenariosController < ApplicationController
 
   private
 
-  # A refused step re-renders where the user already is, with the reasons.
-  # 422 because Turbo discards a 200 that is not a redirect.
-  def render_blocked_step(errors)
-    @step_errors = errors
-    @submitted = submitted_form_values
-    render :step, status: :unprocessable_content
-  end
-
   # Values from the refused submit, so a blocked form keeps what was typed.
   def submitted_form_values
     raw = params[:answer]
@@ -79,23 +71,17 @@ class ScenariosController < ApplicationController
       return true
     end
 
-    if @scenario.complete?
-      # A finished *child* is a finished sub-flow, not a finished run. Sending
-      # the user to the root's results page would show a summary for a run still
-      # in progress; the parent's step page is where they belong, and it offers
-      # Resume because a parent whose child has finished is parked.
-      if @scenario.parent_scenario
-        redirect_to runner_step_path(@scenario.parent_scenario)
-        return true
-      end
-
-      # A finished run: classic replaces the page with a "Run complete" card,
-      # which throws away what the agent was reading. Stacked keeps the ending
-      # on the transcript and offers results as a link.
-      unless stacked_runner?
-        redirect_to runner_results_path(@scenario)
-        return true
-      end
+    # A finished *child* is a finished sub-flow, not a finished run. Sending the
+    # user to the root's results page would show a summary for a run still in
+    # progress; the parent's step page is where they belong, and it offers
+    # Resume because a parent whose child has finished is parked.
+    #
+    # A finished *root* run gets no redirect at all: its ending stays on the
+    # transcript and results are offered as a link, rather than the page being
+    # replaced by a card that throws away what the agent was reading.
+    if @scenario.complete? && @scenario.parent_scenario
+      redirect_to runner_step_path(@scenario.parent_scenario)
+      return true
     end
 
     # A run waiting on a child that is still going belongs at the child's URL.
@@ -110,12 +96,8 @@ class ScenariosController < ApplicationController
     false
   end
 
-  # RunnerAdvance template methods
+  # RunnerAdvance template method
   def runner_step_path(scenario)
     step_scenario_path(scenario)
-  end
-
-  def runner_results_path(scenario)
-    scenario_path(scenario)
   end
 end

@@ -15,14 +15,6 @@ servers:
     cmd: bin/rails server
 
 env:
-  clear:
-    # The stacked runner: answering a step collapses it in place and appends the
-    # next one below. See config/initializers/stacked_runner.rb — the flag has a
-    # removal condition (two weeks of Player traffic with no rollback), and that
-    # clock starts when this is first deployed with the flag on.
-    # Rollback: set to 0 and redeploy. Rendering only; the state layer is
-    # unconditional and is not undone by turning this off.
-    STACKED_RUNNER: "1"
   secret:
     - RAILS_MASTER_KEY
     - DATABASE_PASSWORD

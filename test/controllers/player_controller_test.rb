@@ -149,7 +149,7 @@ class PlayerControllerTest < ActionDispatch::IntegrationTest
 
   # === Concurrency / Stale Scenario ===
 
-  test "next_step with stale scenario redirects to step instead of raising" do
+  test "next_step survives a lock_version bumped behind its back" do
     resolve = @workflow.steps.find_by(title: "Done")
     question = Steps::Question.create!(
       workflow: @workflow,
@@ -170,9 +170,18 @@ class PlayerControllerTest < ActionDispatch::IntegrationTest
     # Simulate a concurrent modification by bumping lock_version directly
     Scenario.where(id: scenario.id).update_all(lock_version: scenario.lock_version + 1)
 
-    # next_step should handle the stale object gracefully (redirect, not 500)
-    post player_scenario_next_path(scenario), params: { answer: "test" }
-    assert_response :redirect
+    # The bump is not observable from here: the request loads the row fresh, so
+    # its in-memory lock_version already matches and the answer lands normally.
+    # This asserts only that a row touched between requests does not 500 the
+    # next one. A genuine lost race — the row changing between *this* request's
+    # load and its save — is covered at the model level, in ScenarioTest, where
+    # two live objects can actually be held at once.
+    post player_scenario_next_path(scenario), params: { answer: "test" },
+                                              headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    assert_equal "Done", scenario.reload.current_step.title,
+                 "the answer landed rather than raising StaleObjectError"
   end
 
   test "player step renders number input for number answer type" do

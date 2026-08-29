@@ -1,11 +1,11 @@
 require "test_helper"
 
-# The runner with the thread turned on.
+# What the runner's page looks like, and how it answers a POST.
 #
-# The flag covers rendering and response style only — everything else in this
-# project landed unconditionally — so these assert what the page looks like, and
-# the rest of the suite running with the flag off is the classic baseline.
-class StackedRunnerTest < ActionDispatch::IntegrationTest
+# The run renders as a growing thread: answering collapses the step into a row
+# and appends the next card below it, streamed, with no navigation. These assert
+# that rendering; the run's *semantics* are covered by the settler's own tests.
+class RunnerThreadTest < ActionDispatch::IntegrationTest
   setup do
     @user = User.create!(
       email: "stacked-#{SecureRandom.hex(4)}@test.com",
@@ -30,14 +30,6 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
     @workflow.update!(start_step: @q1)
   end
 
-  def with_stacked_runner
-    original = Rails.configuration.x.stacked_runner
-    Rails.configuration.x.stacked_runner = true
-    yield
-  ensure
-    Rails.configuration.x.stacked_runner = original
-  end
-
   def scenario_at(step)
     Scenario.create!(
       workflow: @workflow, user: @user, purpose: "simulation", started_at: Time.current,
@@ -49,7 +41,7 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
     scenario = scenario_at(@q1)
     ScenarioSettler.new(scenario).settle("Yes")
 
-    with_stacked_runner { get step_scenario_path(scenario) }
+    get step_scenario_path(scenario)
 
     assert_response :success
     assert_select "ol#runner-thread"
@@ -62,29 +54,9 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
     scenario = scenario_at(@q1)
     ScenarioSettler.new(scenario).settle("Yes")
 
-    with_stacked_runner { get step_scenario_path(scenario) }
-
-    assert_select "#runner-card-current h2", text: "Check the balance"
-  end
-
-  test "the trail is not rendered alongside the thread" do
-    scenario = scenario_at(@q1)
-    ScenarioSettler.new(scenario).settle("Yes")
-
-    with_stacked_runner { get step_scenario_path(scenario) }
-
-    assert_select ".runner-trail", 0,
-                  "two lists of the same answers is the bug the trail was written to fix"
-  end
-
-  test "classic still renders one card and the trail" do
-    scenario = scenario_at(@q1)
-    ScenarioSettler.new(scenario).settle("Yes")
-
     get step_scenario_path(scenario)
 
-    assert_select "ol#runner-thread", 0
-    assert_select ".runner-trail", 1
+    assert_select "#runner-card-current h2", text: "Check the balance"
   end
 
   test "a finished run keeps its transcript instead of being replaced" do
@@ -94,24 +66,14 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
     ScenarioSettler.new(scenario).settle(nil)
     assert_predicate scenario.reload, :complete?, "precondition"
 
-    with_stacked_runner { get step_scenario_path(scenario) }
+    get step_scenario_path(scenario)
 
-    assert_response :success, "classic redirects to results here; stacked keeps the ending on the thread"
+    assert_response :success, "a finished run keeps its ending on the thread instead of navigating away"
     assert_select ".runner-thread__row", minimum: 2
     assert_select "#runner-card-current", 0, "nothing is open once the run is done"
     assert_select ".runner-thread__complete a", text: "View results"
   end
 
-  test "classic still replaces a finished run with the completion card" do
-    scenario = scenario_at(@q1)
-    ScenarioSettler.new(scenario).settle("Yes")
-    ScenarioSettler.new(scenario).settle("100")
-    ScenarioSettler.new(scenario).settle(nil)
-
-    get step_scenario_path(scenario)
-
-    assert_redirected_to scenario_path(scenario)
-  end
   test "the thread marks where the call moved into a sub-flow" do
     child_wf = Workflow.create!(title: "Billing Check", user: @user)
     cq = Steps::Question.create!(workflow: child_wf, title: "CQ", position: 0, variable_name: "cv")
@@ -136,7 +98,7 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
     child = ScenarioSettler.new(scenario).settle("Yes").scenario
     ScenarioSettler.new(child).settle("ChildAnswer")
 
-    with_stacked_runner { get step_scenario_path(scenario.reload) }
+    get step_scenario_path(scenario.reload)
 
     assert_select ".runner-thread__group", 1
     assert_select ".runner-thread__group", text: /Billing Check/
@@ -168,7 +130,7 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
     child = ScenarioSettler.new(scenario).settle("Yes").scenario
     ScenarioSettler.new(child).settle("ChildAnswer")
 
-    with_stacked_runner { get step_scenario_path(scenario.reload) }
+    get step_scenario_path(scenario.reload)
 
     assert_select ".runner-thread__row[style*='--thread-depth: 0']", text: /Opening/
     assert_select ".runner-thread__row[style*='--thread-depth: 1']", text: /CQ/,
@@ -204,7 +166,7 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
     inside = ScenarioSettler.new(scenario).settle("Yes").scenario
     ScenarioSettler.new(inside).settle("Yes")
 
-    with_stacked_runner { get step_scenario_path(inside.reload) }
+    get step_scenario_path(inside.reload)
 
     assert_select "#runner-card-current[style*='--thread-depth: 1']", 1,
                   "the run is still inside the sub-flow, so the card must not outdent"
@@ -220,7 +182,7 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
     )
     ScenarioSettler.new(scenario).settle("Yes")
 
-    with_stacked_runner { get player_scenario_step_path(scenario) }
+    get player_scenario_step_path(scenario)
 
     assert_response :success
     assert_select "ol#runner-thread"
@@ -230,28 +192,12 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
     assert_select ".runner-trail", 0
   end
 
-  test "the Player classic shell is untouched with the flag off" do
-    @workflow.update!(status: "published")
-    scenario = Scenario.create!(
-      workflow: @workflow, user: @user, purpose: "live", started_at: Time.current,
-      current_node_uuid: @q1.uuid, execution_path: [], results: {}, inputs: {}
-    )
-    ScenarioSettler.new(scenario).settle("Yes")
-
-    get player_scenario_step_path(scenario)
-
-    assert_select "ol#runner-thread", 0
-    assert_select ".runner-trail", 1
-  end
-
   test "an anonymous shared run gets the thread" do
     @workflow.update!(status: "published", share_token: SecureRandom.hex(8))
     sign_out @user
 
-    with_stacked_runner do
-      get shared_player_path(@workflow.share_token)
-      follow_redirect!
-    end
+    get shared_player_path(@workflow.share_token)
+    follow_redirect!
 
     assert_response :success
     assert_select "ol#runner-thread", 1,
@@ -268,7 +214,7 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
     ScenarioSettler.new(scenario).settle("Yes")
     scenario.stop!
 
-    with_stacked_runner { get step_scenario_path(scenario) }
+    get step_scenario_path(scenario)
 
     assert_redirected_to scenario_path(scenario)
   end
@@ -282,7 +228,7 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
     ScenarioSettler.new(scenario).settle("Yes")
     scenario.stop!
 
-    with_stacked_runner { get player_scenario_step_path(scenario) }
+    get player_scenario_step_path(scenario)
 
     assert_redirected_to player_scenario_show_path(scenario)
   end
@@ -291,10 +237,8 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
   test "answering streams the thread forward instead of redirecting" do
     scenario = scenario_at(@q1)
 
-    with_stacked_runner do
-      post next_step_scenario_path(scenario), params: { answer: "Yes" },
-                                              headers: { "Accept" => "text/vnd.turbo-stream.html" }
-    end
+    post next_step_scenario_path(scenario), params: { answer: "Yes" },
+                                            headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
     assert_response :success
     assert_equal "text/vnd.turbo-stream.html", response.media_type
@@ -304,24 +248,13 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
   test "the answered step becomes a row and the next step becomes the open card" do
     scenario = scenario_at(@q1)
 
-    with_stacked_runner do
-      post next_step_scenario_path(scenario), params: { answer: "Yes" },
-                                              headers: { "Accept" => "text/vnd.turbo-stream.html" }
-    end
+    post next_step_scenario_path(scenario), params: { answer: "Yes" },
+                                            headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
     assert_match(/runner-thread__row/, response.body, "the step just answered collapses into a row")
     assert_match(/Verify the account/, response.body)
     assert_match(/runner-card-current/, response.body, "and the next one opens")
     assert_match(/Check the balance/, response.body)
-  end
-
-  test "classic still redirects when the flag is off" do
-    scenario = scenario_at(@q1)
-
-    post next_step_scenario_path(scenario), params: { answer: "Yes" },
-                                            headers: { "Accept" => "text/vnd.turbo-stream.html" }
-
-    assert_redirected_to step_scenario_path(scenario)
   end
 
   test "a refused step re-renders the card without appending anything" do
@@ -338,10 +271,8 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
       current_node_uuid: esc.uuid, execution_path: [], results: {}, inputs: {}
     )
 
-    with_stacked_runner do
-      post next_step_scenario_path(scenario),
-           headers: { "Accept" => "text/vnd.turbo-stream.html" }
-    end
+    post next_step_scenario_path(scenario),
+         headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
     assert_response :unprocessable_entity, "a refusal is not a new step"
     assert_match(/Escalation reason is required/, response.body)
@@ -352,10 +283,8 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
     scenario = scenario_at(@q1)
     ScenarioSettler.new(scenario).settle("Yes")
 
-    with_stacked_runner do
-      post back_scenario_path(scenario),
-           headers: { "Accept" => "text/vnd.turbo-stream.html" }
-    end
+    post back_scenario_path(scenario),
+         headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
     assert_response :success
     assert_equal "text/vnd.turbo-stream.html", response.media_type
@@ -365,10 +294,8 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
     scenario = scenario_at(@q1)
     ScenarioSettler.new(scenario).settle("Yes")
 
-    with_stacked_runner do
-      post back_scenario_path(scenario),
-           headers: { "Accept" => "text/vnd.turbo-stream.html" }
-    end
+    post back_scenario_path(scenario),
+         headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
     assert_match(/runner-card-current/, response.body)
     assert_match(/Verify the account/, response.body, "the step just undone is open again")
@@ -376,15 +303,6 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
                     "and its row is gone, because the thread shrank")
   end
 
-  test "back still redirects when the flag is off" do
-    scenario = scenario_at(@q1)
-    ScenarioSettler.new(scenario).settle("Yes")
-
-    post back_scenario_path(scenario),
-         headers: { "Accept" => "text/vnd.turbo-stream.html" }
-
-    assert_redirected_to step_scenario_path(scenario)
-  end
   # --- inputs the two shells must read identically ---------------------------
 
   test "the Player's Resolved button actually resolves the run" do
@@ -439,10 +357,8 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
     ScenarioSettler.new(scenario).settle(nil)
     assert_predicate scenario.reload, :complete?, "precondition"
 
-    with_stacked_runner do
-      post next_step_scenario_path(scenario), params: { answer: "late" },
-                                              headers: { "Accept" => "text/vnd.turbo-stream.html" }
-    end
+    post next_step_scenario_path(scenario), params: { answer: "late" },
+                                            headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
     assert_response :success
     assert_match(/already finished/i, response.body,
@@ -456,12 +372,29 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
     ScenarioSettler.new(scenario).settle("100")
     ScenarioSettler.new(scenario).settle(nil)
 
-    with_stacked_runner do
-      post next_step_scenario_path(scenario), params: { answer: "late" },
-                                              headers: { "Accept" => "text/vnd.turbo-stream.html" }
-    end
+    post next_step_scenario_path(scenario), params: { answer: "late" },
+                                            headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
     assert_equal 1, response.body.scan('runner-card-current').length,
                  "the stream must not leave two open cards on the page"
+  end
+
+  # The thread's tail has to say *something* for a run that is not parked, not
+  # complete, and has no step to open. Both classic shells carried their own
+  # wording for this; when they went, the tail rendered an empty <ol> instead.
+  #
+  # Reachable, not theoretical: step uuids are immutable but steps get deleted,
+  # and nothing in #step guards a current_node_uuid that no longer resolves.
+  test "a run whose current step no longer resolves says so" do
+    scenario = scenario_at(@q1)
+    scenario.update!(current_node_uuid: SecureRandom.uuid)
+
+    get step_scenario_path(scenario)
+
+    assert_response :success
+    assert_select "#runner-card-current", 1,
+                  "the tail must still render an anchor a streamed answer could replace"
+    assert_match(/no step to show/i, response.body,
+                 "an unresolvable run explains itself rather than rendering an empty list")
   end
 end

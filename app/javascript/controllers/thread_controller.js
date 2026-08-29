@@ -4,8 +4,8 @@ import { Controller } from "@hotwired/stimulus"
 //
 // Owns only what belongs to the list as a whole — bringing a newly streamed
 // card into view and easing it in. Focus, the page title and the live-region
-// announcement stay on scenario-step, because the classic runner renders that
-// card with no thread around it and would otherwise lose all three.
+// announcement stay on scenario-step, which owns the card itself: they are
+// properties of the step being answered, not of the list around it.
 //
 // Usage:
 //   <ol data-controller="thread">

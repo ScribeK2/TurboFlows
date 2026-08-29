@@ -85,6 +85,7 @@ class ScenarioResultsTest < ApplicationSystemTestCase
     click_on "Continue"
     assert_current_step "Issue closed"
     click_on "Complete Workflow"
+    view_results
     assert_selector "h1", text: "Scenario Results", wait: 5
   end
 end

@@ -84,6 +84,7 @@ class ScenarioExecutionTest < ApplicationSystemTestCase
     assert_current_step "Issue closed"
     click_on "Complete Workflow"
 
+    view_results
     assert_text "Scenario Results", wait: 5
     assert_text "Is the site down?"
     assert_text "Check hosting status"
@@ -173,8 +174,17 @@ class ScenarioExecutionTest < ApplicationSystemTestCase
     start_scenario
 
     # "Is the site down?" is both the step title and the question text, which is
-    # how authors normally write them. It should appear once.
-    assert_equal 1, page.text.scan("Is the site down?").length
+    # how authors normally write them. It should appear once *on screen*.
+    #
+    # Scoped past the card's aria-live region, which the scenario-step controller
+    # fills with the same title on connect. That is a screen-reader announcement,
+    # not a second visual copy — and it is new here only because the classic
+    # Scenario shell put the region outside the controller's element, so it never
+    # got filled at all.
+    visible = find("#{RUNNER_STEP_CARD} .card__body").text
+    announced = find("#{RUNNER_STEP_CARD} [data-scenario-step-target='announce']", visible: :all).text
+
+    assert_equal 1, (visible.scan("Is the site down?").length - announced.scan("Is the site down?").length)
   end
 
   test "an unanswered question does not advance" do

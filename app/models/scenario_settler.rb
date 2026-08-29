@@ -10,8 +10,8 @@
 # loop across two controllers that had already drifted apart.
 #
 # The loop lives here instead, and it reports where the run ended up so a caller
-# can redirect (classic) or stream (stacked) without re-deriving it. The run may
-# finish on a descendant of the scenario it started on, or on an ancestor.
+# can stream the result without re-deriving it. The run may finish on a
+# descendant of the scenario it started on, or on an ancestor.
 class ScenarioSettler
   # Where the run came to rest.
   #

@@ -53,9 +53,11 @@ class PlayerController < ApplicationController
         return
       end
 
-      # Stacked keeps a finished run on its transcript; stopped still leaves,
-      # since there is no ending to read.
-      unless stacked_runner? && @scenario.completed?
+      # A finished run keeps its transcript, so only a *stopped* one leaves —
+      # there is no ending to read on a run that was abandoned. (A completed run
+      # with a parent already returned above: that is a finished sub-flow, not a
+      # finished run.)
+      if @scenario.stopped?
         redirect_to player_scenario_show_path(@scenario.root_scenario)
         return
       end
@@ -135,27 +137,15 @@ class PlayerController < ApplicationController
 
   # A refused step re-renders where the user already is, with the reasons.
   # 422 because Turbo discards a 200 that is not a redirect.
-  def render_blocked_step(errors)
-    @workflow = @scenario.workflow
-    @current_step = resolve_current_step
-    @step_errors = errors
-    @submitted = submitted_form_values
-    render :step, status: :unprocessable_content
-  end
-
   # Values from the refused submit, so a blocked form keeps what was typed.
   def submitted_form_values
     raw = params[:answer]
     raw.is_a?(ActionController::Parameters) ? raw.permit!.to_h : {}
   end
 
-  # RunnerAdvance template methods
+  # RunnerAdvance template method
   def runner_step_path(scenario)
     player_scenario_step_path(scenario)
-  end
-
-  def runner_results_path(scenario)
-    player_scenario_show_path(scenario)
   end
 
   def set_scenario

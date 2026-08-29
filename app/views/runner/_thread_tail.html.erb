@@ -20,4 +20,18 @@
   <li class="runner-thread__complete-item" data-thread-target="current">
     <%= render "runner/thread_complete", results_url: results_url %>
   </li>
+<% else %>
+  <%# Nothing to wait on and nothing to end: the run has no step to show. A
+      workflow with no steps, or a current_step uuid that no longer resolves.
+      Both shells used to carry their own wording for this; it lives here now,
+      so an unresolvable run says so instead of rendering an empty list. %>
+  <li class="runner-thread__current" id="runner-card-current" data-thread-target="current">
+    <div class="card">
+      <div class="card__body" style="padding: var(--space-8); text-align: center;">
+        <p class="text-sm" style="color: var(--color-ink-muted);">
+          There is no step to show for this run.
+        </p>
+      </div>
+    </div>
+  </li>
 <% end %>
