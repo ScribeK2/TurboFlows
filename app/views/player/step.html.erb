@@ -11,10 +11,9 @@
         show_cancel: current_user.present?,
         errors: @step_errors || [],
         submitted: @submitted || {},
-        auto_advance: @current_step && !@parked ? runner_auto_advances?(@current_step) : false %>
-  <% if @parked %>
-    <%= render "runner/parked", next_url: player_scenario_next_path(@scenario) %>
-  <% end %>
+        auto_advance: @current_step && !@parked ? runner_auto_advances?(@current_step) : false,
+        parked: @parked,
+        results_url: player_scenario_show_path(@scenario) %>
 <% elsif @parked %>
   <%= render "runner/parked", next_url: player_scenario_next_path(@scenario) %>
 <% elsif @current_step %>

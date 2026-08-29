@@ -6,6 +6,11 @@ import { Controller } from "@hotwired/stimulus"
 // - Keyboard shortcuts (Enter = submit, Esc = cancel)
 // - Continue button disabled until input provided
 // - Spinner + "Processing..." on submit (prevents double-submit)
+//
+// It no longer fades the card out on submit. That made sense when answering
+// replaced the page and the card was about to be destroyed; in the stacked
+// runner the card collapses into a row that stays on screen, so fading it to
+// nothing first just makes the transcript flicker.
 // - ARIA live region announcements
 //
 // Usage:
@@ -41,13 +46,21 @@ export default class extends Controller {
       this.announceTarget.textContent = this.stepInfoValue
     }
 
-    // Keyboard shortcuts
+    // Keyboard shortcuts, scoped to this card rather than the document.
+    //
+    // In the stacked runner Turbo can append the incoming card before removing
+    // the outgoing one, so two document-level listeners coexisted for a frame
+    // and Enter submitted twice. Scoping also fixes a bug that predates the
+    // thread: Enter fired submitForm while focus sat on the Cancel link.
+    //
+    // This makes the auto-focus above load-bearing — Enter only works when
+    // focus is inside the card — which is why it has a test.
     this.handleKeydown = this.handleKeydown.bind(this)
-    document.addEventListener("keydown", this.handleKeydown)
+    this.element.addEventListener("keydown", this.handleKeydown)
   }
 
   disconnect() {
-    document.removeEventListener("keydown", this.handleKeydown)
+    this.element.removeEventListener("keydown", this.handleKeydown)
     if (this.autoAdvanceTimer) {
       clearTimeout(this.autoAdvanceTimer)
     }
@@ -105,13 +118,6 @@ export default class extends Controller {
 
     this.submitted = true
     this.formTarget.dataset.submitting = "true"
-
-    // Fade out content before submitting
-    const content = this.element.querySelector(".scenario-content-layout") || this.formTarget
-    content.animate([
-      { opacity: 1 },
-      { opacity: 0 }
-    ], { duration: 120, easing: "ease-out", fill: "forwards" })
 
     // Show spinner on submit button
     // Trust boundary: static SVG spinner markup only, no user data interpolated.

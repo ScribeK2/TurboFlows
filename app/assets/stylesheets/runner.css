@@ -167,10 +167,44 @@
   color: var(--color-ink-subtle);
 }
 
+/* A run that could not act on an answer — a stale tab, or a lost race with
+   another tab. Exceptional, so it gets a pill's worth of colour where the rest
+   of the thread stays quiet. */
+.runner-thread__notice {
+  padding: var(--space-3);
+  margin-block-end: var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-warning-soft);
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+}
+
 /* The open card carries its own surface, so it needs air above the rows rather
-   than a rule between them. */
-.runner-thread__current {
+   than a rule between them. The ending sits in the same position and gets the
+   same air. */
+.runner-thread__current,
+.runner-thread__complete-item {
   margin-block-start: var(--space-4);
+}
+
+/* The end of a finished run, kept on the transcript instead of replacing it.
+   Quiet on purpose: the run is over, so nothing here competes with the steps
+   above it for attention. */
+.runner-thread__complete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-canvas-alt);
+}
+
+.runner-thread__complete p {
+  margin: 0;
+  color: var(--color-ink-muted);
 }
 
 @media (max-width: 640px) {

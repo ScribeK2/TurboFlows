@@ -10,7 +10,7 @@
 <%
   step_info_text = VariableInterpolator.interpolate(step.title, scenario.results || {})
 %>
-<li class="runner-thread__current" id="runner-card-current" style="--thread-depth: <%= runner_thread_current_depth(scenario) %>;">
+<li class="runner-thread__current" id="runner-card-current" data-thread-target="current" style="--thread-depth: <%= runner_thread_current_depth(scenario) %>;">
   <div class="card"
        id="runner-card-<%= step.uuid %>"
        data-controller="scenario-step image-lightbox"

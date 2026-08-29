@@ -1,0 +1,18 @@
+<%#
+  The whole thread, replaced.
+
+  Answering appends, so it streams only the tail. Going back does the opposite —
+  a row disappears and an earlier step reopens — and there is no honest way to
+  express a shrink as an append. Replacing the list outright is correct by
+  construction and cheap: rows are one line of markup each, and Back is a
+  deliberate, occasional act rather than the every-step path.
+
+  locals: as runner/_thread
+%>
+<%= turbo_stream.replace "runner-thread" do %>
+  <%= render "runner/thread",
+        scenario: scenario, step: step, next_url: next_url, stop_url: stop_url,
+        back_button: back_button, show_cancel: show_cancel,
+        errors: errors, submitted: submitted, auto_advance: auto_advance,
+        parked: parked, results_url: results_url %>
+<% end %>

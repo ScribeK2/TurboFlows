@@ -286,4 +286,182 @@ class StackedRunnerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to player_scenario_show_path(scenario)
   end
+  # --- streaming the answer -------------------------------------------------
+
+  test "answering streams the thread forward instead of redirecting" do
+    scenario = scenario_at(@q1)
+
+    with_stacked_runner do
+      post next_step_scenario_path(scenario), params: { answer: "Yes" },
+                                              headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+
+    assert_response :success
+    assert_equal "text/vnd.turbo-stream.html", response.media_type
+    assert_match(/turbo-stream/, response.body)
+  end
+
+  test "the answered step becomes a row and the next step becomes the open card" do
+    scenario = scenario_at(@q1)
+
+    with_stacked_runner do
+      post next_step_scenario_path(scenario), params: { answer: "Yes" },
+                                              headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+
+    assert_match(/runner-thread__row/, response.body, "the step just answered collapses into a row")
+    assert_match(/Verify the account/, response.body)
+    assert_match(/runner-card-current/, response.body, "and the next one opens")
+    assert_match(/Check the balance/, response.body)
+  end
+
+  test "classic still redirects when the flag is off" do
+    scenario = scenario_at(@q1)
+
+    post next_step_scenario_path(scenario), params: { answer: "Yes" },
+                                            headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_redirected_to step_scenario_path(scenario)
+  end
+
+  test "a refused step re-renders the card without appending anything" do
+    wf = Workflow.create!(title: "Blocking WF", user: @user)
+    esc = Steps::Escalate.create!(
+      workflow: wf, title: "Escalate", position: 0,
+      target_type: "supervisor", reason_required: true
+    )
+    done = Steps::Resolve.create!(workflow: wf, title: "Done", position: 1)
+    Transition.create!(step: esc, target_step: done, position: 0)
+    wf.update!(start_step: esc)
+    scenario = Scenario.create!(
+      workflow: wf, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: esc.uuid, execution_path: [], results: {}, inputs: {}
+    )
+
+    with_stacked_runner do
+      post next_step_scenario_path(scenario),
+           headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+
+    assert_response :unprocessable_entity, "a refusal is not a new step"
+    assert_match(/Escalation reason is required/, response.body)
+    assert_match(/runner-card-current/, response.body)
+    assert_no_match(/runner-thread__row/, response.body, "nothing was answered, so nothing collapses")
+  end
+  test "going back streams the thread without a redirect" do
+    scenario = scenario_at(@q1)
+    ScenarioSettler.new(scenario).settle("Yes")
+
+    with_stacked_runner do
+      post back_scenario_path(scenario),
+           headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+
+    assert_response :success
+    assert_equal "text/vnd.turbo-stream.html", response.media_type
+  end
+
+  test "going back reopens the step it undid and drops its row" do
+    scenario = scenario_at(@q1)
+    ScenarioSettler.new(scenario).settle("Yes")
+
+    with_stacked_runner do
+      post back_scenario_path(scenario),
+           headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+
+    assert_match(/runner-card-current/, response.body)
+    assert_match(/Verify the account/, response.body, "the step just undone is open again")
+    assert_no_match(/runner-thread__summary/, response.body,
+                    "and its row is gone, because the thread shrank")
+  end
+
+  test "back still redirects when the flag is off" do
+    scenario = scenario_at(@q1)
+    ScenarioSettler.new(scenario).settle("Yes")
+
+    post back_scenario_path(scenario),
+         headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_redirected_to step_scenario_path(scenario)
+  end
+  # --- inputs the two shells must read identically ---------------------------
+
+  test "the Player's Resolved button actually resolves the run" do
+    wf = Workflow.create!(title: "Resolvable WF", user: @user, status: "published")
+    act = Steps::Action.create!(workflow: wf, title: "Try the reset", position: 0, can_resolve: true)
+    nxt = Steps::Question.create!(workflow: wf, title: "Still broken?", position: 1, variable_name: "b")
+    done = Steps::Resolve.create!(workflow: wf, title: "Done", position: 2)
+    Transition.create!(step: act, target_step: nxt, position: 0)
+    Transition.create!(step: nxt, target_step: done, position: 0)
+    wf.update!(start_step: act)
+
+    scenario = Scenario.create!(
+      workflow: wf, user: @user, purpose: "live", started_at: Time.current,
+      current_node_uuid: act.uuid, execution_path: [], results: {}, inputs: {}
+    )
+
+    # The shared button bar submits resolved_here — the same name the Scenario
+    # runner reads.
+    post player_scenario_next_path(scenario), params: { resolved_here: "true" }
+
+    assert_predicate scenario.reload, :complete?,
+                     "the Player read a different param name than the shared form submits, " \
+                     "so its Resolved button quietly advanced instead of resolving"
+  end
+
+  test "the Scenario runner's Resolved button resolves too" do
+    wf = Workflow.create!(title: "Resolvable WF 2", user: @user)
+    act = Steps::Action.create!(workflow: wf, title: "Try the reset", position: 0, can_resolve: true)
+    nxt = Steps::Question.create!(workflow: wf, title: "Still broken?", position: 1, variable_name: "b")
+    done = Steps::Resolve.create!(workflow: wf, title: "Done", position: 2)
+    Transition.create!(step: act, target_step: nxt, position: 0)
+    Transition.create!(step: nxt, target_step: done, position: 0)
+    wf.update!(start_step: act)
+
+    scenario = Scenario.create!(
+      workflow: wf, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: act.uuid, execution_path: [], results: {}, inputs: {}
+    )
+
+    post next_step_scenario_path(scenario), params: { resolved_here: "true" }
+
+    assert_predicate scenario.reload, :complete?
+  end
+
+  # A run that could not move, as opposed to one that was refused. Classic says
+  # so; the streamed path must too, or the agent's answer disappears in silence —
+  # the exact bug fixed one PR ago on the other path.
+  test "answering a run that has already finished says so" do
+    scenario = scenario_at(@q1)
+    ScenarioSettler.new(scenario).settle("Yes")
+    ScenarioSettler.new(scenario).settle("100")
+    ScenarioSettler.new(scenario).settle(nil)
+    assert_predicate scenario.reload, :complete?, "precondition"
+
+    with_stacked_runner do
+      post next_step_scenario_path(scenario), params: { answer: "late" },
+                                              headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+
+    assert_response :success
+    assert_match(/already finished/i, response.body,
+                 "a stale tab must not have its answer swallowed")
+    assert_no_match(/runner-thread__row/, response.body, "and nothing new collapses")
+  end
+
+  test "a halted answer leaves exactly one open card" do
+    scenario = scenario_at(@q1)
+    ScenarioSettler.new(scenario).settle("Yes")
+    ScenarioSettler.new(scenario).settle("100")
+    ScenarioSettler.new(scenario).settle(nil)
+
+    with_stacked_runner do
+      post next_step_scenario_path(scenario), params: { answer: "late" },
+                                              headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+
+    assert_equal 1, response.body.scan('runner-card-current').length,
+                 "the stream must not leave two open cards on the page"
+  end
 end
