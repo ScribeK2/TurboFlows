@@ -115,6 +115,98 @@ class RunnerThreadHelperTest < ActionView::TestCase
     assert_nil runner_row_summary("step_type" => "question")
   end
 
+  # Which terminal a sub-flow leaves behind.
+  #
+  # A child's last entry is dropped, because the child's own ending is the
+  # sub-flow ending and not the run ending — the next card already implies it.
+  # That rule was written when a child's terminal was always auto-processed and
+  # never shown. It can now be a step the agent actually filled in, and dropping
+  # a step somebody answered is a different rule that used to coincide with this
+  # one.
+  #
+  # The line drawn: a terminal that carries the person's own words stays.
+
+  test "a child's auto-processed Resolve is still dropped" do
+    scenario = run_through_subflow
+
+    titles = runner_thread_entries(scenario).pluck("step_title")
+
+    assert_includes titles, "CQ", "the step the agent answered is on the transcript"
+    assert_not_includes titles, "CDone",
+                        "nobody saw this step; the sub-flow ending is the next card"
+  end
+
+  test "a child's Resolve stays when the agent typed the notes it asked for" do
+    notes_wf = Workflow.create!(title: "Notes Child", user: @user)
+    resolve = Steps::Resolve.create!(workflow: notes_wf, title: "Confirm identity", position: 0,
+                                     resolution_type: "success", notes_required: true)
+    notes_wf.update!(start_step: resolve)
+    @sf.update!(sub_flow_workflow_id: notes_wf.id)
+
+    scenario = Scenario.create!(
+      workflow: @workflow, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: @q1.uuid, execution_path: [], results: {}, inputs: {}
+    )
+    child = ScenarioSettler.new(scenario).settle("Yes").scenario
+    child.inputs["resolution_notes"] = "Checked DOB and last four"
+    ScenarioSettler.new(child).settle(nil, resolved_here: true)
+
+    titles = runner_thread_entries(scenario.reload).pluck("step_title")
+
+    assert_includes titles, "Confirm identity",
+                    "the agent stopped and typed here; the transcript has to show it happened"
+  end
+
+  # An escalate can only be a child's *terminal* in a graph that predates or
+  # bypasses validation — GraphValidator requires every terminal node to be a
+  # Resolve, so a valid child ends on one. The branch is defensive, and it is
+  # tested at the entry rather than through a run that cannot be built.
+  test "a child's Escalate terminal stays when the entry carries the typed reason" do
+    child = Scenario.create!(
+      workflow: @child_wf, user: @user, inputs: {},
+      execution_path: [
+        { "step_title" => "CQ", "answer" => "yes", "step_type" => "question" },
+        { "step_title" => "Hand to supervisor", "step_type" => "escalate",
+          "escalated" => true, "target_type" => "supervisor",
+          "reason" => "Customer asked for a manager" }
+      ]
+    )
+    parent = Scenario.create!(
+      workflow: @workflow, user: @user, inputs: {}, status: "awaiting_subflow",
+      execution_path: [
+        { "subflow_started" => true, "child_scenario_id" => child.id, "step_type" => "sub_flow" }
+      ]
+    )
+    child.update!(parent_scenario: parent)
+
+    titles = runner_thread_entries(parent).pluck("step_title")
+
+    assert_includes titles, "Hand to supervisor",
+                    "an escalate the agent explained is the most important row on the call"
+  end
+
+  test "a terminal recorded before the words were kept degrades to being dropped" do
+    child = Scenario.create!(
+      workflow: @child_wf, user: @user, inputs: {},
+      execution_path: [
+        { "step_title" => "CQ", "answer" => "yes", "step_type" => "question" },
+        { "step_title" => "CDone", "step_type" => "resolve", "resolved" => true }
+      ]
+    )
+    parent = Scenario.create!(
+      workflow: @workflow, user: @user, inputs: {}, status: "awaiting_subflow",
+      execution_path: [
+        { "subflow_started" => true, "child_scenario_id" => child.id, "step_type" => "sub_flow" }
+      ]
+    )
+    child.update!(parent_scenario: parent)
+
+    titles = runner_thread_entries(parent).pluck("step_title")
+
+    assert_not_includes titles, "CDone",
+                        "an entry from before the words were recorded cannot prove anyone answered it"
+  end
+
   # These three came from the trail's tests when the trail was deleted. They are
   # properties of the traversal, not of the surface that used to render it: the
   # thread reads from the root exactly as the trail did, and the query guard and

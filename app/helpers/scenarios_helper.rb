@@ -129,13 +129,7 @@ module ScenariosHelper
         next unless child
 
         child_path = child.execution_path || []
-        if child_path.any?
-          last_entry = child_path.last
-          last_type = last_entry["step_type"] || last_entry["type"]
-          # The child's own terminal is the sub-flow ending, not the run ending;
-          # the next card already implies it.
-          child_path = child_path[0..-2] if %w[resolve escalate].include?(last_type)
-        end
+        child_path = child_path[0..-2] if drop_child_terminal?(child_path.last)
         flat.concat(flatten_path_entries(child_path, depth + 1))
       else
         flat << entry.merge("kind" => "step", "depth" => depth)
@@ -143,6 +137,34 @@ module ScenariosHelper
     end
 
     flat
+  end
+
+  # Whether a child's last entry is the sub-flow ending rather than a step.
+  #
+  # A child's own terminal is dropped: it means the sub-flow finished, not that
+  # the run did, and the next card already implies it. That was written when a
+  # child's terminal was always auto-processed and never shown — the agent could
+  # not have seen it, so there was nothing to record.
+  #
+  # It can now be a step they stopped at and typed into. Dropping a step somebody
+  # answered is a different rule that used to coincide with this one, so the line
+  # is the person's own words: an entry carrying notes or a reason stays.
+  #
+  # Deliberately narrower than "keep anything a person answered". A terminal they
+  # clicked through with no field to fill still goes — it carries no more than
+  # the sub-flow ending already says. And it reads the entry, never the Step or
+  # ScenarioSettler.auto_processable?: the predicate answers about the run *now*,
+  # and a run whose notes have since been consumed off inputs would flip it.
+  #
+  # Entries written before the words were recorded have no such key, so they
+  # drop exactly as they did before.
+  def drop_child_terminal?(entry)
+    return false unless entry
+
+    type = entry["step_type"] || entry["type"]
+    return false unless %w[resolve escalate].include?(type)
+
+    entry["notes"].blank? && entry["reason"].blank?
   end
 
   def child_scenarios_for(path)

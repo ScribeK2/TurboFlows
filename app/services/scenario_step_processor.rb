@@ -195,6 +195,12 @@ class ScenarioStepProcessor
     # reason_required check with a value the user typed for a different step —
     # including after backing out of this one.
     escalation_reason = (@scenario.inputs || {}).delete("escalation_reason")
+    # The words the agent typed, on the entry for the same reason the target is:
+    # _escalation is one blob a later escalate step overwrites, and the reason is
+    # consumed off inputs as it is read, so the entry is the only place it
+    # survives as a fact about *this* step. The thread also reads it to tell a
+    # terminal somebody answered from one nobody was shown.
+    path_entry["reason"] = escalation_reason if escalation_reason.present?
     @scenario.results['_escalation'] = {
       'type' => step.target_type,
       'value' => step.target_value,
@@ -227,6 +233,10 @@ class ScenarioStepProcessor
     # Store resolution metadata in results. Consumed, for the same reason the
     # escalation reason is — see process_escalate_step.
     resolution_notes = (@scenario.inputs || {}).delete("resolution_notes")
+    # As with the escalation reason above: on the entry, because _resolution is
+    # overwritten and inputs is consumed. Its absence is also what tells the
+    # thread this terminal was walked past rather than answered.
+    path_entry["notes"] = resolution_notes if resolution_notes.present?
     @scenario.results['_resolution'] = {
       'type' => step.resolution_type || 'success',
       'code' => step.resolution_code,

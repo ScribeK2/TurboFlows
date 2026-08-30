@@ -205,6 +205,63 @@ class ScenarioPathEntryTest < ActiveSupport::TestCase
     assert_equal "urgent", entry["priority"]
   end
 
+  # The words a person typed belong on the entry for the same reason the target
+  # does: results carry one _escalation blob that a later escalate step
+  # overwrites, and the reason is *consumed* off inputs as it is read. The entry
+  # is the only place it survives as a fact about this step.
+  test "escalate entry keeps the reason the agent typed" do
+    escalating = Workflow.create!(title: "Escalate Reason WF", user: @user)
+    esc = Steps::Escalate.create!(
+      workflow: escalating, title: "Escalate", position: 0,
+      target_type: "supervisor", reason_required: true
+    )
+    done = Steps::Resolve.create!(workflow: escalating, title: "Done", position: 1)
+    Transition.create!(step: esc, target_step: done, position: 0)
+    escalating.update!(start_step: esc)
+
+    scenario = Scenario.create!(
+      workflow: escalating, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: esc.uuid, execution_path: [], results: {},
+      inputs: { "escalation_reason" => "Customer asked for a manager" }
+    )
+    scenario.process_step(nil)
+
+    assert_equal "Customer asked for a manager", scenario.execution_path.last["reason"]
+  end
+
+  test "resolve entry keeps the notes the agent typed" do
+    resolving = Workflow.create!(title: "Resolve Notes WF", user: @user)
+    res = Steps::Resolve.create!(
+      workflow: resolving, title: "Confirm identity", position: 0,
+      resolution_type: "success", notes_required: true
+    )
+    resolving.update!(start_step: res)
+
+    scenario = Scenario.create!(
+      workflow: resolving, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: res.uuid, execution_path: [], results: {},
+      inputs: { "resolution_notes" => "Checked DOB and last four" }
+    )
+    scenario.process_step(nil)
+
+    assert_equal "Checked DOB and last four", scenario.execution_path.last["notes"]
+  end
+
+  test "a resolve nobody had to answer records no notes" do
+    resolving = Workflow.create!(title: "Resolve Plain WF", user: @user)
+    res = Steps::Resolve.create!(workflow: resolving, title: "Done", position: 0, resolution_type: "success")
+    resolving.update!(start_step: res)
+
+    scenario = Scenario.create!(
+      workflow: resolving, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: res.uuid, execution_path: [], results: {}, inputs: {}
+    )
+    scenario.process_step(nil)
+
+    assert_not scenario.execution_path.last.key?("notes"),
+               "an absent key is what tells the thread nobody stopped here"
+  end
+
   test "resolve entry records how the run ended" do
     resolving = Workflow.create!(title: "Resolve Detail WF", user: @user)
     res = Steps::Resolve.create!(
