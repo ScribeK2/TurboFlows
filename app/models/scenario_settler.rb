@@ -41,7 +41,21 @@ class ScenarioSettler
     # the foreign key, and this runs in the settle loop and again in
     # Scenario#parked? on every render. Loading the association to ask cost a
     # query per advance for nothing.
-    step.step_type == "resolve" && scenario.parent_scenario_id.present?
+    return false unless step.step_type == "resolve" && scenario.parent_scenario_id.present?
+
+    # ...unless it will refuse. A resolve asking for notes cannot be walked
+    # past: the processor blocks it, and blocking a step nobody was shown left
+    # the run with no way out — parked, offering a Resume that answered "this
+    # run has already finished" forever. Claiming a step is auto-processable
+    # when it is about to say no is what made a dead end reachable.
+    !awaiting_resolution_notes?(scenario, step)
+  end
+
+  # The one thing a child's resolve can be waiting for. Mirrors the guard in
+  # ScenarioStepProcessor#process_resolve_step — if that grows another reason to
+  # block, this has to grow with it, or the dead end comes back in a new shape.
+  def self.awaiting_resolution_notes?(scenario, step)
+    step.notes_required && (scenario.inputs || {})["resolution_notes"].blank?
   end
 
   def initialize(scenario)
