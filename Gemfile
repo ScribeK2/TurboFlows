@@ -13,7 +13,6 @@ gem "solid_cable"
 gem "solid_cache"
 gem "solid_queue"
 gem "sqlite3", ">= 2.1"
-gem "sqlite3", ">= 2.1", group: %i[development test]
 gem "stimulus-rails"
 gem "turbo-rails"
 gem "tzinfo-data", platforms: %i[windows jruby]

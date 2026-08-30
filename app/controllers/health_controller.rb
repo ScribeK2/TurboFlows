@@ -1,4 +1,8 @@
-class HealthController < ActionController::Base
+# Deliberately not an ApplicationController: ONCE polls /up before anyone has
+# signed in, so the endpoint must not inherit Devise's authenticate filter or
+# any other app-wide before_action. Reparenting this makes the health check
+# redirect to the login page and the container read as permanently unhealthy.
+class HealthController < ActionController::Base # rubocop:disable Rails/ApplicationController
   def show
     # Check 1: Primary database is writable
     ActiveRecord::Base.connection.execute("SELECT 1")

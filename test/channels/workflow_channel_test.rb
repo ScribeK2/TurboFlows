@@ -80,7 +80,7 @@ class WorkflowPresenceIntegrationTest < ActiveSupport::TestCase
 
     users = WorkflowPresence.active_users(@workflow.id)
     assert_equal 2, users.length
-    assert_includes users.map { |u| u[:id] }, @user.id
-    assert_includes users.map { |u| u[:id] }, user2.id
+    assert_includes users.pluck(:id), @user.id
+    assert_includes users.pluck(:id), user2.id
   end
 end

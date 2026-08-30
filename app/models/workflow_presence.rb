@@ -8,7 +8,7 @@ class WorkflowPresence < ApplicationRecord
   def self.track(workflow_id:, user_id:, user_name:, user_email:)
     upsert(
       { workflow_id: workflow_id, user_id: user_id, user_name: user_name, user_email: user_email, last_seen_at: Time.current },
-      unique_by: [:workflow_id, :user_id]
+      unique_by: %i[workflow_id user_id]
     )
   end
 
