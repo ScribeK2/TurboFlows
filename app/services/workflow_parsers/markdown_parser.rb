@@ -188,7 +188,7 @@ module WorkflowParsers
         content: '',
         target_type: '',
         target_id: '',
-        priority: 'normal',
+        priority: '',
         reason: '',
         resolution_type: '',
         resolution_notes: '',
@@ -427,7 +427,8 @@ module WorkflowParsers
       when 'escalate'
         normalized[:target_type] = step[:target_type] || ''
         normalized[:target_id] = step[:target_id] if step[:target_id].present?
-        normalized[:priority] = step[:priority] || 'normal'
+        # No default here: StepNormalizer owns it. See CsvParser.
+        normalized[:priority] = step[:priority]
         normalized[:reason] = step[:reason] || ''
       when 'resolve'
         normalized[:resolution_type] = step[:resolution_type] || 'success'

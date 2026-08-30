@@ -145,6 +145,18 @@ module WorkflowParsers
       'other' => 'failure'
     }.freeze
 
+    # 'normal' is what four parsers wrote when an escalate step named no
+    # priority, and Steps::Escalate::VALID_PRIORITIES does not contain it. The
+    # step failed validation, and because WorkflowImporter creates steps inside
+    # the workflow save, it took the *whole import* down with a message naming a
+    # field the file never mentioned. The documented default was unusable.
+    #
+    # Converted rather than merely re-defaulted: the import guide tells authors
+    # 'normal' is accepted, and files in the wild say it explicitly.
+    PRIORITY_ALIASES = { 'normal' => 'medium' }.freeze
+
+    DEFAULT_PRIORITY = 'medium'.freeze
+
     private
 
     # -------------------------------------------------------------------------
@@ -154,6 +166,16 @@ module WorkflowParsers
     def normalize_resolution_type(value)
       raw = value.to_s.strip.downcase
       RESOLUTION_TYPE_ALIASES.fetch(raw, raw)
+    end
+
+    # Every format funnels through here — MarkdownParser and CsvParser normalise
+    # first and this runs after them — so this is the one place the conversion
+    # has to happen, rather than four.
+    def normalize_priority(value)
+      raw = value.to_s.strip.downcase
+      return DEFAULT_PRIORITY if raw.blank?
+
+      PRIORITY_ALIASES.fetch(raw, raw)
     end
 
     # -------------------------------------------------------------------------
@@ -187,7 +209,7 @@ module WorkflowParsers
       when 'escalate'
         normalized['target_type']    = step[:target_type]    || step['target_type']    || ''
         normalized['target_value']   = step[:target_value]   || step['target_value']   || step[:target_id] || step['target_id'] || ''
-        normalized['priority']       = step[:priority]       || step['priority']       || 'normal'
+        normalized['priority']       = normalize_priority(step[:priority] || step['priority'])
         normalized['reason_required'] = step[:reason_required] || step['reason_required']
         normalized['notes'] = step[:notes] || step['notes'] || step[:reason] || step['reason'] || ''
       when 'resolve'
