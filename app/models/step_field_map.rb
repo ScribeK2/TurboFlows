@@ -70,10 +70,9 @@ module StepFieldMap
   # Deliberately absent, so the next reader does not "fix" them back in:
   #
   # - `position_x` / `position_y` — canvas coordinates for the visual editor,
-  #   whose JS was deleted in f8240c05. StepBuilder still assigns them and
-  #   StepHelper#serialize_steps_for_editor still reads them, but that helper's
-  #   only caller is an orphaned partial nothing renders. Vestigial; they go
-  #   with the visual editor (see TODOS).
+  #   whose JS was deleted in f8240c05 and whose remaining partials and helper
+  #   went in cca393f9. StepBuilder still assigns them and nothing reads them.
+  #   Vestigial columns now, with no reader left to justify mapping them.
   # - `resolution_notes` — emitted by the parser's normalizer for resolve steps,
   #   but it is not a step field at all: it is a transient *scenario* input
   #   (Scenario::TRANSIENT_INPUT_KEYS), read at run time from scenario.inputs.
