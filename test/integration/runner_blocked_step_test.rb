@@ -75,6 +75,58 @@ class RunnerBlockedStepTest < ActionDispatch::IntegrationTest
     assert_unchanged scenario
   end
 
+  # Where a form's messages land.
+  #
+  # Escalate and Resolve have exactly one field each, so a summary block sits
+  # next to the thing it is about. A form does not: on a long one the agent had
+  # to match each sentence back to an input by reading the label out of it.
+  test "a form's message renders under the field that failed, not in a block above" do
+    scenario = scenario_at(two_field_form)
+
+    post next_step_scenario_path(scenario), params: { answer: { "account" => "AC-1" } }
+
+    assert_response :unprocessable_content
+    assert_select ".player-form-field" do |fields|
+      failing = fields.find { |f| f.to_s.include?("answer[customer_name]") }
+      assert failing, "precondition: the failing field is on the page"
+      assert_includes failing.to_s, "Customer name is required",
+                      "the message belongs under the input it is about"
+    end
+    assert_select "#runner-step-errors", 0,
+                  "a message that found its field has no business in the summary block too"
+  end
+
+  test "the control that failed marks itself, and the one that passed does not" do
+    scenario = scenario_at(two_field_form)
+
+    post next_step_scenario_path(scenario), params: { answer: { "account" => "AC-1" } }
+
+    assert_select "input[name='answer[customer_name]'].is-invalid", 1
+    assert_select "input[name='answer[account]'].is-invalid", 0,
+                  "marking a field the agent filled in correctly teaches them to ignore the marking"
+  end
+
+  # The backstop was not a backstop: it refused everything.
+  #
+  # params[:answer] arrives as ActionController::Parameters, which is not a Hash
+  # — is_a?(Hash) is false for it since Rails 5 — and process_form_step guarded
+  # on exactly that, so every response was discarded and every required field
+  # reported missing however the form was filled in. A form step with any
+  # required field could not be submitted at all. Nothing caught it because no
+  # test had ever submitted a *complete* form.
+  test "a completed form advances, so the backstop is not simply blocking everything" do
+    scenario = scenario_at(two_field_form)
+
+    post next_step_scenario_path(scenario),
+         params: { answer: { "customer_name" => "Ada Lovelace", "account" => "AC-1" } }
+
+    assert_response :success, "an accepted answer streams forward; only a refusal is a 422"
+    assert_equal "Ada Lovelace", scenario.reload.results["customer_name"]
+    assert_equal({ "customer_name" => "Ada Lovelace", "account" => "AC-1" },
+                 StepResponse.find_by(scenario: scenario).responses,
+                 "the answers have to reach the record, not just the results bag")
+  end
+
   test "a supplied reason advances the run, so the backstop is not simply blocking everything" do
     scenario = scenario_at(escalate_step)
 
@@ -98,6 +150,24 @@ class RunnerBlockedStepTest < ActionDispatch::IntegrationTest
       step = Steps::Escalate.create!(workflow: @workflow, title: "Escalate", position: 0,
                                      reason_required: true, target_type: "supervisor")
       done = Steps::Resolve.create!(workflow: @workflow, title: "Done", position: 1,
+                                    resolution_type: "success")
+      Transition.create!(step: step, target_step: done, position: 0)
+      step
+    end
+  end
+
+  def two_field_form
+    @two_field_form ||= begin
+      step = Steps::Form.create!(
+        workflow: @workflow, title: "Verify the caller", position: 4,
+        options: [
+          { "name" => "customer_name", "label" => "Customer name", "field_type" => "text",
+            "required" => true, "position" => 0 },
+          { "name" => "account", "label" => "Account", "field_type" => "text",
+            "required" => true, "position" => 1 }
+        ]
+      )
+      done = Steps::Resolve.create!(workflow: @workflow, title: "Form Done", position: 5,
                                     resolution_type: "success")
       Transition.create!(step: step, target_step: done, position: 0)
       step

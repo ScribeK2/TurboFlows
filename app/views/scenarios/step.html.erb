@@ -24,6 +24,7 @@
         back_button: scenario_back_button(@scenario),
         show_cancel: true,
         errors: @step_errors || [],
+        field_errors: @field_errors || {},
         submitted: @submitted || {},
         auto_advance: @open_step ? runner_auto_advances?(@open_step) : false,
         parked: @parked,

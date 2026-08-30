@@ -4,7 +4,8 @@
   never calls a route helper and the two shells stay the only place the
   difference lives.
 
-  locals: step, results, next_url, stop_url, back_button, show_cancel, errors, submitted
+  locals: step, results, next_url, stop_url, back_button, show_cancel, errors,
+          submitted, field_errors
 %>
 <%
   locals = {
@@ -12,7 +13,8 @@
     back_button: local_assigns.fetch(:back_button, nil),
     show_cancel: local_assigns.fetch(:show_cancel, true),
     errors: local_assigns.fetch(:errors, []),
-    submitted: local_assigns.fetch(:submitted, {})
+    submitted: local_assigns.fetch(:submitted, {}),
+    field_errors: local_assigns.fetch(:field_errors, {})
   }
 %>
 

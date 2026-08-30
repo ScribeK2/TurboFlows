@@ -53,6 +53,24 @@ module RunnerHelper
     end
   end
 
+  # Messages the summary block still has to show, once the fields have taken the
+  # ones that belong to them.
+  #
+  # A message shown under its own input must not also be shouted from the block
+  # above; a message whose field is not on the page must not vanish with it. The
+  # fallback is defensive — nothing in Steps::Form can name a field outside its
+  # own options today — but the builder autosaves, so a step can be edited
+  # between the render and the submit.
+  #
+  # A step with no field errors (Escalate, Resolve) keeps every message, which is
+  # exactly what it did before any of this existed.
+  def runner_unattached_errors(step, errors, field_errors)
+    return Array(errors) if field_errors.blank?
+
+    rendered = Array(step.try(:fields)).filter_map { |field| field["name"] }
+    Array(errors) - field_errors.slice(*rendered).values.flatten
+  end
+
   def runner_option_value(option)
     option.is_a?(Hash) ? (option["value"] || option["label"]) : option
   end

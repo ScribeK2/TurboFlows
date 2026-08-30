@@ -16,12 +16,22 @@ class ScenarioStepProcessor
   # :awaiting_subflow  a child scenario is now running
   # :blocked           refused, with messages for the user; nothing was saved
   # :halted            could not run, with a reason the caller may log or ignore
-  Outcome = Data.define(:status, :errors, :reason) do
-    def self.advanced = new(status: :advanced, errors: [], reason: nil)
-    def self.resolved = new(status: :resolved, errors: [], reason: nil)
-    def self.awaiting_subflow = new(status: :awaiting_subflow, errors: [], reason: nil)
-    def self.blocked(errors) = new(status: :blocked, errors: Array(errors), reason: nil)
-    def self.halted(reason) = new(status: :halted, errors: [], reason: reason)
+  #
+  # `errors` stays the complete list of messages for the user — that contract is
+  # what every reader relies on. `field_errors` says which input each one is
+  # about, when the step knows: a form does, Escalate and Resolve have one field
+  # each and pass nothing. The renderer subtracts, so a message shown under its
+  # field is not also shouted from the block above.
+  Outcome = Data.define(:status, :errors, :field_errors, :reason) do
+    def self.advanced = new(status: :advanced, errors: [], field_errors: {}, reason: nil)
+    def self.resolved = new(status: :resolved, errors: [], field_errors: {}, reason: nil)
+    def self.awaiting_subflow = new(status: :awaiting_subflow, errors: [], field_errors: {}, reason: nil)
+
+    def self.blocked(errors, field_errors: {})
+      new(status: :blocked, errors: Array(errors), field_errors: field_errors, reason: nil)
+    end
+
+    def self.halted(reason) = new(status: :halted, errors: [], field_errors: {}, reason: reason)
 
     def advanced? = status == :advanced
     def resolved? = status == :resolved
@@ -96,8 +106,10 @@ class ScenarioStepProcessor
   def process_form_step(step, answer, path_entry)
     responses = answer.is_a?(Hash) ? answer : {}
 
-    validation_errors = step.validate_responses(responses)
-    return Outcome.blocked(validation_errors) if validation_errors.any?
+    field_errors = step.validate_responses(responses)
+    if field_errors.any?
+      return Outcome.blocked(field_errors.values.flatten, field_errors: field_errors)
+    end
 
     StepResponse.create!(
       scenario: @scenario,

@@ -3,11 +3,16 @@
 
   locals: step, submitted — values from a refused submit, so a blocked form
   does not throw away what the user already typed. Empty on a fresh render.
+          field_errors — messages keyed by field name, so a refusal sits under
+  the input it is about rather than in a block the reader has to map back.
 %>
 <% submitted = local_assigns.fetch(:submitted, {}) || {} %>
+<% field_errors = local_assigns.fetch(:field_errors, {}) || {} %>
 <div class="player-form-fields">
   <% Array(step.fields).sort_by { |f| f["position"].to_i }.each do |field| %>
     <% value = submitted[field["name"]] %>
+    <% messages = Array(field_errors[field["name"]]) %>
+    <% invalid = " is-invalid" if messages.any? %>
     <div class="player-form-field">
       <label class="form-label<%= " is-required" if field["required"] %>">
         <%= field["label"] %>
@@ -17,17 +22,17 @@
       <% when "text", "email", "phone", "number" %>
         <input type="<%= field['field_type'] == 'phone' ? 'tel' : field['field_type'] %>"
                name="answer[<%= field['name'] %>]"
-               class="form-input"
+               class="form-input<%= invalid %>"
                value="<%= value %>"
                placeholder="<%= field['label'] %>"
                <%= "required" if field["required"] %>>
       <% when "textarea" %>
         <textarea name="answer[<%= field['name'] %>]"
-                  class="form-input"
+                  class="form-input<%= invalid %>"
                   placeholder="<%= field['label'] %>"
                   <%= "required" if field["required"] %>><%= value %></textarea>
       <% when "select" %>
-        <select name="answer[<%= field['name'] %>]" class="form-select" <%= "required" if field["required"] %>>
+        <select name="answer[<%= field['name'] %>]" class="form-select<%= invalid %>" <%= "required" if field["required"] %>>
           <option value="">Select...</option>
           <% Array(field["select_options"]).each do |opt| %>
             <% opt_value = opt["value"] || opt["label"] %>
@@ -36,11 +41,17 @@
         </select>
       <% when "checkbox" %>
         <label class="form-checkbox-label">
-          <input type="checkbox" name="answer[<%= field['name'] %>]" value="true" class="form-checkbox"
+          <input type="checkbox" name="answer[<%= field['name'] %>]" value="true" class="form-checkbox<%= invalid %>"
                  <%= "checked" if value.present? %>
                  <%= "required" if field["required"] %>>
           <%= field["label"] %>
         </label>
+      <% end %>
+
+      <% if messages.any? %>
+        <span class="form-error" role="alert">
+          <%= messages.to_sentence %>
+        </span>
       <% end %>
     </div>
   <% end %>

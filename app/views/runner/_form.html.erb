@@ -1,4 +1,11 @@
-<%# locals: step, results, next_url, stop_url, back_button, show_cancel, errors, submitted %>
+<%#
+  locals: step, results, next_url, stop_url, back_button, show_cancel, errors,
+          submitted, field_errors
+
+  The block above the fields now shows only what the fields could not take —
+  a message whose input is no longer on the page. Everything else renders under
+  the control it is about. See RunnerHelper#runner_unattached_errors.
+%>
 <% if step.try(:instructions).present? %>
   <div class="step-content-box step-content-box--form mb-4">
     <div class="step-content-box__accent"></div>
@@ -18,8 +25,9 @@
 
 <%= form_with url: next_url, method: :post, class: "space-y-4",
       data: { scenario_step_target: "form" } do |form| %>
-  <%= render "runner/errors", errors: errors %>
-  <%= render "scenarios/form_step", step: step, submitted: submitted %>
+  <% field_errors = local_assigns.fetch(:field_errors, {}) %>
+  <%= render "runner/errors", errors: runner_unattached_errors(step, errors, field_errors) %>
+  <%= render "scenarios/form_step", step: step, submitted: submitted, field_errors: field_errors %>
   <%= render "runner/button_bar",
         form: form, back_button: back_button, stop_url: stop_url,
         show_cancel: show_cancel, submit_label: "Submit Form" %>

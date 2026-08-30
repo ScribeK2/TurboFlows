@@ -92,8 +92,18 @@ module RunnerShell
   # read `resolved` — a name nothing submits. Its "Resolved" button therefore
   # advanced the run instead of ending it, silently. Reading inputs is part of
   # the seam, not something each shell gets its own opinion about.
+  # A form submits `answer` as a nested hash; every other step submits a scalar.
+  #
+  # Converted here, because what arrives is ActionController::Parameters and
+  # that is **not** a Hash — `is_a?(Hash)` is false for it since Rails 5. The
+  # processor guards with exactly that check and so threw every form response
+  # away, failing every required field no matter what the agent typed: a form
+  # step with any required field could not be submitted at all. Reading the
+  # submission is part of the seam, which is why the conversion lives here and
+  # not in either shell.
   def runner_answer
-    params[:answer] || params[:selected_option]
+    raw = params[:answer] || params[:selected_option]
+    raw.is_a?(ActionController::Parameters) ? raw.permit!.to_h : raw
   end
 
   def runner_resolved_here?
@@ -104,8 +114,8 @@ module RunnerShell
   # Both shells carried this verbatim; reading the submission is part of the
   # seam, not something each shell gets its own copy of.
   def submitted_form_values
-    raw = params[:answer]
-    raw.is_a?(ActionController::Parameters) ? raw.permit!.to_h : {}
+    values = runner_answer
+    values.is_a?(Hash) ? values : {}
   end
 
   # Escalation reason and resolution notes reach the processor through inputs.
@@ -160,6 +170,7 @@ module RunnerShell
       # which also rebuilds the form, clearing the submit guard and the spinner
       # that sit outside the errors node.
       @step_errors = settled.outcome.errors
+      @field_errors = settled.outcome.field_errors
       @submitted = submitted_form_values
       @thread_tail = []
       @open_step = @scenario.current_step

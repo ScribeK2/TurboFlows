@@ -44,7 +44,15 @@ class RunnerValidationTest < ApplicationSystemTestCase
     check "answer[identity_confirmed]"
     click_on "Submit Form"
 
-    assert_text "Customer name is required"
+    # Under the input it is about, not in a block above it — on a long form the
+    # agent should not have to match a sentence back to a field by its label.
+    # One retrying assertion rather than find-then-scope: the answer arrives as a
+    # Turbo stream that replaces the card, so an element located before the swap
+    # goes stale under you.
+    assert_selector ".player-form-field:has(input[name='answer[customer_name]']) .form-error",
+                    text: "Customer name is required"
+    assert_selector "input[name='answer[customer_name]'].is-invalid"
+    assert_no_selector "#runner-step-errors"
     assert_current_step "Verify the caller"
     # The refused submit must not cost the user the rest of the form.
     assert_field "answer[account_ref]", with: "AC-4417"

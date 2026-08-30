@@ -10,7 +10,7 @@
   streamed thread and a refreshed one cannot disagree.
 
   locals: scenario, tail, step, parked, results_url, next_url, stop_url,
-          back_button, show_cancel, errors, submitted
+          back_button, show_cancel, errors, submitted, field_errors
 %>
 <% if flash.now[:alert].present? %>
   <%#
@@ -36,5 +36,6 @@
         scenario: scenario, step: step, parked: parked, results_url: results_url,
         next_url: next_url, stop_url: stop_url, back_button: back_button,
         show_cancel: show_cancel, errors: errors, submitted: submitted,
+        field_errors: field_errors,
         auto_advance: step ? runner_auto_advances?(step) : false %>
 <% end %>

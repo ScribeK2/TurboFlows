@@ -5,7 +5,7 @@
   requires, so this stays shell-agnostic.
 
   locals: scenario, step, next_url, stop_url, back_button, show_cancel, errors,
-          submitted, auto_advance
+          submitted, field_errors, auto_advance
 %>
 <%
   step_info_text = VariableInterpolator.interpolate(step.title, scenario.results || {})
@@ -31,7 +31,8 @@
             back_button: back_button,
             show_cancel: show_cancel,
             errors: errors,
-            submitted: submitted %>
+            submitted: submitted,
+            field_errors: field_errors %>
     </div>
   </div>
 </li>

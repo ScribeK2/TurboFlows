@@ -383,7 +383,7 @@ apology. If the page header already has a filled button, the empty-state CTA is
 
 ### Error/Validation States
 
-- **Inline field errors:** Add `.is-invalid` to `.form-input` and display error text in a `<span class="form-error">` below the input.
+- **Inline field errors:** Add `.is-invalid` to the control and display error text in a `<span class="form-error" role="alert">` below it. Defined for `.form-input`, `.form-textarea` and `.form-select` (red border) and for `.form-checkbox`/`.form-radio` (red outline — a native checkbox draws its own box, so a border-color is invisible on it). The runner's form step is the worked example: `scenarios/_form_step`.
 - **Flash errors:** Use `.flash--alert` for page-level errors.
 - **Toast errors:** Use `.toast--error` for async operation failures.
 

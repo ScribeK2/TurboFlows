@@ -16,7 +16,7 @@
   which pass everything route-shaped as a local.
 
   locals: scenario, step, next_url, stop_url, back_button, show_cancel,
-          errors, submitted, auto_advance, parked, results_url
+          errors, submitted, field_errors, auto_advance, parked, results_url
 %>
 <ol class="runner-thread" id="runner-thread" data-controller="thread">
   <% runner_thread_entries(scenario).each do |entry| %>
@@ -31,5 +31,6 @@
         scenario: scenario, step: step, parked: parked, results_url: results_url,
         next_url: next_url, stop_url: stop_url, back_button: back_button,
         show_cancel: show_cancel, errors: errors, submitted: submitted,
+        field_errors: local_assigns.fetch(:field_errors, {}),
         auto_advance: auto_advance %>
 </ol>

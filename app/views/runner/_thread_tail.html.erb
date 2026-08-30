@@ -15,7 +15,8 @@
   <%= render "runner/thread_card",
         scenario: scenario, step: step, next_url: next_url, stop_url: stop_url,
         back_button: back_button, show_cancel: show_cancel,
-        errors: errors, submitted: submitted, auto_advance: auto_advance %>
+        errors: errors, submitted: submitted, field_errors: field_errors,
+        auto_advance: auto_advance %>
 <% elsif scenario.complete? %>
   <li class="runner-thread__complete-item" data-thread-target="current">
     <%= render "runner/thread_complete", results_url: results_url %>

@@ -204,6 +204,17 @@
   border-radius: var(--radius-full);
 }
 
+/* A native checkbox draws its own box, so border-color — which is what
+   .is-invalid sets everywhere else — is invisible on it. An outline is the one
+   thing that shows. Without this the class rendered as "no style applied" on
+   two of the five field types, which looks plausible in a screenshot and is
+   exactly what UIGUIDE checklist 13 is about. */
+.form-checkbox.is-invalid,
+.form-radio.is-invalid {
+  outline: 2px solid var(--color-negative);
+  outline-offset: 1px;
+}
+
 .form-checkbox:focus-visible,
 .form-radio:focus-visible {
   outline: var(--focus-ring);
