@@ -1,21 +1,29 @@
 # frozen_string_literal: true
 
-# Turning "the user answered" into a response, for both runner shells.
+# The run, for both runner shells. What is left in ScenariosController and
+# PlayerController is the part that is genuinely different: their URLs, their
+# layouts, and who is allowed in.
 #
-# Each shell supplies the two URLs its runner lives at; everything else — how
-# far the run moves, whether it crossed a sub-flow boundary, whether it finished
-# — is decided by ScenarioSettler and is the same for both.
+# Each shell supplies the two URLs its runner lives at; everything else — where
+# a GET belongs, which step is open, how far an answer moves the run, whether it
+# crossed a sub-flow boundary, whether it finished — is decided here and by
+# ScenarioSettler, and is the same for both.
 #
 # This replaces SubflowOrchestration, whose job was to redirect around sub-flow
 # boundaries after each outcome. The settler crosses those boundaries itself and
 # reports where the run came to rest, so there is nothing left to orchestrate:
 # the answer is always "stream the run to wherever it landed".
-module RunnerAdvance
+#
+# It was called RunnerAdvance while it owned only the POST. The GET half stayed
+# written twice and drifted — five decisions about the same run had two answers
+# depending on which URL the agent was at — so the name stopped describing the
+# seam before the seam was finished. See RunnerShellParityTest for the five.
+module RunnerShell
   extend ActiveSupport::Concern
 
   private
 
-  # Template method — each including controller MUST define this.
+  # Template methods — each including controller MUST define both.
   #
   # Named for what they are rather than for sub-flows. The old pair was called
   # subflow_step_path / subflow_completion_path even though every caller used
@@ -24,6 +32,57 @@ module RunnerAdvance
 
   def runner_step_path(scenario)
     raise NotImplementedError, "#{self.class} must implement #runner_step_path"
+  end
+
+  def runner_results_path(scenario)
+    raise NotImplementedError, "#{self.class} must implement #runner_results_path"
+  end
+
+  # Where a GET on the runner belongs, or nil if it belongs right here.
+  #
+  # Every branch answers the same question — which run is this, the one the
+  # agent started or the sub-flow frame they are standing in — and answers it
+  # the way both #stop actions already do: the run they started.
+  def runner_step_redirect(scenario)
+    # A stopped frame is a stopped tree: Scenario#stop! cascades to the root and
+    # every unfinished descendant. So the frame has no outcome of its own to
+    # show, and its results are the root's.
+    return runner_results_path(scenario.root_scenario) if scenario.stopped?
+
+    # A finished *child* is a finished sub-flow, not a finished run. Sending the
+    # agent to the root's results would show a summary for a run still in
+    # progress; the parent's step page is where they belong, and it offers
+    # Resume because a parent whose child has finished is parked.
+    #
+    # A finished *root* run gets no redirect at all: its ending stays on the
+    # transcript and results are offered as a link, rather than the page being
+    # replaced by a card that throws away what the agent was reading.
+    return runner_step_path(scenario.parent_scenario) if scenario.complete? && scenario.parent_scenario
+
+    # A run waiting on a child that is still going belongs at the child's URL.
+    # A redirect writes nothing, so this keeps the action pure; the case where
+    # the child has *finished* needs a POST, and #parked? surfaces that as a
+    # Resume control instead of healing it here.
+    active_child = scenario.awaiting_subflow? ? scenario.active_child_scenario : nil
+    runner_step_path(active_child) if active_child && !active_child.complete?
+  end
+
+  # What a shell needs to render the run, computed once so the two cannot
+  # disagree about which step is open.
+  #
+  # They did disagree. The Player read its own step off current_node_uuid with a
+  # fallback to the workflow's first step, and never asked whether the run had
+  # finished — so a completed run rendered an answerable card whose only
+  # possible reply was "This run has already finished."
+  def assign_runner_step_state(scenario)
+    @scenario = scenario
+    # The header names the run the agent started, not the sub-flow frame. This
+    # is what respond_to_settled already does, so reading the frame here meant
+    # the title changed on answer and changed back on reload.
+    @workflow = scenario.root_workflow
+    @parked = scenario.parked?
+    @open_step = scenario.complete? || @parked ? nil : scenario.current_step
+    scenario.record_step_started
   end
 
   # The answer the user gave, read the same way by both shells.
@@ -41,6 +100,14 @@ module RunnerAdvance
     ActiveModel::Type::Boolean.new.cast(params[:resolved_here]).present?
   end
 
+  # Values from the refused submit, so a blocked form keeps what was typed.
+  # Both shells carried this verbatim; reading the submission is part of the
+  # seam, not something each shell gets its own copy of.
+  def submitted_form_values
+    raw = params[:answer]
+    raw.is_a?(ActionController::Parameters) ? raw.permit!.to_h : {}
+  end
+
   # Escalation reason and resolution notes reach the processor through inputs.
   def stash_runner_inputs(scenario)
     scenario.inputs ||= {}
@@ -54,6 +121,16 @@ module RunnerAdvance
     # so the tail is tagged and depthed by construction rather than by the
     # controller trying to reproduce it.
     thread_before = helpers.runner_thread_entries(scenario).length
+
+    # Reading the answer and stamping the step that is ending are part of
+    # advancing, not something each shell does first in its own order — they
+    # had already drifted into opposite orders. A terminal run skips both: the
+    # settler still decides (it returns the halt below), this only stops a
+    # refusal from restamping the last step of a run that is over.
+    unless scenario.terminal?
+      stash_runner_inputs(scenario)
+      scenario.record_step_ended
+    end
 
     settled = ScenarioSettler.new(scenario).settle(answer, resolved_here: resolved_here)
 

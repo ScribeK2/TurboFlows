@@ -15,17 +15,17 @@
 
   <%# The thread is the history, so there is no separate trail alongside it —
       two lists of the same facts is the bug the trail was written to fix. %>
-  <% step = @scenario.complete? || @parked ? nil : @scenario.current_step %>
+  <%# @open_step is decided by RunnerShell, so both shells open the same card. %>
   <%= render "runner/thread",
         scenario: @scenario,
-        step: step,
+        step: @open_step,
         next_url: next_step_scenario_path(@scenario),
         stop_url: stop_scenario_path(@scenario),
         back_button: scenario_back_button(@scenario),
         show_cancel: true,
         errors: @step_errors || [],
         submitted: @submitted || {},
-        auto_advance: step ? runner_auto_advances?(step) : false,
+        auto_advance: @open_step ? runner_auto_advances?(@open_step) : false,
         parked: @parked,
         results_url: scenario_path(@scenario) %>
 </div>

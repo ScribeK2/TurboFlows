@@ -1,5 +1,5 @@
 class PlayerController < ApplicationController
-  include RunnerAdvance
+  include RunnerShell
 
   layout "player"
 
@@ -42,35 +42,8 @@ class PlayerController < ApplicationController
   # A pure read. It renders the run; it never moves it. See
   # ScenariosController#step for why that matters.
   def step
-    @workflow = @scenario.workflow
-
-    if @scenario.completed? || @scenario.stopped?
-      # A finished child is a finished sub-flow, not a finished run — see
-      # ScenariosController#handle_step_guard_redirects.
-      parent = @scenario.parent_scenario if @scenario.completed?
-      if parent
-        redirect_to runner_step_path(parent)
-        return
-      end
-
-      # A finished run keeps its transcript, so only a *stopped* one leaves —
-      # there is no ending to read on a run that was abandoned. (A completed run
-      # with a parent already returned above: that is a finished sub-flow, not a
-      # finished run.)
-      if @scenario.stopped?
-        redirect_to player_scenario_show_path(@scenario.root_scenario)
-        return
-      end
-    end
-
-    # A run waiting on a child that is still going belongs at the child's URL.
-    # A redirect writes nothing; a finished child needs a POST, and #parked?
-    # surfaces that as a Resume control instead of healing it here.
-    active_child = @scenario.awaiting_subflow? ? @scenario.active_child_scenario : nil
-    if active_child && !active_child.complete?
-      redirect_to runner_step_path(active_child)
-      return
-    end
+    elsewhere = runner_step_redirect(@scenario)
+    return redirect_to(elsewhere) if elsewhere
 
     # Re-checked, not trusted: asking for embed is not the same as the workflow
     # having enabled it.
@@ -80,16 +53,10 @@ class PlayerController < ApplicationController
     # sub-flow's own workflow carries no share token, so reading it off the
     # frame turned embed off the moment the run entered a sub-flow.
     @embed_mode = params[:embed] == "1" && @scenario.root_workflow.embeddable?
-    @parked = @scenario.parked?
-    @current_step = resolve_current_step
-    @scenario.step_started_at_pending = Time.current.iso8601(3)
+    assign_runner_step_state(@scenario)
   end
 
   def next_step
-    @workflow = @scenario.workflow
-    stash_runner_inputs(@scenario)
-    @scenario.record_step_ended
-
     advance_runner(@scenario, runner_answer, resolved_here: runner_resolved_here?)
   end
 
@@ -101,7 +68,7 @@ class PlayerController < ApplicationController
     # Stops the whole scenario tree, so report on the run the user actually
     # started rather than the sub-flow frame they happened to be inside.
     @scenario.stop!(@scenario.current_step_index)
-    redirect_to player_scenario_show_path(@scenario.root_scenario), notice: "Workflow stopped."
+    redirect_to runner_results_path(@scenario.root_scenario), notice: "Workflow stopped."
   end
 
   def show
@@ -135,17 +102,13 @@ class PlayerController < ApplicationController
 
   private
 
-  # A refused step re-renders where the user already is, with the reasons.
-  # 422 because Turbo discards a 200 that is not a redirect.
-  # Values from the refused submit, so a blocked form keeps what was typed.
-  def submitted_form_values
-    raw = params[:answer]
-    raw.is_a?(ActionController::Parameters) ? raw.permit!.to_h : {}
-  end
-
-  # RunnerAdvance template method
+  # RunnerShell template methods
   def runner_step_path(scenario)
     player_scenario_step_path(scenario)
+  end
+
+  def runner_results_path(scenario)
+    player_scenario_show_path(scenario)
   end
 
   def set_scenario
@@ -155,15 +118,6 @@ class PlayerController < ApplicationController
     else
       @scenario = Scenario.find_by(id: params[:id])
       head(:forbidden) and return unless @scenario&.shared_access?
-    end
-  end
-
-  def resolve_current_step
-    uuid = @scenario.current_node_uuid
-    if uuid.present?
-      @scenario.workflow.steps.find_by(uuid: uuid)
-    else
-      @scenario.workflow.start_step || @scenario.workflow.steps.ordered.first
     end
   end
 end

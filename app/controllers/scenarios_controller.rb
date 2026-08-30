@@ -1,5 +1,5 @@
 class ScenariosController < ApplicationController
-  include RunnerAdvance
+  include RunnerShell
 
   before_action :ensure_can_manage_workflows!
 
@@ -16,12 +16,11 @@ class ScenariosController < ApplicationController
   # work now, done by ScenarioSettler.
   def step
     @scenario = current_user.scenarios.find(params[:id])
-    @workflow = @scenario.root_workflow
 
-    return if handle_step_guard_redirects
+    elsewhere = runner_step_redirect(@scenario)
+    return redirect_to(elsewhere) if elsewhere
 
-    @parked = @scenario.parked?
-    @scenario.record_step_started
+    assign_runner_step_state(@scenario)
   end
 
   def back
@@ -36,68 +35,28 @@ class ScenariosController < ApplicationController
     # Stops the whole scenario tree, so report on the run the user actually
     # started rather than the sub-flow frame they happened to be inside.
     @scenario.stop!(@scenario.current_step_index)
-    redirect_to scenario_path(@scenario.root_scenario), notice: "Workflow stopped."
+    redirect_to runner_results_path(@scenario.root_scenario), notice: "Workflow stopped."
   end
 
+  # A stopped run gets no guard here. The settler halts it with :not_runnable
+  # and the shell says so in place, which keeps the transcript the agent is
+  # reading on screen — the same answer the Player gives. The redirect that used
+  # to live here was the only place in the runner that navigated away from an
+  # answer.
   def next_step
     @scenario = current_user.scenarios.find(params[:id])
-    # root_workflow, matching #step: a blocked step re-renders this shell, and
-    # the header names the run the user started, not the sub-flow frame.
-    @workflow = @scenario.root_workflow
-
-    if @scenario.stopped?
-      redirect_to scenario_path(@scenario), alert: "This workflow has been stopped and cannot be continued."
-      return
-    end
-
-    @scenario.record_step_ended
-    stash_runner_inputs(@scenario)
 
     advance_runner(@scenario, runner_answer, resolved_here: runner_resolved_here?)
   end
 
   private
 
-  # Values from the refused submit, so a blocked form keeps what was typed.
-  def submitted_form_values
-    raw = params[:answer]
-    raw.is_a?(ActionController::Parameters) ? raw.permit!.to_h : {}
-  end
-
-  # Returns true if a redirect was issued (caller should return), false otherwise.
-  def handle_step_guard_redirects
-    if @scenario.stopped?
-      redirect_to scenario_path(@scenario), notice: "This workflow has been stopped."
-      return true
-    end
-
-    # A finished *child* is a finished sub-flow, not a finished run. Sending the
-    # user to the root's results page would show a summary for a run still in
-    # progress; the parent's step page is where they belong, and it offers
-    # Resume because a parent whose child has finished is parked.
-    #
-    # A finished *root* run gets no redirect at all: its ending stays on the
-    # transcript and results are offered as a link, rather than the page being
-    # replaced by a card that throws away what the agent was reading.
-    if @scenario.complete? && @scenario.parent_scenario
-      redirect_to runner_step_path(@scenario.parent_scenario)
-      return true
-    end
-
-    # A run waiting on a child that is still going belongs at the child's URL.
-    # A redirect writes nothing, so this keeps the action pure; the case where
-    # the child has *finished* needs a POST and is handled by #parked?.
-    active_child = @scenario.awaiting_subflow? ? @scenario.active_child_scenario : nil
-    if active_child && !active_child.complete?
-      redirect_to runner_step_path(active_child)
-      return true
-    end
-
-    false
-  end
-
-  # RunnerAdvance template method
+  # RunnerShell template methods
   def runner_step_path(scenario)
     step_scenario_path(scenario)
+  end
+
+  def runner_results_path(scenario)
+    scenario_path(scenario)
   end
 end

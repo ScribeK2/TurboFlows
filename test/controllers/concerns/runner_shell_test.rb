@@ -7,7 +7,7 @@ require "test_helper"
 # moved the run. ScenarioSettler does that work on POST now, so the cases are
 # rewritten rather than deleted: the sub-flow behaviour they covered still has
 # to hold, it just happens somewhere else.
-class RunnerAdvanceTest < ActionDispatch::IntegrationTest
+class RunnerShellTest < ActionDispatch::IntegrationTest
   setup do
     @user = User.create!(
       email: "runner-advance-#{SecureRandom.hex(4)}@test.com",

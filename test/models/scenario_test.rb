@@ -304,7 +304,7 @@ class ScenarioTest < ActiveSupport::TestCase
 
   # The lost optimistic-locking race, held as two live objects — the only way to
   # get one, since a controller request loads the row fresh and can never see a
-  # bump that happened before it started. RunnerAdvance#halted_message turns
+  # bump that happened before it started. RunnerShell#halted_message turns
   # this reason into the "your last answer was not saved" the agent reads, so
   # without a test here that message has nothing proving it can ever fire.
   test "a concurrent modification halts with :conflict rather than raising" do

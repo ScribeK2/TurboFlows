@@ -119,7 +119,25 @@ The unified builder lives at `workflows/:id` — one URL for both viewing and ed
 - `Workflows::ExecutionsController` — start landing page (`new`) + scenario creation (`create`)
 - Plus existing: `Exports`, `Imports`, `Shares`, `Publishings`, `Taggings`, `Pins`
 
-**Key concern:** `SubflowOrchestration` (`app/controllers/concerns/subflow_orchestration.rb`) — shared subflow redirect logic for `PlayerController` and `ScenariosController`. Uses template method pattern: each controller implements `subflow_step_path` and `subflow_completion_path`.
+**Key concern:** `RunnerShell` (`app/controllers/concerns/runner_shell.rb`) — the
+run itself, shared by `ScenariosController` and `PlayerController`. It owns where
+a GET belongs (`runner_step_redirect`), which step is open
+(`assign_runner_step_state`), and what an answer does (`advance_runner`,
+`rewind_runner`, `respond_to_settled`). Template method pattern: each controller
+implements `runner_step_path` and `runner_results_path`, and nothing else about
+the run.
+
+It replaced `SubflowOrchestration`, which redirected around sub-flow boundaries
+after each outcome — `ScenarioSettler` crosses those boundaries itself and reports
+where the run came to rest, so there is nothing left to orchestrate. It was called
+`RunnerAdvance` for as long as it owned only the POST; the GET half was still
+written twice and had drifted into five disagreements about the same run (see
+`test/integration/runner_shell_parity_test.rb`, which names each one).
+
+**What is left in the two controllers is what is genuinely different:** their
+URLs, their layouts, and who is allowed in. Nothing about run semantics belongs in
+either — if you are about to add an `if` about the run to a controller, it goes in
+the concern.
 
 ## Real-Time & Collaboration
 
