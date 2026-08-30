@@ -114,7 +114,6 @@ The unified builder lives at `workflows/:id` — one URL for both viewing and ed
 - `Workflows::FlowDiagramsController` — BFS flow diagram panel
 - `Workflows::SettingsController` — workflow metadata panel
 - `Workflows::VersionsController` — version history
-- `Workflows::StepSyncsController` — step sync with optimistic locking (builder autosave)
 - `Workflows::HealthsController` — health validation panel (HTML for builder panel, JSON for async fetch). Overrides `eager_load_steps` to skip rich text preloading
 - `Workflows::HealthFixesController` — deterministic autocorrect actions (`connect_next`, `add_resolve_after`). Responds with Turbo Streams to refresh both step list and health panel
 - `Workflows::ExecutionsController` — start landing page (`new`) + scenario creation (`create`)
@@ -134,8 +133,7 @@ All workflows are graphs. There is no separate "linear mode" — a sequential fl
 
 **Key services:**
 - `StepResolver` — graph traversal engine. Evaluates transitions in position order, handles conditional branching (via `ConditionEvaluator`), simple value matching for Question answers, SubFlow markers, and jump evaluation (`check_jumps`).
-- `StepBuilder` — creates AR steps from hash data. Auto-creates sequential transitions when no explicit transitions provided. Validates at least one Resolve step exists. Also provides `StepBuilder.normalize` (class method) used by `StepSyncer`.
-- `StepSyncer` — incremental sync for step persistence. Upserts, deletes, and reconciles transitions atomically. Delegates normalization to `StepBuilder.normalize`.
+- `StepBuilder` — creates AR steps from hash data. Auto-creates sequential transitions when no explicit transitions provided. Validates at least one Resolve step exists. Also provides `StepBuilder.normalize` (class method), its own helper, which `WorkflowImporter` borrows.
 - `ScenarioStepProcessor` — extracted step-processing logic for Scenario. Calls public methods on Scenario (`advance_to_next_step`, `resolve_at_current_step`, `record_completion`).
 - `GraphValidator` — DAG validation (cycle detection, reachability from start_step, terminal nodes must be Resolve steps).
 - `SubflowValidator` — prevents circular sub-flow references (max depth: 10).

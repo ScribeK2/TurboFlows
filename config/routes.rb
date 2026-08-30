@@ -19,7 +19,6 @@ Rails.application.routes.draw do
     resource :flow_diagram, only: [:show], controller: "workflows/flow_diagrams"
     resource :settings, only: [:show], controller: "workflows/settings"
     resources :versions, only: [:index], controller: "workflows/versions"
-    resource :step_sync, only: [:update], controller: "workflows/step_syncs"
     resource :execution, only: %i[new create], controller: "workflows/executions"
     resource :publishing, only: [:create], controller: "workflows/publishings"
     resources :taggings, only: %i[create destroy], controller: "workflows/taggings", param: :tag_id

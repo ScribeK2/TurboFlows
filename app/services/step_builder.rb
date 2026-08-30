@@ -36,7 +36,8 @@ class StepBuilder
   end
 
   # Normalize incoming step/transition data to a stringified hash.
-  # Shared by StepBuilder and StepSyncer.
+  # A class method because the importer reaches for it too; StepBuilder itself
+  # is its main caller, through the private instance wrapper below.
   def self.normalize(data, permitted: PERMITTED_STEP_PARAMS)
     if data.respond_to?(:permit)
       data.permit(*permitted, options: [%i[label value]], output_fields: [%i[name value]],

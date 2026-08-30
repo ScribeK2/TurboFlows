@@ -4,7 +4,13 @@
  * Tests concurrent editing scenarios:
  *  - Multiple users PATCH the same workflow with optimistic locking
  *  - Concurrent scenario step advancement
- *  - Measures conflict rate, save latency, and step sync latency
+ *  - Measures conflict rate and save latency
+ *
+ * NOTE: this no longer exercises step persistence. It used to POST to
+ * /workflows/:id/step_sync, an endpoint deleted in 2026-08 because nothing
+ * called it — and the stage sent no `steps` param anyway, so it was timing an
+ * empty sync. The builder's real write path is PATCH /steps/:id (per-step
+ * autosave); adding a stage for that is unclaimed work, noted in TODOS.md.
  *
  * Run:
  *   k6 run test/load/k6-concurrent-editing.js
@@ -28,7 +34,6 @@ import { randomIntBetween } from 'https://jslib.k6.io/k6-utils/1.2.0/index.js';
 const conflictRate = new Rate('conflict_rate');
 const errorRate = new Rate('errors');
 const saveTrend = new Trend('save_latency', true);
-const stepSyncTrend = new Trend('step_sync_latency', true);
 const scenarioAdvanceTrend = new Trend('scenario_advance_latency', true);
 const conflictsTotal = new Counter('conflicts_total');
 
@@ -47,7 +52,6 @@ export const options = {
   },
   thresholds: {
     save_latency:   ['p(95)<2000'],       // p95 save < 2s
-    step_sync_latency: ['p(95)<2000'],    // p95 step sync < 2s
     conflict_rate:  ['rate<0.10'],         // conflicts < 10%
     errors:         ['rate<0.05'],         // errors < 5%
   },
@@ -190,48 +194,6 @@ function concurrentWorkflowPatch() {
   });
 }
 
-function concurrentStepSync() {
-  if (!session.workflowId) return;
-
-  group('Concurrent step sync', () => {
-    const editRes = http.get(`${BASE_URL}/workflows/${session.workflowId}/edit`, {
-      headers: { 'X-CSRF-Token': session.csrfToken },
-    });
-
-    if (editRes.status !== 200) {
-      errorRate.add(1);
-      return;
-    }
-
-    session.csrfToken = extractCsrfToken(editRes.body) || session.csrfToken;
-    session.authenticityToken = extractAuthenticityToken(editRes.body);
-
-    const start = Date.now();
-    const res = http.post(
-      `${BASE_URL}/workflows/${session.workflowId}/step_sync`,
-      {
-        _method: 'patch',
-        authenticity_token: session.authenticityToken,
-      },
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'X-CSRF-Token': session.csrfToken,
-          Accept: 'text/vnd.turbo-stream.html',
-        },
-        redirects: 0,
-      }
-    );
-    stepSyncTrend.add(Date.now() - start);
-
-    const ok = res.status >= 200 && res.status < 400;
-    errorRate.add(ok ? 0 : 1);
-    check(res, {
-      'step sync responds': () => ok,
-    });
-  });
-}
-
 function concurrentScenarioAdvance() {
   if (!session.workflowId) return;
 
@@ -325,10 +287,8 @@ export default function () {
   // Randomly choose an action, weighted toward editing
   const action = randomIntBetween(1, 10);
 
-  if (action <= 5) {
+  if (action <= 7) {
     concurrentWorkflowPatch();
-  } else if (action <= 8) {
-    concurrentStepSync();
   } else {
     concurrentScenarioAdvance();
   }
