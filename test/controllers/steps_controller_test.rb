@@ -199,4 +199,36 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to workflows_path
     assert_match(/permission/, flash[:alert])
   end
+
+  # The rich text bodies, which reach the model through step_params like any
+  # other attribute. `description` was rendered by the Resolve editor but never
+  # permitted, so what the user typed was dropped on save with no error — the
+  # kind of gap only an end-to-end assertion catches, since the form, the model
+  # and the view were all individually correct.
+  test "a Resolve step's custom description is saved, not silently dropped" do
+    resolve = Steps::Resolve.create!(workflow: @workflow, position: 1, title: "R",
+                                     resolution_type: "success")
+
+    patch workflow_step_path(@workflow, resolve),
+          params: { step: { description: "Confirm the customer is satisfied" } },
+          as: :json
+
+    assert_response :ok
+    assert_equal "Confirm the customer is satisfied",
+                 resolve.reload.description.to_plain_text.strip
+  end
+
+  test "the other rich text bodies save too" do
+    { Steps::Action => :instructions, Steps::Message => :content,
+      Steps::Escalate => :notes }.each_with_index do |(klass, field), i|
+      step = klass.create!(workflow: @workflow, position: 10 + i, title: "S#{i}")
+
+      patch workflow_step_path(@workflow, step),
+            params: { step: { field => "body text #{i}" } }, as: :json
+
+      assert_response :ok
+      assert_equal "body text #{i}", step.reload.public_send(field).to_plain_text.strip,
+                   "#{klass}##{field} must round-trip through step_params"
+    end
+  end
 end

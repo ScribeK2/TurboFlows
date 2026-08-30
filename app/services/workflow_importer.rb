@@ -103,8 +103,10 @@ class WorkflowImporter
         attrs[:action_type] = step_hash["action_type"]
         attrs[:can_resolve] = step_hash["can_resolve"]
         attrs[:output_fields] = step_hash["output_fields"] if step_hash["output_fields"].present?
+        attrs[:jumps] = step_hash["jumps"] if step_hash["jumps"].present?
       when "message"
         attrs[:can_resolve] = step_hash["can_resolve"]
+        attrs[:jumps] = step_hash["jumps"] if step_hash["jumps"].present?
       when "escalate"
         attrs[:target_type] = step_hash["target_type"]
         attrs[:target_value] = step_hash["target_value"].presence || step_hash["target_id"]
@@ -112,6 +114,7 @@ class WorkflowImporter
         attrs[:reason_required] = step_hash["reason_required"]
       when "resolve"
         attrs[:resolution_type] = step_hash["resolution_type"]
+        attrs[:resolution_code] = step_hash["resolution_code"]
         attrs[:notes_required] = step_hash["notes_required"]
         attrs[:survey_trigger] = step_hash["survey_trigger"]
       when "sub_flow"

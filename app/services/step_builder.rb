@@ -59,7 +59,8 @@ class StepBuilder
     case step_data["type"].to_s
     when "question"
       attrs.merge!(question: step_data["question"], answer_type: step_data["answer_type"],
-                   variable_name: step_data["variable_name"], options: step_data["options"])
+                   variable_name: step_data["variable_name"], options: step_data["options"],
+                   can_resolve: step_data["can_resolve"] || false)
     when "action"
       attrs.merge!(can_resolve: step_data["can_resolve"] || false, action_type: step_data["action_type"],
                    output_fields: step_data["output_fields"], jumps: step_data["jumps"])

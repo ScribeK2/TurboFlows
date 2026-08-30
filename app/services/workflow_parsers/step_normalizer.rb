@@ -188,6 +188,7 @@ module WorkflowParsers
         normalized['notes'] = step[:notes] || step['notes'] || step[:reason] || step['reason'] || ''
       when 'resolve'
         normalized['resolution_type']  = normalize_resolution_type(step[:resolution_type] || step['resolution_type'] || 'success')
+        normalized['resolution_code']  = step[:resolution_code] || step['resolution_code']
         normalized['resolution_notes'] = step[:resolution_notes] || step['resolution_notes'] || ''
         normalized['description']      = step[:description]      || step['description']      || ''
         normalized['notes_required']   = step[:notes_required]   || step['notes_required']
