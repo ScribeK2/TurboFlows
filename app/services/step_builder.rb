@@ -9,21 +9,16 @@ class StepBuilder
     "form" => Steps::Form
   }.freeze
 
-  RICH_TEXT_FIELDS = {
-    "instructions" => [Steps::Action, Steps::Form],
-    "content" => [Steps::Message],
-    "notes" => [Steps::Escalate],
-    "description" => [Steps::Resolve]
-  }.freeze
-
-  PERMITTED_STEP_PARAMS = %i[
-    id type title position position_x position_y
-    question answer_type variable_name can_resolve action_type
-    target_type target_value priority reason_required
-    resolution_type resolution_code notes_required survey_trigger
-    sub_flow_workflow_id target_workflow_id instructions content notes
-    help_text reference_url
-  ].freeze
+  # Which fields exist is StepFieldMap's job. This adds only what is structural
+  # to a builder payload and absent from the map: the wire identifiers, the
+  # sub_flow wire alias, and the vestigial canvas coordinates (see the map's
+  # "deliberately absent" note).
+  PERMITTED_STEP_PARAMS = (
+    StepFieldMap.all_plain_fields +
+    StepFieldMap.all_rich_text_fields +
+    %i[id type position_x position_y] +
+    StepFieldMap::WIRE_ALIASES.values
+  ).uniq.freeze
 
   PERMITTED_TRANSITION_PARAMS = %i[target_uuid condition label position].freeze
 
@@ -196,12 +191,18 @@ class StepBuilder
     @workflow.update_columns(start_step_id: start_step.id) if start_step
   end
 
+  # Action Text bodies, assigned after the record exists. Which fields belong to
+  # which type comes from StepFieldMap, so a new rich text field is picked up
+  # here without anyone remembering to edit this method.
   def assign_rich_text_fields(step_record, step_data)
-    RICH_TEXT_FIELDS.each do |field, klasses|
-      if Array(klasses).any? { |k| step_record.is_a?(k) } && step_data[field].present?
-        step_record.send(:"#{field}=", step_data[field])
-        step_record.save!
-      end
+    type = step_record.type.demodulize.underscore
+
+    StepFieldMap.rich_text_fields(type).each do |field|
+      value = step_data[field.to_s]
+      next if value.blank?
+
+      step_record.public_send(:"#{field}=", value)
+      step_record.save!
     end
   end
 

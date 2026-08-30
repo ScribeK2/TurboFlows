@@ -47,7 +47,11 @@ module WorkflowParsers
         'id' => step['id'] || step[:id],
         'type' => step[:type] || step['type'] || 'action',
         'title' => step[:title] || step['title'] || "Step #{index + 1}",
-        'description' => step[:description] || step['description'] || ''
+        'description' => step[:description] || step['description'] || '',
+        # WorkflowImporter assigns these two, but it never saw them: this
+        # normalizer runs first and used to drop anything it did not name.
+        'help_text' => step[:help_text] || step['help_text'],
+        'reference_url' => step[:reference_url] || step['reference_url']
       }
 
       apply_type_fields(normalized, step)
