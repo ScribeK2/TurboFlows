@@ -11,10 +11,15 @@
 #   if validator.valid?
 #     # No circular references
 #   else
-#     validator.errors # => ["Circular sub-flow reference: Workflow A -> Workflow B -> Workflow A"]
+#     validator.findings # => [#<ValidationFinding code: :circular_subflow, ...>]
+#     validator.errors   # => ["Circular sub-flow reference: Workflow A -> Workflow B -> Workflow A"]
 #   end
+#
+# Reporting mirrors GraphValidator: findings are the source of truth and carry
+# the code plus structured details, while #errors is a projection of their
+# messages for callers that only surface text.
 class SubflowValidator
-  attr_reader :errors
+  attr_reader :findings
 
   MAX_DEPTH = 10 # Maximum sub-flow nesting depth
   SUBFLOW_TYPES = %w[sub_flow sub-flow].freeze
@@ -23,12 +28,18 @@ class SubflowValidator
   # @param workflow_id [Integer] The ID of the workflow to validate
   def initialize(workflow_id)
     @workflow_id = workflow_id
-    @errors = []
+    @findings = []
+  end
+
+  # Human-readable messages, in findings order. Kept so Workflow's AR validation
+  # needs no knowledge of findings.
+  def errors
+    @findings.map(&:message)
   end
 
   # Run validation and return true if no circular references exist
   def valid?
-    @errors = []
+    @findings = []
 
     root = Workflow.find_by(id: @workflow_id)
     return true unless root
@@ -39,7 +50,7 @@ class SubflowValidator
     validate_no_circular_subflows(root, [])
     validate_max_depth(root)
 
-    @errors.empty?
+    @findings.empty?
   end
 
   # Class method for quick validation
@@ -55,6 +66,10 @@ class SubflowValidator
   end
 
   private
+
+  def add_finding(code, message, details: {})
+    @findings << ValidationFinding.new(code:, message:, details:)
+  end
 
   # Batch-load all workflows reachable via sub-flow references
   # Uses a single bulk query to load all potentially reachable workflows,
@@ -112,14 +127,16 @@ class SubflowValidator
       cycle_start = visited_path.index(workflow.id)
       cycle_path = visited_path[cycle_start..] + [workflow.id]
       cycle_names = cycle_path.map { |wid| @workflows_cache[wid]&.title || "Workflow ##{wid}" }
-      @errors << "Circular sub-flow reference: #{cycle_names.join(' -> ')}"
+      add_finding(:circular_subflow, "Circular sub-flow reference: #{cycle_names.join(' -> ')}",
+                  details: { cycle_workflow_ids: cycle_path })
       return
     end
 
     extract_subflow_target_ids(workflow).each do |target_id|
       target = @workflows_cache[target_id]
       unless target
-        @errors << "Sub-flow references non-existent workflow (ID: #{target_id})"
+        add_finding(:subflow_target_missing, "Sub-flow references non-existent workflow (ID: #{target_id})",
+                    details: { workflow_id: workflow.id, target_workflow_id: target_id })
         next
       end
       validate_no_circular_subflows(target, visited_path + [workflow.id])
@@ -131,9 +148,10 @@ class SubflowValidator
   def validate_max_depth(workflow)
     depth = calculate_max_depth(workflow, Set.new)
 
-    if depth > MAX_DEPTH
-      @errors << "Sub-flow nesting exceeds maximum depth of #{MAX_DEPTH} levels"
-    end
+    return unless depth > MAX_DEPTH
+
+    add_finding(:max_depth_exceeded, "Sub-flow nesting exceeds maximum depth of #{MAX_DEPTH} levels",
+                details: { depth: depth, max_depth: MAX_DEPTH })
   end
 
   # Calculate the maximum nesting depth of sub-flows

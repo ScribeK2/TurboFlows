@@ -1,0 +1,18 @@
+<%#
+  Thin on purpose: the shell supplies the URLs, the shared partial decides what
+  the thread does. Everything genuinely the same between the two runners lives
+  in runner/, so the Scenario and Player streams cannot drift apart.
+%>
+<%= render "runner/advance_stream",
+      scenario: @scenario,
+      tail: @thread_tail || [],
+      step: @open_step,
+      parked: @scenario.parked?,
+      results_url: scenario_path(@scenario),
+      next_url: next_step_scenario_path(@scenario),
+      stop_url: stop_scenario_path(@scenario),
+      back_button: scenario_back_button(@scenario),
+      show_cancel: true,
+      errors: @step_errors || [],
+      field_errors: @field_errors || {},
+      submitted: @submitted || {} %>

@@ -1,39 +1,16 @@
 <% content_for(:workflow_title) { @workflow.title } %>
 <% content_for(:title) { "#{@workflow.title} — TurboFlows Player" } %>
 
-<% if @current_step %>
-  <%
-    auto_advance = runner_auto_advances?(@current_step)
-    step_info_text = VariableInterpolator.interpolate(@current_step.title, @scenario.results || {})
-  %>
-
-  <%= render "runner/trail", scenario: @scenario %>
-
-  <div class="card player-step-card"
-       data-controller="scenario-step"
-       data-scenario-step-auto-advance-value="<%= auto_advance %>"
-       data-scenario-step-step-info-value="<%= step_info_text %>">
-    <div class="card__body">
-      <div aria-live="polite" class="sr-only" data-scenario-step-target="announce"></div>
-
-      <div class="scenario-step-header">
-        <h2 class="player-step-card__title"><%= step_info_text %></h2>
-      </div>
-
-      <%= render "runner/step_body",
-            step: @current_step,
-            results: @scenario.results || {},
-            next_url: player_scenario_next_path(@scenario),
-            stop_url: player_scenario_stop_path(@scenario),
-            back_button: player_back_button(@scenario),
-            show_cancel: current_user.present? %>
-    </div>
-  </div>
-<% else %>
-  <div class="card">
-    <div class="card__body" style="padding: var(--space-8); text-align: center;">
-      <p style="color: var(--color-ink-muted); margin-bottom: var(--space-4);">This workflow has no steps available.</p>
-      <%= link_to "Back to Workflows", play_path, class: "btn btn--primary btn--sm" %>
-    </div>
-  </div>
-<% end %>
+<%= render "runner/thread",
+      scenario: @scenario,
+      step: @open_step,
+      next_url: player_scenario_next_path(@scenario),
+      stop_url: player_scenario_stop_path(@scenario),
+      back_button: player_back_button(@scenario),
+      show_cancel: current_user.present?,
+      errors: @step_errors || [],
+      field_errors: @field_errors || {},
+      submitted: @submitted || {},
+      auto_advance: @open_step ? runner_auto_advances?(@open_step) : false,
+      parked: @parked,
+      results_url: player_scenario_show_path(@scenario) %>

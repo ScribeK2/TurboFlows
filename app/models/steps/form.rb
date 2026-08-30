@@ -25,18 +25,20 @@ module Steps
     end
 
     # Validate a hash of responses against the field definitions.
-    # Returns an array of error strings (empty = valid).
+    #
+    # Keyed by field name, so a refusal can be shown under the input it is
+    # about. It used to return a flat array of sentences, which left a long form
+    # rendering one block above the fields and the agent matching each message
+    # back to an input by reading the label out of it. Escalate and Resolve have
+    # exactly one field each and so never had the problem.
+    #
+    # Empty hash = valid.
     def validate_responses(response_data)
-      errors = []
+      fields.select { |f| f["required"] }.each_with_object({}) do |field, errors|
+        next if response_data&.dig(field["name"]).present?
 
-      fields.select { |f| f["required"] }.each do |field|
-        value = response_data&.dig(field["name"])
-        if value.blank?
-          errors << "#{field['label'] || field['name']} is required"
-        end
+        errors[field["name"]] = ["#{field['label'] || field['name']} is required"]
       end
-
-      errors
     end
 
     def outcome_summary

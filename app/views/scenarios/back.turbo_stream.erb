@@ -1,0 +1,12 @@
+<%= render "runner/thread_reset",
+      scenario: @scenario,
+      step: @open_step,
+      parked: @scenario.parked?,
+      results_url: scenario_path(@scenario),
+      next_url: next_step_scenario_path(@scenario),
+      stop_url: stop_scenario_path(@scenario),
+      back_button: scenario_back_button(@scenario),
+      show_cancel: true,
+      errors: [],
+      submitted: {},
+      auto_advance: @open_step ? runner_auto_advances?(@open_step) : false %>

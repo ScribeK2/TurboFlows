@@ -1,26 +1,30 @@
 # Gemfile
 source "https://rubygems.org"
 
-ruby "4.0.1"
+ruby "4.0.6"
 
 gem "bootsnap", ">= 1.4.4", require: false
 gem "csv"
 gem "importmap-rails"
 gem "propshaft"
-gem "puma", ">= 5.0"
+gem "puma", "~> 8.0"
 gem "rails", "~> 8.1.0"
-gem "solid_cache"
 gem "solid_cable"
+gem "solid_cache"
 gem "solid_queue"
 gem "sqlite3", ">= 2.1"
 gem "sqlite3", ">= 2.1", group: %i[development test]
 gem "stimulus-rails"
 gem "turbo-rails"
-gem "tzinfo-data", platforms: %i[mingw mswin x64_mingw jruby]
+gem "tzinfo-data", platforms: %i[windows jruby]
 
 # Rich text editing via Action Text + Lexxy (Lexical-based editor)
-gem "image_processing", "~> 1.2"
-gem "lexxy", "~> 0.8.0.beta"
+gem "image_processing", "~> 2.0"
+gem "lexxy", "~> 0.9.0"
+# image_processing 2.0 made the backends soft dependencies, so the processor
+# Active Storage is configured to use has to be declared here explicitly.
+# config.active_storage.variant_processor = :mini_magick in all environments.
+gem "mini_magick"
 
 # SVG icons (Heroicons)
 gem "rails_icons"
@@ -40,7 +44,7 @@ gem "sentry-ruby"
 
 group :development, :test do
   gem "capybara"
-  gem "debug", platforms: %i[mri mingw x64_mingw]
+  gem "debug", platforms: %i[mri windows]
   gem "selenium-webdriver"
 
   # N+1 query detection - helps catch performance issues during development
@@ -60,4 +64,10 @@ end
 group :development do
   gem "brakeman"
   gem "web-console"
+
+  # Gem CVE audit. Declared here rather than installed globally so that
+  # `bundle exec bundle-audit` resolves through the bundle: the binary on PATH
+  # may be a version manager's shim pointing at a different Ruby, in which case
+  # the command errors instead of auditing and the check silently stops running.
+  gem "bundler-audit", require: false
 end

@@ -210,37 +210,7 @@ class ScenarioGraphExecutionTest < ActiveSupport::TestCase
   end
 
   # ---------------------------------------------------------------------------
-  # 7. Scenario timeout on execute
-  # ---------------------------------------------------------------------------
-  test "scenario execute returns false and sets timed_out status on timeout" do
-    wf = Workflow.create!(title: "Timeout Workflow", user: @user, status: "published")
-    Steps::Question.create!(workflow: wf, position: 0, title: "Q1", question: "?", variable_name: "q1")
-
-    scenario = Scenario.create!(
-      workflow: wf,
-      user: @user,
-      inputs: { "q1" => "value" },
-      purpose: "simulation"
-    )
-
-    # Simulate timeout by temporarily defining a singleton method that raises ScenarioTimeout.
-    # This mirrors what Timeout.timeout raises when MAX_EXECUTION_TIME is exceeded,
-    # which is exactly what `execute` rescues and converts to a timed_out status.
-    scenario.define_singleton_method(:execute_with_limits) do
-      raise Scenario::ScenarioTimeout, "forced timeout"
-    end
-
-    result = scenario.execute
-    assert_not result, "execute should return false on timeout"
-
-    scenario.reload
-    assert_equal "timed_out", scenario.status, "Status should be timed_out after timeout"
-    assert_equal "timeout",   scenario.status_before_type_cast, "Raw DB value should be 'timeout'"
-    assert_predicate scenario.results["_error"], :present?
-  end
-
-  # ---------------------------------------------------------------------------
-  # 8. Graph mode execution path tracks step UUIDs
+  # 7. Graph mode execution path tracks step UUIDs
   # ---------------------------------------------------------------------------
   test "graph mode execution path entries contain step_uuid key" do
     wf = Workflow.create!(title: "Path Tracking WF", user: @user, graph_mode: true, status: "published")

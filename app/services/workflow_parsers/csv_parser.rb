@@ -139,7 +139,9 @@ module WorkflowParsers
       when 'escalate'
         step[:target_type] = row[:target_type] || ''
         step[:target_id] = row[:target_id]
-        step[:priority] = row[:priority] || 'normal'
+        # No default here: StepNormalizer owns it, and the 'normal' this used
+        # to write is not a priority Steps::Escalate accepts.
+        step[:priority] = row[:priority]
         step[:reason] = row[:reason] || ''
 
         if row[:transitions]

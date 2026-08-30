@@ -64,7 +64,7 @@ class StepsControllerApplyTemplateTest < ActionDispatch::IntegrationTest
            params: { template_key: "nonexistent" },
            as: :turbo_stream
     end
-    assert_response :unprocessable_entity
+    assert_response :unprocessable_content
   end
 
   test "apply_template requires edit permission" do

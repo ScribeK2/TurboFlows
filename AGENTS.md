@@ -114,13 +114,30 @@ The unified builder lives at `workflows/:id` — one URL for both viewing and ed
 - `Workflows::FlowDiagramsController` — BFS flow diagram panel
 - `Workflows::SettingsController` — workflow metadata panel
 - `Workflows::VersionsController` — version history
-- `Workflows::StepSyncsController` — step sync with optimistic locking (builder autosave)
 - `Workflows::HealthsController` — health validation panel (HTML for builder panel, JSON for async fetch). Overrides `eager_load_steps` to skip rich text preloading
 - `Workflows::HealthFixesController` — deterministic autocorrect actions (`connect_next`, `add_resolve_after`). Responds with Turbo Streams to refresh both step list and health panel
 - `Workflows::ExecutionsController` — start landing page (`new`) + scenario creation (`create`)
 - Plus existing: `Exports`, `Imports`, `Shares`, `Publishings`, `Taggings`, `Pins`
 
-**Key concern:** `SubflowOrchestration` (`app/controllers/concerns/subflow_orchestration.rb`) — shared subflow redirect logic for `PlayerController` and `ScenariosController`. Uses template method pattern: each controller implements `subflow_step_path` and `subflow_completion_path`.
+**Key concern:** `RunnerShell` (`app/controllers/concerns/runner_shell.rb`) — the
+run itself, shared by `ScenariosController` and `PlayerController`. It owns where
+a GET belongs (`runner_step_redirect`), which step is open
+(`assign_runner_step_state`), and what an answer does (`advance_runner`,
+`rewind_runner`, `respond_to_settled`). Template method pattern: each controller
+implements `runner_step_path` and `runner_results_path`, and nothing else about
+the run.
+
+It replaced `SubflowOrchestration`, which redirected around sub-flow boundaries
+after each outcome — `ScenarioSettler` crosses those boundaries itself and reports
+where the run came to rest, so there is nothing left to orchestrate. It was called
+`RunnerAdvance` for as long as it owned only the POST; the GET half was still
+written twice and had drifted into five disagreements about the same run (see
+`test/integration/runner_shell_parity_test.rb`, which names each one).
+
+**What is left in the two controllers is what is genuinely different:** their
+URLs, their layouts, and who is allowed in. Nothing about run semantics belongs in
+either — if you are about to add an `if` about the run to a controller, it goes in
+the concern.
 
 ## Real-Time & Collaboration
 
@@ -134,8 +151,7 @@ All workflows are graphs. There is no separate "linear mode" — a sequential fl
 
 **Key services:**
 - `StepResolver` — graph traversal engine. Evaluates transitions in position order, handles conditional branching (via `ConditionEvaluator`), simple value matching for Question answers, SubFlow markers, and jump evaluation (`check_jumps`).
-- `StepBuilder` — creates AR steps from hash data. Auto-creates sequential transitions when no explicit transitions provided. Validates at least one Resolve step exists. Also provides `StepBuilder.normalize` (class method) used by `StepSyncer`.
-- `StepSyncer` — incremental sync for step persistence. Upserts, deletes, and reconciles transitions atomically. Delegates normalization to `StepBuilder.normalize`.
+- `StepBuilder` — creates AR steps from hash data. Auto-creates sequential transitions when no explicit transitions provided. Validates at least one Resolve step exists. Also provides `StepBuilder.normalize` (class method), its own helper, which `WorkflowImporter` borrows.
 - `ScenarioStepProcessor` — extracted step-processing logic for Scenario. Calls public methods on Scenario (`advance_to_next_step`, `resolve_at_current_step`, `record_completion`).
 - `GraphValidator` — DAG validation (cycle detection, reachability from start_step, terminal nodes must be Resolve steps).
 - `SubflowValidator` — prevents circular sub-flow references (max depth: 10).
@@ -159,29 +175,44 @@ The Player is the user-facing workflow execution UI, separate from the builder's
 **Key files:**
 - `app/controllers/player_controller.rb` — start, step, next_step, back, show, show_shared
 - `app/views/layouts/player.html.erb` — standalone layout (header, main, footer)
-- `app/views/player/step.html.erb` — a thin shell: page chrome plus route-shaped locals, delegating the step body to `runner/_step_body`
+- `app/views/player/step.html.erb` — a thin shell: page chrome plus route-shaped locals, delegating everything below to `runner/_thread`
 - `app/views/player/show.html.erb` — completion screen with stats
 - `app/views/player/index.html.erb` — workflow card grid
 - `app/helpers/player_helper.rb` — `player_back_button` helper (uses Player routes, not Scenario routes)
 - `app/assets/stylesheets/_player.css` — Player-specific layout and component styles
 
 **Key differences from Scenario mode:** only the shell differs. Both runners
-render `app/views/runner/_step_body`, which never calls a route helper —
-everything route-shaped (`next_url`, `stop_url`, `back_button`, `show_cancel`)
-arrives as a local. Add step-body behaviour in the partials, not in a shell.
+render `app/views/runner/_thread`, and through it `runner/_step_body`, which
+never calls a route helper — everything route-shaped (`next_url`, `stop_url`,
+`back_button`, `show_cancel`) arrives as a local. Add runner behaviour in the
+partials, not in a shell. Both shells are now branchless: neither contains an
+`if` about how to render the run.
 
 - Uses `player_scenario_*_path` routes, not `*_scenario_path` routes
 - Its own layout (`layouts/player.html.erb`) and page chrome
 - Cancel is hidden for anonymous/shared scenarios (no Player index to return to)
 - Both runners operate on AR Step objects with method access (`step.title`), not
   execution-path hashes. `step['field']` access was removed in the shared-partial
-  extraction; `execution_path` hashes remain only in the results view and trail.
+  extraction; `execution_path` hashes remain only in the results view and in the
+  thread's cards.
+
+**The run renders as a thread, and that is the only rendering.** Answering a step
+collapses it into a compact card and appends the next one below it, streamed — no
+navigation, so the transcript the agent is reading stays put. `runner/_thread`
+renders the answered cards and delegates the open one to `runner/_thread_card`; the tail
+(`runner/_thread_tail`) is whatever the run is waiting on — the open card, a
+Resume control, or the ending — and always carries `id="runner-card-current"`, so
+a streamed answer always has a target to replace.
+
+This shipped behind `STACKED_RUNNER` and the flag was removed on 2026-08-29 once
+the thread had carried real traffic. There is no second runner and no config to
+render one; `runner/_trail` and the classic one-card-at-a-time branches are gone.
 
 **No step numbers or progress bars.** Both were removed deliberately: two
 numbering systems disagreed inside sub-flows, and the bars divided by
-`workflow.steps.count`, which a branched run never visits in full. What replaced
-them is `runner/_trail` — the answered steps as plain text, read from the root
-scenario. See UIGUIDE.md § Surfaces Deliberately Excluded for the reasoning.
+`workflow.steps.count`, which a branched run never visits in full. The thread's
+cards carry that orientation now, read from the root scenario. See UIGUIDE.md
+§ Surfaces Deliberately Excluded for the reasoning.
 
 **Auto-advance has one source of truth:** `RunnerHelper#runner_auto_advances?`.
 It drives both the Stimulus value on the shell and whether Continue renders in

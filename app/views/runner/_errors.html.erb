@@ -1,0 +1,23 @@
+<%#
+  Why a step refused to advance.
+
+  The three validations that can refuse a step used to write their messages
+  into the path_entry hash, which is discarded on exactly that branch — so the
+  markup for showing them was never reached and never written. The messages
+  now arrive on the outcome and land here.
+
+  locals: errors — array of strings, empty when the step was not refused
+%>
+<% if errors.any? %>
+  <div class="form-error" id="runner-step-errors" role="alert">
+    <% if errors.one? %>
+      <%= errors.first %>
+    <% else %>
+      <ul class="form-error__list">
+        <% errors.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    <% end %>
+  </div>
+<% end %>

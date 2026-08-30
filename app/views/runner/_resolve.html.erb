@@ -1,4 +1,4 @@
-<%# locals: step, results, next_url, stop_url, back_button, show_cancel %>
+<%# locals: step, results, next_url, stop_url, back_button, show_cancel, errors %>
 <div class="step-content-box step-content-box--resolve mb-4">
   <div class="step-content-box__accent"></div>
   <div class="step-content-box__body">
@@ -26,13 +26,14 @@
 </div>
 
 <%= form_with url: next_url, method: :post, data: { scenario_step_target: "form" } do |form| %>
+  <%= render "runner/errors", errors: errors %>
   <% if step.try(:notes_required) %>
     <div class="form-group mb-3">
       <label class="form-label is-required">Resolution Notes</label>
-      <%= form.text_area :resolution_notes, class: "form-input", rows: 3,
-            required: true, aria: { required: true, describedby: "resolution-notes-error" },
+      <%= form.text_area :resolution_notes, class: "form-input#{' is-invalid' if errors.any?}", rows: 3,
+            required: true,
+            aria: { required: true, describedby: errors.any? ? "runner-step-errors" : nil },
             placeholder: "Add notes about this resolution..." %>
-      <span id="resolution-notes-error" class="form-error" hidden>Resolution notes are required</span>
     </div>
   <% end %>
   <%= form.hidden_field :answer, value: "" %>

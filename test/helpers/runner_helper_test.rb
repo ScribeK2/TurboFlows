@@ -36,63 +36,35 @@ class RunnerHelperTest < ActionView::TestCase
     assert_equal "Type your answer...", runner_input_placeholder(nil)
   end
 
-  test "trail lists this scenario's answered steps oldest first" do
-    scenario = Scenario.create!(
-      workflow: @workflow, user: @user, inputs: {},
-      execution_path: [
-        { "step_title" => "Confirm Issue", "answer" => "yes", "step_type" => "question" },
-        { "step_title" => "Check hosting", "step_type" => "action" }
-      ]
-    )
-
-    entries = runner_trail_entries(scenario)
-
-    assert_equal(["Confirm Issue", "Check hosting"], entries.pluck("step_title"))
-    assert_equal "yes", entries.first["answer"]
+  # Which messages the summary block still has to show once the fields have
+  # taken the ones that belong to them.
+  #
+  # The fallback is defensive: nothing in Steps::Form can name a field that is
+  # not in its own options today. It exists because a builder that autosaves can
+  # edit a step between the render and the submit, and a message vanishing with
+  # its field is worse than a message in the wrong place.
+  def form_step(*names)
+    Struct.new(:fields).new(names.map { |n| { "name" => n } })
   end
 
-  test "trail inside a sub-flow shows the steps that led into it" do
-    child = Scenario.create!(
-      workflow: @workflow, user: @user, inputs: {},
-      execution_path: [{ "step_title" => "Verify identity", "answer" => "yes", "step_type" => "question" }]
+  test "a message whose field is on the page is left to that field" do
+    unattached = runner_unattached_errors(
+      form_step("phone"), ["Phone is required"], { "phone" => ["Phone is required"] }
     )
-    parent = Scenario.create!(
-      workflow: @workflow, user: @user, inputs: {}, status: "awaiting_subflow",
-      execution_path: [
-        { "step_title" => "Confirm Issue", "answer" => "yes", "step_type" => "question" },
-        { "subflow_started" => true, "child_scenario_id" => child.id, "step_type" => "sub_flow" }
-      ]
-    )
-    child.update!(parent_scenario: parent)
 
-    # Read from the child, as the runner does while inside a sub-flow. The old
-    # stepper showed only the child's own path numbered from 1, beside a counter
-    # that counted across ancestors — "Step 1" sitting next to "Step 4".
-    entries = runner_trail_entries(child)
-
-    assert_equal ["Confirm Issue", "Verify identity"], entries.pluck("step_title"),
-                 "the trail must span the whole run, not the sub-flow frame"
+    assert_empty unattached, "showing it twice is how a form ends up shouting"
   end
 
-  test "trail costs one query per nesting level, not one per sub-flow" do
-    children = Array.new(3) do
-      Scenario.create!(workflow: @workflow, user: @user, inputs: {},
-                       execution_path: [{ "step_title" => "child", "answer" => "yes", "step_type" => "question" }])
-    end
-    root = Scenario.create!(
-      workflow: @workflow, user: @user, inputs: {}, status: "awaiting_subflow",
-      execution_path: children.map { |c| { "subflow_started" => true, "child_scenario_id" => c.id, "step_type" => "sub_flow" } }
+  test "a message whose field is gone still gets said" do
+    unattached = runner_unattached_errors(
+      form_step("account"), ["Phone is required"], { "phone" => ["Phone is required"] }
     )
-    children.each { |c| c.update!(parent_scenario: root) }
 
-    # The runner renders the trail on every step, so a query per sub-flow entry
-    # would scale with the run's branching.
-    assert_queries_count(1) { runner_trail_entries(root) }
+    assert_equal ["Phone is required"], unattached
   end
 
-  test "trail is empty for a run that has not answered anything yet" do
-    scenario = Scenario.create!(workflow: @workflow, user: @user, inputs: {}, execution_path: [])
-
-    assert_empty runner_trail_entries(scenario)
+  test "a step with no field errors keeps every message in the block" do
+    assert_equal ["Resolution notes are required"],
+                 runner_unattached_errors(nil, ["Resolution notes are required"], {})
   end
 end

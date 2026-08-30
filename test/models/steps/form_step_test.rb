@@ -38,12 +38,27 @@ module Steps
       assert_equal ["phone"], step.required_field_names
     end
 
-    test "validate_responses catches missing required fields" do
-      fields = [{ "name" => "phone", "label" => "Phone", "field_type" => "phone", "required" => true, "position" => 0 }]
+    # Keyed by field, not a flat list of sentences. A long form rendered the flat
+    # version as one block above the fields, leaving the agent to match each
+    # message back to an input by reading the label out of the sentence.
+    test "validate_responses names the field each message belongs to" do
+      fields = [
+        { "name" => "phone", "label" => "Phone", "field_type" => "phone", "required" => true, "position" => 0 },
+        { "name" => "account", "label" => "Account", "field_type" => "text", "required" => true, "position" => 1 }
+      ]
       step = Steps::Form.create!(workflow: @workflow, title: "F", uuid: SecureRandom.uuid, position: 0, options: fields)
-      errors = step.validate_responses({})
-      assert_equal 1, errors.size
-      assert_match(/Phone/, errors.first)
+
+      errors = step.validate_responses({ "account" => "AC-1" })
+
+      assert_equal ["phone"], errors.keys, "only the field that failed is named"
+      assert_match(/Phone/, errors["phone"].first)
+    end
+
+    test "validate_responses uses the field name when a field has no label" do
+      fields = [{ "name" => "phone", "field_type" => "phone", "required" => true, "position" => 0 }]
+      step = Steps::Form.create!(workflow: @workflow, title: "F", uuid: SecureRandom.uuid, position: 0, options: fields)
+
+      assert_match(/phone/, step.validate_responses({})["phone"].first)
     end
 
     test "validate_responses passes with all required fields" do

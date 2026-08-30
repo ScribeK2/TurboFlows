@@ -1,3 +1,9 @@
+# NOTE: this file is a TEMPLATE, not the live production config. The registry
+# and host below are still the Rails-generated placeholders. The real Kamal
+# config (with the actual registry, hosts and secrets) is kept OUTSIDE this
+# repo. Changing a value here does not change production — mirror it into the
+# out-of-repo config, or the deploy will not see it.
+
 service: turboflows
 
 image: your-registry/turboflows

@@ -1,0 +1,14 @@
+<%# See scenarios/advance.turbo_stream.erb — same partial, Player's URLs. %>
+<%= render "runner/advance_stream",
+      scenario: @scenario,
+      tail: @thread_tail || [],
+      step: @open_step,
+      parked: @scenario.parked?,
+      results_url: player_scenario_show_path(@scenario),
+      next_url: player_scenario_next_path(@scenario),
+      stop_url: player_scenario_stop_path(@scenario),
+      back_button: player_back_button(@scenario),
+      show_cancel: current_user.present?,
+      errors: @step_errors || [],
+      field_errors: @field_errors || {},
+      submitted: @submitted || {} %>

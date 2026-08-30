@@ -61,7 +61,7 @@ class FirstRunsControllerTest < ActionDispatch::IntegrationTest
       }
     end
 
-    assert_response :unprocessable_entity
+    assert_response :unprocessable_content
     assert_select "div#error_explanation"
   end
 

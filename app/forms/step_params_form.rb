@@ -1,8 +1,8 @@
 # StepParamsForm — form object that parses raw step params from controller submissions.
 #
 # The frontend sends transitions, output_fields, and attachments as JSON strings.
-# This form object converts them to proper Ruby arrays so downstream services
-# (StepSyncer, StepBuilder) receive clean data without mutating params in-place.
+# This form object converts them to proper Ruby arrays so StepBuilder receives
+# clean data without mutating params in-place.
 #
 # Addresses audit finding C-02 (High).
 class StepParamsForm

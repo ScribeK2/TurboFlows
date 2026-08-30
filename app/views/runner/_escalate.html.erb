@@ -1,4 +1,4 @@
-<%# locals: step, results, next_url, stop_url, back_button, show_cancel %>
+<%# locals: step, results, next_url, stop_url, back_button, show_cancel, errors %>
 <div class="step-content-box step-content-box--escalate mb-4">
   <div class="step-content-box__accent"></div>
   <div class="step-content-box__body">
@@ -29,13 +29,14 @@
 </div>
 
 <%= form_with url: next_url, method: :post, data: { scenario_step_target: "form" } do |form| %>
+  <%= render "runner/errors", errors: errors %>
   <% if step.try(:reason_required) %>
     <div class="form-group mb-3">
       <label class="form-label is-required">Escalation Reason</label>
-      <%= form.text_area :escalation_reason, class: "form-input", rows: 3,
-            required: true, aria: { required: true, describedby: "escalation-reason-error" },
+      <%= form.text_area :escalation_reason, class: "form-input#{' is-invalid' if errors.any?}", rows: 3,
+            required: true,
+            aria: { required: true, describedby: errors.any? ? "runner-step-errors" : nil },
             placeholder: "Describe why this is being escalated..." %>
-      <span id="escalation-reason-error" class="form-error" hidden>Escalation reason is required</span>
     </div>
   <% end %>
   <%= form.hidden_field :answer, value: "" %>

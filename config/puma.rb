@@ -31,8 +31,9 @@ if ENV["RAILS_ENV"] == "production"
   # Preload the application before forking workers
   preload_app!
 
-  # Re-establish database connection after forking
-  on_worker_boot do
+  # Re-establish database connection after forking.
+  # Renamed in Puma 8; `on_worker_boot` still works but warns on every boot.
+  before_worker_boot do
     ActiveRecord::Base.establish_connection if defined?(ActiveRecord)
   end
 

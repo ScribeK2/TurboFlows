@@ -37,6 +37,16 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
     choose label, allow_label_click: true
   end
 
+  # Leaves a finished run for its results page.
+  #
+  # Finishing no longer navigates on its own: the run's ending stays on the
+  # transcript the agent was reading, and results are a link they take when they
+  # want them. Tests that used to assert a redirect land here instead.
+  def view_results
+    assert_text "This run is complete.", wait: 5
+    click_on "View results"
+  end
+
   # Sign in via the login form (works with any Capybara driver)
   def sign_in_as(user, password: "password123!")
     visit "/users/sign_in"

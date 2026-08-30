@@ -521,42 +521,8 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
   end
 
   # ===========================================================================
-  # Backend Action Tests (sync_steps, publish, variables)
+  # Backend Action Tests (publish, variables)
   # ===========================================================================
-
-  test "sync_steps with valid data returns lock_version" do
-    sign_in @editor
-    draft = Workflow.create!(title: "Sync Draft", user: @editor, status: "draft")
-
-    patch workflow_step_sync_path(draft), params: {
-      steps: [
-        { id: "u1", type: "question", title: "Q1", question: "What?", position: 0, transitions: [] },
-        { id: "u2", type: "resolve", title: "Done", resolution_type: "success", position: 1, transitions: [] }
-      ],
-      start_node_uuid: "u1",
-      lock_version: draft.lock_version
-    }, as: :json
-
-    assert_response :success
-    json = response.parsed_body
-    assert json["success"]
-    assert_kind_of Integer, json["lock_version"]
-  end
-
-  test "sync_steps with stale lock_version returns 409" do
-    sign_in @editor
-    draft = Workflow.create!(title: "Stale Sync", user: @editor, status: "draft")
-
-    patch workflow_step_sync_path(draft), params: {
-      steps: [{ id: "u1", type: "action", title: "A1", transitions: [] }],
-      start_node_uuid: "u1",
-      lock_version: draft.lock_version + 99
-    }, as: :json
-
-    assert_response :conflict
-    json = response.parsed_body
-    assert_predicate json["error"], :present?
-  end
 
   test "publish with valid graph succeeds" do
     sign_in @editor

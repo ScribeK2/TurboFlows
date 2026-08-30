@@ -87,10 +87,6 @@ class WorkflowsController < ApplicationController
 
     permitted_params = workflow_params
 
-    # Steps are now persisted via sync_steps endpoint — remove step-related params
-    permitted_params.delete(:visual_editor_steps_json)
-    permitted_params.delete(:editor_mode)
-
     begin
       Workflow.transaction do
         # Check for version conflict if client sent a lock_version
@@ -204,8 +200,7 @@ class WorkflowsController < ApplicationController
     # graph_mode is for DAG-based workflows
     # Steps are managed via AR Step records, not workflow params
     params.expect(workflow: %i[title description is_public lock_version
-                               graph_mode embed_enabled
-                               visual_editor_steps_json editor_mode])
+                               graph_mode embed_enabled])
   end
 
   # Parse transitions_json from form submissions into proper transitions array.

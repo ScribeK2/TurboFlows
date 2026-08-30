@@ -45,11 +45,11 @@ class StepSerializer
         "can_resolve" => step.can_resolve
       )
       data["output_fields"] = step.output_fields if step.output_fields.present?
+      data["jumps"] = step.jumps if step.jumps.present?
     when Steps::Message
-      data.merge!(
-        "content" => step.content&.body.to_s,
-        "can_resolve" => step.can_resolve
-      )
+      data["content"] = step.content&.body.to_s
+      data["can_resolve"] = step.can_resolve
+      data["jumps"] = step.jumps if step.jumps.present?
     when Steps::Escalate
       data.merge!(
         "target_type" => step.target_type,
@@ -65,6 +65,7 @@ class StepSerializer
         "notes_required" => step.notes_required,
         "survey_trigger" => step.survey_trigger
       )
+      data["resolution_code"] = step.resolution_code if step.resolution_code.present?
     when Steps::Form
       data["instructions"] = step.instructions&.body.to_s
       data["options"] = step.options if step.options.present?

@@ -1,9 +1,18 @@
 module ScenariosHelper
+  # Back is a POST.
+  #
+  # It used to be a GET carrying ?back=true, which ScenariosController#step
+  # acted on by rewinding and saving. Turbo 8 prefetches links on hover by
+  # default and nothing here opts out, so hovering the control rewound the run —
+  # twice, if the pointer passed over it twice, since go_back is not idempotent.
+  #
+  # Hidden entirely when the run cannot be rewound: see Scenario#can_go_back?.
   def scenario_back_button(scenario)
-    return nil unless scenario.execution_path.present? && scenario.execution_path.length.positive?
+    return nil unless scenario.can_go_back?
 
-    link_to step_scenario_path(scenario, back: true),
-            class: "btn btn--plain" do
+    link_to back_scenario_path(scenario),
+            class: "btn btn--plain",
+            data: { turbo_method: :post } do
       back_icon = '<svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">' \
                   '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>'
       raw(back_icon) + "Back" # rubocop:disable Style/StringConcatenation -- SafeBuffer#+ preserves html_safe
@@ -49,12 +58,27 @@ module ScenariosHelper
     parts.join(" — ")
   end
 
-  # Merges child scenario execution paths into the parent's path at display time.
-  # Replaces subflow_started entries with the child's steps (excluding terminal Resolve/Escalate).
-  # Handles nested sub-flows recursively. Returns a flat array for seamless display.
+  # The steps of a run, with sub-flows spliced in where they happened.
+  #
+  # A flat audit list: the grouping marks the traversal emits are dropped, so
+  # this reads exactly as it did before the thread existed.
   def flattened_execution_path(scenario)
-    path = scenario.execution_path || []
-    flatten_path_entries(path)
+    flatten_path_entries(scenario.execution_path || []).reject { |entry| entry["kind"] == "group_start" }
+  end
+
+  # The same traversal, keeping the structure: each entry tagged "step" or
+  # "group_start" and carrying the depth it sits at.
+  #
+  # One walk, two readers. The results page wants the audit list above; the
+  # runner thread wants to show where the call moved into a sub-flow and, by
+  # outdenting again, where it came back. Sharing the traversal — recursive,
+  # subtle, and already carrying a fix for a query per sub-flow — while
+  # differing only at the call site is what stops the two drifting.
+  #
+  # Reads from the root, because a thread is the whole run: a sub-flow shows the
+  # steps that led into it rather than restarting at one.
+  def runner_thread_entries(scenario)
+    flatten_path_entries(scenario.root_scenario.execution_path || [])
   end
 
   # Humanizes raw result keys: strips step_ prefix, replaces underscores, titleizes.
@@ -84,7 +108,10 @@ module ScenariosHelper
 
   private
 
-  def flatten_path_entries(path)
+  # Tagged "kind", not "type": entries already use "type" as a legacy fallback
+  # for step_type, and a second meaning on the same key is how a reader ends up
+  # treating a grouping mark as a step.
+  def flatten_path_entries(path, depth = 0)
     flat = []
     # One query per nesting level rather than one per sub-flow entry. The runner
     # renders this on every step now, not just the results page, so a run with
@@ -93,22 +120,51 @@ module ScenariosHelper
 
     path.each do |entry|
       if entry["subflow_started"].present? && entry["child_scenario_id"].present?
+        # Emitted even when the child is gone. The mark is a fact about the call
+        # — it went into another script — and saying so with the title the entry
+        # already carries beats silence.
+        flat << entry.merge("kind" => "group_start", "depth" => depth)
+
         child = children[entry["child_scenario_id"]]
-        if child
-          child_path = child.execution_path || []
-          if child_path.any?
-            last_entry = child_path.last
-            last_type = last_entry["step_type"] || last_entry["type"]
-            child_path = child_path[0..-2] if %w[resolve escalate].include?(last_type)
-          end
-          flat.concat(flatten_path_entries(child_path))
-        end
+        next unless child
+
+        child_path = child.execution_path || []
+        child_path = child_path[0..-2] if drop_child_terminal?(child_path.last)
+        flat.concat(flatten_path_entries(child_path, depth + 1))
       else
-        flat << entry
+        flat << entry.merge("kind" => "step", "depth" => depth)
       end
     end
 
     flat
+  end
+
+  # Whether a child's last entry is the sub-flow ending rather than a step.
+  #
+  # A child's own terminal is dropped: it means the sub-flow finished, not that
+  # the run did, and the next card already implies it. That was written when a
+  # child's terminal was always auto-processed and never shown — the agent could
+  # not have seen it, so there was nothing to record.
+  #
+  # It can now be a step they stopped at and typed into. Dropping a step somebody
+  # answered is a different rule that used to coincide with this one, so the line
+  # is the person's own words: an entry carrying notes or a reason stays.
+  #
+  # Deliberately narrower than "keep anything a person answered". A terminal they
+  # clicked through with no field to fill still goes — it carries no more than
+  # the sub-flow ending already says. And it reads the entry, never the Step or
+  # ScenarioSettler.auto_processable?: the predicate answers about the run *now*,
+  # and a run whose notes have since been consumed off inputs would flip it.
+  #
+  # Entries written before the words were recorded have no such key, so they
+  # drop exactly as they did before.
+  def drop_child_terminal?(entry)
+    return false unless entry
+
+    type = entry["step_type"] || entry["type"]
+    return false unless %w[resolve escalate].include?(type)
+
+    entry["notes"].blank? && entry["reason"].blank?
   end
 
   def child_scenarios_for(path)

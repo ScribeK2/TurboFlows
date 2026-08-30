@@ -519,12 +519,46 @@
   margin-top: 0.125rem;
 }
 
+.wf-list-item__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.wf-list-item__main {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  /* Without this the text column refuses to shrink below its content width and
+     the row overflows instead of ellipsising. */
+  min-width: 0;
+}
+
 .wf-list-item__actions {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
   flex-shrink: 0;
   margin-left: var(--space-4);
+}
+
+/* Below 640px the action cluster (Start, View, Edit, delete, sometimes a folder
+   select) is ~248px and does not shrink, which left the text column 26px wide
+   in a 375px viewport — the title, description and meta all overflowed their
+   box and painted across the buttons. Stack instead: text on top at full
+   width, actions on their own line beneath. */
+@media (max-width: 640px) {
+  .wf-list-item__row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+
+  .wf-list-item__actions {
+    margin-left: 0;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
 }
 
 .wf-list-item__delete {

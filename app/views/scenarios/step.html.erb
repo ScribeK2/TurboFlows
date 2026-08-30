@@ -13,50 +13,20 @@
     <p class="page-header-section__ident">Step-by-step execution</p>
   </div>
 
-  <% if @scenario.complete? %>
-    <div class="card">
-      <div class="card__body">
-        <h2 class="mb-2">Run complete</h2>
-        <p class="mb-4">Every step of this workflow has been completed.</p>
-        <%= link_to "View Results", scenario_path(@scenario), class: "btn btn--primary" %>
-      </div>
-    </div>
-  <% else %>
-    <% step = @scenario.current_step %>
-    <% if step %>
-      <%
-        auto_advance = runner_auto_advances?(step)
-        step_info_text = VariableInterpolator.interpolate(step.title, @scenario.results || {})
-      %>
-
-      <%= render "runner/trail", scenario: @scenario %>
-
-      <div aria-live="polite" class="sr-only" data-scenario-step-target="announce"></div>
-
-      <div class="card mb-4"
-           data-controller="scenario-step image-lightbox"
-           data-scenario-step-step-info-value="<%= step_info_text %>"
-           data-scenario-step-auto-advance-value="<%= auto_advance %>">
-        <div class="card__body">
-          <div class="scenario-step-header">
-            <h2><%= step_info_text %></h2>
-          </div>
-
-          <%= render "runner/step_body",
-                step: step,
-                results: @scenario.results || {},
-                next_url: next_step_scenario_path(@scenario),
-                stop_url: stop_scenario_path(@scenario),
-                back_button: scenario_back_button(@scenario),
-                show_cancel: true %>
-        </div>
-      </div>
-    <% else %>
-      <div class="card">
-        <div class="card__body">
-          <p class="text-sm">Error: Could not load current step.</p>
-        </div>
-      </div>
-    <% end %>
-  <% end %>
+  <%# The thread is the history, so there is no separate trail alongside it —
+      two lists of the same facts is the bug the trail was written to fix. %>
+  <%# @open_step is decided by RunnerShell, so both shells open the same card. %>
+  <%= render "runner/thread",
+        scenario: @scenario,
+        step: @open_step,
+        next_url: next_step_scenario_path(@scenario),
+        stop_url: stop_scenario_path(@scenario),
+        back_button: scenario_back_button(@scenario),
+        show_cancel: true,
+        errors: @step_errors || [],
+        field_errors: @field_errors || {},
+        submitted: @submitted || {},
+        auto_advance: @open_step ? runner_auto_advances?(@open_step) : false,
+        parked: @parked,
+        results_url: scenario_path(@scenario) %>
 </div>

@@ -394,16 +394,7 @@ class Workflow < ApplicationRecord
   # Build a hash of steps suitable for GraphValidator.
   # Used by both validate_graph_structure and WorkflowPublisher#validate_ar_graph!.
   def validation_graph_hash
-    hash = {}
-    steps.includes(transitions: :target_step).find_each do |step|
-      hash[step.uuid] = {
-        "id" => step.uuid,
-        "type" => step.type.demodulize.underscore,
-        "title" => step.title,
-        "transitions" => step.transitions.map { |t| { "target_uuid" => t.target_step.uuid, "condition" => t.condition } }
-      }
-    end
-    hash
+    GraphHashBuilder.call(steps.includes(transitions: :target_step))
   end
 
   private

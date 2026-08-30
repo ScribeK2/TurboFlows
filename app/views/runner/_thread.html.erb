@@ -1,0 +1,36 @@
+<%#
+  The run as one growing list: every step answered so far, then whatever the run
+  is waiting on — the open card, a Resume control, or its ending.
+
+  This is what replaces the wizard's one-card-at-a-time page. The problem it
+  solves is orientation — an agent on a call losing their place because the page
+  jumps and resets every step — not re-reading, which is why rows carry a
+  summary rather than the script.
+
+  The tail lives inside the list on purpose. Whatever the run is waiting on
+  carries id="runner-card-current", so a streamed answer always has something to
+  replace: if the Resume control or the ending sat outside the list, a POST from
+  those states would stream into a target that does not exist.
+
+  Both runners render this; the difference between them lives in the shells,
+  which pass everything route-shaped as a local.
+
+  locals: scenario, step, next_url, stop_url, back_button, show_cancel,
+          errors, submitted, field_errors, auto_advance, parked, results_url
+%>
+<ol class="runner-thread" id="runner-thread" data-controller="thread">
+  <% runner_thread_entries(scenario).each do |entry| %>
+    <% if entry["kind"] == "group_start" %>
+      <%= render "runner/thread_group", entry: entry %>
+    <% else %>
+      <%= render "runner/thread_row", entry: entry %>
+    <% end %>
+  <% end %>
+
+  <%= render "runner/thread_tail",
+        scenario: scenario, step: step, parked: parked, results_url: results_url,
+        next_url: next_url, stop_url: stop_url, back_button: back_button,
+        show_cancel: show_cancel, errors: errors, submitted: submitted,
+        field_errors: local_assigns.fetch(:field_errors, {}),
+        auto_advance: auto_advance %>
+</ol>

@@ -25,6 +25,36 @@ class WorkflowImporterTest < ActiveSupport::TestCase
     assert_not_nil result.workflow.id
   end
 
+  # An escalate step with no priority is the documented default shape, and it
+  # failed the entire import: "Validation failed: Priority is not included in
+  # the list". Not the step — the workflow. Every format is covered because the
+  # `normal` default was written in four places and they all funnel through
+  # StepNormalizer.
+  {
+    json: '{"title":"Esc","steps":[' \
+          '{"id":"s1","type":"escalate","title":"Hand off","target_type":"supervisor",' \
+          '"transitions":[{"target_uuid":"s2"}]},' \
+          '{"id":"s2","type":"resolve","title":"Done","resolution_type":"success"}]}',
+    yaml: "title: Esc\nsteps:\n  - id: s1\n    type: escalate\n    title: Hand off\n    " \
+          "target_type: supervisor\n    transitions:\n      - target_uuid: s2\n  " \
+          "- id: s2\n    type: resolve\n    title: Done\n    resolution_type: success\n",
+    csv: "workflow_title,step_number,type,title,target_type,transitions\n" \
+         "Esc,1,escalate,Hand off,supervisor,2\n" \
+         "Esc,2,resolve,Done,,\n",
+    markdown: "# Esc\n\n## Step 1: Hand off\nType: escalate\nTarget Type: supervisor\n" \
+              "Transitions: Step 2\n\n## Step 2: Done\nType: resolve\nResolution Type: success\n"
+  }.each do |format, content|
+    test "#{format} import of an escalate with no priority succeeds" do
+      result = WorkflowImporter.new(@user, format: format, content: content).call
+
+      assert_predicate result, :success?,
+                       "import failed: #{result.errors.inspect}"
+      escalate = result.workflow.steps.find { |step| step.step_type == "escalate" }
+      assert escalate, "precondition: the escalate step was imported"
+      assert_includes Steps::Escalate::VALID_PRIORITIES, escalate.priority
+    end
+  end
+
   test "returns errors for invalid JSON" do
     result = WorkflowImporter.new(@user, format: :json, content: "not json { at all").call
 

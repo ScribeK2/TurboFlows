@@ -1,4 +1,24 @@
 class StepsController < ApplicationController
+  # Derived from StepFieldMap, so a field added there is permitted here without
+  # anyone remembering this list exists. `description` was rendered by the
+  # Resolve editor and missing from this list for months: the value was dropped
+  # on save with no error, because a permit list fails silently by design.
+  #
+  # The extras are request-shaped rather than step-shaped — :type selects the
+  # STI class, :lock_version drives optimistic locking, and the last two are
+  # submission formats, not columns.
+  # :position is excluded deliberately. It is in the map because it must survive
+  # a round trip, but it is set from graph order by StepBuilder and by #reorder
+  # — never submitted on an ordinary edit. Deriving it in would have widened
+  # what a PATCH can set, which the old hand-written list did not allow.
+  PERMITTED_STEP_PARAMS = (
+    StepFieldMap.scalar_fields - %i[position] +
+    StepFieldMap.all_rich_text_fields +
+    %i[type lock_version transitions_json]
+  ).uniq.freeze
+
+  PERMITTED_STEP_PARAM_SHAPES = StepFieldMap::NESTED_SHAPES.merge(media_attachments: []).freeze
+
   include ActionView::RecordIdentifier
 
   before_action :set_workflow
@@ -69,8 +89,8 @@ class StepsController < ApplicationController
                                 locals: { step: @step, workflow: @workflow }),
             turbo_stream.remove("builder-empty-state"),
             turbo_stream.replace("builder-panel",
-                                partial: "steps/panel_edit",
-                                locals: { step: @step, workflow: @workflow, readonly: false }),
+                                 partial: "steps/panel_edit",
+                                 locals: { step: @step, workflow: @workflow, readonly: false }),
             turbo_stream.update("step-count-text",
                                 helpers.pluralize(@workflow.steps.count, "step"))
           ]
@@ -236,19 +256,7 @@ class StepsController < ApplicationController
   end
 
   def step_params
-    params.fetch(:step, {}).permit(
-      :type, :title, :question, :answer_type, :variable_name, :can_resolve,
-      :action_type, :target_type, :target_value, :priority, :reason_required,
-      :resolution_type, :resolution_code, :notes_required, :survey_trigger,
-      :sub_flow_workflow_id, :instructions, :content, :notes, :lock_version,
-      :help_text, :reference_url,
-      :transitions_json,
-      media_attachments: [],
-      options: [%i[label value]],
-      output_fields: [%i[name value]],
-      jumps: {},
-      variable_mapping: {}
-    )
+    params.fetch(:step, {}).permit(*PERMITTED_STEP_PARAMS, **PERMITTED_STEP_PARAM_SHAPES)
   end
 
   def permitted_step_params

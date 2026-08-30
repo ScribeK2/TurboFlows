@@ -1,0 +1,32 @@
+<%#
+  One answered step, collapsed.
+
+  Reads the entry and only the entry. Steps get edited and deleted after runs,
+  so a card built from the live Step record would replay a call with text nobody
+  ever saw, or fail on a uuid that no longer resolves.
+
+  A card, not a line of text. It was a single line first, on the theory that a
+  scanning surface pays for height in how much of the call stays visible — but
+  that was protecting a behaviour nobody had watched, and the numbers did not
+  support it: 69px against 38px, over a median completed run of 12 steps, is
+  about half a screen. What the card buys is weight. An answered step is a
+  decision somebody made on a live call, and scrolling back to re-read one is a
+  real thing agents do; `title → answer` on one line is thin for that.
+
+  locals: entry
+%>
+<% summary = runner_row_summary(entry) %>
+<li class="runner-thread__card"
+    style="--thread-depth: <%= runner_thread_indent(entry) %>; --step-hue: var(<%= runner_entry_hue(entry) %>);">
+  <span class="runner-thread__check" aria-hidden="true">
+    <%= icon "check", class: "icon icon--xs" %>
+  </span>
+  <div class="runner-thread__card-body">
+    <span class="sr-only">Completed.</span>
+    <span class="runner-thread__kind"><%= runner_entry_kind(entry) %></span>
+    <span class="runner-thread__card-title"><%= entry["step_title"] %></span>
+    <% if summary.present? %>
+      <span class="runner-thread__card-answer"><%= summary %></span>
+    <% end %>
+  </div>
+</li>

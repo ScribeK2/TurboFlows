@@ -1,5 +1,5 @@
 class ScenariosController < ApplicationController
-  include SubflowOrchestration
+  include RunnerShell
 
   before_action :ensure_can_manage_workflows!
 
@@ -8,25 +8,24 @@ class ScenariosController < ApplicationController
     @workflow = @scenario.workflow
   end
 
+  # A pure read. It renders the run; it never moves it.
+  #
+  # This used to auto-process sub_flow steps and resume finished sub-flows, so a
+  # GET mutated state — which is how Turbo's hover prefetch was able to drive
+  # the runner, and why two tabs on one run raced each other. Moving is POST
+  # work now, done by ScenarioSettler.
   def step
     @scenario = current_user.scenarios.find(params[:id])
-    @workflow = @scenario.root_workflow
 
-    # Guard clauses for terminal/waiting states
-    return if handle_step_guard_redirects
+    elsewhere = runner_step_redirect(@scenario)
+    return redirect_to(elsewhere) if elsewhere
 
-    # Handle navigation (back or jump-to-step)
-    handle_back_navigation if params[:back].present?
-    handle_jump_navigation if params[:step].present?
+    assign_runner_step_state(@scenario)
+  end
 
-    # Auto-advance sub_flow steps immediately without user interaction
-    return if auto_advance_non_interactive_step
-
-    # Record the moment this step is displayed for per-step timing
-    @scenario.record_step_started
-
-    # NOTE: escalate and resolve steps show UI first, then process on Continue click
-    # They are NOT auto-advanced here - they need user acknowledgment
+  def back
+    @scenario = current_user.scenarios.find(params[:id])
+    rewind_runner(@scenario)
   end
 
   def stop
@@ -36,160 +35,28 @@ class ScenariosController < ApplicationController
     # Stops the whole scenario tree, so report on the run the user actually
     # started rather than the sub-flow frame they happened to be inside.
     @scenario.stop!(@scenario.current_step_index)
-    redirect_to scenario_path(@scenario.root_scenario), notice: "Workflow stopped."
+    redirect_to runner_results_path(@scenario.root_scenario), notice: "Workflow stopped."
   end
 
+  # A stopped run gets no guard here. The settler halts it with :not_runnable
+  # and the shell says so in place, which keeps the transcript the agent is
+  # reading on screen — the same answer the Player gives. The redirect that used
+  # to live here was the only place in the runner that navigated away from an
+  # answer.
   def next_step
     @scenario = current_user.scenarios.find(params[:id])
-    @workflow = @scenario.workflow
 
-    # Prevent processing if stopped
-    if @scenario.stopped?
-      redirect_to scenario_path(@scenario), alert: "This workflow has been stopped and cannot be continued."
-      return
-    end
-
-    # Record end time for the step the user is leaving
-    @scenario.record_step_ended
-
-    # Store escalation_reason/resolution_notes in scenario inputs for ScenarioStepProcessor
-    @scenario.inputs ||= {}
-    @scenario.inputs["escalation_reason"] = params[:escalation_reason] if params[:escalation_reason].present?
-    @scenario.inputs["resolution_notes"] = params[:resolution_notes] if params[:resolution_notes].present?
-
-    # Get answer from params
-    answer = params[:answer]
-    resolved_here = ActiveModel::Type::Boolean.new.cast(params[:resolved_here]) || false
-
-    # Process the current step
-    # Note: checkpoint steps won't process here - they use resolve_checkpoint instead
-    if @scenario.process_step(answer, resolved_here: resolved_here)
-      return if redirect_to_subflow_if_awaiting?(@scenario)
-
-      if @scenario.complete?
-        handle_child_completion(@scenario)
-      else
-        redirect_to subflow_step_path(@scenario)
-      end
-    else
-      redirect_to step_scenario_path(@scenario), alert: "Failed to process step."
-    end
+    advance_runner(@scenario, runner_answer, resolved_here: runner_resolved_here?)
   end
 
   private
 
-  # Returns true if a redirect was issued (caller should return), false otherwise.
-  def handle_step_guard_redirects
-    if @scenario.stopped?
-      redirect_to scenario_path(@scenario), notice: "This workflow has been stopped."
-      return true
-    end
-
-    if @scenario.complete?
-      handle_child_completion(@scenario)
-      return true
-    end
-
-    if @scenario.awaiting_subflow?
-      handle_awaiting_subflow(@scenario)
-      return true
-    end
-
-    false
-  end
-
-  # SubflowOrchestration template methods
-  def subflow_step_path(scenario)
+  # RunnerShell template methods
+  def runner_step_path(scenario)
     step_scenario_path(scenario)
   end
 
-  def subflow_completion_path(scenario)
+  def runner_results_path(scenario)
     scenario_path(scenario)
-  end
-
-  def handle_back_navigation
-    ScenarioNavigator.new(@scenario, @workflow).go_back
-  end
-
-  def handle_jump_navigation
-    step_index = params[:step].to_i
-    return unless step_index >= 0 && step_index < @scenario.execution_path.length
-
-    path_item = @scenario.execution_path[step_index]
-    return unless path_item && path_item['step_index'].present?
-
-    target_step_index = path_item['step_index']
-    @scenario.execution_path = @scenario.execution_path[0..step_index]
-
-    # Rebuild results and inputs from execution path up to this point
-    ordered_steps = @workflow.steps.order(:position).to_a
-    @scenario.results = {}
-    @scenario.inputs = {}
-    @scenario.execution_path.each do |path_entry|
-      next if path_entry['answer'].blank?
-
-      entry_step_index = path_entry['step_index'].to_i
-      next unless entry_step_index >= 0 && entry_step_index < ordered_steps.size
-
-      step = ordered_steps[entry_step_index]
-      next unless step.is_a?(Steps::Question)
-
-      input_key = step.variable_name.presence || entry_step_index.to_s
-      @scenario.inputs[input_key] = path_entry['answer']
-      @scenario.inputs[step.title] = path_entry['answer']
-      @scenario.results[step.title] = path_entry['answer']
-      @scenario.results[step.variable_name] = path_entry['answer'] if step.variable_name.present?
-    end
-
-    next_step_index = target_step_index.to_i + 1
-    total_steps = @workflow.steps.size
-    if next_step_index >= total_steps
-      @scenario.status = 'completed'
-      @scenario.current_step_index = total_steps
-    else
-      @scenario.current_step_index = next_step_index
-    end
-
-    @scenario.save
-  end
-
-  # Returns true if a redirect was issued (caller should return), false otherwise.
-  def auto_advance_non_interactive_step
-    current_step = @scenario.current_step
-    return false unless current_step
-
-    is_subflow_step = current_step.step_type == 'sub_flow'
-    # Auto-process resolve steps in child scenarios so sub-flows complete seamlessly
-    is_child_resolve = @scenario.parent_scenario.present? && current_step.step_type == 'resolve'
-
-    return false unless is_subflow_step || is_child_resolve
-
-    unless @scenario.process_step(nil)
-      @scenario.reload
-      redirect_to step_scenario_path(@scenario)
-      return true
-    end
-
-    return true if redirect_to_subflow_if_awaiting?(@scenario)
-
-    if @scenario.complete?
-      handle_child_completion(@scenario)
-    else
-      redirect_to subflow_step_path(@scenario)
-    end
-    true
-  end
-
-  # Redirect to the appropriate completion destination for a scenario.
-  def redirect_to_completion(scenario, message: "Scenario completed!")
-    if scenario.parent_scenario.present?
-      redirect_to step_scenario_path(scenario.parent_scenario)
-    else
-      redirect_to scenario_path(scenario), notice: message
-    end
-  end
-
-  def set_workflow
-    # Handled in actions
   end
 end

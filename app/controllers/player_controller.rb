@@ -1,5 +1,5 @@
 class PlayerController < ApplicationController
-  include SubflowOrchestration
+  include RunnerShell
 
   layout "player"
 
@@ -34,83 +34,41 @@ class PlayerController < ApplicationController
       results: {},
       inputs: {}
     )
-    redirect_to player_scenario_step_path(scenario)
+    # Settle before redirecting: a workflow whose first step is a sub_flow opens
+    # on a node with no UI, and GET step no longer moves the run.
+    redirect_to player_scenario_step_path(ScenarioSettler.new(scenario).settle_from_start)
   end
 
+  # A pure read. It renders the run; it never moves it. See
+  # ScenariosController#step for why that matters.
   def step
-    @workflow = @scenario.workflow
-    @current_step = resolve_current_step
+    elsewhere = runner_step_redirect(@scenario)
+    return redirect_to(elsewhere) if elsewhere
 
-    if @scenario.completed? || @scenario.stopped?
-      redirect_to player_scenario_show_path(@scenario)
-      return
-    end
-
-    if @scenario.awaiting_subflow?
-      handle_awaiting_subflow(@scenario)
-      return
-    end
-
-    # Auto-advance sub_flow steps (they don't need user interaction)
-    if @current_step&.step_type == "sub_flow"
-      unless @scenario.process_step(nil)
-        @scenario.reload
-        redirect_to player_scenario_step_path(@scenario) and return
-      end
-      return if redirect_to_subflow_if_awaiting?(@scenario)
-
-      redirect_to @scenario.complete? ? subflow_completion_path(@scenario) : subflow_step_path(@scenario)
-      return
-    end
-
-    # Auto-advance resolve steps in child scenarios (so sub-flows complete seamlessly)
-    if @scenario.parent_scenario.present? && @current_step&.step_type == "resolve"
-      unless @scenario.process_step(nil)
-        @scenario.reload
-        redirect_to player_scenario_step_path(@scenario) and return
-      end
-      if @scenario.complete?
-        handle_child_completion(@scenario)
-      else
-        redirect_to subflow_step_path(@scenario)
-      end
-      return
-    end
-
-    @scenario.step_started_at_pending = Time.current.iso8601(3)
+    # Re-checked, not trusted: asking for embed is not the same as the workflow
+    # having enabled it.
+    #
+    # Checked against the root workflow, not this frame's. Embed describes the
+    # run the visitor opened — like shared_access and purpose do — and a
+    # sub-flow's own workflow carries no share token, so reading it off the
+    # frame turned embed off the moment the run entered a sub-flow.
+    @embed_mode = params[:embed] == "1" && @scenario.root_workflow.embeddable?
+    assign_runner_step_state(@scenario)
   end
 
   def next_step
-    answer = params[:answer] || params[:selected_option]
-    @scenario.inputs ||= {}
-    @scenario.inputs["escalation_reason"] = params[:escalation_reason] if params[:escalation_reason].present?
-    @scenario.inputs["resolution_notes"] = params[:resolution_notes] if params[:resolution_notes].present?
-    @scenario.record_step_ended
-    unless @scenario.process_step(answer, resolved_here: params[:resolved].present?)
-      @scenario.reload
-      redirect_to player_scenario_step_path(@scenario) and return
-    end
-
-    return if redirect_to_subflow_if_awaiting?(@scenario)
-
-    if @scenario.completed? || @scenario.stopped?
-      handle_child_completion(@scenario)
-    else
-      redirect_to subflow_step_path(@scenario)
-    end
+    advance_runner(@scenario, runner_answer, resolved_here: runner_resolved_here?)
   end
 
   def back
-    navigator = ScenarioNavigator.new(@scenario, @scenario.workflow)
-    navigator.go_back
-    redirect_to player_scenario_step_path(@scenario)
+    rewind_runner(@scenario)
   end
 
   def stop
     # Stops the whole scenario tree, so report on the run the user actually
     # started rather than the sub-flow frame they happened to be inside.
     @scenario.stop!(@scenario.current_step_index)
-    redirect_to player_scenario_show_path(@scenario.root_scenario), notice: "Workflow stopped."
+    redirect_to runner_results_path(@scenario.root_scenario), notice: "Workflow stopped."
   end
 
   def show
@@ -134,19 +92,22 @@ class PlayerController < ApplicationController
       inputs: {}
     )
 
-    redirect_to player_scenario_step_path(scenario)
+    # Carry embed through the hop. This action redirects, so a flag set here
+    # renders nothing — the visitor lands on #step, which has to be told.
+    landed = ScenarioSettler.new(scenario).settle_from_start
+    redirect_to player_scenario_step_path(landed, embed: ("1" if @embed_mode))
   rescue ActiveRecord::RecordNotFound
     head :not_found
   end
 
   private
 
-  # SubflowOrchestration template methods
-  def subflow_step_path(scenario)
+  # RunnerShell template methods
+  def runner_step_path(scenario)
     player_scenario_step_path(scenario)
   end
 
-  def subflow_completion_path(scenario)
+  def runner_results_path(scenario)
     player_scenario_show_path(scenario)
   end
 
@@ -157,15 +118,6 @@ class PlayerController < ApplicationController
     else
       @scenario = Scenario.find_by(id: params[:id])
       head(:forbidden) and return unless @scenario&.shared_access?
-    end
-  end
-
-  def resolve_current_step
-    uuid = @scenario.current_node_uuid
-    if uuid.present?
-      @scenario.workflow.steps.find_by(uuid: uuid)
-    else
-      @scenario.workflow.start_step || @scenario.workflow.steps.ordered.first
     end
   end
 end

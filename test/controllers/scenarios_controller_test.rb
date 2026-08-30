@@ -173,33 +173,75 @@ class ScenariosControllerTest < ActionDispatch::IntegrationTest
 
     post next_step_scenario_path(child_scenario), params: { answer: "" }
 
-    assert_redirected_to step_scenario_path(parent_scenario)
+    assert_response :success, "the climb back out is streamed, not redirected"
+    assert_not_predicate parent_scenario.reload, :awaiting_subflow?,
+                         "the finished child releases the parent"
+    assert_equal parent_resolve.uuid, parent_scenario.current_node_uuid,
+                 "and the run resumes at the step after the sub-flow"
   end
 
-  test "empty sub-flow auto-progresses silently back to parent" do
+  # An "empty" sub-flow is one whose child workflow opens straight onto a
+  # Resolve. The user should never see it — but that traversal is POST work now,
+  # so this drives it through next_step rather than constructing the halfway
+  # state and expecting GET to finish the job.
+  test "empty sub-flow is traversed in a single answer" do
     child_wf = Workflow.create!(title: "Empty Child WF", user: @user)
+    Steps::Resolve.create!(workflow: child_wf, position: 0, uuid: SecureRandom.uuid, title: "CDone")
+
+    workflow = Workflow.create!(title: "Empty SF Parent", user: @user)
+    q = Steps::Question.create!(workflow: workflow, position: 0, uuid: SecureRandom.uuid,
+                                title: "Q", question: "Q?", variable_name: "qv")
+    sf_step = Steps::SubFlow.create!(workflow: workflow, position: 1, uuid: SecureRandom.uuid,
+                                     title: "SubStep", sub_flow_workflow_id: child_wf.id)
+    parent_resolve = Steps::Resolve.create!(workflow: workflow, position: 2, uuid: SecureRandom.uuid, title: "Done")
+    Transition.create!(step: q, target_step: sf_step, position: 0)
+    Transition.create!(step: sf_step, target_step: parent_resolve, position: 0)
+    workflow.update!(start_step: q)
+
+    scenario = Scenario.create!(
+      workflow: workflow, user: @user, inputs: {}, results: {}, purpose: "simulation",
+      status: "active", current_node_uuid: q.uuid, execution_path: []
+    )
+
+    post next_step_scenario_path(scenario), params: { answer: "yes" }
+
+    scenario.reload
+    assert_equal parent_resolve.uuid, scenario.current_node_uuid,
+                 "the sub-flow had nothing to ask, so one answer should carry the run past it"
+    assert_response :success, "one POST, one streamed response — no bounce through a redirect"
+  end
+
+  # The halfway state the previous version of the test built by hand. It should
+  # not arise any more, but if it does the runner says so rather than healing it
+  # inside a GET.
+  test "a run stranded mid-sub-flow offers to resume rather than moving itself" do
+    child_wf = Workflow.create!(title: "Stranded Child WF", user: @user)
     resolve_step = Steps::Resolve.create!(workflow: child_wf, position: 0, uuid: SecureRandom.uuid, title: "CDone")
 
-    # Create a real SubFlow step in the parent workflow so process_subflow_completion
-    # can find resume_node_uuid and advance to the next parent step
-    sf_step = Steps::SubFlow.create!(workflow: @workflow, position: 1, uuid: SecureRandom.uuid, title: "SubStep")
-    parent_resolve = Steps::Resolve.create!(workflow: @workflow, position: 2, uuid: SecureRandom.uuid, title: "Done")
+    workflow = Workflow.create!(title: "Stranded Parent", user: @user)
+    sf_step = Steps::SubFlow.create!(workflow: workflow, position: 0, uuid: SecureRandom.uuid,
+                                     title: "SubStep", sub_flow_workflow_id: child_wf.id)
+    parent_resolve = Steps::Resolve.create!(workflow: workflow, position: 1, uuid: SecureRandom.uuid, title: "Done")
     Transition.create!(step: sf_step, target_step: parent_resolve, position: 0)
+    workflow.update!(start_step: sf_step)
 
     parent_scenario = Scenario.create!(
-      workflow: @workflow, user: @user, inputs: {}, purpose: "simulation",
+      workflow: workflow, user: @user, inputs: {}, results: {}, purpose: "simulation",
       status: "awaiting_subflow", resume_node_uuid: sf_step.uuid,
       execution_path: [{ "step_title" => "Sub", "step_type" => "sub_flow", "subflow_started" => true }],
       current_node_uuid: sf_step.uuid
     )
     child_scenario = Scenario.create!(
       workflow: child_wf, user: @user, parent_scenario: parent_scenario,
-      inputs: {}, purpose: "simulation", status: "active",
+      inputs: {}, results: {}, purpose: "simulation", status: "active",
       current_node_uuid: resolve_step.uuid, execution_path: []
     )
 
     get step_scenario_path(child_scenario)
-    assert_response :redirect
+
+    assert_response :success
+    assert_predicate child_scenario.reload, :parked?
+    assert_equal "active", child_scenario.status, "a read must not move the run"
   end
 
   test "step view disables back button on first child step" do
@@ -222,5 +264,60 @@ class ScenariosControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_no_match(/back=true/, response.body)
+  end
+
+  # Turbo 8 prefetches links on hover by default and this app opts out nowhere,
+  # so a GET that rewinds the run fires when the pointer merely passes over the
+  # control — and go_back is not idempotent, so twice over is two steps back.
+  test "GET step does not rewind the run" do
+    workflow = Workflow.create!(title: "Prefetch WF", user: @user)
+    action = Steps::Action.create!(
+      workflow: workflow, position: 0, uuid: SecureRandom.uuid, title: "Act",
+      output_fields: [{ "name" => "ticket_id", "value" => "T-42" }]
+    )
+    resolve = Steps::Resolve.create!(workflow: workflow, position: 1, uuid: SecureRandom.uuid, title: "Done")
+    Transition.create!(step: action, target_step: resolve, position: 0)
+    workflow.update!(start_step: action)
+
+    scenario = Scenario.create!(
+      workflow: workflow, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: action.uuid, execution_path: [], results: {}, inputs: {}
+    )
+    scenario.process_step(nil)
+    node_before = scenario.reload.current_node_uuid
+    path_before = scenario.execution_path.length
+
+    get step_scenario_path(scenario, back: true)
+
+    scenario.reload
+    assert_equal node_before, scenario.current_node_uuid, "a GET must not move the run"
+    assert_equal path_before, scenario.execution_path.length
+    assert_equal "T-42", scenario.results["ticket_id"]
+  end
+
+  test "back is a POST and rewinds one step" do
+    workflow = Workflow.create!(title: "Back WF", user: @user)
+    q1 = Steps::Question.create!(workflow: workflow, position: 0, uuid: SecureRandom.uuid,
+                                 title: "Q1", question: "Q1?", variable_name: "q1_var")
+    q2 = Steps::Question.create!(workflow: workflow, position: 1, uuid: SecureRandom.uuid,
+                                 title: "Q2", question: "Q2?", variable_name: "q2_var")
+    resolve = Steps::Resolve.create!(workflow: workflow, position: 2, uuid: SecureRandom.uuid, title: "Done")
+    Transition.create!(step: q1, target_step: q2, position: 0)
+    Transition.create!(step: q2, target_step: resolve, position: 0)
+    workflow.update!(start_step: q1)
+
+    scenario = Scenario.create!(
+      workflow: workflow, user: @user, purpose: "simulation", started_at: Time.current,
+      current_node_uuid: q1.uuid, execution_path: [], results: {}, inputs: {}
+    )
+    scenario.process_step("Yes")
+
+    post back_scenario_path(scenario)
+
+    assert_response :success, "Back streams the thread back a step rather than reloading the page"
+    assert_match(/Q1/, response.body, "the step it undid is open again")
+    scenario.reload
+    assert_equal q1.uuid, scenario.current_node_uuid
+    assert_not scenario.results.key?("q1_var")
   end
 end

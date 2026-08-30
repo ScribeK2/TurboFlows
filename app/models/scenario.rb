@@ -1,5 +1,3 @@
-require 'timeout'
-
 class Scenario < ApplicationRecord
   include ScenarioExecution
 
@@ -30,8 +28,17 @@ class Scenario < ApplicationRecord
 
   # Scenario limits to prevent infinite loops and DoS
   MAX_ITERATIONS = ENV.fetch("SCENARIO_MAX_ITERATIONS", 1000).to_i
-  MAX_EXECUTION_TIME = ENV.fetch("SCENARIO_MAX_SECONDS", 30).to_i # seconds
   MAX_CONDITION_DEPTH = 50 # Max nested condition evaluations per step
+
+  # Cap on free text stored on an execution_path entry (snapshot values and the
+  # captured step body). An action's instructions is the largest free-text field
+  # in the system and these entries live in a json column.
+  ENTRY_TEXT_LIMIT = 2000
+
+  # Inputs the runner controllers stash for one step, which that step consumes.
+  # They are deliberately absent from an entry's undo log: backing out of an
+  # escalate step must not hand the next one a reason the user already spent.
+  TRANSIENT_INPUT_KEYS = %w[escalation_reason resolution_notes].freeze
 
   # Retention periods for cleanup (days)
   def self.simulation_retention_days
@@ -42,8 +49,7 @@ class Scenario < ApplicationRecord
     ENV.fetch("SCENARIO_RETENTION_LIVE_DAYS", 90).to_i
   end
 
-  # Custom error classes
-  class ScenarioTimeout < StandardError; end
+  # Custom error class
   class ScenarioIterationLimit < StandardError; end
 
   # JSON columns - automatically serialized/deserialized
@@ -102,6 +108,11 @@ class Scenario < ApplicationRecord
   # Pending timestamp set when a step is displayed, consumed when path entry is built
   attr_accessor :step_started_at_pending
 
+  # The variable bag as it stood before the current step ran, so append_path_entry
+  # can diff against it. Mirrors step_started_at_pending: per-step state that has
+  # to reach the entry builder without becoming a column.
+  attr_accessor :results_before_step, :inputs_before_step
+
   def initialize_execution_data
     self.execution_path ||= []
     self.results ||= {}
@@ -116,10 +127,13 @@ class Scenario < ApplicationRecord
   # Get the current step via UUID lookup
   # Returns an AR Step object or nil
   def current_step
-    return nil unless workflow&.steps&.any?
+    # Cheap guard first, and no separate existence check: find_by already
+    # answers nil for a workflow with no steps, so `steps.any?` was a query
+    # asked before every lookup to learn nothing. This runs on every advance and
+    # again on every render.
     return nil if current_node_uuid.blank?
 
-    workflow.steps.find_by(uuid: current_node_uuid)
+    workflow&.steps&.find_by(uuid: current_node_uuid)
   end
 
   # Get the current step UUID
@@ -199,40 +213,30 @@ class Scenario < ApplicationRecord
     end
   end
 
-  # Process a single step and advance
-  # Returns false if step can't be processed, true otherwise
-  # Raises ScenarioIterationLimit if max iterations exceeded
+  # Process a single step and advance.
+  #
+  # Returns a ScenarioStepProcessor::Outcome describing what happened, so a
+  # caller can tell "moved on" from "refused, and here is why" — a distinction
+  # the old boolean could not carry.
+  #
+  # A :blocked outcome leaves this record untouched: nothing is saved, so a
+  # refused attempt adds no entry to the execution path and no visit to the
+  # trail. Raises ScenarioIterationLimit if max iterations exceeded.
   def process_step(answer = nil, resolved_here: false)
-    return false if complete?
-    return false if stopped?
-    return false if timed_out? || errored?
-
-    # If awaiting sub-flow completion, check child status
-    if awaiting_subflow?
-      return process_subflow_completion
-    end
+    return ScenarioStepProcessor::Outcome.halted(:not_runnable) if complete? || stopped? || timed_out? || errored?
+    return subflow_completion_outcome if awaiting_subflow?
 
     step = current_step
-    return false unless step
+    return ScenarioStepProcessor::Outcome.halted(:no_step) unless step
 
     # Idempotency guard: prevent re-processing the same non-interactive step.
     # Question and form steps are excluded because users can legitimately re-answer after back navigation.
     if execution_path.present? && %w[question form].exclude?(step.step_type)
       last_entry = execution_path.last
-      return false if last_entry&.dig('step_uuid') == step.uuid
+      return ScenarioStepProcessor::Outcome.halted(:already_processed) if last_entry&.dig('step_uuid') == step.uuid
     end
 
-    # Track iterations to prevent infinite loops in step-by-step mode
-    self.iteration_count ||= execution_path&.length || 0
-    self.iteration_count += 1
-
-    if iteration_count > MAX_ITERATIONS
-      self.status = 'error'
-      self.results ||= {}
-      self.results['_error'] = "Scenario exceeded maximum iterations (#{MAX_ITERATIONS})"
-      save
-      raise ScenarioIterationLimit, "Scenario exceeded maximum of #{MAX_ITERATIONS} steps"
-    end
+    count_iteration!
 
     # Initialize execution_path if needed
     initialize_execution_data
@@ -240,9 +244,11 @@ class Scenario < ApplicationRecord
     # Add step to execution path
     path_entry = build_path_entry(step)
 
-    processor = ScenarioStepProcessor.new(self)
-    result = processor.process(step, answer, path_entry, resolved_here: resolved_here)
-    return result if step.step_type == 'sub_flow'
+    self.results_before_step = (results || {}).dup
+    self.inputs_before_step = (inputs || {}).dup
+    outcome = ScenarioStepProcessor.new(self).process(step, answer, path_entry, resolved_here: resolved_here)
+    # Blocked changed nothing and must not be persisted; a sub-flow saved itself.
+    return outcome unless outcome.advanced? || outcome.resolved?
 
     # Mark as completed if we've reached the end
     check_completion
@@ -251,8 +257,12 @@ class Scenario < ApplicationRecord
       save!
     rescue ActiveRecord::StaleObjectError
       Rails.logger.warn "[Scenario ##{id}] Stale object on process_step — concurrent modification detected"
-      false
+      return ScenarioStepProcessor::Outcome.halted(:conflict)
     end
+
+    # Advancing to no next node ends the run just as a Resolve step does, so
+    # the outcome is decided by where the run actually stands after the save.
+    complete? ? ScenarioStepProcessor::Outcome.resolved : ScenarioStepProcessor::Outcome.advanced
   end
 
   # Process completion of a sub-flow
@@ -263,6 +273,7 @@ class Scenario < ApplicationRecord
     return false if child && !child.complete?
 
     # Merge child results back to parent
+    results_before_merge = (results || {}).dup
     if child&.results.present?
       self.results ||= {}
 
@@ -289,20 +300,22 @@ class Scenario < ApplicationRecord
 
         if reverse_mapping.key?(key)
           # Explicitly mapped: always overwrite parent value
-          self.results[reverse_mapping[key]] = value
+          results[reverse_mapping[key]] = value
         else
           # Non-mapped: only add if parent doesn't already have this key
-          self.results[key] = value unless self.results.key?(key)
+          results[key] = value unless results.key?(key)
         end
       end
     end
+
+    stamp_subflow_merge(results_before_merge)
 
     # Move to next step after sub-flow
     self.status = 'active'
 
     resolver = StepResolver.new(workflow)
     resume_step = workflow.steps.find_by(uuid: resume_node_uuid)
-    next_step = resolver.resolve_next_after_subflow(resume_step, self.results) if resume_step
+    next_step = resolver.resolve_next_after_subflow(resume_step, results) if resume_step
     next_uuid = next_step.is_a?(Step) ? next_step.uuid : nil
 
     # Guard against self-loop: if the resolved next step is the same sub_flow step
@@ -327,28 +340,6 @@ class Scenario < ApplicationRecord
     true
   end
 
-  def execute
-    return false unless workflow.present? && inputs.present?
-
-    # Wrap execution with timeout protection
-    Timeout.timeout(MAX_EXECUTION_TIME, ScenarioTimeout) do
-      execute_with_limits
-    end
-  rescue ScenarioTimeout
-    self.status = 'timeout'
-    self.results ||= {}
-    self.results['_error'] = "Scenario timed out after #{MAX_EXECUTION_TIME} seconds"
-    record_completion("error")
-    save
-    Rails.logger.warn "Scenario #{id} timed out for workflow #{workflow_id}"
-    false
-  rescue ScenarioIterationLimit
-    record_completion("error")
-    save
-    Rails.logger.warn "Scenario #{id} hit iteration limit for workflow #{workflow_id}"
-    false
-  end
-
   # ============================================================================
   # Public methods used by ScenarioStepProcessor (formerly accessed via send())
   # ============================================================================
@@ -364,10 +355,10 @@ class Scenario < ApplicationRecord
   # Resolve the scenario at the current step (mid-step resolution via can_resolve flag)
   def resolve_at_current_step(step)
     # Mark the last execution path entry as resolved
-    self.execution_path.last[:resolved] = true if execution_path.present?
+    execution_path.last["resolved"] = true if execution_path.present?
 
     self.results ||= {}
-    self.results['_resolution'] = {
+    results['_resolution'] = {
       'type' => 'success',
       'resolved_at_step' => step.uuid
     }
@@ -380,7 +371,7 @@ class Scenario < ApplicationRecord
   # Advance to the next step using graph-based resolution
   def advance_to_next_step(step)
     resolver = StepResolver.new(workflow)
-    next_result = resolver.resolve_next(step, self.results)
+    next_result = resolver.resolve_next(step, results)
 
     if next_result.is_a?(StepResolver::SubflowMarker)
       # Will be handled in next process_step call
@@ -392,7 +383,116 @@ class Scenario < ApplicationRecord
     end
   end
 
+  # Append an entry to the execution path, recording what this step changed.
+  #
+  # The entry carries an undo log — the keys this step touched, each with the
+  # value it held beforehand — not a copy of the whole variable bag.
+  #
+  # Back needs this. Results written by anything other than a Question cannot be
+  # reconstructed from the rest of the entry: an action's output_fields land in
+  # results and leave only action_completed behind, escalate leaves escalated.
+  # Rebuilding the bag by replaying entries, which is what ScenarioNavigator
+  # used to do, therefore destroyed every non-question value.
+  #
+  # A full snapshot per entry would also have worked, and is what an earlier
+  # draft specified — but it is O(n) per entry and so O(n^2) per run. Measured:
+  # 161KB of json for a 100-step run, which tripped the execution benchmark. The
+  # delta is O(1) per entry, and any point in the run is recoverable by
+  # replaying deltas forward from an empty bag.
+  #
+  # Internal keys are excluded: _resolution / _escalation / _error are rewritten
+  # wholesale by the step that owns them, so undoing them per-key means nothing.
+  # Sitting somewhere it cannot rest, needing a POST to move on.
+  #
+  # Two shapes: on a sub_flow node, which has no UI of its own; or awaiting a
+  # child that has already finished, where the parent still needs to fold the
+  # child's results in and advance. Both used to be healed inside GET step,
+  # which made a read mutate state. The runner shows a Resume control instead,
+  # so a run that got stuck is visible rather than silently repaired.
+  #
+  # Normal runs never park: ScenarioSettler leaves every POST on a step someone
+  # can answer.
+  def parked?
+    return true if awaiting_subflow? && active_child_scenario.nil?
+    return false if terminal?
+
+    step = current_step
+    step.present? && ScenarioSettler.auto_processable?(self, step)
+  end
+
+  # Whether this run can step backwards. See ScenarioNavigator#can_go_back?.
+  def can_go_back?
+    ScenarioNavigator.new(self).can_go_back?
+  end
+
+  def append_path_entry(entry)
+    entry["results_delta"] = delta_between(results_before_step, results)
+    entry["inputs_delta"] = delta_between(inputs_before_step, inputs, except: TRANSIENT_INPUT_KEYS)
+    execution_path << entry
+  end
+
   private
+
+  # Fold what a completed sub-flow merged in onto the sub_flow entry's undo log.
+  #
+  # The merge happens here, long after that entry was appended, so without this
+  # the child's contribution belongs to no entry and Back cannot reverse it —
+  # backing past a finished sub-flow left the child's values in the parent's bag.
+  #
+  # Merged onto the existing delta rather than replacing it, and existing keys
+  # win: the entry may already record what the sub_flow step itself changed, and
+  # that prior value is the older, more correct one to restore.
+  def stamp_subflow_merge(results_before_merge)
+    entry = execution_path.rfind do |candidate|
+      candidate["subflow_started"] && candidate["step_uuid"] == resume_node_uuid
+    end
+    return unless entry
+
+    merged = delta_between(results_before_merge, results)
+    entry["results_delta"] = merged.merge(entry["results_delta"] || {})
+  end
+
+  # What changed between two bags, as {key => {"was" => prior_value}}.
+  #
+  # A key the step added records "was" => nil, which the navigator reads as
+  # "delete on undo". That is unambiguous here because no processor writes nil
+  # into results or inputs — every write is guarded by .present? or is an
+  # interpolated string.
+  def delta_between(before, after, except: [])
+    before ||= {}
+    after  ||= {}
+
+    (after.keys | before.keys).each_with_object({}) do |key, delta|
+      next if key.to_s.start_with?("_")
+      next if except.include?(key.to_s)
+      next if before[key] == after[key]
+
+      prior = before[key]
+      delta[key] = { "was" => prior.is_a?(String) ? prior.truncate(ENTRY_TEXT_LIMIT) : prior }
+    end
+  end
+
+  # Resuming a parent after its sub-flow. process_subflow_completion still
+  # answers with a boolean — nothing consults more than that — so translate it
+  # here rather than leaving process_step with two return types.
+  def subflow_completion_outcome
+    return ScenarioStepProcessor::Outcome.halted(:not_runnable) unless process_subflow_completion
+
+    complete? ? ScenarioStepProcessor::Outcome.resolved : ScenarioStepProcessor::Outcome.advanced
+  end
+
+  def count_iteration!
+    # Track iterations to prevent infinite loops in step-by-step mode
+    self.iteration_count ||= execution_path&.length || 0
+    self.iteration_count += 1
+    return if iteration_count <= MAX_ITERATIONS
+
+    self.status = 'error'
+    self.results ||= {}
+    results['_error'] = "Scenario exceeded maximum iterations (#{MAX_ITERATIONS})"
+    save
+    raise ScenarioIterationLimit, "Scenario exceeded maximum of #{MAX_ITERATIONS} steps"
+  end
 
   def set_started_at
     self.started_at ||= Time.current
@@ -401,10 +501,10 @@ class Scenario < ApplicationRecord
   # Build execution path entry for a step
   def build_path_entry(step)
     entry = {
-      step_title: step.title,
-      step_type: step.step_type,
-      step_uuid: step.uuid,
-      started_at: step_started_at_pending || Time.current.iso8601(3)
+      "step_title" => step.title,
+      "step_type" => step.step_type,
+      "step_uuid" => step.uuid,
+      "started_at" => step_started_at_pending || Time.current.iso8601(3)
     }
     self.step_started_at_pending = nil
     entry

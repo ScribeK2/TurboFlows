@@ -1,0 +1,14 @@
+<%#
+  The end of the run, kept on the transcript.
+
+  The runner this replaced swapped the page for a "Run complete" card, throwing
+  away the thing the agent had just been reading. Here the answered steps stay
+  where they are and this sits under them; the results page is a link rather
+  than a destination the runner forces you to.
+
+  locals: results_url
+%>
+<div class="runner-thread__complete">
+  <p class="text-sm">This run is complete.</p>
+  <%= link_to "View results", results_url, class: "btn btn--secondary btn--sm" %>
+</div>

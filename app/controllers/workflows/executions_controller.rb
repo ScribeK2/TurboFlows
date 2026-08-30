@@ -22,7 +22,10 @@ module Workflows
       )
 
       if @scenario.save
-        redirect_to step_scenario_path(@scenario), notice: "Workflow started!"
+        # Settle before redirecting: a workflow whose first step is a sub_flow
+        # opens on a node with no UI, and GET step no longer moves the run.
+        landed = ScenarioSettler.new(@scenario).settle_from_start
+        redirect_to step_scenario_path(landed), notice: "Workflow started!"
       else
         redirect_to new_workflow_execution_path(@workflow), alert: "Failed to start workflow: #{@scenario.errors.full_messages.join(', ')}"
       end

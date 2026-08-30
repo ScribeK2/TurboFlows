@@ -4,6 +4,91 @@
 # strings, depending on how the step was authored. Both runners open-coded the
 # same normalization; it lives here now so they cannot drift again.
 module RunnerHelper
+  # How far a thread entry is indented, in levels.
+  #
+  # Capped: SubflowValidator allows nesting to depth 10, and the Player's layout
+  # is tighter than the Scenario's with embed tighter still. Two levels is
+  # enough to say "we are inside something"; past that the reader gets the fact
+  # without the run walking off the right edge.
+  THREAD_MAX_INDENT = 2
+
+  def runner_thread_indent(entry)
+    [entry["depth"].to_i, THREAD_MAX_INDENT].min
+  end
+
+  # The depth the open card sits at: how many sub-flows deep the run currently
+  # is. Without it the card outdents while the run is still inside one, which
+  # reads as the sub-flow having ended — the opposite of what indentation is
+  # here to say.
+  # One query per level, unlike ScenarioSettler.auto_processable? which was
+  # changed to read parent_scenario_id precisely to avoid that. The id cannot
+  # answer this one — depth is the length of the chain, not whether it exists —
+  # and SubflowValidator caps nesting at 10, so this is a bounded walk once per
+  # render rather than per advance. Batch it if a run ever nests deeply enough
+  # to notice.
+  def runner_thread_current_depth(scenario)
+    depth = 0
+    frame = scenario
+    depth += 1 while (frame = frame.parent_scenario)
+    [depth, THREAD_MAX_INDENT].min
+  end
+
+  # What a completed step says once it has collapsed into a row.
+  #
+  # Reads the entry and only the entry. Steps get edited and deleted after runs,
+  # so a row built from the live Step record would replay a call with text
+  # nobody ever saw, or fail outright on a uuid that no longer resolves. The
+  # entry is the historical record; the Step is current state.
+  #
+  # nil when there is nothing honest to say — the row still shows its title, and
+  # a blank beats an invented summary.
+  def runner_row_summary(entry)
+    case entry["step_type"]
+    when "question" then entry["answer"].presence
+    when "form"     then entry["response_summary"].presence
+    when "action"   then "Done"
+    when "message"  then "Read"
+    when "escalate" then escalation_summary(entry)
+    when "resolve"  then ["Resolved", entry["resolution_type"].presence].compact.join(" — ")
+    end
+  end
+
+  # Messages the summary block still has to show, once the fields have taken the
+  # ones that belong to them.
+  #
+  # A message shown under its own input must not also be shouted from the block
+  # above; a message whose field is not on the page must not vanish with it. The
+  # fallback is defensive — nothing in Steps::Form can name a field outside its
+  # own options today — but the builder autosaves, so a step can be edited
+  # between the render and the submit.
+  #
+  # A step with no field errors (Escalate, Resolve) keeps every message, which is
+  # exactly what it did before any of this existed.
+  def runner_unattached_errors(step, errors, field_errors)
+    return Array(errors) if field_errors.blank?
+
+    rendered = Array(step.try(:fields)).filter_map { |field| field["name"] }
+    Array(errors) - field_errors.slice(*rendered).values.flatten
+  end
+
+  # The step hue for a collapsed card, matching the badge mapping in badges.css.
+  #
+  # No `sub_flow` case, and it is not an oversight: a sub_flow entry always
+  # carries `subflow_started` and `child_scenario_id` — ScenarioStepProcessor
+  # sets both before appending, and its failure path returns without appending
+  # at all — so flatten_path_entries always turns one into a group marker.
+  # A sub_flow entry cannot reach this partial.
+  def runner_entry_hue(entry)
+    type = (entry["step_type"] || entry["type"]).to_s.presence || "question"
+    "--hue-#{type}"
+  end
+
+  # The type, as the card's label. Reads the entry and only the entry, like
+  # everything else on a collapsed step.
+  def runner_entry_kind(entry)
+    (entry["step_type"] || entry["type"]).to_s.tr("_", " ").presence || "step"
+  end
+
   def runner_option_value(option)
     option.is_a?(Hash) ? (option["value"] || option["label"]) : option
   end
@@ -28,6 +113,15 @@ module RunnerHelper
     end
   end
 
+  # Older entries predate recording the target, so this degrades to the bare
+  # fact rather than printing an em dash with nothing after it.
+  def escalation_summary(entry)
+    target = entry["target_type"].presence
+    return "Escalated" unless target
+
+    ["Escalated to #{target}", entry["priority"].presence].compact.join(" — ")
+  end
+
   # Priority and resolution keep their pills: both mark an exceptional state,
   # which is what UIGUIDE reserves a pill for.
   def runner_priority_badge_class(priority)
@@ -46,16 +140,6 @@ module RunnerHelper
     when "manager_escalation" then "badge--warning"
     else ""
     end
-  end
-
-  # The answered steps of the whole run, oldest first.
-  #
-  # Reads from the root scenario so a sub-flow shows the steps that led into it
-  # rather than restarting at one. flattened_execution_path splices each child
-  # scenario's own path in at the point its sub-flow began, which is what makes
-  # a single uninterrupted list possible.
-  def runner_trail_entries(scenario)
-    flattened_execution_path(scenario.root_scenario)
   end
 
   # Whether selecting an answer submits the step on its own.

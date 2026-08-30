@@ -264,13 +264,21 @@
 }
 
 /* --- Menu popup (non-modal, no backdrop) --- */
-/* Anchor on .nav__brand so the menu centers under the full logo + chevron */
-.nav__brand {
+/* Anchor the menu on .page-header__row, not on .nav__brand.
+   The brand is vertically centred inside the 4rem row, so its bottom sits at
+   roughly 50px and `top: 100%` against it opened the menu 7px *above* the
+   header's bottom border, overlapping the chrome it is supposed to hang below.
+   The row is the element that knows the header's height. Centring still works
+   because the header is a `1fr auto 1fr` grid with the logo in the auto centre
+   column, so 50% of the row is the middle of the logo.
+   `.nav__menu` is the only absolutely positioned element in the header, so
+   moving the containing block affects nothing else. */
+.page-header__row {
   position: relative;
 }
 
 /* dialog.show() renders in normal flow, not the top layer.
-   Position below the brand, centered horizontally. */
+   Position below the header row, centered horizontally. */
 .nav__menu {
   position: absolute;
   top: 100%;
@@ -452,27 +460,12 @@
   white-space: nowrap;
 }
 
+/* Colour and weight come from the catalog .badge--published / .badge--draft.
+   All this class carries is the one layout concern the catalog cannot know
+   about: the badge must not shrink when a long result title competes for
+   width in the palette row. */
 .nav__search-badge {
-  padding: 0.15rem 0.5rem;
-  border-radius: var(--radius-full);
-  font-size: var(--text-xs);
-  font-weight: 600;
   flex-shrink: 0;
-}
-
-.nav__search-badge--published {
-  background: var(--color-positive-soft);
-  color: var(--color-positive);
-}
-
-[data-theme="dark"] .nav__search-badge--published {
-  background: var(--color-positive-soft);
-  color: var(--color-positive);
-}
-
-.nav__search-badge--draft {
-  background: var(--color-canvas-alt);
-  color: var(--color-ink-muted);
 }
 
 .nav__search-hint,

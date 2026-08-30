@@ -1,0 +1,23 @@
+<%#
+  A run that stopped somewhere it cannot rest.
+
+  Either it is sitting on a sub_flow node, which has no UI of its own, or it is
+  waiting on a child scenario that has already finished. Both used to be healed
+  inside GET step, which made a read move the run. Resuming needs a POST, so it
+  gets a control: a stuck run is visible rather than silently repaired, and the
+  fact that it happened at all is a bug worth seeing.
+
+  Normal runs never reach this — ScenarioSettler leaves every POST on a step
+  someone can answer.
+
+  locals: next_url
+%>
+<div class="card">
+  <div class="card__body">
+    <h2 class="mb-2">This run is paused</h2>
+    <p class="text-sm mb-4" style="color: var(--color-ink-muted);">
+      It stopped between steps. Continue to pick it up where it left off.
+    </p>
+    <%= button_to "Resume", next_url, class: "btn btn--primary" %>
+  </div>
+</div>

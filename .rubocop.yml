@@ -102,6 +102,14 @@ Rails/SkipsModelValidations:
 Rails/I18nLocaleTexts:
   Enabled: false
 
+# Every body-param method in this app already uses `params.expect` — there is
+# not one `params.require` left to migrate. What the cop flags in 2.37 is plain
+# `params[:id]` route-segment reads, and rewriting those to `params.expect(:id)`
+# turns a missing segment from `find(nil)` -> RecordNotFound -> 404 into
+# ParameterMissing -> 400. For a bad URL, 404 is the correct answer.
+Rails/StrongParametersExpect:
+  Enabled: false
+
 # WorkflowTemplate is a plain Ruby class, not AR — .each is correct
 Rails/FindEach:
   Exclude:
@@ -150,9 +158,10 @@ Metrics/ModuleLength:
     - "app/helpers/workflows_helper.rb"
     - "test/support/performance_helper.rb"
 
+# Keyword arguments are self-documenting and order-independent, so they do not
+# carry the readability cost this cop guards against. Count positional only.
 Metrics/ParameterLists:
-  Exclude:
-    - "app/helpers/application_helper.rb"
+  CountKeywordArgs: false
 
 Minitest/MultipleAssertions:
   Max: 15

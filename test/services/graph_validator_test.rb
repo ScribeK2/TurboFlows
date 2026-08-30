@@ -179,4 +179,104 @@ class GraphValidatorTest < ActiveSupport::TestCase
 
     assert_predicate validator, :valid?
   end
+
+  # ---------------------------------------------------------------------------
+  # Findings — the structured half. These assert the UUID each finding names,
+  # which is what stops a consumer having to guess the step from the message.
+  # The #errors assertions above are the other half of the contract: they prove
+  # the message text is unchanged for callers that only surface sentences.
+  # ---------------------------------------------------------------------------
+
+  # Every step below deliberately shares one title, so a title lookup could not
+  # tell them apart. Findings must still name the right UUID.
+  def duplicate_title_steps(transitions_by_uuid)
+    transitions_by_uuid.transform_values.with_index do |transitions, index|
+      { 'id' => transitions_by_uuid.keys[index], 'title' => 'Same Title',
+        'type' => 'question', 'transitions' => transitions }
+    end
+  end
+
+  test "findings are empty for a valid graph" do
+    steps = {
+      'a' => { 'id' => 'a', 'title' => 'Start', 'type' => 'question', 'transitions' => [{ 'target_uuid' => 'b' }] },
+      'b' => { 'id' => 'b', 'title' => 'End', 'type' => 'resolve', 'transitions' => [] }
+    }
+    validator = GraphValidator.new(steps, 'a')
+
+    assert_predicate validator, :valid?
+    assert_empty validator.findings
+  end
+
+  test "errors is exactly the messages of findings, in order" do
+    steps = duplicate_title_steps('a' => [{ 'target_uuid' => 'b' }], 'b' => [], 'orphan' => [])
+    validator = GraphValidator.new(steps, 'a')
+
+    assert_not validator.valid?
+    assert_equal validator.findings.map(&:message), validator.errors
+  end
+
+  test "terminal_not_resolve finding names the terminal step, not a same-titled sibling" do
+    steps = duplicate_title_steps('a' => [{ 'target_uuid' => 'b' }], 'b' => [])
+    validator = GraphValidator.new(steps, 'a')
+    validator.valid?
+
+    finding = validator.findings.find { |f| f.code == :terminal_not_resolve }
+
+    assert finding, "Expected a terminal_not_resolve finding, got: #{validator.findings.map(&:code).inspect}"
+    assert_equal 'b', finding.step_uuid
+  end
+
+  test "unreachable_step finding names the unreachable step" do
+    steps = duplicate_title_steps('a' => [{ 'target_uuid' => 'b' }], 'b' => [], 'orphan' => [])
+    steps['b']['type'] = 'resolve'
+    steps['orphan']['type'] = 'resolve'
+    validator = GraphValidator.new(steps, 'a')
+    validator.valid?
+
+    finding = validator.findings.find { |f| f.code == :unreachable_step }
+
+    assert finding
+    assert_equal 'orphan', finding.step_uuid
+  end
+
+  test "cycle_detected finding names a step in the cycle and carries the path" do
+    steps = duplicate_title_steps('a' => [{ 'target_uuid' => 'b' }], 'b' => [{ 'target_uuid' => 'a' }])
+    validator = GraphValidator.new(steps, 'a')
+    validator.valid?
+
+    finding = validator.findings.find { |f| f.code == :cycle_detected }
+
+    assert finding
+    assert_includes %w[a b], finding.step_uuid
+    assert_includes finding.details[:cycle_uuids], 'a'
+  end
+
+  test "transition_target_missing finding names the source step and the missing target" do
+    steps = duplicate_title_steps('a' => [{ 'target_uuid' => 'ghost' }])
+    validator = GraphValidator.new(steps, 'a')
+    validator.valid?
+
+    finding = validator.findings.find { |f| f.code == :transition_target_missing }
+
+    assert finding
+    assert_equal 'a', finding.step_uuid
+    assert_equal 'ghost', finding.details[:target_uuid]
+    assert_equal 0, finding.details[:transition_index]
+  end
+
+  test "workflow-level findings carry no step_uuid" do
+    empty = GraphValidator.new({}, 'a')
+    empty.valid?
+
+    assert_equal [:no_steps], empty.findings.map(&:code)
+    assert_nil empty.findings.first.step_uuid
+
+    cyclic = duplicate_title_steps('a' => [{ 'target_uuid' => 'b' }], 'b' => [{ 'target_uuid' => 'a' }])
+    validator = GraphValidator.new(cyclic, 'a')
+    validator.valid?
+    no_terminals = validator.findings.find { |f| f.code == :no_terminal_nodes }
+
+    assert no_terminals
+    assert_nil no_terminals.step_uuid
+  end
 end

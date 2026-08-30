@@ -72,43 +72,155 @@
 }
 
 /* ============================================================================
-   Answer trail — what has been answered so far.
+   Thread — the run as a growing list of answered steps plus one open card
 
-   Replaces the stepper rail. That rail carried step-type colours, truncated
-   titles, truncated answers, index numbers and a horizontal scrollbar to say
-   what this says in plain text.
+   Replaces the wizard's single card. Rows are one line each: this is a scanning
+   surface, and a long call pays for two-line rows in how much of it stays
+   visible at once. Surfaces stay neutral — step type lives in the badge on the
+   open card, never as a row background or border.
    ============================================================================ */
 
-.runner-trail {
-  margin-bottom: var(--space-4);
-  font-size: var(--text-sm);
-}
-
-.runner-trail__list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+.runner-thread {
   list-style: none;
   margin: 0;
   padding: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.runner-trail__item {
+/* Indentation is the sub-flow's closing bracket: rows inside one sit a level
+   deeper, and coming back out is what tells a reader it ended. Capped at two
+   levels in the helper. Collapses to zero on narrow screens, where the Player
+   and embed have no room to spend on it. */
+.runner-thread__group,
+.runner-thread__current {
+  padding-inline-start: calc(var(--thread-depth, 0) * var(--space-4));
+}
+
+.runner-thread__group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-xs);
+  color: var(--color-ink-subtle);
+}
+
+/* An answered step, collapsed. 69px, against the 38px of the one-line row this
+   replaced — about half a screen over a median 12-step run, which is what the
+   density argument was worth once it was measured rather than assumed. */
+.runner-thread__card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  margin-block-end: var(--space-2);
+  margin-inline-start: calc(var(--thread-depth, 0) * var(--space-4));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-canvas-raised);
+}
+
+/* The completion indicator. Uses the step's own hue, which is the one place
+   step colour is sanctioned outside a badge — a dot, per UIGUIDE. */
+.runner-thread__check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  border-radius: var(--radius-full);
+  background: var(--step-dot);
+  color: var(--color-on-positive);
+}
+
+.runner-thread__card-body {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
-  color: var(--color-ink-muted);
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  min-inline-size: 0;
 }
 
-.runner-trail__answer {
-  color: var(--color-ink);
+/* Small-caps label rather than a pill: a pill on every answered step is the
+   wall of pastel the badge tiering rule exists to prevent. */
+.runner-thread__kind {
+  flex-basis: 100%;
+  font-size: var(--text-xs);
   font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--step-text);
 }
 
-.runner-trail__earlier > summary {
-  cursor: pointer;
+.runner-thread__card-title {
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+}
+
+.runner-thread__card-answer {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.runner-thread__card-answer::before {
+  content: "\2192";
+  margin-inline-end: var(--space-1);
+  color: var(--color-ink-subtle);
+}
+
+@media (max-width: 640px) {
+  .runner-thread__card { margin-inline-start: 0; }
+}
+
+/* A run that could not act on an answer — a stale tab, or a lost race with
+   another tab. Exceptional, so it gets a pill's worth of colour where the rest
+   of the thread stays quiet. */
+.runner-thread__notice {
+  padding: var(--space-3);
+  margin-block-end: var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-warning-soft);
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+}
+
+/* The open card carries its own surface, so it needs air above the rows rather
+   than a rule between them. The ending sits in the same position and gets the
+   same air. */
+.runner-thread__current,
+.runner-thread__complete-item {
+  margin-block-start: var(--space-4);
+}
+
+/* The end of a finished run, kept on the transcript instead of replacing it.
+   Quiet on purpose: the run is over, so nothing here competes with the steps
+   above it for attention. */
+.runner-thread__complete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-canvas-alt);
+}
+
+.runner-thread__complete p {
+  margin: 0;
   color: var(--color-ink-muted);
-  padding-bottom: var(--space-1);
+}
+
+@media (max-width: 640px) {
+  .runner-thread__group,
+  .runner-thread__current {
+    padding-inline-start: 0;
+  }
 }
 
 /* ============================================================================

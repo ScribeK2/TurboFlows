@@ -7,6 +7,48 @@ module WorkflowParsers
     end
 
     # =========================================================================
+    # Escalate priority — the one value the normalizer invented that the model
+    # rejects. Steps::Escalate::VALID_PRIORITIES is low/medium/high/urgent/
+    # critical; the default written here was "normal", so an escalate step with
+    # no priority failed validation and took the *whole import* down with it.
+    # Four parsers wrote that same default, and every format funnels through
+    # here, which is why the conversion belongs here and not in each of them.
+    # =========================================================================
+
+    test "an escalate with no priority gets one the model accepts" do
+      step = normalizer.normalize_single_step({ "type" => "escalate", "title" => "E" }, 0)
+
+      assert_includes Steps::Escalate::VALID_PRIORITIES, step["priority"],
+                      "a default the model rejects is not a default"
+    end
+
+    test "the documented legacy priority 'normal' converts rather than failing" do
+      step = normalizer.normalize_single_step(
+        { "type" => "escalate", "title" => "E", "priority" => "normal" }, 0
+      )
+
+      assert_equal "medium", step["priority"]
+    end
+
+    test "a valid priority is left exactly as it is" do
+      Steps::Escalate::VALID_PRIORITIES.each do |priority|
+        step = normalizer.normalize_single_step(
+          { "type" => "escalate", "title" => "E", "priority" => priority }, 0
+        )
+
+        assert_equal priority, step["priority"]
+      end
+    end
+
+    test "priority is matched case- and whitespace-insensitively, as resolution_type is" do
+      step = normalizer.normalize_single_step(
+        { "type" => "escalate", "title" => "E", "priority" => "  Normal " }, 0
+      )
+
+      assert_equal "medium", step["priority"]
+    end
+
+    # =========================================================================
     # #normalize — top-level array processing
     # =========================================================================
 
@@ -130,9 +172,13 @@ module WorkflowParsers
       assert_equal "Customer upset", result["notes"]
     end
 
-    test "normalize_single_step defaults escalate priority to normal" do
+    # Was "defaults escalate priority to normal", asserting a value
+    # Steps::Escalate rejects. The test passed for as long as the bug lived,
+    # because it checked the normalizer against itself and never against the
+    # model that has to accept the result.
+    test "normalize_single_step defaults escalate priority to medium" do
       result = normalizer.normalize_single_step({ "type" => "escalate" }, 0)
-      assert_equal "normal", result["priority"]
+      assert_equal "medium", result["priority"]
     end
 
     test "normalize_single_step extracts resolve fields" do

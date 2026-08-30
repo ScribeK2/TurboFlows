@@ -70,6 +70,23 @@
   box-shadow: 0 0 0 3px var(--color-negative-soft);
 }
 
+/* Validation message for a field or a refused submit. UIGUIDE documents this
+   class under Error/Validation States; it had never been written, so the
+   runner's error markup would have rendered unstyled had it ever been shown. */
+.form-error {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  line-height: var(--line-height-normal);
+  color: var(--color-negative);
+}
+
+.form-error__list {
+  margin: 0;
+  padding-left: var(--space-4);
+  list-style: disc;
+}
+
 .form-textarea {
   display: block;
   width: 100%;
@@ -185,6 +202,17 @@
 
 .form-radio {
   border-radius: var(--radius-full);
+}
+
+/* A native checkbox draws its own box, so border-color — which is what
+   .is-invalid sets everywhere else — is invisible on it. An outline is the one
+   thing that shows. Without this the class rendered as "no style applied" on
+   two of the five field types, which looks plausible in a screenshot and is
+   exactly what UIGUIDE checklist 13 is about. */
+.form-checkbox.is-invalid,
+.form-radio.is-invalid {
+  outline: 2px solid var(--color-negative);
+  outline-offset: 1px;
 }
 
 .form-checkbox:focus-visible,
