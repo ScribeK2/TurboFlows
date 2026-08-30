@@ -2,7 +2,7 @@ require "test_helper"
 
 # What the runner's page looks like, and how it answers a POST.
 #
-# The run renders as a growing thread: answering collapses the step into a row
+# The run renders as a growing thread: answering collapses the step into a card
 # and appends the next card below it, streamed, with no navigation. These assert
 # that rendering; the run's *semantics* are covered by the settler's own tests.
 class RunnerThreadTest < ActionDispatch::IntegrationTest
@@ -37,7 +37,7 @@ class RunnerThreadTest < ActionDispatch::IntegrationTest
     )
   end
 
-  test "answered steps stay on the page as rows, above the open card" do
+  test "answered steps stay on the page as cards, above the open card" do
     scenario = scenario_at(@q1)
     ScenarioSettler.new(scenario).settle("Yes")
 
@@ -45,8 +45,15 @@ class RunnerThreadTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "ol#runner-thread"
-    assert_select ".runner-thread__row", 1, "the answered step is still on screen"
-    assert_select ".runner-thread__row .runner-thread__summary", text: "Yes"
+    assert_select ".runner-thread__card", 1, "the answered step is still on screen"
+    assert_select ".runner-thread__card .runner-thread__card-answer", text: "Yes"
+    # A card carries what a line of text could not: that the step is done, and
+    # what kind of step it was.
+    assert_select ".runner-thread__card .runner-thread__check", 1,
+                  "the completion indicator is the point of the card"
+    assert_select ".runner-thread__card .runner-thread__kind", text: "question"
+    assert_select ".runner-thread__card .runner-thread__card-title",
+                  text: "Verify the account"
     assert_select "#runner-card-current", 1, "and exactly one step is open"
   end
 
@@ -69,7 +76,7 @@ class RunnerThreadTest < ActionDispatch::IntegrationTest
     get step_scenario_path(scenario)
 
     assert_response :success, "a finished run keeps its ending on the thread instead of navigating away"
-    assert_select ".runner-thread__row", minimum: 2
+    assert_select ".runner-thread__card", minimum: 2
     assert_select "#runner-card-current", 0, "nothing is open once the run is done"
     assert_select ".runner-thread__complete a", text: "View results"
   end
@@ -102,8 +109,8 @@ class RunnerThreadTest < ActionDispatch::IntegrationTest
 
     assert_select ".runner-thread__group", 1
     assert_select ".runner-thread__group", text: /Billing Check/
-    assert_select ".runner-thread__row", text: /CQ/,
-                                         count: 1
+    assert_select ".runner-thread__card", text: /CQ/,
+                                          count: 1
   end
 
   test "steps inside a sub-flow are indented and the run outdents on the way out" do
@@ -132,9 +139,9 @@ class RunnerThreadTest < ActionDispatch::IntegrationTest
 
     get step_scenario_path(scenario.reload)
 
-    assert_select ".runner-thread__row[style*='--thread-depth: 0']", text: /Opening/
-    assert_select ".runner-thread__row[style*='--thread-depth: 1']", text: /CQ/,
-                                                                     count: 1
+    assert_select ".runner-thread__card[style*='--thread-depth: 0']", text: /Opening/
+    assert_select ".runner-thread__card[style*='--thread-depth: 1']", text: /CQ/,
+                                                                      count: 1
   end
   # Indentation is the sub-flow's closing bracket: coming back out is what tells
   # a reader it ended. So the open card has to sit at the depth of the scenario
@@ -186,8 +193,8 @@ class RunnerThreadTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "ol#runner-thread"
-    assert_select ".runner-thread__row", 1
-    assert_select ".runner-thread__row .runner-thread__summary", text: "Yes"
+    assert_select ".runner-thread__card", 1
+    assert_select ".runner-thread__card .runner-thread__card-answer", text: "Yes"
     assert_select "#runner-card-current", 1
     assert_select ".runner-trail", 0
   end
@@ -251,7 +258,7 @@ class RunnerThreadTest < ActionDispatch::IntegrationTest
     post next_step_scenario_path(scenario), params: { answer: "Yes" },
                                             headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
-    assert_match(/runner-thread__row/, response.body, "the step just answered collapses into a row")
+    assert_match(/runner-thread__card/, response.body, "the step just answered collapses into a card")
     assert_match(/Verify the account/, response.body)
     assert_match(/runner-card-current/, response.body, "and the next one opens")
     assert_match(/Check the balance/, response.body)
@@ -277,7 +284,7 @@ class RunnerThreadTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity, "a refusal is not a new step"
     assert_match(/Escalation reason is required/, response.body)
     assert_match(/runner-card-current/, response.body)
-    assert_no_match(/runner-thread__row/, response.body, "nothing was answered, so nothing collapses")
+    assert_no_match(/runner-thread__card/, response.body, "nothing was answered, so nothing collapses")
   end
   test "going back streams the thread without a redirect" do
     scenario = scenario_at(@q1)
@@ -299,7 +306,7 @@ class RunnerThreadTest < ActionDispatch::IntegrationTest
 
     assert_match(/runner-card-current/, response.body)
     assert_match(/Verify the account/, response.body, "the step just undone is open again")
-    assert_no_match(/runner-thread__summary/, response.body,
+    assert_no_match(/runner-thread__card-answer/, response.body,
                     "and its row is gone, because the thread shrank")
   end
 
@@ -363,7 +370,7 @@ class RunnerThreadTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_match(/already finished/i, response.body,
                  "a stale tab must not have its answer swallowed")
-    assert_no_match(/runner-thread__row/, response.body, "and nothing new collapses")
+    assert_no_match(/runner-thread__card/, response.body, "and nothing new collapses")
   end
 
   test "a halted answer leaves exactly one open card" do

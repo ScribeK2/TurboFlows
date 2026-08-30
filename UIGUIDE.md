@@ -179,6 +179,20 @@ stops the next person re-litigating it. One live exclusion remains.
   one set of step-body partials in `app/views/runner/`, so the two cannot drift
   apart again.
 
+- **Answered steps were one-line rows, and are now cards.** Worth recording
+  because the row was a *considered* decision that lost to measurement, not an
+  oversight. The rationale was that a scanned list pays for height in how much of
+  the call stays visible, so a collapsed step got `title → answer` on one line.
+  Measured, the difference was 69px against 38px — over a median completed run of
+  12 steps, about half a screen. The behaviour the density was protecting had
+  never been watched, which is the same "no one to protect" reasoning that lifted
+  the scenario-runner exclusion above. What the card buys is weight: an answered
+  step is a decision somebody made on a live call, and scrolling back to re-read
+  one is a real thing agents do.
+  *Reopen when:* a run gets long enough for height to actually cost something —
+  around 25 answered steps on current numbers, which only the largest workflows
+  can reach. That is the length-management question, still parked.
+
 - **Builder editing internals** — `_panel_edit` and its form surface in
   `steps.css`, `_preview_pane`, and the flow diagram panel with
   `flow_diagram.css`. These are graph rendering and a large bespoke form
@@ -355,7 +369,7 @@ so `.tab-bar` drops into any existing tablist with no JS change.
 | Component | Classes | File | Notes |
 |-----------|---------|------|-------|
 | Answer cards | `.radio-card`, `.radio-grid`, `.radio-list` | `runner.css` | The runner's answer choices. Deliberately **neutral** — no icons, no radio dot, no semantic colour. A question's polarity is arbitrary ("Is the site down?" makes Yes the bad news), so green/red miscommunicates while spending the scarce semantic budget. Label is the content, border is the state |
-| Runner thread | `.runner-thread`, `__row`, `__current`, `__complete` | `runner.css` | The run as one growing list: answered steps as plain-text rows (`title → answer`), then the open card. Replaced both the stepper rail of step-type-coloured pills and the short-lived `.runner-trail` that followed it |
+| Runner thread | `.runner-thread`, `__card`, `__check`, `__kind`, `__current`, `__complete` | `runner.css` | The run as one growing list: answered steps as compact cards (completion dot, type label, `title → answer`), then the open card. The dot is the one place step colour appears outside a badge. Answered steps were one-line rows first — see §Surfaces Deliberately Excluded for why that lost |
 | List rows | `.list-section`, `.list-row`, `.list-row--compact` | `lists.css` | Section + hairline-divided rows. `--compact` is the dense size (builder step list); same anatomy, tighter box — sized like `.btn--sm` is to `.btn` |
 | Tooltips | `.tooltip`, `.tooltip--bottom` | `tooltips.css` | Absolute, spring easing entrance |
 | Skeletons | `.skeleton`, `.skeleton--text`, `--heading`, `--card` | `skeleton.css` | Shimmer animation, use for loading states |

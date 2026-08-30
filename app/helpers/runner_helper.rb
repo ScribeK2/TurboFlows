@@ -71,6 +71,24 @@ module RunnerHelper
     Array(errors) - field_errors.slice(*rendered).values.flatten
   end
 
+  # The step hue for a collapsed card, matching the badge mapping in badges.css.
+  #
+  # No `sub_flow` case, and it is not an oversight: a sub_flow entry always
+  # carries `subflow_started` and `child_scenario_id` — ScenarioStepProcessor
+  # sets both before appending, and its failure path returns without appending
+  # at all — so flatten_path_entries always turns one into a group marker.
+  # A sub_flow entry cannot reach this partial.
+  def runner_entry_hue(entry)
+    type = (entry["step_type"] || entry["type"]).to_s.presence || "question"
+    "--hue-#{type}"
+  end
+
+  # The type, as the card's label. Reads the entry and only the entry, like
+  # everything else on a collapsed step.
+  def runner_entry_kind(entry)
+    (entry["step_type"] || entry["type"]).to_s.tr("_", " ").presence || "step"
+  end
+
   def runner_option_value(option)
     option.is_a?(Hash) ? (option["value"] || option["label"]) : option
   end

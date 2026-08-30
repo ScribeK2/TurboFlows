@@ -92,29 +92,9 @@
    deeper, and coming back out is what tells a reader it ended. Capped at two
    levels in the helper. Collapses to zero on narrow screens, where the Player
    and embed have no room to spend on it. */
-.runner-thread__row,
 .runner-thread__group,
 .runner-thread__current {
   padding-inline-start: calc(var(--thread-depth, 0) * var(--space-4));
-}
-
-.runner-thread__row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-2);
-  padding-block: var(--space-2);
-  border-bottom: 1px solid var(--color-border);
-  font-size: var(--text-sm);
-}
-
-.runner-thread__title {
-  color: var(--color-ink-muted);
-}
-
-.runner-thread__summary {
-  color: var(--color-ink);
-  font-weight: 500;
 }
 
 .runner-thread__group {
@@ -125,6 +105,75 @@
   border-bottom: 1px solid var(--color-border);
   font-size: var(--text-xs);
   color: var(--color-ink-subtle);
+}
+
+/* An answered step, collapsed. 69px, against the 38px of the one-line row this
+   replaced — about half a screen over a median 12-step run, which is what the
+   density argument was worth once it was measured rather than assumed. */
+.runner-thread__card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  margin-block-end: var(--space-2);
+  margin-inline-start: calc(var(--thread-depth, 0) * var(--space-4));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-canvas-raised);
+}
+
+/* The completion indicator. Uses the step's own hue, which is the one place
+   step colour is sanctioned outside a badge — a dot, per UIGUIDE. */
+.runner-thread__check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  border-radius: var(--radius-full);
+  background: var(--step-dot);
+  color: var(--color-on-positive);
+}
+
+.runner-thread__card-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  min-inline-size: 0;
+}
+
+/* Small-caps label rather than a pill: a pill on every answered step is the
+   wall of pastel the badge tiering rule exists to prevent. */
+.runner-thread__kind {
+  flex-basis: 100%;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--step-text);
+}
+
+.runner-thread__card-title {
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+}
+
+.runner-thread__card-answer {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.runner-thread__card-answer::before {
+  content: "\2192";
+  margin-inline-end: var(--space-1);
+  color: var(--color-ink-subtle);
+}
+
+@media (max-width: 640px) {
+  .runner-thread__card { margin-inline-start: 0; }
 }
 
 /* A run that could not act on an answer — a stale tab, or a lost race with
@@ -168,7 +217,6 @@
 }
 
 @media (max-width: 640px) {
-  .runner-thread__row,
   .runner-thread__group,
   .runner-thread__current {
     padding-inline-start: 0;

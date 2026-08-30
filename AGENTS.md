@@ -194,12 +194,12 @@ partials, not in a shell. Both shells are now branchless: neither contains an
 - Both runners operate on AR Step objects with method access (`step.title`), not
   execution-path hashes. `step['field']` access was removed in the shared-partial
   extraction; `execution_path` hashes remain only in the results view and in the
-  thread's rows.
+  thread's cards.
 
 **The run renders as a thread, and that is the only rendering.** Answering a step
-collapses it into a row and appends the next card below it, streamed — no
+collapses it into a compact card and appends the next one below it, streamed — no
 navigation, so the transcript the agent is reading stays put. `runner/_thread`
-renders the rows and delegates the open card to `runner/_thread_card`; the tail
+renders the answered cards and delegates the open one to `runner/_thread_card`; the tail
 (`runner/_thread_tail`) is whatever the run is waiting on — the open card, a
 Resume control, or the ending — and always carries `id="runner-card-current"`, so
 a streamed answer always has a target to replace.
@@ -211,7 +211,7 @@ render one; `runner/_trail` and the classic one-card-at-a-time branches are gone
 **No step numbers or progress bars.** Both were removed deliberately: two
 numbering systems disagreed inside sub-flows, and the bars divided by
 `workflow.steps.count`, which a branched run never visits in full. The thread's
-rows carry that orientation now, read from the root scenario. See UIGUIDE.md
+cards carry that orientation now, read from the root scenario. See UIGUIDE.md
 § Surfaces Deliberately Excluded for the reasoning.
 
 **Auto-advance has one source of truth:** `RunnerHelper#runner_auto_advances?`.

@@ -43,12 +43,12 @@ class RunnerThreadSystemTest < ApplicationSystemTestCase
   # not: streaming leaves the rows above the tail untouched, while a Drive visit
   # rebuilds them, so identity of the node is the honest discriminator.
   def mark_first_row
-    page.execute_script("document.querySelector('.runner-thread__row').dataset.marked = 'yes'; " \
-                        "document.querySelector('.runner-thread__row').__survived = true")
+    page.execute_script("document.querySelector('.runner-thread__card').dataset.marked = 'yes'; " \
+                        "document.querySelector('.runner-thread__card').__survived = true")
   end
 
   def first_row_survived?
-    page.evaluate_script("!!(document.querySelector('.runner-thread__row') || {}).__survived")
+    page.evaluate_script("!!(document.querySelector('.runner-thread__card') || {}).__survived")
   end
 
   test "answering leaves the transcript above it untouched" do
@@ -65,7 +65,7 @@ class RunnerThreadSystemTest < ApplicationSystemTestCase
 
     assert_predicate self, :first_row_survived?,
                      "the rows above the answer were rebuilt — the page repainted instead of streaming"
-    assert_selector ".runner-thread__row", count: 2
+    assert_selector ".runner-thread__card", count: 2
   end
 
   test "the answered step stays on screen as a row" do
@@ -76,8 +76,8 @@ class RunnerThreadSystemTest < ApplicationSystemTestCase
     choose_answer "Yes"
     assert_current_step "Did the email arrive"
 
-    assert_selector ".runner-thread__row", text: "Is the account verified"
-    assert_selector ".runner-thread__row .runner-thread__summary", text: "yes"
+    assert_selector ".runner-thread__card", text: "Is the account verified"
+    assert_selector ".runner-thread__card .runner-thread__card-answer", text: "yes"
   end
 
   test "auto-advance submits once" do
@@ -88,8 +88,8 @@ class RunnerThreadSystemTest < ApplicationSystemTestCase
     choose_answer "Yes"
     assert_current_step "Did the email arrive"
 
-    assert_selector ".runner-thread__row", count: 1,
-                                           wait: 3
+    assert_selector ".runner-thread__card", count: 1,
+                                            wait: 3
   end
 
   test "refreshing mid-run restores the same thread" do
@@ -98,12 +98,12 @@ class RunnerThreadSystemTest < ApplicationSystemTestCase
     visit step_scenario_path(scenario)
     choose_answer "Yes"
     assert_current_step "Did the email arrive"
-    rows_before = all(".runner-thread__row").size
+    cards_before = all(".runner-thread__card").size
 
     visit step_scenario_path(scenario)
 
     assert_current_step "Did the email arrive"
-    assert_equal rows_before, all(".runner-thread__row").size,
+    assert_equal cards_before, all(".runner-thread__card").size,
                  "a streamed thread and a reloaded one must not disagree"
   end
 
@@ -138,7 +138,7 @@ class RunnerThreadSystemTest < ApplicationSystemTestCase
     field.send_keys("12345", :enter)
 
     assert_current_step "Anything else"
-    assert_selector ".runner-thread__row .runner-thread__summary", text: "12345"
+    assert_selector ".runner-thread__card .runner-thread__card-answer", text: "12345"
   end
 
   test "the Player streams too" do
@@ -155,7 +155,7 @@ class RunnerThreadSystemTest < ApplicationSystemTestCase
     assert_current_step "Close the call"
 
     assert_predicate self, :first_row_survived?, "the Player repainted — both shells must stream"
-    assert_selector ".runner-thread__row", text: "Is the account verified"
+    assert_selector ".runner-thread__card", text: "Is the account verified"
   end
   test "an anonymous shared run streams like any other" do
     @workflow.update!(share_token: SecureRandom.hex(8))
