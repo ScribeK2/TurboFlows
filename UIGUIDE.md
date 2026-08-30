@@ -180,12 +180,21 @@ stops the next person re-litigating it. One live exclusion remains.
   apart again.
 
 - **Builder editing internals** — `_panel_edit` and its form surface in
-  `steps.css`, `_preview_pane`, `_visual_editor` / `_visual_condition` and
-  `transitions.css`, and the flow diagram panel with `flow_diagram.css`. These
-  are graph rendering and a large bespoke form surface, where the design system
-  has little to say and restyling means inventing.
+  `steps.css`, `_preview_pane`, and the flow diagram panel with
+  `flow_diagram.css`. These are graph rendering and a large bespoke form
+  surface, where the design system has little to say and restyling means
+  inventing.
   *Reopen when:* reference material exists, and then as a design consultation
   rather than a refactor.
+
+  > **`_visual_editor` and `_visual_condition` are no longer on this list —
+  > they were deleted 2026-08-29.** Not restyled: *deleted*. Nothing rendered
+  > either of them, and `_visual_editor` was still wired to six Stimulus
+  > controllers removed back in `f8240c05`. An exclusion protects a surface from
+  > being restyled on a whim; it was never a reason to keep unreachable code.
+  > Check reachability before assuming an excluded surface is load-bearing.
+  > `transitions.css` also leaves this entry — its rules belong to the
+  > transition editor in `_panel_edit`, which is still excluded above.
 
   > **Note what is no longer excluded.** The builder's *chrome* — header,
   > toolbar, step list, step rows, empty state, health panel and the shared
@@ -693,7 +702,7 @@ For page types not covered by a recipe, read these exemplary views. They demonst
 | `runner.css` | modules | The Scenario + Player runner: answer cards, the runner thread, step content box |
 | `scenarios.css` | modules | Scenario **results** page only — the runner half lives in `runner.css` |
 | `steps.css` | modules | Step editor styles |
-| `editor.css` | modules | Rich text editor (Lexxy) |
+| `editor.css` | modules | Grab bag, and mis-described here for a long time: it is not the Lexxy editor. It holds the step palette, template cards, condition tokens, autosave status and collab presence. The visual-editor chrome it also carried was deleted 2026-08-29 |
 | `transitions.css` | modules | Transition editor |
 | `dashboard.css` | modules | Dashboard shell: `.dashboard-*`, `.stat-panel`/`.stat-cell` |
 | `auth.css` | modules | Login/signup pages |
