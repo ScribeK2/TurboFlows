@@ -26,7 +26,7 @@ Rails.application.configure do
 
   # Store uploaded files on the local file system in a temporary directory.
   config.active_storage.service = :test
-  config.active_storage.variant_processor = :mini_magick
+  config.active_storage.variant_processor = :vips
 
   # Disable Action Mailer's delivery in test environment.
   config.action_mailer.delivery_method = :test
