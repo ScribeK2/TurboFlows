@@ -80,10 +80,18 @@
    open card, never as a row background or border.
    ============================================================================ */
 
+/* The thread owns the full width its shell gives it. Explicit because the
+   Player centres its children (`.player-main` is a centred flex column), and a
+   flex item under `align-items: center` is shrink-to-fit: without this the list
+   re-sizes to whatever its widest card happens to be, so answering a step moved
+   the whole transcript sideways. Every other child of `.player-main` already
+   declares its own width for the same reason. No effect in Scenario mode, where
+   the list is a block child and already fills its container. */
 .runner-thread {
   list-style: none;
   margin: 0;
   padding: 0;
+  inline-size: 100%;
   display: flex;
   flex-direction: column;
 }

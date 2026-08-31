@@ -217,5 +217,34 @@
 .btn-group .btn + .btn {
   margin-left: -1px;
 }
+
+/* --- Dark mode toggle ---
+   A button, not nav furniture: two layouts render it (application and player),
+   and only one of them loads navigation.css, which is where this used to live.
+   The Player's header showed a raw UA button — grey fill, outset border, square
+   corners — because reset.css neutralises only font and colour on a button, so
+   an unstyled one keeps its browser chrome. It sits in components with the rest
+   of the buttons, which every layout loads. */
+.dark-mode-toggle {
+  padding: 0.5rem;
+  border-radius: var(--radius-full);
+  background: var(--color-canvas-raised);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dark-mode-toggle:hover {
+  background: var(--color-border);
+  transform: scale(1.1);
+}
+
+.dark-mode-toggle:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
 }
 
