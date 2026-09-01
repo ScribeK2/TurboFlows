@@ -8,10 +8,13 @@ class WorkflowImporterTest < ActiveSupport::TestCase
       password_confirmation: "password123!",
       role: "editor"
     )
+    @group = Group.create!(name: "Importer Group #{SecureRandom.hex(2)}")
+    UserGroup.create!(user: @user, group: @group)
   end
 
   teardown do
     User.where("email LIKE ?", "importer-test-%").destroy_all
+    Group.where("name LIKE ?", "Importer Group %").destroy_all
   end
 
   test "imports from JSON string and saves workflow" do
@@ -176,5 +179,51 @@ class WorkflowImporterTest < ActiveSupport::TestCase
     assert_predicate result, :success?
     # Parser may add conversion warnings; warnings is always an array
     assert_kind_of Array, result.warnings
+  end
+
+  test "an import places the workflow in its named group and tags it" do
+    json_data = {
+      title: "Placed Workflow",
+      groups: [@group.name],
+      tags: %w[billing tier-2],
+      steps: [{ id: "z", type: "resolve", title: "Done", resolution_type: "success" }]
+    }.to_json
+
+    result = WorkflowImporter.new(@user, format: :json, content: json_data).call
+
+    assert_predicate result, :success?
+    assert_equal [@group.id], result.workflow.groups.map(&:id)
+    assert_equal %w[billing tier-2], result.workflow.tags.map(&:name).sort
+  end
+
+  test "an unknown group fails the import and writes nothing" do
+    json_data = {
+      title: "Misplaced Workflow",
+      groups: ["No Such Group At All"],
+      steps: [{ id: "z", type: "resolve", title: "Done", resolution_type: "success" }]
+    }.to_json
+
+    assert_no_difference -> { Workflow.count } do
+      result = WorkflowImporter.new(@user, format: :json, content: json_data).call
+
+      assert_not result.success?
+      assert_match(/No group exists at path/, result.errors.join(" "))
+    end
+  end
+
+  test "a group the importing user cannot see fails the import" do
+    hidden = Group.create!(name: "Importer Group #{SecureRandom.hex(2)} Hidden")
+    json_data = {
+      title: "Forbidden Placement",
+      groups: [hidden.name],
+      steps: [{ id: "z", type: "resolve", title: "Done", resolution_type: "success" }]
+    }.to_json
+
+    assert_no_difference -> { Workflow.count } do
+      result = WorkflowImporter.new(@user, format: :json, content: json_data).call
+
+      assert_not result.success?
+      assert_match(/do not have access/, result.errors.join(" "))
+    end
   end
 end

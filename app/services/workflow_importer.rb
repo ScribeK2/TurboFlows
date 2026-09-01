@@ -26,6 +26,18 @@ class WorkflowImporter
     warnings = parser.warnings.dup
     warnings.concat(validate_parsed_graph(steps_data, workflow_data[:start_node_uuid])) if workflow_data[:graph_mode] != false
 
+    placement = WorkflowPlacement.new(
+      user: @user,
+      groups: workflow_data[:groups],
+      folder: workflow_data[:folder],
+      tags: workflow_data[:tags]
+    )
+    placement_result = placement.resolve
+
+    unless placement_result.valid?
+      return failure(placement_result.errors.pluck(:message), warnings:)
+    end
+
     workflow = @user.workflows.build(
       title: workflow_data[:title],
       description: workflow_data[:description] || "",
@@ -46,6 +58,8 @@ class WorkflowImporter
       end
 
       create_ar_steps(workflow, steps_data, workflow_data[:start_node_uuid])
+
+      placement.apply!(workflow)
 
       # `set_draft_expiration` is an unconditional `before_save` (`if: :draft?`)
       # that stamps a 7-day TTL on every draft save, including the one above,
