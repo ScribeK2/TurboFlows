@@ -46,6 +46,29 @@ class WorkflowImporter
       end
 
       create_ar_steps(workflow, steps_data, workflow_data[:start_node_uuid])
+
+      # `set_draft_expiration` is an unconditional `before_save` (`if: :draft?`)
+      # that stamps a 7-day TTL on every draft save, including the one above,
+      # and `CleanupDraftsJob` destroys anything past it with no check on title
+      # or step count. An import is a real workflow, not an abandoned draft, so
+      # it must carry no expiry — but nothing short of bypassing the callback
+      # achieves that, since any `#save` re-triggers it. `update_column`/
+      # `update_columns` are off-limits here, but `update_all` is the same
+      # bypass at the relation level and is already how this codebase skips
+      # callbacks for a deliberate column write (`Step::Positionable.insert_at`,
+      # `HealthFixesController#add_resolve_after`). An in-memory
+      # `draft_expires_at = nil` alone wouldn't hold: it never reaches the row,
+      # so any later save shows the stamped value again.
+      #
+      # `update_all` also auto-increments `lock_version` when locking is
+      # enabled, to stop a stale in-memory `#save` from clobbering it back —
+      # but that leaves this loaded `workflow` object's cached `lock_version`
+      # one behind the row. `has_rich_text :description` schedules a deferred
+      # `touch` on `workflow` (Action Text's `belongs_to :record, touch: true`)
+      # for commit time, and it raised `StaleObjectError` against that stale
+      # cache until the `reload` below resynced it.
+      Workflow.where(id: workflow.id).update_all(draft_expires_at: nil)
+      workflow.reload
     end
 
     Result.new(
