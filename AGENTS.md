@@ -15,7 +15,7 @@ A straightforward workflow creator for call/chat centers to build, simulate, and
 - Real-time collaboration via Action Cable (WorkflowChannel presence)
 - Hierarchical Groups (up to 5 levels) + Folders + drag-and-drop organization
 - Workflow templates: YAML-driven archetypes (`WorkflowTemplate`) loaded from `config/templates.yml` (5 presets: Guided Decision, Verification Checklist, Triage & Escalate, Diagnosis Flow, Simple Handoff)
-- Import/export (JSON/CSV/YAML/MD → JSON/PDF via Prawn). JSON and YAML imports carry `groups` (name paths), a `folder`, and `tags`, resolved and applied by `WorkflowPlacement` before anything is written; CSV and Markdown are flat formats and carry none of that. Every import lands as `status: "draft"` with no `draft_expires_at`, so it won't be swept by `CleanupDraftsJob` and needs an explicit publish
+- Import/export (JSON/CSV/YAML/MD → JSON/PDF via Prawn). JSON and YAML imports carry `groups` (name paths), a `folder`, and `tags`, resolved by `WorkflowPlacement` before anything is written and then applied inside the import transaction; CSV and Markdown are flat formats and carry none of that. Every import lands as `status: "draft"` with no `draft_expires_at`, so it won't be swept by `CleanupDraftsJob` and needs an explicit publish
 - No Node.js: pure Hotwire (Turbo + Stimulus), importmap + Propshaft, vanilla CSS (@layer + OKLCH tokens)
 - Rails 8.1, Devise auth (roles: Administrator / Editor / User), optimistic locking (lock_version)
 
