@@ -152,6 +152,30 @@ class WorkflowPlacementTest < ActiveSupport::TestCase
     assert_empty workflow.reload.groups
   end
 
+  test "apply! re-stating the same primary group with no folder named preserves the existing folder" do
+    workflow = @user.workflows.create!(title: "Restated #{SecureRandom.hex(2)}", status: "draft")
+    workflow.replace_groups!([@child.id])
+    workflow.group_workflows.find_by(is_primary: true).update!(folder_id: @folder.id)
+    placement = WorkflowPlacement.new(user: @user, groups: ["#{@root.name} / #{@child.name}"])
+
+    placement.apply!(workflow)
+
+    assert_equal [@child.id], workflow.reload.groups.map(&:id)
+    assert_equal @folder.id, workflow.group_workflows.find_by(is_primary: true).folder_id
+  end
+
+  test "apply! changing the primary group with no folder named leaves the new group folder-less" do
+    workflow = @user.workflows.create!(title: "Regrouped #{SecureRandom.hex(2)}", status: "draft")
+    workflow.replace_groups!([@child.id])
+    workflow.group_workflows.find_by(is_primary: true).update!(folder_id: @folder.id)
+    placement = WorkflowPlacement.new(user: @user, groups: [@root.name])
+
+    placement.apply!(workflow)
+
+    assert_equal [@root.id], workflow.reload.groups.map(&:id)
+    assert_nil workflow.group_workflows.find_by(is_primary: true).folder_id
+  end
+
   test "apply! with no groups named leaves an existing group assignment untouched" do
     workflow = @user.workflows.create!(title: "Kept #{SecureRandom.hex(2)}", status: "draft")
     workflow.replace_groups!([@child.id])
@@ -163,5 +187,19 @@ class WorkflowPlacementTest < ActiveSupport::TestCase
 
     assert_equal [@child.id], workflow.reload.groups.map(&:id)
     assert_equal ["billing"], workflow.tags.map(&:name)
+  end
+
+  test "apply! with no tags named leaves existing tags untouched" do
+    existing_tag = Tag.where("LOWER(name) = ?", "billing").first || Tag.create!(name: "Billing")
+    workflow = @user.workflows.create!(title: "Tagged #{SecureRandom.hex(2)}", status: "draft")
+    workflow.tags = [existing_tag]
+    placement = WorkflowPlacement.new(user: @user, groups: ["#{@root.name} / #{@child.name}"])
+
+    assert_no_difference -> { Tag.count } do
+      placement.apply!(workflow)
+    end
+
+    assert_equal [@child.id], workflow.reload.groups.map(&:id)
+    assert_equal [existing_tag.id], workflow.tags.map(&:id)
   end
 end

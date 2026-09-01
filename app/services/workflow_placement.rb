@@ -29,18 +29,34 @@ class WorkflowPlacement
     @resolve ||= build_result
   end
 
-  # A file silent about groups is not a statement about groups: leaving
-  # @groups empty means "don't touch group placement", not "clear it",
-  # so replace_groups! is only called when the file actually named some.
+  # A file silent about a dimension is not making a statement about that
+  # dimension: silent means "don't touch this," not "clear it." That applies
+  # to groups, folder and tags alike, so each write below is guarded on the
+  # placement actually having named something for it.
+  #
+  # The folder guard has a wrinkle replace_groups! creates on its own:
+  # replace_groups! destroys and recreates every group_workflows row for the
+  # workflow, including the primary one that carries folder_id, so naming
+  # groups without naming a folder would otherwise drop an existing folder as
+  # a side effect even when nothing "said" to. We carry the old folder_id
+  # forward — but only when the new primary group is the same group that
+  # already held it. Folder belongs_to :group, so a folder that belonged to
+  # the old primary group is not a valid folder under a different one; when
+  # the primary group changes, dropping the folder isn't silence being
+  # violated, it's the folder no longer applying.
   def apply!(workflow)
     result = resolve
     raise InvalidPlacement, result.errors.pluck(:message).join(", ") unless result.valid?
 
+    folder_id = result.folder_id || carried_over_folder_id(workflow, result.group_ids)
+
     workflow.replace_groups!(result.group_ids) if result.group_ids.present?
-    if result.folder_id
-      workflow.group_workflows.find_by(is_primary: true)&.update!(folder_id: result.folder_id)
+    if folder_id
+      workflow.group_workflows.find_by(is_primary: true)&.update!(folder_id: folder_id)
     end
-    workflow.tags = result.tag_names.map { |name| find_or_create_tag(name) }
+    if result.tag_names.present?
+      workflow.tags = result.tag_names.map { |name| find_or_create_tag(name) }
+    end
     workflow
   end
 
@@ -74,6 +90,18 @@ class WorkflowPlacement
       tag_names: normalized_tag_names,
       errors:
     )
+  end
+
+  # See the note on apply! — this is the "silence about folder" carry-over,
+  # scoped to the case where the placement's new primary group is the same
+  # group the workflow's current primary folder already belongs to.
+  def carried_over_folder_id(workflow, group_ids)
+    return nil if group_ids.blank?
+
+    current_primary = workflow.group_workflows.find_by(is_primary: true)
+    return nil unless current_primary&.group_id == group_ids.first
+
+    current_primary.folder_id
   end
 
   # Walks the path one segment at a time. Group#name is unique per parent_id, so
