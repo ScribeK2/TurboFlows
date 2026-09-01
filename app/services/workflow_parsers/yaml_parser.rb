@@ -29,6 +29,10 @@ module WorkflowParsers
       graph_mode = workflow_data['graph_mode']
       start_node_uuid = workflow_data['start_node_uuid']
 
+      groups = workflow_data['groups'] || []
+      folder = workflow_data['folder']
+      tags = workflow_data['tags'] || []
+
       if title.blank?
         add_error("Workflow title is required")
         return nil
@@ -44,6 +48,9 @@ module WorkflowParsers
         description: description,
         graph_mode: graph_mode,
         start_node_uuid: start_node_uuid,
+        groups: groups,
+        folder: folder,
+        tags: tags,
         steps: normalize_step_keys(steps)
       }
 

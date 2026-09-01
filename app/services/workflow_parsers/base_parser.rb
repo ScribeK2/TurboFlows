@@ -57,6 +57,9 @@ module WorkflowParsers
       {
         title: parsed_data[:title] || "Imported Workflow",
         description: parsed_data[:description] || "",
+        groups: Array(parsed_data[:groups]),
+        folder: parsed_data[:folder].presence,
+        tags: Array(parsed_data[:tags]),
         graph_mode: true,
         start_node_uuid: start_node_uuid,
         steps: steps,
