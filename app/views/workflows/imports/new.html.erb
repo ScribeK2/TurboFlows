@@ -42,11 +42,12 @@
         <div class="alert alert--info">
           <h3 class="font-medium mb-2">Supported Formats</h3>
           <ul class="text-sm list-disc pl-5 flex-col-gap-1">
-            <li><strong>JSON:</strong> Native export format with full Graph Mode support (recommended)</li>
+            <li><strong>JSON:</strong> Native export format with full Graph Mode support (recommended). Also carries <code>groups</code>, <code>folder</code>, and <code>tags</code>, so the workflow lands in the place it names</li>
             <li><strong>CSV:</strong> Spreadsheet format with columns for step data and transitions</li>
-            <li><strong>YAML:</strong> Structured configuration format with hierarchical steps</li>
+            <li><strong>YAML:</strong> Structured configuration format with hierarchical steps. Also carries <code>groups</code>, <code>folder</code>, and <code>tags</code>, so the workflow lands in the place it names</li>
             <li><strong>Markdown:</strong> Documentation format with step headers and field definitions</li>
           </ul>
+          <p class="text-xs mt-2">CSV and Markdown are flat formats — they do not carry placement, so an import from either always lands ungrouped. Every import lands as a draft for review, regardless of format.</p>
         </div>
 
         <div class="alert alert--info">
