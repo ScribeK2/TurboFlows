@@ -34,26 +34,27 @@ class WorkflowImporter
       status: "published"
     )
 
-    if workflow.save
-      # Create AR Step and Transition records from the parsed data
-      create_ar_steps(workflow, steps_data, workflow_data[:start_node_uuid])
+    ActiveRecord::Base.transaction do
+      unless workflow.save
+        return Result.new(
+          success: false,
+          workflow:,
+          errors: workflow.errors.full_messages,
+          warnings:,
+          incomplete_steps_count: incomplete_count
+        )
+      end
 
-      Result.new(
-        success: true,
-        workflow:,
-        errors: [],
-        warnings:,
-        incomplete_steps_count: incomplete_count
-      )
-    else
-      Result.new(
-        success: false,
-        workflow:,
-        errors: workflow.errors.full_messages,
-        warnings:,
-        incomplete_steps_count: incomplete_count
-      )
+      create_ar_steps(workflow, steps_data, workflow_data[:start_node_uuid])
     end
+
+    Result.new(
+      success: true,
+      workflow:,
+      errors: [],
+      warnings:,
+      incomplete_steps_count: incomplete_count
+    )
   rescue StandardError => e
     failure([e.message])
   end

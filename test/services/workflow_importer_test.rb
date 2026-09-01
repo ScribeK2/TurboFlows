@@ -70,6 +70,26 @@ class WorkflowImporterTest < ActiveSupport::TestCase
     assert_predicate result.errors, :any?
   end
 
+  test "a failed import leaves no workflow behind" do
+    json_data = {
+      title: "Orphan Probe",
+      steps: [
+        { id: "a", type: "action", title: "First", instructions: "Do a thing" },
+        { id: "a", type: "message", title: "Duplicate id", content: "Boom" },
+        { id: "z", type: "resolve", title: "Done", resolution_type: "success" }
+      ]
+    }.to_json
+
+    assert_no_difference -> { Workflow.count } do
+      assert_no_difference -> { Step.count } do
+        result = WorkflowImporter.new(@user, format: :json, content: json_data).call
+
+        assert_not result.success?
+        assert_match(/uuid/i, result.errors.join(" "))
+      end
+    end
+  end
+
   test "imports JSON with steps and preserves step data" do
     json_data = {
       title: "Multi-step Workflow",
