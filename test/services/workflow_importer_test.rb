@@ -21,8 +21,26 @@ class WorkflowImporterTest < ActiveSupport::TestCase
 
     assert_predicate result, :success?
     assert_equal "Test Import", result.workflow.title
-    assert_equal "published", result.workflow.status
+    assert_equal "draft", result.workflow.status
     assert_not_nil result.workflow.id
+  end
+
+  test "imports land as drafts, not published" do
+    json_data = {
+      title: "Draft Landing",
+      steps: [
+        { id: "a", type: "action", title: "First", instructions: "Do a thing",
+          transitions: [{ target_uuid: "z" }] },
+        { id: "z", type: "resolve", title: "Done", resolution_type: "success" }
+      ]
+    }.to_json
+
+    result = WorkflowImporter.new(@user, format: :json, content: json_data).call
+
+    assert_predicate result, :success?
+    assert_equal "draft", result.workflow.status
+    assert_nil result.workflow.published_version_id
+    assert_equal 0, result.workflow.versions.count
   end
 
   # An escalate step with no priority is the documented default shape, and it

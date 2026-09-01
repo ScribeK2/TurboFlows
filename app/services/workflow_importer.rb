@@ -31,7 +31,7 @@ class WorkflowImporter
       description: workflow_data[:description] || "",
       graph_mode: workflow_data[:graph_mode] != false,
       is_public: false,
-      status: "published"
+      status: "draft"
     )
 
     ActiveRecord::Base.transaction do
