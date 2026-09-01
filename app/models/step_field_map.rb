@@ -13,9 +13,11 @@
 # a version.
 #
 # This module owns *which*. It deliberately does not own *how*: the permit list
-# needs nested shapes, the serializer needs `&.body.to_s` and presence guards,
-# and the parser keeps its import-dialect tolerances. Unifying the mechanics as
-# well turns a tractable change into a rewrite of five subtle readers.
+# needs nested shapes, the serializer needs `&.body&.to_html.to_s` (Content#to_s
+# renders through the app's display layout, which re-wraps on every publish or
+# export cycle — see StepSerializer#rich_text_html) and presence guards, and the
+# parser keeps its import-dialect tolerances. Unifying the mechanics as well
+# turns a tractable change into a rewrite of five subtle readers.
 #
 # The guarantee lives in test/services/step_field_map_test.rb, which populates
 # every field of every type and asserts it survives publish/restore,

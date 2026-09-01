@@ -185,6 +185,13 @@ class Group < ApplicationRecord
     (ancestors.reverse + [self]).map(&:name).join(separator)
   end
 
+  # The unambiguous name path from the root down to this group, as an import
+  # file writes it (WorkflowPlacement::PATH_SEPARATOR). Names are unique per
+  # parent_id, so this round-trips.
+  def name_path
+    full_path(separator: ' / ')
+  end
+
   # Count workflows in this group and optionally all descendant groups
   # @param include_descendants [Boolean] If true, includes workflows from all descendant groups
   # @return [Integer] The total count of workflows

@@ -40,14 +40,14 @@ class StepSerializer
       data["options"] = step.options if step.options.present?
     when Steps::Action
       data.merge!(
-        "instructions" => step.instructions&.body.to_s,
+        "instructions" => rich_text_html(step.instructions),
         "action_type" => step.action_type,
         "can_resolve" => step.can_resolve
       )
       data["output_fields"] = step.output_fields if step.output_fields.present?
       data["jumps"] = step.jumps if step.jumps.present?
     when Steps::Message
-      data["content"] = step.content&.body.to_s
+      data["content"] = rich_text_html(step.content)
       data["can_resolve"] = step.can_resolve
       data["jumps"] = step.jumps if step.jumps.present?
     when Steps::Escalate
@@ -56,23 +56,33 @@ class StepSerializer
         "target_value" => step.target_value,
         "priority" => step.priority,
         "reason_required" => step.reason_required,
-        "notes" => step.notes&.body.to_s
+        "notes" => rich_text_html(step.notes)
       )
     when Steps::Resolve
       data.merge!(
         "resolution_type" => step.resolution_type,
-        "description" => step.description&.body.to_s,
+        "description" => rich_text_html(step.description),
         "notes_required" => step.notes_required,
         "survey_trigger" => step.survey_trigger
       )
       data["resolution_code"] = step.resolution_code if step.resolution_code.present?
     when Steps::Form
-      data["instructions"] = step.instructions&.body.to_s
+      data["instructions"] = rich_text_html(step.instructions)
       data["options"] = step.options if step.options.present?
     when Steps::SubFlow
       data["target_workflow_id"] = step.sub_flow_workflow_id
       data["variable_mapping"] = step.variable_mapping if step.variable_mapping.present?
     end
+  end
+
+  # Content#to_s renders through the app's Action Text layout (adds the
+  # <div class="lexxy-content"> wrapper used for on-page display), so an
+  # export built from #to_s round-trips through import into a body that's
+  # wrapped again on the next export — nesting one layer deeper every cycle.
+  # #to_html returns the stored fragment itself, which is what import expects
+  # back.
+  def rich_text_html(rich_text)
+    rich_text&.body&.to_html.to_s
   end
 
   def serialize_transitions(step)
