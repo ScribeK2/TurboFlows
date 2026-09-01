@@ -321,5 +321,25 @@ module WorkflowParsers
       assert_not_nil result
       assert(result[:import_metadata][:warnings].any? { |w| w.include?("Graph Mode") })
     end
+
+    # ============================================================================
+    # Test 14: Carries placement fields (groups, folder, tags) through
+    # ============================================================================
+
+    test "carries groups, folder and tags through" do
+      content = {
+        title: "Placed Import",
+        groups: ["Support / Tier 2"],
+        folder: "Escalations",
+        tags: ["billing"],
+        steps: [{ id: "z", type: "resolve", title: "Done", resolution_type: "success" }]
+      }.to_json
+
+      data = WorkflowParsers::JsonParser.new(content).parse
+
+      assert_equal ["Support / Tier 2"], data[:groups]
+      assert_equal "Escalations", data[:folder]
+      assert_equal ["billing"], data[:tags]
+    end
   end
 end

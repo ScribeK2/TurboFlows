@@ -196,11 +196,26 @@ class WorkflowImporterTest < ActiveSupport::TestCase
     assert_equal %w[billing tier-2], result.workflow.tags.map(&:name).sort
   end
 
+  # Two unknown groups, and a linear-format step list (which the parser
+  # always flags with a "Converted from linear format to Graph Mode"
+  # warning), are the probe: the pre-build `resolve` returns one distinct
+  # error entry per bad group AND passes `parser.warnings` through, while a
+  # wrong implementation that let `workflow.save` proceed and only discovered
+  # the bad placement via `apply!` raising inside the transaction would be
+  # caught by `call`'s blanket `rescue StandardError`, which collapses to a
+  # single `[e.message]` (both group errors joined into one string by
+  # `InvalidPlacement`'s constructor) and drops `warnings` entirely (the
+  # rescue's `failure([e.message])` call doesn't pass `warnings:`). Either
+  # symptom alone would catch a resolve-after-build regression; asserting
+  # both makes the test fail loudly instead of by a fragile count.
   test "an unknown group fails the import and writes nothing" do
     json_data = {
       title: "Misplaced Workflow",
-      groups: ["No Such Group At All"],
-      steps: [{ id: "z", type: "resolve", title: "Done", resolution_type: "success" }]
+      groups: ["No Such Group At All", "Also Not A Real Group"],
+      steps: [
+        { type: "action", title: "Step One", instructions: "Do this" },
+        { type: "resolve", title: "Done", resolution_type: "success" }
+      ]
     }.to_json
 
     assert_no_difference -> { Workflow.count } do
@@ -208,6 +223,12 @@ class WorkflowImporterTest < ActiveSupport::TestCase
 
       assert_not result.success?
       assert_match(/No group exists at path/, result.errors.join(" "))
+      assert_equal 2, result.errors.size,
+                   "expected one distinct error per bad group, got: #{result.errors.inspect}"
+      assert(result.errors.any? { |e| e.include?("No Such Group At All") })
+      assert(result.errors.any? { |e| e.include?("Also Not A Real Group") })
+      assert(result.warnings.any? { |w| w.include?("Graph Mode") },
+             "expected parser warnings to survive the early return, got: #{result.warnings.inspect}")
     end
   end
 
@@ -216,7 +237,10 @@ class WorkflowImporterTest < ActiveSupport::TestCase
     json_data = {
       title: "Forbidden Placement",
       groups: [hidden.name],
-      steps: [{ id: "z", type: "resolve", title: "Done", resolution_type: "success" }]
+      steps: [
+        { type: "action", title: "Step One", instructions: "Do this" },
+        { type: "resolve", title: "Done", resolution_type: "success" }
+      ]
     }.to_json
 
     assert_no_difference -> { Workflow.count } do
@@ -224,6 +248,8 @@ class WorkflowImporterTest < ActiveSupport::TestCase
 
       assert_not result.success?
       assert_match(/do not have access/, result.errors.join(" "))
+      assert(result.warnings.any? { |w| w.include?("Graph Mode") },
+             "expected parser warnings to survive the early return, got: #{result.warnings.inspect}")
     end
   end
 end

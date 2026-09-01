@@ -59,6 +59,9 @@ class WorkflowImporter
 
       create_ar_steps(workflow, steps_data, workflow_data[:start_node_uuid])
 
+      # Must run before the update_all/reload pair below: apply! touches this
+      # workflow row too (GroupWorkflow and Tagging both belong_to :workflow,
+      # touch: true), and reload has to be the last write-absorbing step.
       placement.apply!(workflow)
 
       # `set_draft_expiration` is an unconditional `before_save` (`if: :draft?`)

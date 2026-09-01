@@ -175,35 +175,6 @@ class WorkflowParsersTest < ActiveSupport::TestCase
            "Parser should have an error about missing title"
   end
 
-  test "the JSON parser carries groups, folder and tags through" do
-    content = {
-      title: "Placed Import",
-      groups: ["Support / Tier 2"],
-      folder: "Escalations",
-      tags: ["billing"],
-      steps: [{ id: "z", type: "resolve", title: "Done", resolution_type: "success" }]
-    }.to_json
-
-    data = WorkflowParsers::JsonParser.new(content).parse
-
-    assert_equal ["Support / Tier 2"], data[:groups]
-    assert_equal "Escalations", data[:folder]
-    assert_equal ["billing"], data[:tags]
-  end
-
-  test "a CSV import with no placement fields parses to empty placement" do
-    content = <<~CSV
-      id,type,title,resolution_type
-      z,resolve,Done,success
-    CSV
-
-    data = WorkflowParsers::CsvParser.new(content).parse
-
-    assert_equal [], data[:groups]
-    assert_nil data[:folder]
-    assert_equal [], data[:tags]
-  end
-
   # ============================================================================
   # YAML Parser Tests
   # ============================================================================
@@ -258,28 +229,6 @@ class WorkflowParsersTest < ActiveSupport::TestCase
 
     assert_nil result
     assert(parser.errors.any? { |e| e.downcase.include?("yaml") })
-  end
-
-  test "the YAML parser carries groups, folder and tags through" do
-    content = <<~YAML
-      title: Placed Import
-      groups:
-        - Support / Tier 2
-      folder: Escalations
-      tags:
-        - billing
-      steps:
-        - id: z
-          type: resolve
-          title: Done
-          resolution_type: success
-    YAML
-
-    data = WorkflowParsers::YamlParser.new(content).parse
-
-    assert_equal ["Support / Tier 2"], data[:groups]
-    assert_equal "Escalations", data[:folder]
-    assert_equal ["billing"], data[:tags]
   end
 
   # ============================================================================

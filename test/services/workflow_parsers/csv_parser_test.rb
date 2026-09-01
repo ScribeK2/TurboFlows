@@ -247,5 +247,22 @@ module WorkflowParsers
       assert parser.errors.any? { |e| e.downcase.include?("no valid steps") },
              "Expected 'no valid steps' error, got: #{parser.errors.inspect}"
     end
+
+    # ============================================================================
+    # Test 8: CSV is a flat format — placement fields always come back empty
+    # ============================================================================
+
+    test "a CSV import with no placement fields parses to empty placement" do
+      content = <<~CSV
+        id,type,title,resolution_type
+        z,resolve,Done,success
+      CSV
+
+      data = WorkflowParsers::CsvParser.new(content).parse
+
+      assert_equal [], data[:groups]
+      assert_nil data[:folder]
+      assert_equal [], data[:tags]
+    end
   end
 end

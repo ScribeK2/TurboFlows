@@ -382,5 +382,31 @@ module WorkflowParsers
       assert_not_nil result, "Parser should handle symbol keys. Errors: #{parser.errors.inspect}"
       assert_equal "Symbol Key Workflow", result[:title]
     end
+
+    # ============================================================================
+    # Test 15: Carries placement fields (groups, folder, tags) through
+    # ============================================================================
+
+    test "carries groups, folder and tags through" do
+      content = <<~YAML
+        title: Placed Import
+        groups:
+          - Support / Tier 2
+        folder: Escalations
+        tags:
+          - billing
+        steps:
+          - id: z
+            type: resolve
+            title: Done
+            resolution_type: success
+      YAML
+
+      data = WorkflowParsers::YamlParser.new(content).parse
+
+      assert_equal ["Support / Tier 2"], data[:groups]
+      assert_equal "Escalations", data[:folder]
+      assert_equal ["billing"], data[:tags]
+    end
   end
 end
