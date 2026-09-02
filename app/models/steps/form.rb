@@ -1,5 +1,8 @@
 module Steps
   class Form < Step
+    # The field types the form builder offers and the import schema publishes.
+    VALID_FIELD_TYPES = %w[text textarea number email phone select checkbox].freeze
+
     has_rich_text :instructions
 
     # Fields are stored in the `options` JSON column as an array of hashes:

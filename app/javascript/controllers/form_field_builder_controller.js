@@ -2,6 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
   static targets = ["fieldList"]
+  static values = { fieldTypes: Array }
 
   connect() {
     this.fieldCount = this.fieldListTarget.children.length
@@ -50,8 +51,7 @@ export default class extends Controller {
     const select = document.createElement("select")
     select.name = "step[options][][field_type]"
     select.className = "form-select form-select--sm"
-    const types = ["text", "textarea", "number", "email", "phone", "select", "checkbox"]
-    types.forEach(t => {
+    this.fieldTypesValue.forEach(t => {
       const opt = document.createElement("option")
       opt.value = t
       opt.textContent = t.charAt(0).toUpperCase() + t.slice(1)
