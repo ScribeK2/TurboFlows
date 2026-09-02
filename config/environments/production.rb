@@ -80,6 +80,16 @@ Rails.application.configure do
 
   config.action_mailer.perform_caching = false
 
+  # Devise.mailer_sender is nil and was never set in the initializer, and unlike
+  # development and test this environment set no default From either. Devise's
+  # headers_for only omits its own nil sender when default_params[:from] exists
+  # (devise/mailers/helpers.rb:41), so every production email was built with no
+  # From address and raised on send. Set here rather than as config.mailer_sender
+  # so one place governs the sender for all mail, not just Devise's.
+  config.action_mailer.default_options = {
+    from: ENV.fetch("MAILER_FROM", "turboflows@#{ENV.fetch("APP_HOST", "localhost")}")
+  }
+
   # SMTP delivery — required for Devise password resets, account unlock, and email confirmation.
   # Set SMTP_ADDRESS to enable. Without it, mailer defaults to :sendmail (will fail silently
   # in most container environments).
@@ -126,6 +136,14 @@ Rails.application.configure do
   # Skip DNS rebinding protection for the default health check endpoint.
   config.hosts << "healthz"
 
-  # Default URL options for Devise
-  config.action_mailer.default_url_options = { host: ENV.fetch("HOST", "localhost") }
+  # Default URL options for Devise. These build the links inside password reset
+  # and unlock emails, so getting the host wrong sends users somewhere useless.
+  # Reads APP_HOST, the same variable config.hosts, the cable origins and the
+  # SMTP domain use — this line read HOST, which nothing else in the app sets,
+  # so a deployment configured the normal way mailed out http://localhost links.
+  # https matches force_ssl; an http link would only redirect.
+  config.action_mailer.default_url_options = {
+    host: ENV.fetch("APP_HOST", "localhost"),
+    protocol: ENV["DISABLE_SSL"] == "true" ? "http" : "https"
+  }
 end
