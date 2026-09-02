@@ -82,9 +82,49 @@ class ImportSchemaGeneratorTest < ActiveSupport::TestCase
                  "public/schemas is stale — run `bin/rails import_schema:generate`"
   end
 
+  # `options` means two different things depending on step type: answer
+  # choices on a question, field definitions on a form. Before this fix, both
+  # branches published the same shared `oneOf`, so an agent could write
+  # Form-shaped options on a Question step and validate cleanly. These three
+  # tests pin the two shapes apart, using a minimal structural check (below)
+  # rather than a real JSON Schema validator, since none is a project dependency.
+  test "question options reject a form-shaped hash and accept its own shape" do
+    item_schema = step_branch("question")["properties"]["options"]["items"]
+
+    assert_not schema_permits?(item_schema, { "name" => "phone", "label" => "Phone" }),
+               "question options accepted a form-shaped {name, label} hash"
+    assert schema_permits?(item_schema, { "label" => "Yes", "value" => "yes" })
+  end
+
+  test "form options reject a bare label/value hash and accept its own shape" do
+    item_schema = step_branch("form")["properties"]["options"]["items"]
+
+    assert_not schema_permits?(item_schema, { "label" => "Yes", "value" => "yes" }),
+               "form options accepted a bare question-shaped {label, value} hash"
+    assert schema_permits?(item_schema, { "name" => "phone", "label" => "Phone" })
+  end
+
+  test "question and form options schemas are not the same shape" do
+    assert_not_equal step_branch("question")["properties"]["options"],
+                     step_branch("form")["properties"]["options"]
+  end
+
   private
 
   def step_branch(type)
     @schema["$defs"]["step"]["oneOf"].find { |b| b["properties"]["type"]["const"] == type }
+  end
+
+  # Minimal object-schema check: required keys present, and — when
+  # additionalProperties is false — no keys outside the declared properties.
+  # Not a general JSON Schema validator, just enough to prove the two options
+  # branches genuinely reject each other's hash shape rather than merely
+  # differing in some property that neither shape's `required`/`additionalProperties`
+  # actually enforces.
+  def schema_permits?(item_schema, hash)
+    return false unless (item_schema.fetch("required", []) - hash.keys).empty?
+    return true unless item_schema["additionalProperties"] == false
+
+    (hash.keys - item_schema["properties"].keys).empty?
   end
 end

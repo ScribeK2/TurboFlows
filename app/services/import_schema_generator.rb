@@ -129,7 +129,7 @@ class ImportSchemaGenerator
     fields = StepFieldMap.plain_fields(type) - StepFieldMap::COMMON - EXCLUDED_FIELDS
     fields += StepFieldMap.rich_text_fields(type) - EXCLUDED_FIELDS
 
-    fields.index_with { |field| property_for(field) }
+    fields.index_with { |field| property_for(field, type) }
           .transform_keys { |field| StepFieldMap.wire_key(field).to_s }
           .except(*EXCLUDED_WIRE_KEYS)
           .merge(sub_flow_properties(type))
@@ -148,11 +148,11 @@ class ImportSchemaGenerator
     { "target_workflow_title" => { "type" => "string", "minLength" => 1 } }
   end
 
-  def property_for(field)
+  def property_for(field, type)
     return { "type" => "string", "enum" => ENUMS[field].call } if ENUMS.key?(field)
 
     case field
-    when :options then options_property
+    when :options then options_property(type)
     when :variable_mapping then { "type" => "object" }
     when :can_resolve, :reason_required, :notes_required, :survey_trigger
       { "type" => "boolean" }
@@ -164,27 +164,47 @@ class ImportSchemaGenerator
     end
   end
 
-  # `options` means two different things: answer choices on question, and field
-  # definitions on form.
-  def options_property
+  # `options` means two different things depending on step type: answer choices
+  # on a question, field definitions on a form. Each branch publishes its own
+  # shape, with no `oneOf` — a single shared shape let an agent write
+  # Form-shaped options on a Question step (or the reverse) and validate
+  # cleanly, which defeats the point of validating against this schema at all.
+  def options_property(type)
+    case type
+    when "question" then question_options_property
+    when "form" then form_options_property
+    end
+  end
+
+  def question_options_property
     {
       "type" => "array",
       "items" => {
-        "oneOf" => [
-          { "type" => "object", "additionalProperties" => false,
-            "required" => %w[label value],
-            "properties" => { "label" => { "type" => "string" },
-                              "value" => { "type" => "string" } } },
-          { "type" => "object", "additionalProperties" => false,
-            "required" => %w[name label],
-            "properties" => {
-              "name" => { "type" => "string" },
-              "label" => { "type" => "string" },
-              "field_type" => { "type" => "string", "enum" => Steps::Form::VALID_FIELD_TYPES },
-              "required" => { "type" => "boolean" },
-              "position" => { "type" => "integer" }
-            } }
-        ]
+        "type" => "object",
+        "additionalProperties" => false,
+        "required" => %w[label value],
+        "properties" => {
+          "label" => { "type" => "string" },
+          "value" => { "type" => "string" }
+        }
+      }
+    }
+  end
+
+  def form_options_property
+    {
+      "type" => "array",
+      "items" => {
+        "type" => "object",
+        "additionalProperties" => false,
+        "required" => %w[name label],
+        "properties" => {
+          "name" => { "type" => "string" },
+          "label" => { "type" => "string" },
+          "field_type" => { "type" => "string", "enum" => Steps::Form::VALID_FIELD_TYPES },
+          "required" => { "type" => "boolean" },
+          "position" => { "type" => "integer" }
+        }
       }
     }
   end

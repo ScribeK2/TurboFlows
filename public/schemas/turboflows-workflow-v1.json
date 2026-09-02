@@ -123,58 +123,20 @@
             "options": {
               "type": "array",
               "items": {
-                "oneOf": [
-                  {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "label",
-                      "value"
-                    ],
-                    "properties": {
-                      "label": {
-                        "type": "string"
-                      },
-                      "value": {
-                        "type": "string"
-                      }
-                    }
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "label",
+                  "value"
+                ],
+                "properties": {
+                  "label": {
+                    "type": "string"
                   },
-                  {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "name",
-                      "label"
-                    ],
-                    "properties": {
-                      "name": {
-                        "type": "string"
-                      },
-                      "label": {
-                        "type": "string"
-                      },
-                      "field_type": {
-                        "type": "string",
-                        "enum": [
-                          "text",
-                          "textarea",
-                          "number",
-                          "email",
-                          "phone",
-                          "select",
-                          "checkbox"
-                        ]
-                      },
-                      "required": {
-                        "type": "boolean"
-                      },
-                      "position": {
-                        "type": "integer"
-                      }
-                    }
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               }
             },
             "can_resolve": {
@@ -486,58 +448,38 @@
             "options": {
               "type": "array",
               "items": {
-                "oneOf": [
-                  {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "label",
-                      "value"
-                    ],
-                    "properties": {
-                      "label": {
-                        "type": "string"
-                      },
-                      "value": {
-                        "type": "string"
-                      }
-                    }
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "label"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
                   },
-                  {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "name",
-                      "label"
-                    ],
-                    "properties": {
-                      "name": {
-                        "type": "string"
-                      },
-                      "label": {
-                        "type": "string"
-                      },
-                      "field_type": {
-                        "type": "string",
-                        "enum": [
-                          "text",
-                          "textarea",
-                          "number",
-                          "email",
-                          "phone",
-                          "select",
-                          "checkbox"
-                        ]
-                      },
-                      "required": {
-                        "type": "boolean"
-                      },
-                      "position": {
-                        "type": "integer"
-                      }
-                    }
+                  "label": {
+                    "type": "string"
+                  },
+                  "field_type": {
+                    "type": "string",
+                    "enum": [
+                      "text",
+                      "textarea",
+                      "number",
+                      "email",
+                      "phone",
+                      "select",
+                      "checkbox"
+                    ]
+                  },
+                  "required": {
+                    "type": "boolean"
+                  },
+                  "position": {
+                    "type": "integer"
                   }
-                ]
+                }
               }
             },
             "instructions": {
