@@ -41,7 +41,7 @@ class StepFieldMapTest < ActionDispatch::IntegrationTest
     notes_required: true,
     survey_trigger: true,
     variable_mapping: { "outer" => "inner" },
-    instructions: "Follow these steps",
+    instructions: "<p>Call <strong>Billing</strong>.</p>",
     content: "Read this to the customer",
     notes: "Escalation notes",
     description: "Custom resolve description"
@@ -111,7 +111,7 @@ class StepFieldMapTest < ActionDispatch::IntegrationTest
       end
 
       StepFieldMap.rich_text_fields(type).each do |field|
-        assert_equal VALUES.fetch(field), step.public_send(field).to_plain_text.strip,
+        assert_equal VALUES.fetch(field), step.public_send(field).body.to_html,
                      "#{context}: #{type}##{field} (rich text) did not survive"
       end
     end
@@ -166,7 +166,7 @@ class StepFieldMapTest < ActionDispatch::IntegrationTest
       payload.each_key do |field|
         expected = field == :sub_flow_workflow_id ? @target_wf.id : VALUES.fetch(field)
         actual = if StepFieldMap.rich_text_fields(type).include?(field)
-                   step.public_send(field).to_plain_text.strip
+                   step.public_send(field).body.to_html
                  else
                    step.public_send(field)
                  end

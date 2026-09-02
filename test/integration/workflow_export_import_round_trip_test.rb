@@ -84,14 +84,27 @@ class WorkflowExportImportRoundTripTest < ActionDispatch::IntegrationTest
     result.workflow
   end
 
-  # Step UUIDs and timestamps legitimately differ between the two documents;
-  # everything else — including title, which round-trips identically — must
-  # match exactly.
+  # Step UUIDs can't be relied on literally either way: the importer preserves
+  # an explicit id verbatim (uniqueness is scoped to workflow_id, so the same
+  # string is fine in a different workflow) and mints a fresh one only when a
+  # step arrives with none — so two documents may carry identical ids or
+  # different ones, depending on what the source provided. Dropping them
+  # outright would leave transition topology unchecked, and a regression that
+  # wired every transition to the wrong target would pass silently. Instead,
+  # map each uuid to the index of the step it names (steps are exported in a
+  # stable position order) and compare indices, so topology survives the
+  # comparison while the literal id values — stable or not — do not.
   def normalize(document)
-    doc = document.except("exported_at", "start_node_uuid")
-    doc["steps"] = doc["steps"].map do |step|
+    doc = document.except("exported_at")
+    steps = doc["steps"]
+    index_by_uuid = steps.each_with_index.to_h { |step, i| [step["id"], i] }
+
+    doc["start_node_uuid"] = index_by_uuid.fetch(doc["start_node_uuid"], nil)
+    doc["steps"] = steps.map do |step|
       step.except("id").merge(
-        "transitions" => Array(step["transitions"]).map { |t| t.except("target_uuid") }
+        "transitions" => Array(step["transitions"]).map do |t|
+          t.merge("target_uuid" => index_by_uuid.fetch(t["target_uuid"], nil))
+        end
       )
     end
     doc

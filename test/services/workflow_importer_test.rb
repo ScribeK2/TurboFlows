@@ -66,6 +66,27 @@ class WorkflowImporterTest < ActiveSupport::TestCase
     end
   end
 
+  test "imported workflows still never expire after being edited" do
+    json_data = {
+      title: "Never Expires",
+      steps: [
+        { id: "a", type: "action", title: "First", instructions: "Do a thing",
+          transitions: [{ target_uuid: "z" }] },
+        { id: "z", type: "resolve", title: "Done", resolution_type: "success" }
+      ]
+    }.to_json
+
+    result = WorkflowImporter.new(@user, format: :json, content: json_data).call
+    assert_predicate result, :success?
+
+    result.workflow.update!(title: "Edited")
+
+    travel_to(8.days.from_now) do
+      assert_nil result.workflow.reload.draft_expires_at
+      assert_not_includes Workflow.expired_drafts, result.workflow
+    end
+  end
+
   # An escalate step with no priority is the documented default shape, and it
   # failed the entire import: "Validation failed: Priority is not included in
   # the list". Not the step — the workflow. Every format is covered because the

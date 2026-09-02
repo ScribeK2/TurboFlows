@@ -20,8 +20,12 @@ class Workflow < ApplicationRecord
   has_many :scenarios, dependent: :destroy
   has_many :user_workflow_pins, dependent: :destroy
 
-  # Set draft expiration before save (7 days from creation or update)
-  before_save :set_draft_expiration, if: :draft?
+  # Set draft expiration before save (7 days from creation or update).
+  # A nil draft_expires_at means "never expires" and must stay nil: an import
+  # nulls the column once (WorkflowImporter#call) precisely so this callback
+  # will not re-stamp it on the next edit. New drafts and existing drafts that
+  # already carry a TTL still get stamped/refreshed as before.
+  before_save :set_draft_expiration, if: -> { draft? && (new_record? || draft_expires_at.present?) }
   # Assign to Uncategorized group if no groups assigned (only for published workflows)
   after_create :assign_to_uncategorized_if_needed, if: :published?
   # ActiveRecord step associations (parallel to JSONB during migration)

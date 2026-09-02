@@ -566,6 +566,7 @@ class WorkflowTest < ActiveSupport::TestCase
       assert_equal "draft", workflow.status
       assert_equal "Untitled Workflow", workflow.title
       assert_predicate workflow.graph_mode?, :present?
+      assert_not_nil workflow.draft_expires_at
     end
   end
 
