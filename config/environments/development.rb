@@ -69,9 +69,6 @@ Rails.application.configure do
     from: 'development@example.com'
   }
 
-  # Development-only: Skip email for password resets and show token directly
-  config.x.admin_password_reset_bypass_email = true
-
   # ==========================================================================
   # Bullet Configuration - N+1 Query Detection
   # ==========================================================================
