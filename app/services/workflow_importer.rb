@@ -64,14 +64,16 @@ class WorkflowImporter
       # touch: true), and reload has to be the last write-absorbing step.
       placement.apply!(workflow)
 
-      # `set_draft_expiration` is an unconditional `before_save` (`if: :draft?`)
-      # that stamps a 7-day TTL on every draft save, including the one above,
-      # and `CleanupDraftsJob` destroys anything past it with no check on title
-      # or step count. An import is a real workflow, not an abandoned draft, so
-      # it must carry no expiry — but nothing short of bypassing the callback
-      # achieves that, since any `#save` re-triggers it. `update_column`/
-      # `update_columns` are off-limits here, but `update_all` is the same
-      # bypass at the relation level and is already how this codebase skips
+      # `set_draft_expiration` runs `before_save, if: -> { draft? && (new_record?
+      # || draft_expires_at.present?) }` (see Workflow), so it still stamps a
+      # 7-day TTL on the `workflow.save` above — this is a new record — and
+      # `CleanupDraftsJob` destroys anything past it with no check on title or
+      # step count. An import is a real workflow, not an abandoned draft, so it
+      # must carry no expiry. The guard means a later save won't re-stamp it
+      # once `draft_expires_at` is nil, but this first save already ran the
+      # callback and set it, so the row needs to be cleared once here — and
+      # `update_column`/`update_columns` are off-limits, but `update_all` is the
+      # same bypass at the relation level and is already how this codebase skips
       # callbacks for a deliberate column write (`Step::Positionable.insert_at`,
       # `HealthFixesController#add_resolve_after`). An in-memory
       # `draft_expires_at = nil` alone wouldn't hold: it never reaches the row,

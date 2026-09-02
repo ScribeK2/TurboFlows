@@ -48,6 +48,17 @@ class WorkflowExportImportRoundTripTest < ActionDispatch::IntegrationTest
     get workflow_export_path(workflow)
     first_export = response.parsed_body
 
+    # The comparison below only proves the two exports agree with each other,
+    # not that either is correct: a corruption the importer applies the same
+    # way on both passes (e.g. every transition wired to the first step) would
+    # still satisfy it. Anchor to the fixture's known-correct topology directly
+    # — ask(0) branches to act(1) on billing and to done(2) otherwise, act(1)
+    # falls through to done(2), and done(2) is terminal — so that kind of bug
+    # fails here even though it can't fail the round-trip comparison.
+    topo = normalize(first_export)["steps"].map { |s| s["transitions"].map { |t| t["target_uuid"] } }
+    assert_equal [[1, 2], [2], []], topo
+    assert_equal 0, normalize(first_export)["start_node_uuid"]
+
     reimported = WorkflowImporter.new(@user, format: :json, content: response.body).call
     assert_predicate reimported, :success?
 
