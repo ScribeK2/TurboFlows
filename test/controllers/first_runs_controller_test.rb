@@ -18,6 +18,28 @@ class FirstRunsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='user[password_confirmation]']"
   end
 
+  # The hint has to be the real number. Devise 5 declares the length validator
+  # as `minimum: proc { password_length.min }`, so reading the validator options
+  # yields a Proc that renders as "#<Proc:0x...> characters minimum".
+  test "GET new shows the real minimum password length, not a Proc" do
+    get new_first_run_path
+
+    assert_equal 12, User.password_length.min, "initializer sets config.password_length = 12..128"
+    assert_select ".form-hint", text: "#{User.password_length.min} characters minimum"
+    assert_no_match(/#<Proc/, response.body)
+  end
+
+  # create re-renders :new on failure, so it needs the hint set too.
+  test "POST create re-render shows the real minimum password length" do
+    post first_run_path, params: {
+      user: { email: "admin@example.com", password: "short", password_confirmation: "short" }
+    }
+
+    assert_response :unprocessable_content
+    assert_select ".form-hint", text: "#{User.password_length.min} characters minimum"
+    assert_no_match(/#<Proc/, response.body)
+  end
+
   # -- GET /first_run (users exist) --
 
   test "GET new redirects to root when users exist" do

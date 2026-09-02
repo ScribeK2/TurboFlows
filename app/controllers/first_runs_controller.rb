@@ -1,13 +1,11 @@
 class FirstRunsController < ApplicationController
   skip_before_action :authenticate_user!
   before_action :prevent_repeats
+  before_action :set_minimum_password_length
   layout "devise"
 
   def new
     @user = User.new
-    @minimum_password_length = User.validators_on(:password)
-                                   .detect { |v| v.is_a?(ActiveModel::Validations::LengthValidator) }
-                                   &.options&.dig(:minimum) || 6
   end
 
   def create
@@ -22,6 +20,16 @@ class FirstRunsController < ApplicationController
   end
 
   private
+
+  # Mirrors DeviseController#set_minimum_password_length. Devise 5 declares the
+  # length validator as `minimum: proc { password_length.min }` (validatable.rb:39),
+  # so reading the validator's options gives back the Proc itself, not a number —
+  # truthy, so an `|| 6` fallback never fires and the view renders the Proc. Ask
+  # Devise's own config accessor instead; it is what that proc calls anyway.
+  # Runs for create too, so the re-render after a failed submit still has a number.
+  def set_minimum_password_length
+    @minimum_password_length = User.password_length.min
+  end
 
   def prevent_repeats
     redirect_to root_path if User.exists?
