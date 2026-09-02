@@ -623,7 +623,21 @@ class WorkflowTest < ActiveSupport::TestCase
     end
   end
 
-  test "cleanup_expired_drafts handles drafts with steps and associations" do
+  # A draft with steps is somebody's work in progress. Step edits do not touch the
+  # workflow row -- `Step belongs_to :workflow, counter_cache:` has no `touch:` --
+  # so `set_draft_expiration` never refreshes the TTL while a user builds out a
+  # graph. Before this scope was gated, a workflow renamed on day one and built
+  # out over the next fortnight was destroyed on day eight, steps and all. The
+  # previous version of this test asserted exactly that destruction as correct.
+  test "expired_drafts excludes drafts that have steps" do
+    draft = Workflow.create!(title: "Draft With Steps", user: @user, status: "draft")
+    Steps::Resolve.create!(workflow: draft, position: 0, title: "Done", resolution_type: "success")
+    draft.update_columns(draft_expires_at: 1.day.ago)
+
+    assert_not_includes Workflow.expired_drafts, draft
+  end
+
+  test "cleanup_expired_drafts leaves a draft with steps alone" do
     draft = Workflow.create!(title: "Draft With Steps", user: @user, status: "draft")
     q = Steps::Question.create!(workflow: draft, position: 0, title: "Q1", question: "What?")
     r = Steps::Resolve.create!(workflow: draft, position: 1, title: "Done", resolution_type: "success")
@@ -631,14 +645,27 @@ class WorkflowTest < ActiveSupport::TestCase
     draft.update!(start_step_id: q.id)
     draft.update_columns(draft_expires_at: 1.day.ago)
 
+    assert_no_difference("Workflow.count") do
+      assert_equal 0, Workflow.cleanup_expired_drafts
+    end
+
+    assert Workflow.exists?(draft.id)
+    assert Step.exists?(q.id)
+    assert Step.exists?(r.id)
+  end
+
+  # The scope still has a job: an empty draft that was given a title never
+  # matches `orphaned_drafts` (which requires the title "Untitled Workflow"), so
+  # without this it would linger forever.
+  test "cleanup_expired_drafts destroys an expired draft with no steps" do
+    draft = Workflow.create!(title: "Named But Empty", user: @user, status: "draft")
+    draft.update_columns(draft_expires_at: 1.day.ago)
+
     assert_difference("Workflow.count", -1) do
-      count = Workflow.cleanup_expired_drafts
-      assert_equal 1, count
+      assert_equal 1, Workflow.cleanup_expired_drafts
     end
 
     assert_not Workflow.exists?(draft.id)
-    assert_not Step.exists?(q.id)
-    assert_not Step.exists?(r.id)
   end
 
   test "can_resolve persists through update on AR step" do

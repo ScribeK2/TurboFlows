@@ -234,7 +234,7 @@ unexpected `answer_type` rendered radio cards with no way to submit.
 - Drag-and-drop: SortableJS
 - No multi-tenancy (single install/org), but strong group-based access
 - Background jobs: Solid Queue (in-process via Puma plugin, `config/recurring.yml` for schedules)
-- Data lifecycle: tiered scenario retention (7-day simulation, 90-day live), batched cleanup via `CleanupScenariosJob` + `CleanupDraftsJob` (daily at 3 AM), admin visibility at `/admin/data_health`
+- Data lifecycle: tiered scenario retention (7-day simulation, 90-day live), batched cleanup via `CleanupScenariosJob` + `CleanupDraftsJob` (daily at 3 AM), admin visibility at `/admin/data_health`. **A draft with steps is never auto-deleted** — both draft-cleanup scopes require the workflow to have none. `orphaned_drafts` also requires the title `"Untitled Workflow"` and 24 hours; `expired_drafts` requires a `draft_expires_at` in the past. Imports carry a nil TTL, so they match neither
 - Security: Rack::Attack, Bullet (N+1), Brakeman
 
 ## UI Guide

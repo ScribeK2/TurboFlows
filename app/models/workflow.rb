@@ -69,7 +69,20 @@ class Workflow < ApplicationRecord
 
   # Draft workflow scopes
   scope :drafts, -> { draft }
-  scope :expired_drafts, -> { draft.where(draft_expires_at: ...Time.current) }
+  # Past its TTL *and* empty. The emptiness gate is not a refinement -- without it
+  # this scope destroys real work: step edits never touch the workflow row
+  # (`Step belongs_to :workflow, counter_cache:` carries no `touch:`), so
+  # `set_draft_expiration` stops refreshing the TTL the moment a user stops
+  # renaming the workflow, while they carry on building its graph. The sibling
+  # `orphaned_drafts` gates on title AND emptiness; this one gated on neither.
+  #
+  # Emptiness is read from `steps` rather than the `steps_count` counter cache on
+  # purpose: a drifted cache reading 0 would delete a workflow that has steps, and
+  # a destructive scope should read the truth rather than a denormalisation of it.
+  scope :expired_drafts, lambda {
+    draft.where(draft_expires_at: ...Time.current)
+         .where.not(id: Step.select(:workflow_id).distinct)
+  }
   scope :orphaned_drafts, lambda {
     draft.where(title: "Untitled Workflow")
          .where(created_at: ...24.hours.ago)
