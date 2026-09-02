@@ -42,8 +42,20 @@ Rails.application.configure do
     ]
   end
 
+  # When TLS is terminated by a load balancer or reverse proxy that does not
+  # forward X-Forwarded-Proto, Rails sees a plain http request while the browser
+  # is on https. load_defaults 8.1 enables forgery_protection_origin_check, which
+  # then compares "http://host" against the browser's "https://host" Origin
+  # header, rejects the mismatch as InvalidAuthenticityToken, and every form POST
+  # returns 422 — including first-run setup and sign-in. Set ASSUME_SSL=true to
+  # tell Rails the original scheme was https. Forwarding X-Forwarded-Proto: https
+  # from the proxy fixes it equally well and is preferred where you control the proxy.
+  config.assume_ssl = ENV["ASSUME_SSL"] == "true"
+
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
-  # Set DISABLE_SSL=true when TLS is terminated by a load balancer or during initial staging setup.
+  # Set DISABLE_SSL=true only when the app is genuinely served over plain http.
+  # Behind a TLS-terminating proxy, leave this on and set ASSUME_SSL=true instead —
+  # disabling SSL there gives up secure cookies and HSTS without fixing the 422 above.
   config.force_ssl = ENV["DISABLE_SSL"] != "true"
 
   # Include generic and useful information about system operation, but avoid logging too much
