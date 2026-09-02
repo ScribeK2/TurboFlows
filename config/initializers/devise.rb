@@ -16,7 +16,9 @@ Devise.setup do |config|
 
   # ==> Mailer Configuration
   # Configure the class responsible to send e-mails.
-  config.mailer = 'Devise::Mailer'
+  # Subclass rather than Devise::Mailer itself so the administrator's runtime
+  # SMTP settings are applied per message. See app/mailers/runtime_smtp_delivery.rb.
+  config.mailer = 'TurboFlowsDeviseMailer'
 
   # Configure the parent class responsible to send e-mails.
   config.parent_mailer = 'ActionMailer::Base'

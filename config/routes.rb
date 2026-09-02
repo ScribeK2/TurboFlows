@@ -97,6 +97,9 @@ Rails.application.routes.draw do
         post :reset_password
       end
     end
+    resource :smtp_setting, only: %i[show update], path: "email" do
+      post :test_delivery
+    end
     resources :workflows, only: %i[index show destroy]
     resources :groups do
       patch 'folders/reorder', to: 'folders#reorder', as: :reorder_folders

@@ -1,0 +1,156 @@
+<div class="page-content">
+  <div class="page-main">
+    <div class="page-header-section">
+      <div>
+        <%= link_to admin_root_path, class: "page-back" do %>
+          <%= icon "chevron-left", class: "icon icon--xs" %>
+          Back to Dashboard
+        <% end %>
+        <h1 class="page-header-section__title">Email</h1>
+        <p class="page-header-section__subtitle">
+          The relay TurboFlows sends password resets and account unlock messages through.
+        </p>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card__body">
+        <h2 class="font-semibold mb-1" style="font-size: var(--text-lg);">Current source</h2>
+        <p class="text-sm" style="color: var(--color-ink-muted);">
+          <% if SmtpSetting.active %>
+            Mail is being sent using the settings below.
+          <% else %>
+            These settings are not in use. Mail falls back to whatever
+            <code>SMTP_ADDRESS</code> and friends are set to in the environment,
+            and is not sent at all if those are unset.
+          <% end %>
+        </p>
+      </div>
+    </div>
+
+    <%= form_with model: @smtp_setting, url: admin_smtp_setting_path, method: :patch do |f| %>
+      <div class="card mb-4">
+        <div class="card__body">
+          <% if @smtp_setting.errors.any? %>
+            <div class="form-error mb-4" role="alert">
+              <strong><%= pluralize(@smtp_setting.errors.count, "error") %> prevented these settings from being saved:</strong>
+              <ul class="form-error__list">
+                <% @smtp_setting.errors.full_messages.each do |message| %>
+                  <li><%= message %></li>
+                <% end %>
+              </ul>
+            </div>
+          <% end %>
+
+          <h2 class="font-semibold mb-3" style="font-size: var(--text-lg);">Server</h2>
+
+          <div class="form-group">
+            <%= f.label :address, "Host", class: "form-label" %>
+            <%= f.text_field :address, class: "form-input#{' is-invalid' if @smtp_setting.errors[:address].any?}",
+                placeholder: "smtp.example.com", autocomplete: "off" %>
+            <span class="form-hint">The relay's hostname. Required before these settings can be enabled.</span>
+          </div>
+
+          <div class="form-group">
+            <%= f.label :port, class: "form-label" %>
+            <%= f.number_field :port, class: "form-input#{' is-invalid' if @smtp_setting.errors[:port].any?}",
+                min: 1, max: 65535 %>
+            <span class="form-hint">587 for STARTTLS, 465 for implicit TLS, 25 for an unauthenticated internal relay.</span>
+          </div>
+
+          <div class="form-group">
+            <%= f.label :domain, "HELO domain", class: "form-label" %>
+            <%= f.text_field :domain, class: "form-input", placeholder: "example.com", autocomplete: "off" %>
+            <span class="form-hint">Optional. Defaults to the host above.</span>
+          </div>
+
+          <div class="form-group">
+            <%= f.label :enable_starttls, "Encryption", class: "form-label" %>
+            <div class="flex items-center gap-2">
+              <%= f.check_box :enable_starttls, class: "form-checkbox" %>
+              <span class="text-sm">Upgrade the connection with STARTTLS</span>
+            </div>
+            <span class="form-hint">Turn off for an internal relay that speaks plain SMTP on port 25.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-4">
+        <div class="card__body">
+          <h2 class="font-semibold mb-3" style="font-size: var(--text-lg);">Credentials</h2>
+
+          <div class="form-group">
+            <%= f.label :authentication, class: "form-label" %>
+            <%= f.select :authentication,
+                  options_for_select(SmtpSetting::AUTHENTICATION_METHODS.map { |m| [m == "none" ? "None" : m, m] },
+                                     @smtp_setting.authentication),
+                  {}, { class: "form-select" } %>
+            <span class="form-hint">Choose None for a relay that accepts mail without a login.</span>
+          </div>
+
+          <div class="form-group">
+            <%= f.label :user_name, "Username", class: "form-label" %>
+            <%= f.text_field :user_name, class: "form-input#{' is-invalid' if @smtp_setting.errors[:user_name].any?}",
+                autocomplete: "off" %>
+          </div>
+
+          <div class="form-group">
+            <%= f.label :password, class: "form-label" %>
+            <%= f.password_field :password, class: "form-input", value: nil,
+                autocomplete: "new-password", placeholder: @smtp_setting.password.present? ? "••••••••" : "" %>
+            <span class="form-hint">
+              <% if @smtp_setting.password.present? %>
+                A password is stored. Leave blank to keep it; type a new one to replace it.
+              <% else %>
+                Stored encrypted. It is never shown again after saving.
+              <% end %>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-4">
+        <div class="card__body">
+          <h2 class="font-semibold mb-3" style="font-size: var(--text-lg);">Delivery</h2>
+
+          <div class="form-group">
+            <%= f.label :from_address, "From address", class: "form-label" %>
+            <%= f.email_field :from_address, class: "form-input#{' is-invalid' if @smtp_setting.errors[:from_address].any?}",
+                placeholder: "turboflows@example.com", autocomplete: "off" %>
+            <span class="form-hint">Optional. Overrides the MAILER_FROM environment variable on outgoing mail.</span>
+          </div>
+
+          <div class="form-group">
+            <%= f.label :enabled, "Use these settings", class: "form-label" %>
+            <div class="flex items-center gap-2">
+              <%= f.check_box :enabled, class: "form-checkbox" %>
+              <span class="text-sm">Send mail through this server instead of the environment configuration</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 mb-4">
+        <%= f.submit "Save settings", class: "btn btn--primary" %>
+      </div>
+    <% end %>
+
+    <div class="card">
+      <div class="card__body">
+        <h2 class="font-semibold mb-1" style="font-size: var(--text-lg);">Send a test message</h2>
+        <p class="text-sm mb-3" style="color: var(--color-ink-muted);">
+          Delivers one message through the saved settings and reports what the relay said.
+          Save first — the test uses what is stored, not what is typed above.
+        </p>
+        <%= form_with url: test_delivery_admin_smtp_setting_path, method: :post,
+              class: "flex items-end gap-3" do %>
+          <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <%= label_tag :recipient, "Send to", class: "form-label" %>
+            <%= email_field_tag :recipient, current_user.email, class: "form-input" %>
+          </div>
+          <%= submit_tag "Send test", class: "btn btn--secondary" %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
