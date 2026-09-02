@@ -30,30 +30,89 @@ class GraphValidatorTest < ActiveSupport::TestCase
     assert_predicate validator, :valid?, "Expected valid graph, got errors: #{validator.errors.join(', ')}"
   end
 
-  test "detects simple cycle" do
+  # Was "detects simple cycle": a bare two-step mutual cycle was refused
+  # outright. Under the escapability rule a plain cycle is legal on its own —
+  # what matters is whether it can reach a Resolve — so this fixture now gives
+  # the cycle an exit and asserts the graph is valid. The refusal case this
+  # protected (a cycle that cannot escape) is covered by the closed-loop tests
+  # below.
+  test "a simple two-step cycle with an exit is valid" do
     steps = {
-      'a' => { 'id' => 'a', 'title' => 'Start', 'type' => 'question', 'transitions' => [{ 'target_uuid' => 'b' }] },
-      'b' => { 'id' => 'b', 'title' => 'Middle', 'type' => 'action', 'transitions' => [{ 'target_uuid' => 'a' }] }
+      'a' => { 'id' => 'a', 'title' => 'Start', 'type' => 'question', 'transitions' => [
+        { 'target_uuid' => 'b' },
+        { 'target_uuid' => 'done' }
+      ] },
+      'b' => { 'id' => 'b', 'title' => 'Middle', 'type' => 'action', 'transitions' => [{ 'target_uuid' => 'a' }] },
+      'done' => { 'id' => 'done', 'title' => 'End', 'type' => 'resolve', 'transitions' => [] }
     }
 
     validator = GraphValidator.new(steps, 'a')
 
-    assert_not validator.valid?
-    assert validator.errors.any? { |e| e.include?('Cycle') }, "Expected cycle detection error"
+    assert_predicate validator, :valid?, validator.errors.inspect
   end
 
-  test "detects complex cycle" do
+  # Was "detects complex cycle": a longer cycle (b -> c -> d -> b) was refused
+  # outright. Reshaped the same way as the simple-cycle test above, but with a
+  # multi-node cycle, to exercise escapable_uuids' reverse BFS over more than
+  # one hop back to the frontier.
+  test "a longer cycle with an exit is valid" do
     steps = {
       'a' => { 'id' => 'a', 'title' => 'Start', 'type' => 'question', 'transitions' => [{ 'target_uuid' => 'b' }] },
-      'b' => { 'id' => 'b', 'title' => 'Step B', 'type' => 'action', 'transitions' => [{ 'target_uuid' => 'c' }] },
+      'b' => { 'id' => 'b', 'title' => 'Step B', 'type' => 'action', 'transitions' => [
+        { 'target_uuid' => 'c' },
+        { 'target_uuid' => 'done' }
+      ] },
       'c' => { 'id' => 'c', 'title' => 'Step C', 'type' => 'action', 'transitions' => [{ 'target_uuid' => 'd' }] },
-      'd' => { 'id' => 'd', 'title' => 'Step D', 'type' => 'action', 'transitions' => [{ 'target_uuid' => 'b' }] }
+      'd' => { 'id' => 'd', 'title' => 'Step D', 'type' => 'action', 'transitions' => [{ 'target_uuid' => 'b' }] },
+      'done' => { 'id' => 'done', 'title' => 'End', 'type' => 'resolve', 'transitions' => [] }
+    }
+
+    validator = GraphValidator.new(steps, 'a')
+
+    assert_predicate validator, :valid?, validator.errors.inspect
+  end
+
+  test "a retry loop with an exit is valid" do
+    steps = {
+      'ask' => { 'id' => 'ask', 'title' => 'Fixed?', 'type' => 'question',
+                 'transitions' => [{ 'target_uuid' => 'done' }, { 'target_uuid' => 'retry' }] },
+      'retry' => { 'id' => 'retry', 'title' => 'Try again', 'type' => 'action',
+                   'transitions' => [{ 'target_uuid' => 'ask' }] },
+      'done' => { 'id' => 'done', 'title' => 'Done', 'type' => 'resolve', 'transitions' => [] }
+    }
+
+    validator = GraphValidator.new(steps, 'ask')
+
+    assert_predicate validator, :valid?, validator.errors.inspect
+  end
+
+  test "a closed loop with no way out is refused" do
+    steps = {
+      'a' => { 'id' => 'a', 'title' => 'A', 'type' => 'action', 'transitions' => [{ 'target_uuid' => 'b' }] },
+      'b' => { 'id' => 'b', 'title' => 'B', 'type' => 'action', 'transitions' => [{ 'target_uuid' => 'a' }] },
+      'done' => { 'id' => 'done', 'title' => 'Done', 'type' => 'resolve', 'transitions' => [] }
     }
 
     validator = GraphValidator.new(steps, 'a')
 
     assert_not validator.valid?
-    assert(validator.errors.any? { |e| e.include?('Cycle') })
+    codes = validator.findings.map(&:code)
+    assert_includes codes, :no_path_to_resolve
+    assert_not_includes codes, :cycle_detected
+  end
+
+  test "a step whose only path leads into a closed loop is refused" do
+    steps = {
+      'start' => { 'id' => 'start', 'title' => 'Start', 'type' => 'action', 'transitions' => [{ 'target_uuid' => 'a' }] },
+      'a' => { 'id' => 'a', 'title' => 'A', 'type' => 'action', 'transitions' => [{ 'target_uuid' => 'b' }] },
+      'b' => { 'id' => 'b', 'title' => 'B', 'type' => 'action', 'transitions' => [{ 'target_uuid' => 'a' }] },
+      'done' => { 'id' => 'done', 'title' => 'Done', 'type' => 'resolve', 'transitions' => [] }
+    }
+
+    validator = GraphValidator.new(steps, 'start')
+
+    assert_not validator.valid?
+    assert_includes validator.findings.map(&:step_uuid), 'start'
   end
 
   test "detects invalid transition target" do
@@ -239,16 +298,22 @@ class GraphValidatorTest < ActiveSupport::TestCase
     assert_equal 'orphan', finding.step_uuid
   end
 
-  test "cycle_detected finding names a step in the cycle and carries the path" do
+  # Was "cycle_detected finding names a step in the cycle and carries the
+  # path": protected that a cycle finding names the right UUID even when every
+  # step in it shares a title, and that it carries the cycle's path in
+  # details. :cycle_detected and its details[:cycle_uuids] no longer exist —
+  # a closed loop is now reported per unescapable step via
+  # :no_path_to_resolve, with no path payload — so this asserts the surviving
+  # half of that guarantee: every step in the loop is named individually, not
+  # just "the cycle" as a whole, and duplicate titles cannot hide which one.
+  test "no_path_to_resolve findings name each step in a closed loop, not just one" do
     steps = duplicate_title_steps('a' => [{ 'target_uuid' => 'b' }], 'b' => [{ 'target_uuid' => 'a' }])
     validator = GraphValidator.new(steps, 'a')
     validator.valid?
 
-    finding = validator.findings.find { |f| f.code == :cycle_detected }
+    findings = validator.findings.select { |f| f.code == :no_path_to_resolve }
 
-    assert finding
-    assert_includes %w[a b], finding.step_uuid
-    assert_includes finding.details[:cycle_uuids], 'a'
+    assert_equal %w[a b], findings.map(&:step_uuid).sort
   end
 
   test "transition_target_missing finding names the source step and the missing target" do

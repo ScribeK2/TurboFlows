@@ -77,8 +77,8 @@ class WorkflowHealthCheck
 
   def classify_graph_finding(finding, issues)
     case finding.code
-    when :cycle_detected
-      # Attach to the first step in the cycle; the message names the whole path.
+    when :no_path_to_resolve
+      # Attach to the step itself; the message already says a loop needs a way out.
       add_issue(issues, finding.step_uuid, :error, finding.message, fixable: false)
 
     when :transition_target_missing
