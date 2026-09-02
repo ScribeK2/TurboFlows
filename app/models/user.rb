@@ -57,6 +57,10 @@ class User < ApplicationRecord
   # Keep ROLES for backward compatibility with any code referencing it
   ROLES = %w[admin editor user].freeze
 
+  # Devise notifications are queued, not delivered inline — see
+  # send_devise_notification below.
+  after_commit :send_pending_devise_notifications
+
   normalizes :display_name, with: ->(name) { name.strip }
   # Canonicalize to the Rails-friendly TimeZone name (e.g., "Pacific Time (US & Canada)")
   # so f.time_zone_select can pre-select the saved value. Accepts IANA names
@@ -161,5 +165,50 @@ class User < ApplicationRecord
     self.password_confirmation = temp_password
     save!(validate: false)
     temp_password
+  end
+
+  protected
+
+  # Devise delivers with deliver_now by default, inside the request. That put an
+  # SMTP round trip on three request paths — the forgot-password submit, a
+  # password change, and the fifth failed login, which locks the account and
+  # mails unlock instructions — so a slow or unreachable relay became a 500 on
+  # the page rather than an email that never arrived.
+  #
+  # A notification raised while the record still has unsaved changes is held and
+  # flushed from after_commit — Devise's documented pattern for deliver_later —
+  # so Solid Queue, which writes to its own database, never gets a job that
+  # loads the record before its changes land.
+  #
+  # Note what that does not cover. Inside an after_update, which is where
+  # send_password_change_notification fires, changed? is already false, so that
+  # one enqueues on the spot, inside the transaction. Rails 8.1 ships
+  # enqueue_after_transaction_commit false, so the job can in principle run
+  # before the commit; it only reloads the user to render "your password
+  # changed", so nothing reads the uncommitted value. Closing that window means
+  # enabling enqueue_after_transaction_commit for every job in the app.
+  def send_devise_notification(notification, *args)
+    if new_record? || changed?
+      pending_devise_notifications << [notification, args]
+    else
+      render_and_send_devise_message(notification, *args)
+    end
+  end
+
+  private
+
+  def send_pending_devise_notifications
+    pending_devise_notifications.each do |notification, args|
+      render_and_send_devise_message(notification, *args)
+    end
+    pending_devise_notifications.clear
+  end
+
+  def pending_devise_notifications
+    @pending_devise_notifications ||= []
+  end
+
+  def render_and_send_devise_message(notification, *)
+    devise_mailer.send(notification, self, *).deliver_later
   end
 end
