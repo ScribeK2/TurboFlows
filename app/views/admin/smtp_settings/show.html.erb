@@ -55,7 +55,7 @@
             <%= f.label :port, class: "form-label" %>
             <%= f.number_field :port, class: "form-input#{' is-invalid' if @smtp_setting.errors[:port].any?}",
                 min: 1, max: 65535 %>
-            <span class="form-hint">587 for STARTTLS, 465 for implicit TLS, 25 for an unauthenticated internal relay.</span>
+            <span class="form-hint">587 with STARTTLS, 465 with TLS/SSL, 25 for an unauthenticated internal relay. Must match the encryption setting below.</span>
           </div>
 
           <div class="form-group">
@@ -65,12 +65,17 @@
           </div>
 
           <div class="form-group">
-            <%= f.label :enable_starttls, "Encryption", class: "form-label" %>
-            <div class="flex items-center gap-2">
-              <%= f.check_box :enable_starttls, class: "form-checkbox" %>
-              <span class="text-sm">Upgrade the connection with STARTTLS</span>
-            </div>
-            <span class="form-hint">Turn off for an internal relay that speaks plain SMTP on port 25.</span>
+            <%= f.label :encryption, "Encryption", class: "form-label" %>
+            <%= f.select :encryption,
+                  options_for_select([["None (plain SMTP)", "none"],
+                                      ["STARTTLS (upgrade after connecting)", "starttls"],
+                                      ["TLS/SSL (encrypted from the start)", "tls"]],
+                                     @smtp_setting.encryption),
+                  {}, { class: "form-select#{' is-invalid' if @smtp_setting.errors[:encryption].any?}" } %>
+            <span class="form-hint">
+              These are different mechanisms, not degrees. Pick TLS/SSL for port 465,
+              STARTTLS for 587, None for an internal relay on 25.
+            </span>
           </div>
         </div>
       </div>

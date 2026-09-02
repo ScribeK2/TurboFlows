@@ -102,9 +102,17 @@ Rails.application.configure do
       domain:          ENV.fetch("SMTP_DOMAIN", ENV.fetch("APP_HOST", "localhost")),
       user_name:       ENV["SMTP_USERNAME"],
       password:        ENV["SMTP_PASSWORD"],
-      authentication:  ENV.fetch("SMTP_AUTHENTICATION", "plain"),
-      enable_starttls: ENV.fetch("SMTP_STARTTLS", "true") == "true"
+      authentication:  ENV.fetch("SMTP_AUTHENTICATION", "plain")
     }
+    # TLS and STARTTLS are separate mechanisms and the mail gem raises when both
+    # are set, so this picks one. SMTP_TLS=true is implicit TLS for port 465;
+    # otherwise STARTTLS, which stays on by default for port 587.
+    if ENV["SMTP_TLS"] == "true"
+      config.action_mailer.smtp_settings[:ssl] = true
+    else
+      config.action_mailer.smtp_settings[:enable_starttls] =
+        ENV.fetch("SMTP_STARTTLS", "true") == "true"
+    end
   end
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to

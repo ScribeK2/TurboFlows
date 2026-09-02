@@ -10,7 +10,7 @@ class RuntimeSmtpDeliveryTest < ActionMailer::TestCase
   def enable_relay(**overrides)
     SmtpSetting.create!({ address: "smtp.example.com", port: 2525, domain: "example.com",
                           authentication: "plain", user_name: "mailer", password: "s3cret",
-                          enable_starttls: true, enabled: true }.merge(overrides))
+                          encryption: "starttls", enabled: true }.merge(overrides))
   end
 
   def devise_message

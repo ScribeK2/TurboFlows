@@ -12,7 +12,7 @@ class Admin::SmtpSettingsControllerTest < ActionDispatch::IntegrationTest
   def valid_params(**overrides)
     { smtp_setting: { address: "smtp.example.com", port: 587, domain: "example.com",
                       authentication: "plain", user_name: "mailer", password: "s3cret",
-                      enable_starttls: "1", from_address: "turboflows@example.com",
+                      encryption: "starttls", from_address: "turboflows@example.com",
                       enabled: "1" }.merge(overrides) }
   end
 
@@ -130,7 +130,7 @@ class Admin::SmtpSettingsControllerTest < ActionDispatch::IntegrationTest
   test "a failing relay reports back instead of erroring" do
     sign_in @admin
     SmtpSetting.create!(address: "127.0.0.1", port: 1, authentication: "none",
-                        enable_starttls: false, enabled: true)
+                        encryption: "none", enabled: true)
 
     post test_delivery_admin_smtp_setting_path, params: { recipient: "ops@example.com" }
 

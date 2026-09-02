@@ -5,7 +5,8 @@ class SmtpSettingTest < ActiveSupport::TestCase
 
   def build(**overrides)
     SmtpSetting.new({ address: "smtp.example.com", port: 587, authentication: "plain",
-                      user_name: "mailer", password: "s3cret", enabled: true }.merge(overrides))
+                      user_name: "mailer", password: "s3cret", encryption: "starttls",
+                      enabled: true }.merge(overrides))
   end
 
   # -- validation --
@@ -85,16 +86,45 @@ class SmtpSettingTest < ActiveSupport::TestCase
     assert_equal "plain", options[:authentication]
     assert_equal "mailer", options[:user_name]
     assert_equal "s3cret", options[:password]
-    assert options[:enable_starttls]
   end
 
   test "delivery options omit credentials for a no-auth relay" do
     options = build(authentication: "none", user_name: nil, password: nil,
-                    enable_starttls: false, port: 25).delivery_options
+                    encryption: "none", port: 25).delivery_options
 
     assert_nil options[:authentication]
     assert_not options.key?(:user_name)
     assert_not options.key?(:password)
+  end
+
+  # TLS and STARTTLS are separate mechanisms and the mail gem raises when both
+  # are set. Emitting both keys is the bug that made a port 465 relay time out,
+  # so each mode is pinned to the exact key it produces.
+
+  test "implicit TLS emits tls and never a starttls key" do
+    options = build(encryption: "tls", port: 465).delivery_options
+
+    assert options[:tls]
+    assert_not options.key?(:enable_starttls), "tls and enable_starttls are mutually exclusive"
+  end
+
+  test "starttls emits :always and never a tls key" do
+    options = build(encryption: "starttls").delivery_options
+
+    assert_equal :always, options[:enable_starttls], ":auto would silently send in the clear"
+    assert_not options.key?(:tls)
+  end
+
+  test "no encryption emits a false starttls and never a tls key" do
+    options = build(encryption: "none", port: 25).delivery_options
+
+    assert options.key?(:enable_starttls), "the key is emitted explicitly, not left absent"
     assert_not options[:enable_starttls]
+    assert_not options.key?(:tls)
+  end
+
+  test "encryption must be a known mode" do
+    assert_not build(encryption: "sslv3").valid?
+    SmtpSetting::ENCRYPTION_MODES.each { |m| assert_predicate build(encryption: m), :valid? }
   end
 end

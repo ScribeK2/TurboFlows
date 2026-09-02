@@ -13,11 +13,18 @@ class SmtpSetting < ApplicationRecord
 
   AUTHENTICATION_METHODS = %w[plain login cram_md5 none].freeze
 
+  # How the connection is secured. These are the two different mechanisms, not
+  # two settings: "tls" wraps the socket from the first byte (SMTPS, usually
+  # port 465), "starttls" opens in plaintext and upgrades (usually 587). The
+  # mail gem raises if both are asked for, so this is one choice, never a pair.
+  ENCRYPTION_MODES = %w[none starttls tls].freeze
+
   # Only meaningful once enabled — a half-filled draft should still save, so the
   # admin can come back to it, but it must be complete before it takes over mail.
   validates :address, presence: true, if: :enabled?
   validates :port, numericality: { only_integer: true, greater_than: 0, less_than: 65_536 }
   validates :authentication, inclusion: { in: AUTHENTICATION_METHODS }
+  validates :encryption, inclusion: { in: ENCRYPTION_MODES }
   validates :from_address, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_blank: true
   validates :user_name, presence: true, if: :authenticated?
 
@@ -48,9 +55,17 @@ class SmtpSetting < ApplicationRecord
     options = {
       address: address,
       port: port,
-      domain: domain.presence || address,
-      enable_starttls: enable_starttls?
+      domain: domain.presence || address
     }
+
+    # Exactly one of these keys is ever emitted. :always rather than :auto so a
+    # relay that does not offer STARTTLS fails loudly instead of quietly sending
+    # the message, and the password, in the clear.
+    case encryption
+    when "tls"      then options[:tls] = true
+    when "starttls" then options[:enable_starttls] = :always
+    else                 options[:enable_starttls] = false
+    end
 
     if authentication == "none"
       options[:authentication] = nil

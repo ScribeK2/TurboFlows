@@ -47,7 +47,7 @@ module Admin
     def smtp_setting_params
       permitted = params.expect(
         smtp_setting: %i[address port domain user_name password authentication
-                         enable_starttls from_address enabled]
+                         encryption from_address enabled]
       )
       # The form never renders the stored password back, so a blank field means
       # "leave it alone", not "clear it". Only an explicit value replaces it.

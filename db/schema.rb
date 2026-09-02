@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_02_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_02_130000) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -129,8 +129,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_02_120000) do
     t.string "authentication", default: "plain", null: false
     t.datetime "created_at", null: false
     t.string "domain"
-    t.boolean "enable_starttls", default: true, null: false
     t.boolean "enabled", default: false, null: false
+    t.string "encryption", default: "starttls", null: false
     t.string "from_address"
     t.text "password"
     t.integer "port", default: 587, null: false
