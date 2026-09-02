@@ -21,7 +21,7 @@
 #     # Graph is valid
 #   else
 #     validator.findings # => [#<ValidationFinding code: :no_path_to_resolve, step_uuid: "...">]
-#     validator.errors   # => ["Step 'B' has no path to a Resolve step. A loop needs a way out.", ...]
+#     validator.errors   # => ["Step 'B' has no path to a Resolve step.", ...]
 #   end
 class GraphValidator
   attr_reader :findings
@@ -75,13 +75,17 @@ class GraphValidator
     return if @start_uuid.blank? || !@steps.key?(@start_uuid)
 
     escapable = escapable_uuids
-    reachable = find_reachable_nodes(@start_uuid)
+    # find_reachable_nodes queues transition targets before checking they're
+    # real steps (validate_integrity's job), so a target uuid pointing at a
+    # deleted step ends up "reachable" with no step behind it. Intersect with
+    # @steps.keys so no finding ever names a step that doesn't exist —
+    # validate_reachability guards the same way for the same reason.
+    reachable = find_reachable_nodes(@start_uuid) & @steps.keys
 
     (reachable - escapable.to_a).each do |uuid|
       step = @steps[uuid]
       add_finding(:no_path_to_resolve,
-                  "Step '#{step&.dig('title') || uuid}' has no path to a Resolve step. " \
-                  "A loop needs a way out.",
+                  "Step '#{step&.dig('title') || uuid}' has no path to a Resolve step.",
                   step_uuid: uuid)
     end
   end

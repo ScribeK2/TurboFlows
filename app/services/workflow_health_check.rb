@@ -78,21 +78,23 @@ class WorkflowHealthCheck
   def classify_graph_finding(finding, issues)
     case finding.code
     when :no_path_to_resolve
-      # Attach to the step itself; the message already says a loop needs a way out.
-      add_issue(issues, finding.step_uuid, :error, finding.message, fixable: false)
+      # Attach to the step itself; the message already says what's missing.
+      add_issue(issues, finding.step_uuid, :error, finding.message, fixable: false, code: finding.code)
 
     when :transition_target_missing
-      add_issue(issues, finding.step_uuid, :error, "Transition references a deleted step", fixable: false)
+      add_issue(issues, finding.step_uuid, :error, "Transition references a deleted step",
+                fixable: false, code: finding.code)
 
     when :unreachable_step
-      add_issue(issues, finding.step_uuid, :warning, "Not reachable from the start step", fixable: false)
+      add_issue(issues, finding.step_uuid, :warning, "Not reachable from the start step",
+                fixable: false, code: finding.code)
 
     when :no_terminal_nodes
-      add_issue(issues, :workflow, :error, "Workflow has no ending steps", fixable: false)
+      add_issue(issues, :workflow, :error, "Workflow has no ending steps", fixable: false, code: finding.code)
 
     when :terminal_not_resolve
       add_issue(issues, finding.step_uuid, :error, "Terminal step is not a Resolve step",
-                fixable: true, fix_type: "add_resolve_after")
+                fixable: true, fix_type: "add_resolve_after", code: finding.code)
 
       # :no_steps and :start_node_missing are unreachable from here — the caller
       # returns early on an empty graph, and start_uuid always falls back to a
@@ -145,9 +147,14 @@ class WorkflowHealthCheck
     steps_collection.any?(Steps::SubFlow)
   end
 
-  def add_issue(issues, uuid, severity, message, fixable: false, fix_type: nil)
+  # code: the originating GraphValidator/SubflowValidator finding code, when
+  # there is one. Lets consumers (the health panel's passing-checks list) key
+  # on a stable symbol instead of matching substrings of human-readable
+  # `message` text — see the passing-checks section of _health_panel_inner.
+  def add_issue(issues, uuid, severity, message, fixable: false, fix_type: nil, code: nil)
     entry = { severity:, message:, fixable: }
     entry[:fix_type] = fix_type if fix_type
+    entry[:code] = code if code
     issues[uuid.to_s] << entry
   end
 end

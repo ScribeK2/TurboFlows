@@ -31,7 +31,7 @@
     <ul class="health-panel__checklist">
       <% [
         "Reachability from start",
-        "No cycles detected",
+        "Every step can reach a Resolve step",
         "All terminals are Resolve steps",
         "No circular sub-flows",
         "All required fields present"
@@ -91,12 +91,20 @@
       </div>
     <% end %>
 
-    <%# === Passing Checks === %>
+    <%# === Passing Checks ===
+        Graph-sourced issues (unreachable_step, no_path_to_resolve, terminal_not_resolve)
+        carry the originating GraphValidator finding code — see WorkflowHealthCheck#add_issue —
+        so those three checks key on the code, not on message text. Sub-flow and
+        required-field checks have no such code plumbed through yet and still match on a
+        message substring; that's a narrower version of the same fragility this replaces
+        for the graph checks, left as-is here. %>
     <% passing_checks = [] %>
-    <% graph_errors = health.issues.values.flatten.map { |i| i[:message] } %>
-    <% passing_checks << "Reachability from start" unless graph_errors.any? { |m| m.include?("reachable") } %>
-    <% passing_checks << "No cycles detected" unless graph_errors.any? { |m| m.include?("Cycle") } %>
-    <% passing_checks << "All terminals are Resolve steps" unless graph_errors.any? { |m| m.include?("Resolve") } %>
+    <% all_issues = health.issues.values.flatten %>
+    <% graph_issue_codes = all_issues.filter_map { |i| i[:code] } %>
+    <% graph_errors = all_issues.map { |i| i[:message] } %>
+    <% passing_checks << "Reachability from start" unless graph_issue_codes.include?(:unreachable_step) %>
+    <% passing_checks << "Every step can reach a Resolve step" unless graph_issue_codes.include?(:no_path_to_resolve) %>
+    <% passing_checks << "All terminals are Resolve steps" unless graph_issue_codes.include?(:terminal_not_resolve) %>
     <% passing_checks << "No circular sub-flows" unless graph_errors.any? { |m| m.include?("sub-flow") || m.include?("Sub-flow") } %>
     <% passing_checks << "All required fields present" unless graph_errors.any? { |m| m.include?("required") } %>
     <% if passing_checks.any? %>

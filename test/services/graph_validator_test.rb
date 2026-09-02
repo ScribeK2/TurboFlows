@@ -115,6 +115,25 @@ class GraphValidatorTest < ActiveSupport::TestCase
     assert_includes validator.findings.map(&:step_uuid), 'start'
   end
 
+  # F1 regression: find_reachable_nodes queues a transition target before
+  # checking it names a real step (validate_integrity's job, not its own), so
+  # a step pointing at a deleted uuid was showing up "reachable" with no step
+  # behind it. validate_escapable must not report a finding against a
+  # step_uuid nothing in @steps owns.
+  test "no_path_to_resolve never names a step_uuid that isn't a real step" do
+    steps = {
+      'a' => { 'id' => 'a', 'title' => 'Start', 'type' => 'action', 'transitions' => [{ 'target_uuid' => 'ghost' }] }
+    }
+
+    validator = GraphValidator.new(steps, 'a')
+    validator.valid?
+
+    validator.findings.each do |finding|
+      assert(finding.step_uuid.nil? || steps.key?(finding.step_uuid),
+             "finding #{finding.code.inspect} names step_uuid #{finding.step_uuid.inspect}, which is not a key of steps")
+    end
+  end
+
   test "detects invalid transition target" do
     steps = {
       'a' => { 'id' => 'a', 'title' => 'Start', 'type' => 'question', 'transitions' => [{ 'target_uuid' => 'nonexistent' }] }
