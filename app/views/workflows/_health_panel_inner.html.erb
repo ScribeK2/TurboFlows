@@ -92,21 +92,22 @@
     <% end %>
 
     <%# === Passing Checks ===
-        Graph-sourced issues (unreachable_step, no_path_to_resolve, terminal_not_resolve)
-        carry the originating GraphValidator finding code — see WorkflowHealthCheck#add_issue —
-        so those three checks key on the code, not on message text. Sub-flow and
-        required-field checks have no such code plumbed through yet and still match on a
-        message substring; that's a narrower version of the same fragility this replaces
-        for the graph checks, left as-is here. %>
+        Every row here keys on a stable finding code from WorkflowHealthCheck#add_issue,
+        never on a substring of the human-readable `message` — a message is free to change
+        wording without silently breaking an unrelated row. "No circular sub-flows" and
+        "All required fields present" used to match message substrings ("sub-flow",
+        "required") and both were already broken by it: a workflow with no terminal nodes
+        (message ends "...Resolve step is required.") suppressed "All required fields
+        present" though every field was fine, and a SubFlow step with no target picked yet
+        (message: "Sub-flow target is required for publish") suppressed "No circular
+        sub-flows" though nothing was circular. Codes replace both. %>
     <% passing_checks = [] %>
-    <% all_issues = health.issues.values.flatten %>
-    <% graph_issue_codes = all_issues.filter_map { |i| i[:code] } %>
-    <% graph_errors = all_issues.map { |i| i[:message] } %>
-    <% passing_checks << "Reachability from start" unless graph_issue_codes.include?(:unreachable_step) %>
-    <% passing_checks << "Every step can reach a Resolve step" unless graph_issue_codes.include?(:no_path_to_resolve) %>
-    <% passing_checks << "All terminals are Resolve steps" unless graph_issue_codes.include?(:terminal_not_resolve) %>
-    <% passing_checks << "No circular sub-flows" unless graph_errors.any? { |m| m.include?("sub-flow") || m.include?("Sub-flow") } %>
-    <% passing_checks << "All required fields present" unless graph_errors.any? { |m| m.include?("required") } %>
+    <% issue_codes = health.issues.values.flatten.filter_map { |i| i[:code] } %>
+    <% passing_checks << "Reachability from start" unless issue_codes.include?(:unreachable_step) %>
+    <% passing_checks << "Every step can reach a Resolve step" unless issue_codes.include?(:no_path_to_resolve) %>
+    <% passing_checks << "All terminals are Resolve steps" unless issue_codes.include?(:terminal_not_resolve) %>
+    <% passing_checks << "No circular sub-flows" unless (issue_codes & %i[circular_subflow max_depth_exceeded subflow_target_missing]).any? %>
+    <% passing_checks << "All required fields present" unless (issue_codes & %i[question_text_required subflow_target_required]).any? %>
     <% if passing_checks.any? %>
       <div class="health-panel__section">
         <h4 class="health-panel__section-title">Passing</h4>
