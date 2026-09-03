@@ -466,6 +466,24 @@ class StrictImportValidatorTest < ActiveSupport::TestCase
     assert_not_includes report.errors.pluck(:code), "sub_flow_target_not_published"
   end
 
+  # Placement does not depend on the steps, so a file with both kinds of problem
+  # must report both at once rather than making the user fix one, re-upload, and
+  # discover the other.
+  test "a bad group is reported alongside structural errors, not after them" do
+    report = StrictImportValidator.new(user: @user, content: {
+      schema_version: "1",
+      workflows: [{ title: "Both Wrong", groups: ["No Such Group Here"], steps: [
+        { id: "s1", type: "decision", title: "Bad type",
+          transitions: [{ target_id: "done" }] },
+        resolve_step
+      ] }]
+    }.to_json).validate
+
+    codes = report.errors.pluck(:code)
+    assert_includes codes, "unknown_step_type"
+    assert_includes codes, "unknown_group"
+  end
+
   private
 
   def validate(hash)

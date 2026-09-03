@@ -64,14 +64,22 @@ class StrictImportValidator
     workflow = extract_single_workflow(document)
     return report if workflow.nil?
 
+    # Placement is checked before the structural gate because it does not depend
+    # on the steps at all. A file with a bad step AND a bad group would otherwise
+    # cost two round trips to learn about the group — and telling an agent
+    # everything at once is the point of this path.
+    placement = validate_placement(workflow)
+
+    # The passes below DO depend on sound structure: the graph validator cannot
+    # traverse dangling targets, and the semantic checks read fields that a
+    # malformed step may not have. So structure gates them.
     validate_structure(workflow)
-    return report if @errors.any?
+    return report(placement:) if @errors.any?
 
     normalized = normalize(workflow)
     validate_graph(normalized)
     validate_semantics(normalized)
     resolve_sub_flow_targets(normalized)
-    placement = validate_placement(normalized)
 
     report(workflow_data: normalized, placement:)
   end
