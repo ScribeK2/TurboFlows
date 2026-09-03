@@ -1,17 +1,45 @@
 class StepSerializer
-  def self.call(workflow)
-    new(workflow).call
+  # The strict dialect publishes only what the builder can edit, takes step order
+  # from the array rather than a field, and names a transition's target `target_id`
+  # — an agent told "uuid" reaches for SecureRandom instead of another step's id.
+  # See ImportSchemaGenerator for the schema these must satisfy.
+  STRICT_OMITTED = %w[position jumps output_fields action_type].freeze
+
+  def self.call(workflow, dialect: :legacy)
+    new(workflow, dialect:).call
   end
 
-  def initialize(workflow)
+  def initialize(workflow, dialect: :legacy)
     @workflow = workflow
+    @dialect = dialect
   end
 
   def call
-    @workflow.steps.includes(:transitions).map { |step| serialize_step(step) }
+    @workflow.steps.includes(:transitions).map do |step|
+      data = serialize_step(step)
+      @dialect == :strict ? strict(data, step) : data
+    end
   end
 
   private
+
+  def strict(data, step)
+    data = data.except(*STRICT_OMITTED)
+
+    # A database id is meaningless in another install, and the schema forbids it.
+    if data.key?("target_workflow_id")
+      data = data.except("target_workflow_id")
+      data["target_workflow_title"] = step.target_workflow&.title
+    end
+
+    transitions = Array(data["transitions"]).map do |transition|
+      transition.merge("target_id" => transition["target_uuid"]).except("target_uuid")
+    end
+
+    # The schema forbids `transitions` on a resolve step entirely — an empty array
+    # is not the same as an absent key.
+    transitions.empty? ? data.except("transitions") : data.merge("transitions" => transitions)
+  end
 
   def serialize_step(step)
     data = {
