@@ -50,6 +50,33 @@
           <p class="text-xs mt-2">CSV and Markdown are flat formats — they do not carry placement, so an import from either always lands ungrouped. Every import lands as a draft for review, regardless of format.</p>
         </div>
 
+        <%# Generating this with an AI agent. Collapsed because most imports are a
+            file someone already has; open, it is the whole contract. %>
+        <details class="card mb-4" data-controller="clipboard">
+          <summary style="cursor: pointer; padding: var(--space-3) var(--space-4);">
+            <strong>Generating this with an AI?</strong>
+            <span class="text-xs" style="color: var(--color-ink-muted);">
+              — copy a spec your agent can follow
+            </span>
+          </summary>
+          <div class="card__body" style="padding-top: 0;">
+            <p class="text-sm mb-3">
+              Paste this into whatever agent is writing the file. It describes the
+              strict JSON dialect, which is checked before anything is created — you
+              get a preview and a list of problems rather than a half-built workflow.
+            </p>
+            <div class="flex items-center justify-between mb-2">
+              <%= link_to "View the JSON Schema", ImportSchemaGenerator::SCHEMA_URL,
+                          class: "list-section__link" %>
+              <button type="button" class="btn btn--secondary btn--sm"
+                      data-action="click->clipboard#copy" data-clipboard-target="button">
+                Copy prompt
+              </button>
+            </div>
+            <pre style="max-height: 20rem; overflow: auto; padding: var(--space-3); background: var(--color-canvas-alt); border-radius: var(--radius); border: 1px solid var(--color-border);"><code data-clipboard-target="source"><%= ImportPromptGenerator.call %></code></pre>
+          </div>
+        </details>
+
         <div class="alert alert--info">
           <h3 class="font-medium mb-2">Graph Mode Workflows</h3>
           <ul class="text-sm list-disc pl-5 flex-col-gap-1">
