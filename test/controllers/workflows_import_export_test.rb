@@ -48,17 +48,19 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
   # Export Tests
   # ============================================================================
 
-  test "export JSON includes graph_mode and start_node_uuid" do
+  test "export JSON carries the strict envelope and the start step" do
     get workflow_export_path(@graph_workflow)
 
     assert_response :success
 
     exported = response.parsed_body
 
-    assert exported['graph_mode']
-    assert_equal 'step-1-uuid', exported['start_node_uuid']
-    assert_equal 4, exported['steps'].length
-    assert_equal '2.0', exported['export_version']
+    assert_equal ImportSchemaGenerator::SCHEMA_VERSION, exported['schema_version']
+    assert_equal 1, exported['workflows'].length
+
+    workflow = exported['workflows'].first
+    assert_equal 'step-1-uuid', workflow['start_step_id']
+    assert_equal 4, workflow['steps'].length
   end
 
   test "export JSON includes full step structure with transitions" do
@@ -66,14 +68,15 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
 
     assert_response :success
 
-    exported = response.parsed_body
-    first_step = exported['steps'][0]
+    first_step = response.parsed_body['workflows'].first['steps'][0]
 
     assert_equal 'step-1-uuid', first_step['id']
     assert_equal 'question', first_step['type']
     assert_equal 'Get Name', first_step['title']
     assert_equal 1, first_step['transitions'].length
-    assert_equal 'step-2-uuid', first_step['transitions'][0]['target_uuid']
+    # The wire name is target_id: an agent told "uuid" reaches for SecureRandom
+    # rather than another step's id.
+    assert_equal 'step-2-uuid', first_step['transitions'][0]['target_id']
   end
 
   test "export PDF includes graph mode indicator" do

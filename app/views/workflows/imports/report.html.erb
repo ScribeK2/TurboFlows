@@ -1,0 +1,126 @@
+<%#
+  Dry-run report for the strict import dialect.
+
+  Two branches, one page: a preview of what will be created, or the reasons it
+  cannot be. Both carry a copyable JSON payload, because the person reading this
+  is relaying it back to whatever AI agent wrote the file.
+%>
+<% content_for(:title) { "Import report — TurboFlows" } %>
+
+<div class="page-content">
+  <div class="page-main" data-testid="import-report">
+    <div class="page-header-section">
+      <div>
+        <%= link_to new_workflow_import_path, class: "page-back" do %>
+          Back to import
+        <% end %>
+        <h1 class="page-header-section__title">
+          <%= @report.valid? ? "Ready to import" : "This file cannot be imported yet" %>
+        </h1>
+        <p class="page-header-section__ident">
+          <%= @report.valid? ? "Nothing has been created yet." : "Nothing was created." %>
+        </p>
+      </div>
+    </div>
+
+    <% if @report.valid? %>
+      <% workflow = @report.workflow_data %>
+      <% steps = Array(workflow["steps"]) %>
+      <div class="card mb-4">
+        <div class="card__body">
+          <h2 class="font-semibold mb-3" style="font-size: var(--text-lg);"><%= workflow["title"] %></h2>
+          <p class="text-sm mb-3"><%= pluralize(steps.size, "step") %>, landing as a draft for review.</p>
+          <ul class="text-sm" style="list-style: disc; padding-left: var(--space-5);">
+            <% steps.group_by { |s| s["type"] }.sort.each do |type, of_type| %>
+              <li><%= pluralize(of_type.size, "#{type.tr('_', ' ')} step") %></li>
+            <% end %>
+            <% if workflow["groups"].present? %>
+              <li>Group: <%= Array(workflow["groups"]).map { |g| Array(g).join(" / ") }.to_sentence %></li>
+            <% end %>
+            <% if workflow["folder"].present? %>
+              <li>Folder: <%= workflow["folder"] %></li>
+            <% end %>
+            <% if workflow["tags"].present? %>
+              <li>Tags: <%= Array(workflow["tags"]).to_sentence %></li>
+            <% end %>
+          </ul>
+        </div>
+      </div>
+    <% else %>
+      <section class="list-section mb-4">
+        <div class="list-section__head">
+          <h2 class="list-section__title">Errors</h2>
+          <span class="list-section__count"><%= @report.errors.size %></span>
+        </div>
+        <div class="list-section__body">
+          <% @report.errors.each do |error| %>
+            <div class="list-row">
+              <div class="list-row__body">
+                <div class="list-row__title">
+                  <span style="font-family: var(--font-mono); font-size: var(--text-xs);"><%= error[:path].presence || "(file)" %></span>
+                  <span class="badge badge--alert"><%= error[:code] %></span>
+                </div>
+                <p class="list-row__sub"><%= error[:message] %></p>
+                <% if error[:expected].present? %>
+                  <p class="list-row__sub">Expected one of: <%= Array(error[:expected]).join(", ") %></p>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </section>
+    <% end %>
+
+    <% if @report.warnings.any? %>
+      <section class="list-section mb-4">
+        <div class="list-section__head">
+          <h2 class="list-section__title">Warnings</h2>
+          <span class="list-section__count"><%= @report.warnings.size %></span>
+        </div>
+        <div class="list-section__body">
+          <% @report.warnings.each do |warning| %>
+            <div class="list-row">
+              <div class="list-row__body">
+                <div class="list-row__title">
+                  <span style="font-family: var(--font-mono); font-size: var(--text-xs);"><%= warning[:path] %></span>
+                  <span class="badge badge--warning"><%= warning[:code] %></span>
+                </div>
+                <p class="list-row__sub"><%= warning[:message] %></p>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </section>
+    <% end %>
+
+    <% if @report.errors.any? || @report.warnings.any? %>
+      <div class="card mb-4" data-controller="clipboard">
+        <div class="card__body">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="font-semibold" style="font-size: var(--text-lg);">For your AI agent</h2>
+            <button type="button" class="btn btn--secondary btn--sm"
+                    data-action="click->clipboard#copy" data-clipboard-target="button">
+              Copy
+            </button>
+          </div>
+          <p class="form-hint mb-2">
+            Paste this back to whatever wrote the file. Each entry names where the problem is,
+            what is wrong, and what was expected.
+          </p>
+          <pre style="overflow-x: auto; padding: var(--space-3); background: var(--color-canvas-alt); border-radius: var(--radius); border: 1px solid var(--color-border);"><code data-clipboard-target="source"><%= JSON.pretty_generate(errors: @report.errors, warnings: @report.warnings) %></code></pre>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="flex items-center justify-end gap-3"
+         style="padding-top: var(--space-4); border-top: 1px solid var(--color-border);">
+      <%= link_to "Choose another file", new_workflow_import_path, class: "btn btn--secondary" %>
+      <% if @report.valid? %>
+        <%= form_with url: commit_workflow_import_path, method: :post do |f| %>
+          <%= hidden_field_tag :content, @content %>
+          <%= f.submit "Import workflow", class: "btn btn--primary" %>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>

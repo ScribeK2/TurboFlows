@@ -77,22 +77,24 @@ class WorkflowHealthCheck
 
   def classify_graph_finding(finding, issues)
     case finding.code
-    when :cycle_detected
-      # Attach to the first step in the cycle; the message names the whole path.
-      add_issue(issues, finding.step_uuid, :error, finding.message, fixable: false)
+    when :no_path_to_resolve
+      # Attach to the step itself; the message already says what's missing.
+      add_issue(issues, finding.step_uuid, :error, finding.message, fixable: false, code: finding.code)
 
     when :transition_target_missing
-      add_issue(issues, finding.step_uuid, :error, "Transition references a deleted step", fixable: false)
+      add_issue(issues, finding.step_uuid, :error, "Transition references a deleted step",
+                fixable: false, code: finding.code)
 
     when :unreachable_step
-      add_issue(issues, finding.step_uuid, :warning, "Not reachable from the start step", fixable: false)
+      add_issue(issues, finding.step_uuid, :warning, "Not reachable from the start step",
+                fixable: false, code: finding.code)
 
     when :no_terminal_nodes
-      add_issue(issues, :workflow, :error, "Workflow has no ending steps", fixable: false)
+      add_issue(issues, :workflow, :error, "Workflow has no ending steps", fixable: false, code: finding.code)
 
     when :terminal_not_resolve
       add_issue(issues, finding.step_uuid, :error, "Terminal step is not a Resolve step",
-                fixable: true, fix_type: "add_resolve_after")
+                fixable: true, fix_type: "add_resolve_after", code: finding.code)
 
       # :no_steps and :start_node_missing are unreachable from here — the caller
       # returns early on an empty graph, and start_uuid always falls back to a
@@ -107,15 +109,18 @@ class WorkflowHealthCheck
     validator.findings.each do |finding|
       case finding.code
       when :circular_subflow
-        add_issue(issues, :workflow, :error, "Circular sub-flow reference detected", fixable: false)
+        add_issue(issues, :workflow, :error, "Circular sub-flow reference detected",
+                  fixable: false, code: finding.code)
       when :max_depth_exceeded
-        add_issue(issues, :workflow, :warning, "Sub-flow nesting exceeds #{SubflowValidator::MAX_DEPTH} levels", fixable: false)
+        add_issue(issues, :workflow, :warning, "Sub-flow nesting exceeds #{SubflowValidator::MAX_DEPTH} levels",
+                  fixable: false, code: finding.code)
       when :subflow_target_missing
         # SubflowValidator reasons about workflows, not steps, so it reports the
         # missing target's id and this maps it back to the step that names it.
         missing_id = finding.details[:target_workflow_id]
         subflow_step = steps_collection.find { |s| s.is_a?(Steps::SubFlow) && s.sub_flow_workflow_id == missing_id }
-        add_issue(issues, subflow_step&.uuid || :workflow, :error, "Sub-flow references a missing workflow", fixable: false)
+        add_issue(issues, subflow_step&.uuid || :workflow, :error, "Sub-flow references a missing workflow",
+                  fixable: false, code: finding.code)
       end
     end
   end
@@ -132,11 +137,13 @@ class WorkflowHealthCheck
       end
 
       if step.is_a?(Steps::Question) && step.title.blank?
-        add_issue(issues, step.uuid, :warning, "Question text is required for publish", fixable: false)
+        add_issue(issues, step.uuid, :warning, "Question text is required for publish",
+                  fixable: false, code: :question_text_required)
       end
 
       if step.is_a?(Steps::SubFlow) && step.sub_flow_workflow_id.blank?
-        add_issue(issues, step.uuid, :warning, "Sub-flow target is required for publish", fixable: false)
+        add_issue(issues, step.uuid, :warning, "Sub-flow target is required for publish",
+                  fixable: false, code: :subflow_target_required)
       end
     end
   end
@@ -145,9 +152,19 @@ class WorkflowHealthCheck
     steps_collection.any?(Steps::SubFlow)
   end
 
-  def add_issue(issues, uuid, severity, message, fixable: false, fix_type: nil)
+  # code: a stable symbol naming the problem, always present now that every
+  # check the health panel's passing-checks list depends on plumbs one through
+  # — either the originating GraphValidator/SubflowValidator finding code
+  # (:unreachable_step, :no_path_to_resolve, :terminal_not_resolve,
+  # :circular_subflow, :max_depth_exceeded, :subflow_target_missing) or one
+  # coined here for a step-level check with no validator finding behind it
+  # (:question_text_required, :subflow_target_required). Lets consumers key on
+  # a stable symbol instead of matching substrings of human-readable `message`
+  # text — see the passing-checks section of _health_panel_inner.
+  def add_issue(issues, uuid, severity, message, fixable: false, fix_type: nil, code: nil)
     entry = { severity:, message:, fixable: }
     entry[:fix_type] = fix_type if fix_type
+    entry[:code] = code if code
     issues[uuid.to_s] << entry
   end
 end

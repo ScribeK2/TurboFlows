@@ -36,10 +36,23 @@ class WorkflowExportImportRoundTripTest < ActionDispatch::IntegrationTest
     get workflow_export_path(workflow)
 
     assert_response :success
-    data = response.parsed_body
+    data = response.parsed_body["workflows"].first
     assert_equal ["#{@root.name} / #{@child.name}"], data["groups"]
     assert_equal "Escalations", data["folder"]
     assert_equal %w[billing tier-2], data["tags"].sort
+  end
+
+  test "an exported workflow is itself a valid strict import file" do
+    workflow = import_fixture
+
+    get workflow_export_path(workflow)
+
+    document = response.parsed_body
+    assert_equal ImportSchemaGenerator::SCHEMA_VERSION, document["schema_version"]
+    assert_equal 1, document["workflows"].length
+
+    report = StrictImportValidator.new(user: @user, content: response.body).validate
+    assert_predicate report, :valid?, report.errors.inspect
   end
 
   test "export, import, export produces an identical document" do
@@ -55,11 +68,18 @@ class WorkflowExportImportRoundTripTest < ActionDispatch::IntegrationTest
     # — ask(0) branches to act(1) on billing and to done(2) otherwise, act(1)
     # falls through to done(2), and done(2) is terminal — so that kind of bug
     # fails here even though it can't fail the round-trip comparison.
-    topo = normalize(first_export)["steps"].map { |s| s["transitions"].map { |t| t["target_uuid"] } }
+    first_workflow = normalize(first_export)["workflows"].first
+    topo = first_workflow["steps"].map { |s| Array(s["transitions"]).map { |t| t["target_id"] } }
     assert_equal [[1, 2], [2], []], topo
-    assert_equal 0, normalize(first_export)["start_node_uuid"]
+    assert_equal 0, first_workflow["start_step_id"]
 
-    reimported = WorkflowImporter.new(@user, format: :json, content: response.body).call
+    # An exported document is now a strict-dialect file, so re-importing it goes
+    # through the strict path — which is the point: the app can produce a worked
+    # example of its own format.
+    report = StrictImportValidator.new(user: @user, content: response.body).validate
+    assert_predicate report, :valid?, report.errors.inspect
+    reimported = WorkflowImporter.new(@user, format: :json, content: response.body,
+                                             strict_report: report).call
     assert_predicate reimported, :success?
 
     get workflow_export_path(reimported.workflow)
@@ -105,16 +125,26 @@ class WorkflowExportImportRoundTripTest < ActionDispatch::IntegrationTest
   # map each uuid to the index of the step it names (steps are exported in a
   # stable position order) and compare indices, so topology survives the
   # comparison while the literal id values — stable or not — do not.
+  # Step uuids are legitimately regenerated on import, so they cannot be compared
+  # literally — but deleting them would leave only condition and label on each
+  # transition, and an importer that wired every transition to the wrong step
+  # would still pass. Map each uuid to the INDEX of the step it names instead, so
+  # a rewired transition changes the compared document.
   def normalize(document)
-    doc = document.except("exported_at")
-    steps = doc["steps"]
+    # deep_dup, not except: the rewrites below reach into workflows[0], which a
+    # shallow copy shares with the caller's document. Without this, calling
+    # normalize twice on the same export rewrites already-rewritten indices and
+    # every target_id comes back nil.
+    doc = document.deep_dup.except("exported_at")
+    workflow = doc["workflows"].first
+    steps = workflow["steps"]
     index_by_uuid = steps.each_with_index.to_h { |step, i| [step["id"], i] }
 
-    doc["start_node_uuid"] = index_by_uuid.fetch(doc["start_node_uuid"], nil)
-    doc["steps"] = steps.map do |step|
+    workflow["start_step_id"] = index_by_uuid.fetch(workflow["start_step_id"], nil)
+    workflow["steps"] = steps.map do |step|
       step.except("id").merge(
         "transitions" => Array(step["transitions"]).map do |t|
-          t.merge("target_uuid" => index_by_uuid.fetch(t["target_uuid"], nil))
+          t.merge("target_id" => index_by_uuid.fetch(t["target_id"], nil))
         end
       )
     end

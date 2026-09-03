@@ -1,0 +1,22 @@
+{
+  "schema_version": "1",
+  "workflows": [
+    {
+      "title": "T",
+      "steps": [
+        {
+          "id": "s1",
+          "type": "message",
+          "title": "Dangling",
+          "content": "<p>a</p>"
+        },
+        {
+          "id": "done",
+          "type": "resolve",
+          "title": "Done",
+          "resolution_type": "success"
+        }
+      ]
+    }
+  ]
+}

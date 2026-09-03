@@ -4,20 +4,18 @@ module Workflows
 
     # GET /workflows/:workflow_id/export
     def show
-      steps_data = serialize_ar_steps_for_export(@workflow)
-      start_uuid = @workflow.start_step&.uuid || @workflow.steps.first&.uuid
-
       export_data = {
-        title: @workflow.title,
-        description: @workflow.description_text || "",
-        graph_mode: true,
-        start_node_uuid: start_uuid,
-        groups: ordered_groups.map(&:name_path),
-        folder: primary_folder&.name,
-        tags: @workflow.tags.order(:name).map(&:name),
-        steps: steps_data,
+        schema_version: ImportSchemaGenerator::SCHEMA_VERSION,
         exported_at: Time.current.iso8601,
-        export_version: "2.0"
+        workflows: [{
+          title: @workflow.title,
+          description: @workflow.description_text || "",
+          groups: ordered_groups.map(&:name_path),
+          folder: primary_folder&.name,
+          tags: @workflow.tags.order(:name).map(&:name),
+          start_step_id: @workflow.start_step&.uuid || @workflow.steps.first&.uuid,
+          steps: StepSerializer.call(@workflow, dialect: :strict)
+        }]
       }
 
       send_data export_data.to_json,

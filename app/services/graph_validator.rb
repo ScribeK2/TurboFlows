@@ -1,8 +1,10 @@
-# Validates DAG (Directed Acyclic Graph) structure for graph-mode workflows.
-# Ensures the workflow graph is valid before execution.
+# Validates graph structure for graph-mode workflows. Ensures the workflow
+# graph is valid before execution.
 #
 # Validations performed:
-# - Acyclic: No cycles in the graph (would cause infinite loops)
+# - Escapability: every step reachable from start can still reach a Resolve
+#   step. Cycles are legal (a retry loop is the canonical call-centre shape) —
+#   what is not legal is a loop with no way out.
 # - Integrity: All transition target_uuids reference existing steps
 # - Reachability: All nodes can be reached from the start node
 # - Terminals: At least one terminal node exists (node with no outgoing transitions)
@@ -18,8 +20,8 @@
 #   if validator.valid?
 #     # Graph is valid
 #   else
-#     validator.findings # => [#<ValidationFinding code: :cycle_detected, step_uuid: "...">]
-#     validator.errors   # => ["Cycle detected: A -> B -> A", ...]
+#     validator.findings # => [#<ValidationFinding code: :no_path_to_resolve, step_uuid: "...">]
+#     validator.errors   # => ["Step 'B' has no path to a Resolve step.", ...]
 #   end
 class GraphValidator
   attr_reader :findings
@@ -48,7 +50,7 @@ class GraphValidator
     return false if @findings.any?
 
     validate_start_node_exists
-    validate_acyclic
+    validate_escapable
     validate_integrity
     validate_reachability
     validate_terminals
@@ -56,25 +58,35 @@ class GraphValidator
     @findings.empty?
   end
 
-  # Check if graph is acyclic (no cycles)
-  # Uses DFS with coloring: white (unvisited), gray (in progress), black (finished)
-  def validate_acyclic
+  # Every step must be able to reach a Resolve. This replaces the old acyclic
+  # check: a loop is a legitimate shape here ("didn't work — try again" is how
+  # call-centre troubleshooting works), but a loop with no exit traps an agent
+  # mid-call until Scenario::MAX_ITERATIONS blows the run up.
+  #
+  # For an acyclic graph this asserts nothing new — every node in a finite DAG
+  # reaches some terminal, and validate_terminals already requires terminals to
+  # be Resolve steps. It only grows teeth once a cycle is present.
+  #
+  # Only steps reachable from the start are checked; unreachable ones are
+  # validate_reachability's to report, and reporting both would name the same
+  # step twice for two different reasons.
+  def validate_escapable
     return if @steps.empty?
+    return if @start_uuid.blank? || !@steps.key?(@start_uuid)
 
-    # Track node states: :white (unvisited), :gray (in current path), :black (fully processed)
-    colors = Hash.new(:white)
-    path = []
+    escapable = escapable_uuids
+    # find_reachable_nodes queues transition targets before checking they're
+    # real steps (validate_integrity's job), so a target uuid pointing at a
+    # deleted step ends up "reachable" with no step behind it. Intersect with
+    # @steps.keys so no finding ever names a step that doesn't exist —
+    # validate_reachability guards the same way for the same reason.
+    reachable = find_reachable_nodes(@start_uuid) & @steps.keys
 
-    @steps.each_key do |uuid|
-      next unless colors[uuid] == :white
-
-      cycle = detect_cycle_dfs(uuid, colors, path)
-      next unless cycle
-
-      cycle_path = cycle.map { |id| step_title(id) }.join(' -> ')
-      add_finding(:cycle_detected, "Cycle detected: #{cycle_path}",
-                  step_uuid: cycle.first, details: { cycle_uuids: cycle })
-      break # Stop at first cycle found
+    (reachable - escapable.to_a).each do |uuid|
+      step = @steps[uuid]
+      add_finding(:no_path_to_resolve,
+                  "Step '#{step&.dig('title') || uuid}' has no path to a Resolve step.",
+                  step_uuid: uuid)
     end
   end
 
@@ -154,34 +166,32 @@ class GraphValidator
                 details: { start_uuid: @start_uuid })
   end
 
-  # DFS cycle detection with path tracking
-  # Returns the cycle path if found, nil otherwise
-  def detect_cycle_dfs(uuid, colors, path)
-    colors[uuid] = :gray
-    path.push(uuid)
-
-    step = @steps[uuid]
-    transitions = step&.dig('transitions') || []
-
-    transitions.each do |transition|
-      target_uuid = transition['target_uuid']
-      next if target_uuid.blank?
-
-      case colors[target_uuid]
-      when :gray
-        # Found a back edge - cycle detected
-        # Return the cycle portion of the path
-        cycle_start = path.index(target_uuid)
-        return path[cycle_start..] + [target_uuid]
-      when :white
-        cycle = detect_cycle_dfs(target_uuid, colors, path)
-        return cycle if cycle
-      end
+  # Reverse BFS from the Resolve terminals. Linear, and cycle-safe by
+  # construction since a node is enqueued at most once.
+  def escapable_uuids
+    incoming = Hash.new { |h, k| h[k] = [] }
+    @steps.each do |uuid, step|
+      transition_target_uuids(step).each { |target| incoming[target] << uuid }
     end
 
-    path.pop
-    colors[uuid] = :black
-    nil
+    frontier = @steps.select { |_uuid, step| terminal_resolve?(step) }.keys
+    escapable = frontier.to_set
+
+    until frontier.empty?
+      frontier = frontier.flat_map { |uuid| incoming[uuid] }.reject { |uuid| escapable.include?(uuid) }
+      frontier.each { |uuid| escapable.add(uuid) }
+    end
+
+    escapable
+  end
+
+  def terminal_resolve?(step)
+    step["type"] == "resolve" && transition_target_uuids(step).empty?
+  end
+
+  def transition_target_uuids(step)
+    Array(step["transitions"]).filter_map { |t| t.is_a?(Hash) ? t["target_uuid"] : nil }
+                              .select { |uuid| @steps.key?(uuid) }
   end
 
   # BFS to find all reachable nodes from start
@@ -206,11 +216,5 @@ class GraphValidator
     end
 
     visited.to_a
-  end
-
-  # Get step title for error messages
-  def step_title(uuid)
-    step = @steps[uuid]
-    step&.dig('title') || uuid
   end
 end

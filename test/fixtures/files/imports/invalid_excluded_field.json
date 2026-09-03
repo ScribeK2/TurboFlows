@@ -1,0 +1,33 @@
+{
+  "schema_version": "1",
+  "workflows": [
+    {
+      "title": "T",
+      "steps": [
+        {
+          "id": "s1",
+          "type": "action",
+          "title": "Jumper",
+          "instructions": "<p>a</p>",
+          "jumps": [
+            {
+              "condition": "x == '1'",
+              "next_step_id": "done"
+            }
+          ],
+          "transitions": [
+            {
+              "target_id": "done"
+            }
+          ]
+        },
+        {
+          "id": "done",
+          "type": "resolve",
+          "title": "Done",
+          "resolution_type": "success"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "schema_version": "1",
+  "workflows": [
+    {
+      "title": "T",
+      "groups": [
+        "Corpus Group"
+      ],
+      "folder": "Corpus No Such Folder",
+      "steps": [
+        {
+          "id": "done",
+          "type": "resolve",
+          "title": "Done",
+          "resolution_type": "success"
+        }
+      ]
+    }
+  ]
+}

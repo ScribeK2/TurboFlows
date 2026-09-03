@@ -1,0 +1,16 @@
+{
+  "schema_version": "1",
+  "workflows": [
+    {
+      "title": "",
+      "steps": [
+        {
+          "id": "done",
+          "type": "resolve",
+          "title": "Done",
+          "resolution_type": "success"
+        }
+      ]
+    }
+  ]
+}
