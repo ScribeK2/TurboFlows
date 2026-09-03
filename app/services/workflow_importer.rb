@@ -4,13 +4,16 @@ class WorkflowImporter
     def incomplete_steps? = incomplete_steps_count.to_i.positive?
   end
 
-  def initialize(user, format:, content:)
+  def initialize(user, format:, content:, strict_report: nil)
     @user = user
     @format = format.to_sym
     @content = content
+    @strict_report = strict_report
   end
 
   def call
+    return import_strict(@strict_report) if @strict_report
+
     parser = create_parser
 
     workflow_data = parser.parse
@@ -102,6 +105,41 @@ class WorkflowImporter
   end
 
   private
+
+  # A strict report has already been parsed, normalised and validated — every
+  # group resolved, every sub-flow target found, every graph rule checked — so
+  # writing is all that is left. It reuses the placement the validator already
+  # resolved rather than resolving twice, and shares create_ar_steps with the
+  # lenient path because the normalized shape is deliberately the same.
+  def import_strict(strict_report)
+    raise ArgumentError, "strict_report must be valid" unless strict_report.valid?
+
+    data = strict_report.workflow_data
+    workflow = @user.workflows.build(
+      title: data["title"],
+      description: data["description"] || "",
+      graph_mode: true,
+      is_public: false,
+      status: "draft"
+    )
+
+    ActiveRecord::Base.transaction do
+      unless workflow.save
+        return Result.new(success: false, workflow:, errors: workflow.errors.full_messages,
+                          warnings: [], incomplete_steps_count: 0)
+      end
+
+      create_ar_steps(workflow, data["steps"], data["start_step_id"])
+      strict_report.placement.apply!(workflow)
+      Workflow.where(id: workflow.id).update_all(draft_expires_at: nil)
+      workflow.reload
+    end
+
+    Result.new(success: true, workflow:, errors: [],
+               warnings: strict_report.warnings.pluck(:message), incomplete_steps_count: 0)
+  rescue StandardError => e
+    failure([e.message])
+  end
 
   def create_parser
     case @format

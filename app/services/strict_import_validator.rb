@@ -70,8 +70,10 @@ class StrictImportValidator
     normalized = normalize(workflow)
     validate_graph(normalized)
     validate_semantics(normalized)
+    resolve_sub_flow_targets(normalized)
+    placement = validate_placement(normalized)
 
-    report(workflow_data: normalized)
+    report(workflow_data: normalized, placement:)
   end
 
   private
@@ -119,6 +121,68 @@ class StrictImportValidator
 
     add_error("workflows[0]", "envelope_invalid", workflow.class.name,
               "Each entry in 'workflows' must be an object.")
+  end
+
+  # --- external references -----------------------------------------------------
+
+  def validate_placement(workflow)
+    placement = WorkflowPlacement.new(
+      user: @user,
+      groups: workflow["groups"] || [],
+      folder: workflow["folder"],
+      tags: workflow["tags"] || []
+    )
+
+    placement.resolve.errors.each do |error|
+      add_error("workflows[0].#{error[:path]}", error[:code], error[:value], error[:message])
+    end
+
+    placement
+  end
+
+  # The lenient path does this in BaseParser#resolve_subflow_titles. The strict
+  # path never runs a parser, so without this a sub_flow step would import
+  # pointing at nothing — silently, which is the whole class of failure this
+  # dialect exists to remove. Same lookup as the lenient resolver (published
+  # workflows, case-insensitive) so both paths resolve a title identically; the
+  # difference is severity, since the lenient one only marks the step incomplete.
+  #
+  # A draft match gets its own code. Imports land as drafts, so "import A, then
+  # import B whose sub_flow targets A" fails where it used to work, and telling
+  # the user A does not exist would send them off to re-author a workflow they
+  # already have.
+  def resolve_sub_flow_targets(workflow)
+    Array(workflow["steps"]).each_with_index do |step, index|
+      next unless step["type"] == "sub_flow"
+
+      title = step["target_workflow_title"].to_s.strip
+      path = "workflows[0].steps[#{index}].target_workflow_title"
+      published = Workflow.where(status: "published").where("LOWER(title) = LOWER(?)", title)
+
+      if published.one?
+        step["target_workflow_id"] = published.first.id
+        step.delete("target_workflow_title")
+      elsif published.many?
+        add_error(path, "ambiguous_sub_flow_target", title,
+                  "#{published.count} published workflows are titled #{title.inspect} " \
+                  "(#{published.map { |w| "##{w.id}" }.join(', ')}). Rename one, or import " \
+                  "this workflow without the sub-flow step and set the target in the builder.")
+      else
+        report_missing_sub_flow_target(title, path)
+      end
+    end
+  end
+
+  def report_missing_sub_flow_target(title, path)
+    if Workflow.where.not(status: "published").exists?(["LOWER(title) = LOWER(?)", title])
+      add_error(path, "sub_flow_target_not_published", title,
+                "A workflow titled #{title.inspect} exists but is still a draft. Publish it " \
+                "first — a sub-flow can only run a published workflow.")
+    else
+      add_error(path, "unknown_sub_flow_target", title,
+                "No published workflow is titled #{title.inspect}. A sub-flow target must " \
+                "already exist and be published.")
+    end
   end
 
   # --- semantics ---------------------------------------------------------------

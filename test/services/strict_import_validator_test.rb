@@ -10,7 +10,16 @@ class StrictImportValidatorTest < ActiveSupport::TestCase
     )
   end
 
-  teardown { User.where("email LIKE ?", "strict-test-%").destroy_all }
+  setup do
+    @group = Group.create!(name: "Strict Group #{SecureRandom.hex(3)}")
+    UserGroup.create!(user: @user, group: @group)
+  end
+
+  teardown do
+    User.where("email LIKE ?", "strict-test-%").destroy_all
+    Group.where("name LIKE ?", "Strict Group %").destroy_all
+    Workflow.where("title LIKE ?", "SF Target %").destroy_all
+  end
 
   test "a file with schema_version is the strict dialect" do
     assert StrictImportValidator.strict?('{"schema_version":"1","workflows":[]}')
@@ -356,6 +365,75 @@ class StrictImportValidatorTest < ActiveSupport::TestCase
     assert_match(/true, false/, warning[:message])
   end
 
+  test "an unknown group is an error on the strict report" do
+    report = StrictImportValidator.new(user: @user, content: {
+      schema_version: "1",
+      workflows: [{ title: "Placed", groups: ["No Such Group"], steps: [resolve_step] }]
+    }.to_json).validate
+
+    assert_not report.valid?
+    error = report.errors.find { |e| e[:code] == "unknown_group" }
+    assert_not_nil error
+    assert_equal "workflows[0].groups[0]", error[:path]
+  end
+
+  test "a valid file carries its resolved placement on the report" do
+    report = StrictImportValidator.new(user: @user, content: {
+      schema_version: "1",
+      workflows: [{ title: "Placed", groups: [@group.name], tags: ["billing"],
+                    steps: [resolve_step] }]
+    }.to_json).validate
+
+    assert_predicate report, :valid?, report.errors.inspect
+    assert_equal [@group.id], report.placement.resolve.group_ids
+  end
+
+  test "a sub_flow title resolves to the published workflow's id" do
+    target = @user.workflows.create!(title: "SF Target #{SecureRandom.hex(3)}",
+                                     status: "published")
+
+    report = validate_subflow(target.title)
+
+    assert_predicate report, :valid?, report.errors.inspect
+    step = report.workflow_data["steps"].find { |s| s["type"] == "sub_flow" }
+    assert_equal target.id, step["target_workflow_id"]
+    assert_nil step["target_workflow_title"]
+  end
+
+  test "a sub_flow naming no workflow at all is a hard error" do
+    report = validate_subflow("SF Target Nonexistent Nowhere")
+
+    assert_not report.valid?
+    error = report.errors.find { |e| e[:code] == "unknown_sub_flow_target" }
+    assert_not_nil error
+    assert_equal "workflows[0].steps[0].target_workflow_title", error[:path]
+  end
+
+  # Distinct from "no such workflow": slice 1 made every import land as a draft,
+  # so "import A, then import B whose sub_flow targets A" now fails where it used
+  # to work. Telling the user it does not exist would send them off to re-author a
+  # workflow they already have.
+  test "a sub_flow naming a draft says so, rather than claiming it does not exist" do
+    draft = @user.workflows.create!(title: "SF Target #{SecureRandom.hex(3)}", status: "draft")
+
+    report = validate_subflow(draft.title)
+
+    assert_not report.valid?
+    error = report.errors.find { |e| e[:code] == "sub_flow_target_not_published" }
+    assert_not_nil error, report.errors.inspect
+    assert_match(/publish/i, error[:message])
+  end
+
+  test "a sub_flow title matching two published workflows is a hard error" do
+    title = "SF Target #{SecureRandom.hex(3)}"
+    2.times { @user.workflows.create!(title:, status: "published") }
+
+    report = validate_subflow(title)
+
+    assert_not report.valid?
+    assert_includes report.errors.pluck(:code), "ambiguous_sub_flow_target"
+  end
+
   private
 
   def validate(hash)
@@ -375,5 +453,16 @@ class StrictImportValidatorTest < ActiveSupport::TestCase
 
   def resolve_step
     { id: "done", type: "resolve", title: "Done", resolution_type: "success" }
+  end
+
+  def validate_subflow(target_title)
+    StrictImportValidator.new(user: @user, content: {
+      schema_version: "1",
+      workflows: [{ title: "Sub Flow Host", steps: [
+        { id: "sf", type: "sub_flow", title: "Hand off",
+          target_workflow_title: target_title, transitions: [{ target_id: "done" }] },
+        resolve_step
+      ] }]
+    }.to_json).validate
   end
 end

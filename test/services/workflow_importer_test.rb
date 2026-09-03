@@ -273,4 +273,32 @@ class WorkflowImporterTest < ActiveSupport::TestCase
              "expected parser warnings to survive the early return, got: #{result.warnings.inspect}")
     end
   end
+  test "a validated strict report imports without re-parsing" do
+    content = {
+      schema_version: "1",
+      workflows: [{
+        title: "Strict Import",
+        groups: [@group.name],
+        tags: ["billing"],
+        steps: [
+          { id: "hello", type: "message", title: "Greet", content: "<p>Hello</p>",
+            transitions: [{ target_id: "done" }] },
+          { id: "done", type: "resolve", title: "Done", resolution_type: "success" }
+        ]
+      }]
+    }.to_json
+
+    report = StrictImportValidator.new(user: @user, content:).validate
+    assert_predicate report, :valid?, report.errors.inspect
+
+    result = WorkflowImporter.new(@user, format: :json, content:, strict_report: report).call
+
+    assert_predicate result, :success?
+    assert_equal "Strict Import", result.workflow.title
+    assert_equal "draft", result.workflow.status
+    assert_nil result.workflow.draft_expires_at
+    assert_equal [@group.id], result.workflow.groups.map(&:id)
+    assert_equal ["billing"], result.workflow.tags.map(&:name)
+    assert_equal %w[done hello], result.workflow.steps.map(&:uuid).sort
+  end
 end
