@@ -57,13 +57,25 @@ module StepFieldMap
 
   # Strong-params shapes for anything that is not a scalar.
   #
+  # `options` is the union of two shapes, deliberately. It means answer choices
+  # on a question ({label, value}) and field definitions on a form ({name, label,
+  # field_type, required, position}), and `permit` cannot vary a nested shape by
+  # step type at this level. Permitting only the question shape silently stripped
+  # every form field's name, type and required flag on save — the builder kept
+  # the label and nothing else. Permitting a key is not requiring it, so a
+  # question's options are unaffected.
+  #
+  # The schema published to external agents does distinguish the two, per type —
+  # see ImportSchemaGenerator#question_options_property / #form_options_property.
+  # The union here is a strong-params limitation, not the domain truth.
+  #
   # `jumps` is an Array of {condition, next_step_id}: StepResolver#check_jumps
   # returns nil for anything that is not an Array, and the import normalizer
   # only preserves Arrays. It was declared here as a bare hash, which would have
   # filtered a real array away — latent rather than live, since no UI authors
   # jumps yet.
   NESTED_SHAPES = {
-    options: [%i[label value]],
+    options: [%i[label value name field_type required position]],
     output_fields: [%i[name value]],
     jumps: [%i[condition next_step_id]],
     variable_mapping: {}

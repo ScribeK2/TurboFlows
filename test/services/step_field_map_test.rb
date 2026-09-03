@@ -47,9 +47,31 @@ class StepFieldMapTest < ActionDispatch::IntegrationTest
     description: "Custom resolve description"
   }.freeze
 
+  # `options` is the one field whose meaning depends on the step type: answer
+  # choices on a question, field definitions on a form. VALUES is keyed by field
+  # name alone, so one entry cannot exercise both — and feeding every type the
+  # question shape is exactly how a form field's name/field_type/required went
+  # unprotected while this test reported the whole map covered.
+  VALUES_BY_TYPE = {
+    "form" => {
+      options: [{ "name" => "phone_number", "label" => "Phone", "field_type" => "phone",
+                  "required" => true, "position" => 0 }]
+    }
+  }.freeze
+
   # title and position are structural: set by the builder from the graph, not
   # from a value table. sub_flow_workflow_id needs a real workflow id.
   STRUCTURAL = %i[title position sub_flow_workflow_id].freeze
+
+  # Per-type value if one is declared, otherwise the shared one. Written with
+  # key? rather than `||` so a legitimately false or nil per-type value would
+  # still win.
+  def value_for(type, field)
+    per_type = VALUES_BY_TYPE[type]
+    return per_type.fetch(field) if per_type&.key?(field)
+
+    VALUES.fetch(field)
+  end
 
   setup do
     @user = User.create!(
@@ -74,13 +96,13 @@ class StepFieldMapTest < ActionDispatch::IntegrationTest
       StepFieldMap.plain_fields(type).each do |field|
         next if STRUCTURAL.include?(field)
 
-        attrs[field] = VALUES.fetch(field)
+        attrs[field] = value_for(type, field)
       end
       attrs[:sub_flow_workflow_id] = @target_wf.id if type == "sub_flow"
 
       step = klass.create!(**attrs)
       StepFieldMap.rich_text_fields(type).each do |field|
-        step.update!(field => VALUES.fetch(field))
+        step.update!(field => value_for(type, field))
       end
       step
     end
@@ -101,7 +123,7 @@ class StepFieldMapTest < ActionDispatch::IntegrationTest
       StepFieldMap.plain_fields(type).each do |field|
         next if STRUCTURAL.include?(field)
 
-        assert_equal VALUES.fetch(field), step.public_send(field),
+        assert_equal value_for(type, field), step.public_send(field),
                      "#{context}: #{type}##{field} did not survive"
       end
 
@@ -111,7 +133,7 @@ class StepFieldMapTest < ActionDispatch::IntegrationTest
       end
 
       StepFieldMap.rich_text_fields(type).each do |field|
-        assert_equal VALUES.fetch(field), step.public_send(field).body.to_html,
+        assert_equal value_for(type, field), step.public_send(field).body.to_html,
                      "#{context}: #{type}##{field} (rich text) did not survive"
       end
     end
@@ -155,7 +177,7 @@ class StepFieldMapTest < ActionDispatch::IntegrationTest
       StepFieldMap.all_fields(type).each do |field|
         next if STRUCTURAL.include?(field)
 
-        payload[field] = VALUES.fetch(field)
+        payload[field] = value_for(type, field)
       end
       payload[:sub_flow_workflow_id] = @target_wf.id if type == "sub_flow"
 
@@ -164,7 +186,7 @@ class StepFieldMapTest < ActionDispatch::IntegrationTest
 
       step.reload
       payload.each_key do |field|
-        expected = field == :sub_flow_workflow_id ? @target_wf.id : VALUES.fetch(field)
+        expected = field == :sub_flow_workflow_id ? @target_wf.id : value_for(type, field)
         actual = if StepFieldMap.rich_text_fields(type).include?(field)
                    step.public_send(field).body.to_html
                  else
