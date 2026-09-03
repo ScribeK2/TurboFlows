@@ -16,6 +16,7 @@ A straightforward workflow creator for call/chat centers to build, simulate, and
 - Hierarchical Groups (up to 5 levels) + Folders + drag-and-drop organization
 - Workflow templates: YAML-driven archetypes (`WorkflowTemplate`) loaded from `config/templates.yml` (5 presets: Guided Decision, Verification Checklist, Triage & Escalate, Diagnosis Flow, Simple Handoff)
 - Import/export (JSON/CSV/YAML/MD → JSON/PDF via Prawn). JSON and YAML imports carry `groups` (name paths), a `folder`, and `tags`, resolved by `WorkflowPlacement` before anything is written and then applied inside the import transaction; CSV and Markdown are flat formats and carry none of that. Every import lands as `status: "draft"` with no `draft_expires_at` — `WorkflowImporter` nulls the column via `update_all` once, after `apply!`, and `Workflow`'s `set_draft_expiration` callback only stamps/refreshes a draft's TTL when it's a new record or already carries one, so a nil `draft_expires_at` stays nil across every later edit. It won't be swept by `CleanupDraftsJob` and needs an explicit publish
+- **Strict AI dialect** — a JSON file carrying a top-level `schema_version: "1"` takes a separate, strict path: `StrictImportValidator` refuses what the lenient parser coerces (unknown step type, unknown field, duplicate/missing/malformed step id, dangling transition target, missing required field, a resolve step with transitions, a non-resolve step without them, invalid enum, invalid condition syntax, unknown/forbidden group, unresolvable sub-flow target) and reports every problem at once with a stable code, a JSON path and what was expected. It writes nothing: an upload renders a preview or an error report, and committing takes a second POST to `/workflows/import/commit`. `ImportSchemaGenerator` generates `public/schemas/turboflows-workflow-v1.json` from `StepFieldMap` and the models' `VALID_*` constants; `ImportPromptGenerator` builds the copyable agent prompt on the import page from that same schema. Export emits this dialect, so an exported file is a valid strict import file. A file with no `schema_version` is untouched and keeps the lenient behaviour
 - No Node.js: pure Hotwire (Turbo + Stimulus), importmap + Propshaft, vanilla CSS (@layer + OKLCH tokens)
 - Rails 8.1, Devise auth (roles: Administrator / Editor / User), optimistic locking (lock_version)
 
@@ -153,8 +154,10 @@ All workflows are graphs. There is no separate "linear mode" — a sequential fl
 - `StepResolver` — graph traversal engine. Evaluates transitions in position order, handles conditional branching (via `ConditionEvaluator`), simple value matching for Question answers, SubFlow markers, and jump evaluation (`check_jumps`).
 - `StepBuilder` — creates AR steps from hash data. Auto-creates sequential transitions when no explicit transitions provided. Validates at least one Resolve step exists. Also provides `StepBuilder.normalize` (class method), its own helper, which `WorkflowImporter` borrows.
 - `ScenarioStepProcessor` — extracted step-processing logic for Scenario. Calls public methods on Scenario (`advance_to_next_step`, `resolve_at_current_step`, `record_completion`).
-- `GraphValidator` — DAG validation (cycle detection, reachability from start_step, terminal nodes must be Resolve steps).
+- `GraphValidator` — graph validation: reachability from start_step, terminal nodes must be Resolve steps, and **escapability** — from every step reachable from the start, some path must reach a terminal Resolve (`:no_path_to_resolve`). It does **not** reject cycles: a retry loop is a normal call-centre shape, and what is refused is a loop with no way out. This replaced an acyclic check; for an acyclic graph the rule asserts nothing new, since every node in a finite DAG already reaches a terminal and terminals must be Resolve steps.
 - `SubflowValidator` — prevents circular sub-flow references (max depth: 10).
+- `StrictImportValidator` — validates a strict-dialect file without writing: envelope, structure, graph (same `GraphValidator` publish runs), semantics (condition syntax, undefined variables, unmatched option values), and external references (groups via `WorkflowPlacement`, sub-flow targets scoped to `Workflow.visible_to`). Returns a `Report` of errors and warnings; `WorkflowImporter` takes a valid one via `strict_report:` and only writes.
+- `ImportSchemaGenerator` / `ImportPromptGenerator` — the published JSON Schema and the agent prompt, both generated from the models so neither can drift from what the app accepts.
 - `WorkflowHealthCheck` — aggregates GraphValidator + SubflowValidator + step-level checks into a per-step issue map. Returns `Data.define` Result with issues keyed by step UUID, severity levels, fixable flags, and summary counts. Used by both the health panel (HTML) and async JS fetch (JSON).
 - `WorkflowPublisher` — publishes workflow versions with full graph validation. Uses `Workflow#validation_graph_hash`.
 - `FlowDiagramService` — BFS layout for the builder's flow diagram panel.
@@ -163,6 +166,7 @@ All workflows are graphs. There is no separate "linear mode" — a sequential fl
 - Transitions must connect steps within the same workflow (cross-workflow via SubFlow only)
 - Every workflow must have at least one Resolve step
 - All terminal nodes must be Resolve steps (on publish)
+- Every step must be able to reach a Resolve. Cycles are allowed; unescapable ones are not
 - Step UUIDs are immutable after creation
 - Optimistic locking on both Workflow and Step (`lock_version`)
 
