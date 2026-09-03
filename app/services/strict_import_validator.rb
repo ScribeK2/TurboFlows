@@ -44,7 +44,10 @@ class StrictImportValidator
     validate_structure(workflow)
     return report if @errors.any?
 
-    report(workflow_data: normalize(workflow))
+    normalized = normalize(workflow)
+    validate_graph(normalized)
+
+    report(workflow_data: normalized)
   end
 
   private
@@ -92,6 +95,29 @@ class StrictImportValidator
 
     add_error("workflows[0]", "envelope_invalid", workflow.class.name,
               "Each entry in 'workflows' must be an object.")
+  end
+
+  # --- graph -----------------------------------------------------------------
+
+  # The same validator WorkflowPublisher#validate_ar_graph! runs, at the same
+  # severity. The point of the dry run is that it says exactly what publish would
+  # say — a validator that blesses files the app later rejects is worse than no
+  # validator at all. Since the escapability rule replaced the acyclic check that
+  # includes accepting loops: what GraphValidator refuses is a step with no path
+  # to a Resolve, not a cycle as such.
+  #
+  # Runs on the normalized workflow, because GraphValidator reads target_uuid.
+  def validate_graph(workflow)
+    steps = workflow["steps"]
+    keyed = steps.index_by { |step| step["id"] }
+    start_id = workflow["start_step_id"] || steps.first["id"]
+
+    validator = GraphValidator.new(keyed, start_id)
+    return if validator.valid?
+
+    validator.findings.each do |finding|
+      add_error("workflows[0]", "graph_invalid", finding.code.to_s, finding.message)
+    end
   end
 
   # --- structure -------------------------------------------------------------

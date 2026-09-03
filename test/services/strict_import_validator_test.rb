@@ -226,6 +226,59 @@ class StrictImportValidatorTest < ActiveSupport::TestCase
     assert_equal "done", report.workflow_data["steps"][0]["transitions"][0]["target_uuid"]
   end
 
+  # A loop is legal since the escapability rule replaced the acyclic check — what
+  # is refused is a loop with no way out. These two tests are the pair that pins
+  # that distinction.
+  test "a retry loop is accepted" do
+    report = validate(document_with(steps: [
+                                      { id: "ask", type: "question", title: "Fixed?", question: "Is it fixed?",
+                                        variable_name: "fixed",
+                                        transitions: [{ target_id: "done", condition: "fixed == 'yes'" },
+                                                      { target_id: "retry" }] },
+                                      { id: "retry", type: "action", title: "Try again", instructions: "<p>Retry.</p>",
+                                        transitions: [{ target_id: "ask" }] },
+                                      resolve_step
+                                    ]))
+
+    assert_predicate report, :valid?, report.errors.inspect
+  end
+
+  test "a loop with no way out is refused" do
+    report = validate(document_with(steps: [
+                                      { id: "a", type: "message", title: "A", content: "<p>a</p>",
+                                        transitions: [{ target_id: "b" }] },
+                                      { id: "b", type: "message", title: "B", content: "<p>b</p>",
+                                        transitions: [{ target_id: "a" }] },
+                                      resolve_step
+                                    ]))
+
+    error = report.errors.find { |e| e[:code] == "graph_invalid" }
+    assert_not_nil error
+    assert_equal "no_path_to_resolve", error[:value]
+  end
+
+  test "an unreachable step is refused" do
+    report = validate(document_with(steps: [
+                                      { id: "start", type: "message", title: "Start", content: "<p>a</p>",
+                                        transitions: [{ target_id: "done" }] },
+                                      { id: "island", type: "message", title: "Unreachable", content: "<p>b</p>",
+                                        transitions: [{ target_id: "done" }] },
+                                      resolve_step
+                                    ]))
+
+    assert_includes report.errors.pluck(:value), "unreachable_step"
+  end
+
+  test "a valid graph passes" do
+    report = validate(document_with(steps: [
+                                      { id: "start", type: "message", title: "Start", content: "<p>a</p>",
+                                        transitions: [{ target_id: "done" }] },
+                                      resolve_step
+                                    ]))
+
+    assert_predicate report, :valid?, report.errors.inspect
+  end
+
   private
 
   def validate(hash)
