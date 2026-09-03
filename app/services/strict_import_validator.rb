@@ -157,7 +157,7 @@ class StrictImportValidator
 
       title = step["target_workflow_title"].to_s.strip
       path = "workflows[0].steps[#{index}].target_workflow_title"
-      published = Workflow.where(status: "published").where("LOWER(title) = LOWER(?)", title)
+      published = visible_published_workflows(title)
 
       if published.one?
         step["target_workflow_id"] = published.first.id
@@ -173,8 +173,19 @@ class StrictImportValidator
     end
   end
 
+  # Scoped to what this user may actually see, not every workflow in the install.
+  # An unscoped lookup would let an importing editor bind a sub-flow to a workflow
+  # they have no access to, and would confirm the existence and id of workflows
+  # they cannot otherwise reach. Workflow.visible_to is already published-only.
+  def visible_published_workflows(title)
+    Workflow.visible_to(@user).where("LOWER(title) = LOWER(?)", title)
+  end
+
   def report_missing_sub_flow_target(title, path)
-    if Workflow.where.not(status: "published").exists?(["LOWER(title) = LOWER(?)", title])
+    # Only the user's OWN drafts. The helpful case is "I imported A a moment ago
+    # and it is still a draft"; anyone else's draft is none of their business, and
+    # saying it exists would leak a private title back to whoever wrote the file.
+    if @user.workflows.where.not(status: "published").exists?(["LOWER(title) = LOWER(?)", title])
       add_error(path, "sub_flow_target_not_published", title,
                 "A workflow titled #{title.inspect} exists but is still a draft. Publish it " \
                 "first — a sub-flow can only run a published workflow.")

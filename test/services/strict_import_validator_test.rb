@@ -434,6 +434,38 @@ class StrictImportValidatorTest < ActiveSupport::TestCase
     assert_includes report.errors.pluck(:code), "ambiguous_sub_flow_target"
   end
 
+  test "a published workflow the importer cannot see is not a valid sub_flow target" do
+    stranger = User.create!(
+      email: "strict-test-stranger-#{SecureRandom.hex(4)}@example.com",
+      password: "password123!", password_confirmation: "password123!", role: "editor"
+    )
+    hidden = stranger.workflows.create!(title: "SF Target #{SecureRandom.hex(3)}",
+                                        status: "published", is_public: false)
+    Group.create!(name: "Strict Group #{SecureRandom.hex(3)}").tap do |g|
+      hidden.replace_groups!([g.id])
+    end
+
+    report = validate_subflow(hidden.title)
+
+    assert_not report.valid?
+    assert_includes report.errors.pluck(:code), "unknown_sub_flow_target"
+    assert_not_includes report.errors.pluck(:message).join, hidden.id.to_s
+  end
+
+  test "another user's draft does not produce the publish-it-first hint" do
+    stranger = User.create!(
+      email: "strict-test-stranger-#{SecureRandom.hex(4)}@example.com",
+      password: "password123!", password_confirmation: "password123!", role: "editor"
+    )
+    theirs = stranger.workflows.create!(title: "SF Target #{SecureRandom.hex(3)}", status: "draft")
+
+    report = validate_subflow(theirs.title)
+
+    assert_not report.valid?
+    assert_includes report.errors.pluck(:code), "unknown_sub_flow_target"
+    assert_not_includes report.errors.pluck(:code), "sub_flow_target_not_published"
+  end
+
   private
 
   def validate(hash)
