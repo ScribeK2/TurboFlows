@@ -30,6 +30,8 @@ module Workflows
         return
       end
 
+      return render_strict_report(file_content) if strict_dialect?(format, file_content)
+
       result = WorkflowImporter.new(current_user, format: format, content: file_content).call
 
       if result.success?
@@ -47,7 +49,50 @@ module Workflows
       end
     end
 
+    # POST /workflows/import/commit
+    #
+    # The content makes a round trip through the browser, so it is user input
+    # again: re-validate rather than trusting the report that produced the page.
+    def commit
+      content = params[:content].to_s
+      report = StrictImportValidator.new(user: current_user, content:).validate
+
+      return render_report(content, report, :unprocessable_entity) unless report.valid?
+
+      result = WorkflowImporter.new(current_user, format: :json, content:, strict_report: report).call
+
+      if result.success?
+        redirect_to workflow_path(result.workflow), notice: import_summary(result)
+      else
+        redirect_to new_workflow_import_path,
+                    alert: "Failed to import workflow: #{truncate_for_flash(result.errors)}"
+      end
+    end
+
     private
+
+    def strict_dialect?(format, content)
+      format == :json && StrictImportValidator.strict?(content)
+    end
+
+    def render_strict_report(content)
+      report = StrictImportValidator.new(user: current_user, content:).validate
+      render_report(content, report, report.valid? ? :ok : :unprocessable_content)
+    end
+
+    def render_report(content, report, status)
+      @content = content
+      @report = report
+      render :report, status: status
+    end
+
+    def import_summary(result)
+      workflow = result.workflow
+      parts = ["Imported #{workflow.steps.count} steps as a draft"]
+      parts << "in #{workflow.groups.map(&:name).to_sentence}" if workflow.groups.any?
+      parts << "tagged #{workflow.tags.map(&:name).to_sentence}" if workflow.tags.any?
+      "#{parts.join(', ')}."
+    end
 
     def detect_file_format(filename, content_type)
       extension = File.extname(filename).downcase

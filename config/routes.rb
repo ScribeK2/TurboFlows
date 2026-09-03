@@ -45,7 +45,10 @@ Rails.application.routes.draw do
   end
 
   # Workflow import (collection-level, not per-workflow)
-  resource :workflow_import, only: %i[new create], controller: "workflows/imports", path: "workflows/import"
+  resource :workflow_import, only: %i[new create], controller: "workflows/imports",
+                             path: "workflows/import" do
+    post :commit
+  end
 
   resources :tags, only: %i[index create destroy]
 
