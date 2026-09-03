@@ -31,9 +31,10 @@ module Workflows
       assert_match 'application/json', response.content_type
       json = response.parsed_body
 
-      assert_equal 'Exportable Flow', json['title']
-      assert_kind_of Array, json['steps']
-      assert_equal '2.0', json['export_version']
+      assert_equal ImportSchemaGenerator::SCHEMA_VERSION, json['schema_version']
+      workflow = json['workflows'].first
+      assert_equal 'Exportable Flow', workflow['title']
+      assert_kind_of Array, workflow['steps']
     end
 
     test 'pdf returns PDF binary' do
