@@ -1,0 +1,19 @@
+{
+  "schema_version": "1",
+  "workflows": [
+    {
+      "title": "T",
+      "groups": [
+        "Corpus Forbidden"
+      ],
+      "steps": [
+        {
+          "id": "done",
+          "type": "resolve",
+          "title": "Done",
+          "resolution_type": "success"
+        }
+      ]
+    }
+  ]
+}

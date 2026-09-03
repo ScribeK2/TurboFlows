@@ -1,0 +1,112 @@
+{
+  "schema_version": "1",
+  "workflows": [
+    {
+      "title": "Corpus All Types",
+      "description": "One step of every type, wired into a reachable acyclic graph.",
+      "tags": [
+        "corpus"
+      ],
+      "steps": [
+        {
+          "id": "ask",
+          "type": "question",
+          "title": "Which issue?",
+          "question": "Which issue?",
+          "answer_type": "multiple_choice",
+          "variable_name": "issue",
+          "options": [
+            {
+              "label": "Billing",
+              "value": "billing"
+            },
+            {
+              "label": "Other",
+              "value": "other"
+            }
+          ],
+          "transitions": [
+            {
+              "target_id": "act",
+              "condition": "issue == 'billing'"
+            },
+            {
+              "target_id": "note"
+            }
+          ]
+        },
+        {
+          "id": "act",
+          "type": "action",
+          "title": "Check the account",
+          "instructions": "<p>Open <strong>Billing</strong>.</p>",
+          "transitions": [
+            {
+              "target_id": "note"
+            }
+          ]
+        },
+        {
+          "id": "note",
+          "type": "message",
+          "title": "Read this out",
+          "content": "<p>Explain the charge for {{issue}}.</p>",
+          "transitions": [
+            {
+              "target_id": "form"
+            }
+          ]
+        },
+        {
+          "id": "form",
+          "type": "form",
+          "title": "Collect contact details",
+          "instructions": "<p>Take their details.</p>",
+          "options": [
+            {
+              "name": "phone",
+              "label": "Phone",
+              "field_type": "phone",
+              "required": true,
+              "position": 0
+            }
+          ],
+          "transitions": [
+            {
+              "target_id": "sub"
+            }
+          ]
+        },
+        {
+          "id": "sub",
+          "type": "sub_flow",
+          "title": "Run identity check",
+          "target_workflow_title": "Corpus Sub Flow Target",
+          "transitions": [
+            {
+              "target_id": "esc"
+            }
+          ]
+        },
+        {
+          "id": "esc",
+          "type": "escalate",
+          "title": "Hand to a supervisor",
+          "target_type": "supervisor",
+          "priority": "high",
+          "transitions": [
+            {
+              "target_id": "done"
+            }
+          ]
+        },
+        {
+          "id": "done",
+          "type": "resolve",
+          "title": "Done",
+          "resolution_type": "success"
+        }
+      ]
+    }
+  ]
+}

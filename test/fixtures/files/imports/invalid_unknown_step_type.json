@@ -1,0 +1,26 @@
+{
+  "schema_version": "1",
+  "workflows": [
+    {
+      "title": "T",
+      "steps": [
+        {
+          "id": "s1",
+          "type": "decision",
+          "title": "Branch",
+          "transitions": [
+            {
+              "target_id": "done"
+            }
+          ]
+        },
+        {
+          "id": "done",
+          "type": "resolve",
+          "title": "Done",
+          "resolution_type": "success"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "schema_version": "1",
+  "workflows": [
+    {
+      "title": "T",
+      "steps": [
+        {
+          "id": "not a slug!",
+          "type": "message",
+          "title": "Say",
+          "content": "<p>a</p>",
+          "transitions": [
+            {
+              "target_id": "done"
+            }
+          ]
+        },
+        {
+          "id": "done",
+          "type": "resolve",
+          "title": "Done",
+          "resolution_type": "success"
+        }
+      ]
+    }
+  ]
+}
