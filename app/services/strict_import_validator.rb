@@ -13,6 +13,29 @@ class StrictImportValidator
     def valid? = errors.empty?
   end
 
+  # The only condition forms ConditionEvaluator accepts. Quoted back to the agent
+  # in the error, because there is nowhere else it could learn them.
+  CONDITION_FORMS = [
+    "var == 'value'", "var != 'value'", "var > 10", "var >= 10", "var < 10", "var <= 10"
+  ].freeze
+
+  # ConditionEvaluator::VALID_PATTERNS anchor at the start but not at the end, so
+  # #valid? returns true for anything that merely BEGINS with a comparison —
+  # "tier == 'gold' && region == 'EU'" and even "tier == 'gold' OR nonsense ((("
+  # all pass it. #evaluate then reads only as much as it understands, so the rest
+  # of the expression silently does nothing.
+  #
+  # Derive end-anchored versions from the same constant rather than restating the
+  # six forms, so the two cannot drift apart. The whole string must be one
+  # comparison and nothing else.
+  STRICT_CONDITION_PATTERNS = ConditionEvaluator::VALID_PATTERNS.map do |pattern|
+    Regexp.new("#{pattern.source}\\s*\\z")
+  end.freeze
+
+  INTERPOLATION = /\{\{\s*([a-zA-Z_]\w*)\s*\}\}/
+  CONDITION_VARIABLE = /\A\s*(\w+)\s*(?:>=|<=|==|!=|>|<)/
+  CONDITION_STRING_VALUE = /(?:==|!=)\s*['"]([^'"]*)['"]/
+
   # id, type and transitions have their own codes, so they are reported by their
   # own checks rather than as a generic missing field.
   SELF_REPORTING_FIELDS = %w[id type transitions].freeze
@@ -46,6 +69,7 @@ class StrictImportValidator
 
     normalized = normalize(workflow)
     validate_graph(normalized)
+    validate_semantics(normalized)
 
     report(workflow_data: normalized)
   end
@@ -95,6 +119,95 @@ class StrictImportValidator
 
     add_error("workflows[0]", "envelope_invalid", workflow.class.name,
               "Each entry in 'workflows' must be an object.")
+  end
+
+  # --- semantics ---------------------------------------------------------------
+
+  # The checks that catch what a competent agent still gets wrong. ConditionEvaluator
+  # accepts six regexes and nothing else — no && or ||, string values quoted,
+  # numeric comparisons matching \d+ so "> 3.5" and "> -1" do not parse — and
+  # #evaluate returns false for anything unparseable rather than raising. An
+  # invalid condition is therefore a branch that silently never fires on a live
+  # call, which is why it is an error rather than a warning.
+  #
+  # The variable and option checks are warnings: a variable can legitimately
+  # arrive from scenario inputs rather than an upstream question, so treating
+  # either as an error would reject valid files.
+  def validate_semantics(workflow)
+    steps = workflow["steps"]
+    defined = defined_variables(steps)
+    options = options_by_variable(steps)
+
+    steps.each_with_index do |step, index|
+      path = "workflows[0].steps[#{index}]"
+      validate_interpolations(step, path, defined)
+
+      Array(step["transitions"]).each_with_index do |transition, t_index|
+        condition = transition["condition"]
+        next if condition.blank?
+
+        validate_condition(condition, "#{path}.transitions[#{t_index}].condition",
+                           defined, options)
+      end
+    end
+  end
+
+  def validate_condition(condition, path, defined, options)
+    unless supported_condition?(condition)
+      return add_error(path, "invalid_condition_syntax", condition,
+                       "#{condition.inspect} is not a supported condition. One comparison " \
+                       "only — no && or ||, string values quoted, numbers whole and positive.",
+                       expected: CONDITION_FORMS)
+    end
+
+    name = condition[CONDITION_VARIABLE, 1]
+    return if name.nil?
+
+    unless defined.include?(name)
+      return add_warning(path, "undefined_variable", name,
+                         "No question in this workflow sets #{name}. This branch will not " \
+                         "fire unless the scenario supplies it.")
+    end
+
+    value = condition[CONDITION_STRING_VALUE, 1]
+    values = options[name]
+    return if value.nil? || values.nil? || values.include?(value)
+
+    add_warning(path, "unmatched_option_value", value,
+                "#{name} never takes the value #{value.inspect}. Its question offers: " \
+                "#{values.join(', ')}.")
+  end
+
+  def supported_condition?(condition)
+    STRICT_CONDITION_PATTERNS.any? { |pattern| pattern.match?(condition.to_s.strip) }
+  end
+
+  def defined_variables(steps)
+    steps.filter_map { |step| step["variable_name"].presence }.to_set
+  end
+
+  def options_by_variable(steps)
+    steps.each_with_object({}) do |step, map|
+      next unless step["type"] == "question" && step["variable_name"].present?
+      next unless step["options"].is_a?(Array)
+
+      values = step["options"].filter_map { |o| o.is_a?(Hash) ? o["value"] : nil }
+      map[step["variable_name"]] = values if values.any?
+    end
+  end
+
+  def validate_interpolations(step, path, defined)
+    step.each do |field, value|
+      next unless value.is_a?(String)
+
+      value.scan(INTERPOLATION).flatten.uniq.each do |name|
+        next if defined.include?(name)
+
+        add_warning("#{path}.#{field}", "undefined_variable", name,
+                    "{{#{name}}} is not set by any question in this workflow. It will " \
+                    "interpolate as empty unless the scenario supplies it.")
+      end
+    end
   end
 
   # --- graph -----------------------------------------------------------------

@@ -279,6 +279,83 @@ class StrictImportValidatorTest < ActiveSupport::TestCase
     assert_predicate report, :valid?, report.errors.inspect
   end
 
+  test "a compound condition is refused with the supported forms" do
+    report = validate(document_with(steps: [
+                                      { id: "q", type: "question", title: "Tier?", question: "Which tier?",
+                                        variable_name: "tier",
+                                        transitions: [{ target_id: "done", condition: "tier == 'gold' && region == 'EU'" }] },
+                                      resolve_step
+                                    ]))
+
+    error = report.errors.find { |e| e[:code] == "invalid_condition_syntax" }
+    assert_not_nil error
+    assert_equal "workflows[0].steps[0].transitions[0].condition", error[:path]
+    assert_includes error[:expected], "var == 'value'"
+  end
+
+  test "a decimal comparison is refused, because ConditionEvaluator matches whole numbers" do
+    report = validate(document_with(steps: [
+                                      { id: "q", type: "question", title: "Score?", question: "Score?",
+                                        variable_name: "score", answer_type: "number",
+                                        transitions: [{ target_id: "done", condition: "score > 3.5" }] },
+                                      resolve_step
+                                    ]))
+
+    assert_includes report.errors.pluck(:code), "invalid_condition_syntax"
+  end
+
+  test "a supported condition passes" do
+    report = validate(document_with(steps: [
+                                      { id: "q", type: "question", title: "Tier?", question: "Which tier?",
+                                        variable_name: "tier",
+                                        transitions: [{ target_id: "done", condition: "tier == 'gold'" }] },
+                                      resolve_step
+                                    ]))
+
+    assert_predicate report, :valid?, report.errors.inspect
+  end
+
+  test "a condition on a variable nothing defines is a warning, not an error" do
+    report = validate(document_with(steps: [
+                                      { id: "q", type: "question", title: "Tier?", question: "Which tier?",
+                                        variable_name: "tier",
+                                        transitions: [{ target_id: "done", condition: "reegion == 'EU'" }] },
+                                      resolve_step
+                                    ]))
+
+    assert_predicate report, :valid?, report.errors.inspect
+    warning = report.warnings.find { |w| w[:code] == "undefined_variable" }
+    assert_not_nil warning
+    assert_equal "reegion", warning[:value]
+  end
+
+  test "an interpolated variable nothing defines is a warning" do
+    report = validate(document_with(steps: [
+                                      { id: "m", type: "message", title: "Greeting",
+                                        content: "<p>Hello {{custmer_name}}</p>",
+                                        transitions: [{ target_id: "done" }] },
+                                      resolve_step
+                                    ]))
+
+    assert_predicate report, :valid?, report.errors.inspect
+    assert_includes report.warnings.pluck(:value), "custmer_name"
+  end
+
+  test "a condition comparing against a value the question does not offer is a warning" do
+    report = validate(document_with(steps: [
+                                      { id: "q", type: "question", title: "Down?", question: "Is it down?",
+                                        answer_type: "multiple_choice", variable_name: "down",
+                                        options: [{ label: "Yes", value: "true" }, { label: "No", value: "false" }],
+                                        transitions: [{ target_id: "done", condition: "down == 'yes'" }] },
+                                      resolve_step
+                                    ]))
+
+    assert_predicate report, :valid?, report.errors.inspect
+    warning = report.warnings.find { |w| w[:code] == "unmatched_option_value" }
+    assert_not_nil warning
+    assert_match(/true, false/, warning[:message])
+  end
+
   private
 
   def validate(hash)
