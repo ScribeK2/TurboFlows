@@ -26,13 +26,13 @@ class Admin::GroupLockTest < ActionDispatch::IntegrationTest
 
     patch admin_group_path(@group), params: { group: { name: @group.name, admins_add_members: "0" } }
 
-    assert_not @group.reload.admins_add_members?
+    assert_not_predicate @group.reload, :admins_add_members?
   end
 
   test "a new group starts open" do
     post admin_groups_path, params: { group: { name: "Lock New #{SecureRandom.hex(4)}" } }
 
-    assert_not Group.order(:id).last.admins_add_members?
+    assert_not_predicate Group.order(:id).last, :admins_add_members?
   end
 
   test "the group page and its tree row say when only admins add people" do

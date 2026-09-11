@@ -121,16 +121,16 @@
   text-underline-offset: 2px;
 }
 
-/* Plain text, never a pill: a managed group is a setting, not a problem (spec
-   2026-09-11 Q11). Shown only on the group an admin set it on. */
+/* __managed is plain text, never a pill: a managed group is a setting, not a
+   problem (spec 2026-09-11 Q11). Shown only on the group an admin set it on,
+   in the same muted small type as a path. */
+.group-tree__path,
 .group-tree__managed {
   font-size: var(--text-xs);
   color: var(--color-ink-muted);
 }
 
 .group-tree__path {
-  font-size: var(--text-xs);
-  color: var(--color-ink-muted);
   overflow-wrap: anywhere;
 }
 
