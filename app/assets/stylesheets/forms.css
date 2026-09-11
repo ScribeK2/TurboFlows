@@ -501,23 +501,30 @@
    line: a flex container packs items onto a line using each item's *unshrunk*
    hypothetical size, so a content-sized (flex-basis: auto) name wider than the
    row got pushed to a line of its own, stranding the checkbox above it. Basis 0
-   makes that hypothetical size ~0, so it always packs beside the checkbox, then
-   grows to fill the line; min-width: 0 lets it shrink below its content width
-   and overflow-wrap: anywhere lets a long word break, so it wraps within its
-   own box instead of overflowing the list into a horizontal scrollbar. */
+   makes that hypothetical size ~0, so it always packs beside the checkbox.
+   max-width: max-content caps how far it grows to fill the line at its own
+   content width — a "max violation" the flex algorithm resolves by freezing the
+   name there and handing the rest of the line to the path, which is what keeps
+   a short name on one line with the path still getting first claim on the
+   room. min-width: 0 lets the name shrink below that content width when the
+   row itself is too narrow, and overflow-wrap: anywhere lets a long word break,
+   so it wraps within its own box instead of overflowing the list into a
+   horizontal scrollbar. */
 .group-picker__name {
   flex: 1 1 0;
   min-width: 0;
+  max-width: max-content;
   overflow-wrap: anywhere;
   font-weight: 500;
   color: var(--color-ink);
 }
 
-/* No flex-grow, and flex-basis: auto (the default): the path takes only the
-   room its own content needs beside the name, rather than an equal forced
-   share of the row — and shrinks (min-width: 0) to ellipsis only when the line
-   is actually out of room. */
+/* flex-basis: 0, matching the name, so it too always packs onto the checkbox's
+   line rather than being pushed to a line of its own by its own content width;
+   flex-grow claims whatever the name's max-width capping left over, and
+   shrinks (min-width: 0) to ellipsis when the line is actually out of room. */
 .group-picker__path {
+  flex: 1 1 0;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
