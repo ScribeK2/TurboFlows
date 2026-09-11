@@ -25,6 +25,7 @@ class ProfilesControllerTest < ActionDispatch::IntegrationTest
   test "edit renders form with current values" do
     get edit_profile_path
     assert_response :success
+    assert_select "title", "Profile — TurboFlows"
     assert_select "input[name='user[display_name]'][value=?]", "Original Name"
     assert_select "select[name='user[time_zone]']"
     # Email shown as a disabled, read-only field

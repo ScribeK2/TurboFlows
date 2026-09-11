@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html data-controller="dark-mode">
   <head>
-    <title>TurboFlows</title>
+    <title><%= content_for?(:title) ? yield(:title) : "TurboFlows" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="view-transition" content="same-origin">
     <%= csrf_meta_tags %>
