@@ -27,6 +27,7 @@ class Group < ApplicationRecord
   validate :max_depth_allowed
   validate :global_stays_put, on: :update
   validate :nothing_nests_under_global
+  validate :global_is_not_kept_to_administrators
   # prepend: the dependent callbacks above (nullify children, destroy
   # group_workflows) would otherwise run before the refusal.
   before_destroy :refuse_to_destroy_global, prepend: true
@@ -500,6 +501,14 @@ class Group < ApplicationRecord
     return unless was_global? && (name_changed? || parent_id_changed?)
 
     errors.add(:base, "Global can't be renamed or moved — everyone signed in relies on it")
+  end
+
+  # Nobody joins Global, so the setting would mean nothing while Global's page
+  # announced it. The form never offers it; this refuses a hand-built request.
+  def global_is_not_kept_to_administrators
+    return unless global? && admins_add_members?
+
+    errors.add(:admins_add_members, "can't be set on Global, which everyone signed in already sees")
   end
 
   def nothing_nests_under_global

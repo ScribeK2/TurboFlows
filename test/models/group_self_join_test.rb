@@ -1,7 +1,7 @@
 require "test_helper"
 
 # Which groups a person may join or leave on their own (spec 2026-09-11 Q6).
-# Membership covers subgroups, so a lock has to hold in both directions: joining
+# Membership covers subgroups, so the rule has to hold in both directions: joining
 # the parent of a managed group would reach it, and a managed group's subgroups
 # belong to it.
 class GroupSelfJoinTest < ActiveSupport::TestCase
@@ -87,5 +87,15 @@ class GroupSelfJoinTest < ActiveSupport::TestCase
     descriptions = Group.descriptions_by_id([@tier1.id, @tier2.id, @hr.id])
 
     assert_equal({ @tier1.id => "Password resets and first-line calls" }, descriptions)
+  end
+
+  # Global's audience is everyone signed in, and nobody joins it, so the setting
+  # would mean nothing while Global's page announced it.
+  test "Global can't be kept to administrators" do
+    global = global_group
+    global.admins_add_members = true
+
+    assert_not global.valid?
+    assert_includes global.errors[:admins_add_members], "can't be set on Global, which everyone signed in already sees"
   end
 end
