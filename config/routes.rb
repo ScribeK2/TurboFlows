@@ -11,7 +11,10 @@ Rails.application.routes.draw do
   resource :welcome, only: %i[show create] do
     resource :skip, only: :create, module: :welcomes
   end
-  resource :profile, only: %i[edit update]
+  resource :profile, only: %i[edit update] do
+    # My groups (spec 2026-09-11 Q8).
+    resources :memberships, only: %i[create destroy], module: :profiles
+  end
   root to: 'dashboard#index'
 
   # Mount ActionCable
