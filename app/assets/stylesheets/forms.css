@@ -573,6 +573,17 @@
   background: var(--color-canvas-alt);
 }
 
+/* The Global row pairs the name with a hint, not a path, so the shared
+   .group-picker__name rule above — sized to let a name and path share one
+   line in a list row — let "Global" itself shrink past its own content width
+   at a narrow panel. Combined with that rule's overflow-wrap: anywhere, the
+   word broke mid-string ("Glo" / "bal") rather than the hint giving way.
+   Global's name is always short, so pinning it to its own content width
+   costs nothing and the hint wraps under it instead. */
+.group-picker__global .group-picker__name {
+  min-width: max-content;
+}
+
 .group-picker__hint {
   font-size: var(--text-xs);
   color: var(--color-ink-muted);
