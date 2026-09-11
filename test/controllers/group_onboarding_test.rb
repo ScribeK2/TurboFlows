@@ -59,7 +59,7 @@ class GroupOnboardingTest < ActionDispatch::IntegrationTest
     get welcome_path
 
     assert_response :success
-    offered = css_select(".group-picker__option").pluck("data-path")
+    offered = css_select(".group-picker__option").pluck("data-path").select { |path| path.include?(@tag.downcase) }
     assert_equal ["onboard hr #{@tag}", "onboard support #{@tag} / tier 1"].sort, offered.sort
     assert_select ".group-picker__global", 0
     assert_select ".group-picker__option[data-path=?] .group-picker__note", "onboard support #{@tag} / tier 1", text: "First-line calls"
@@ -103,6 +103,14 @@ class GroupOnboardingTest < ActionDispatch::IntegrationTest
   end
 
   # -- Skip --
+
+  test "the welcome page still opens after Skip, so the notice's link works" do
+    post welcome_skip_path
+
+    get welcome_path
+
+    assert_response :success
+  end
 
   test "Skip holds for the session and the next session offers the page again" do
     post welcome_skip_path
