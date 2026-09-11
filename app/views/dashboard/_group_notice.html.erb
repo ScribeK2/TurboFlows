@@ -1,0 +1,25 @@
+<%# A person in no group sees only Global workflows, and until this said so they
+    got no explanation (spec 2026-09-11 Q10). With groups to join it links back
+    to the welcome page they skipped; with none it says who will act. Secondary,
+    not primary: the greeting above already carries the page's filled button. %>
+<% if current_user.awaiting_groups? %>
+  <section class="list-section" aria-label="Your groups">
+    <div class="list-section__body">
+      <div class="list-row">
+        <span class="list-row__icon" aria-hidden="true"><%= icon "user-group", class: "icon icon--sm" %></span>
+        <div class="list-row__body">
+          <div class="list-row__title">You're not in a group yet</div>
+          <p class="list-row__sub">
+            Until you are, you see only the workflows everyone can see.
+            <%= "An administrator will add you to a group." unless group_onboarding_offered? %>
+          </p>
+        </div>
+        <% if group_onboarding_offered? %>
+          <div class="list-row__actions">
+            <%= link_to "Choose your groups", welcome_path, class: "btn btn--secondary btn--sm" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </section>
+<% end %>

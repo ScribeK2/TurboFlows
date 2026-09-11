@@ -1,0 +1,25 @@
+<% content_for(:title) { "Choose your groups — TurboFlows" } %>
+
+<%# One filled button: Join. Skip is its own button_to beside it, outside the
+    join form, so the two never share a submit and no form nests in another. %>
+<div class="page-content page-narrow">
+  <div class="page-header-section">
+    <div>
+      <h1 class="page-header-section__title">Choose your groups</h1>
+      <p class="page-header-section__subtitle">The groups you're in decide which workflows you see. You can change them later on your profile.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <%= form_with url: welcome_path, method: :post, id: "welcome-join" do %>
+      <div class="card__body">
+        <%= render "shared/group_picker", nodes: @nodes, field_name: "group_ids[]", notes: @descriptions %>
+        <p class="form-hint mt-3">Can't find your team? An administrator can add you.</p>
+      </div>
+    <% end %>
+    <div class="card__footer flex justify-end items-center gap-3">
+      <%= button_to "Skip for now", welcome_skip_path, class: "btn btn--plain" %>
+      <button type="submit" form="welcome-join" class="btn btn--primary">Join</button>
+    </div>
+  </div>
+</div>

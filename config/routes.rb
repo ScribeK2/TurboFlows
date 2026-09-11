@@ -7,6 +7,10 @@ Rails.application.routes.draw do
   }
 
   resource :first_run, only: %i[new create]
+  # A person in no group chooses their own (spec 2026-09-11 Q3).
+  resource :welcome, only: %i[show create] do
+    resource :skip, only: :create, module: :welcomes
+  end
   resource :profile, only: %i[edit update]
   root to: 'dashboard#index'
 

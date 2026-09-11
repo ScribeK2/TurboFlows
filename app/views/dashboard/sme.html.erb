@@ -1,6 +1,8 @@
 <div class="dashboard-layout">
   <%= render "dashboard/header" %>
 
+  <%= render "dashboard/group_notice" %>
+
   <% if @dashboard.published_workflow_count.positive? || @dashboard.draft_count.positive? %>
   <%# -- Stats: one bordered panel, hairline-divided cells -- %>
   <div class="stat-panel animate-fade-in">
