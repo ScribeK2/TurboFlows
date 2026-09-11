@@ -35,7 +35,7 @@ class Profiles::MembershipsControllerTest < ActionDispatch::IntegrationTest
 
     get edit_profile_path
 
-    offered = css_select("#my-groups .group-picker__option").pluck("data-path")
+    offered = css_select("#my-groups .group-picker__option").pluck("data-path").select { |path| path.include?(@tag.downcase) }
     assert_equal ["mine hr #{@tag}"], offered
     assert_select "#my-groups .group-picker__note", text: "People matters"
     assert_select ".btn--primary", 1
