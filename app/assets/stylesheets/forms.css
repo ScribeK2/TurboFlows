@@ -481,11 +481,16 @@
   border-radius: var(--radius-lg);
 }
 
-/* --depth is set per option; indentation is the only layout it drives. */
+/* --depth is set per option; indentation is the only layout it drives.
+   align-items: flex-start (not center) pins the checkbox to the name's FIRST
+   text line: with center, a name wrapped onto several lines (round 1's fix)
+   centred the checkbox on the whole multi-line block instead. The checkbox's
+   own margin-top below re-centers it against just that first line, so a
+   single-line row (the common case) still looks exactly as before. */
 .group-picker__label {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
   padding-inline-start: calc(var(--space-3) + var(--depth, 0) * var(--space-5));
@@ -495,6 +500,12 @@
 
 .group-picker__label:hover {
   background: var(--color-canvas-alt);
+}
+
+/* Centers the 1rem checkbox on one line of the label's text (1lh) — the gap
+   between the line's height and the checkbox's own height, halved. */
+.group-picker__label > .form-checkbox {
+  margin-top: calc((1lh - 1rem) / 2);
 }
 
 /* flex-basis: 0 (not auto) keeps the checkbox and the name on the same flex
