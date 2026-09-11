@@ -41,6 +41,32 @@ class Profiles::MembershipsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".btn--primary", 1
   end
 
+  # Membership covers subgroups, so joining one below a group you are in adds a
+  # row that changes nothing you can see.
+  test "the join picker leaves out subgroups I already see through a group I'm in" do
+    sales = Group.create!(name: "Mine Sales #{@tag}")
+    east = Group.create!(name: "East", parent: sales)
+    Group.create!(name: "North", parent: east)
+    UserGroup.create!(user: @user, group: sales)
+
+    get edit_profile_path
+
+    offered = css_select("#my-groups .group-picker__option").pluck("data-path")
+    assert_not_includes offered, "mine sales #{@tag} / east"
+    assert_not_includes offered, "mine sales #{@tag} / east / north"
+    assert_includes offered, "mine hr #{@tag}", "a group outside the ones I'm in is still offered"
+  end
+
+  test "the profile reads the group tree once" do
+    UserGroup.create!(user: @user, group: @tier1)
+    tree_reads = 0
+    counter = ->(*, payload) { tree_reads += 1 if payload[:sql].match?(/\ASELECT "groups"\."id", "groups"\."name", "groups"\."parent_id" FROM "groups"\z/) }
+
+    ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { get edit_profile_path }
+
+    assert_equal 1, tree_reads
+  end
+
   test "an administrator's profile has no My groups" do
     @user.update!(role: "admin")
 

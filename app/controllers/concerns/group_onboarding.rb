@@ -8,7 +8,7 @@ module GroupOnboarding
   SKIPPED_KEY = :group_onboarding_skipped
 
   included do
-    helper_method :group_onboarding_offered?, :self_joinable_group_ids
+    helper_method :group_onboarding_offered?, :self_joinable_group_ids, :awaiting_groups?
   end
 
   private
@@ -17,10 +17,18 @@ module GroupOnboarding
     @self_joinable_group_ids ||= Group.self_joinable_ids
   end
 
+  # current_user.awaiting_groups?, asked once per request: the dashboard's
+  # redirect and its notice each want it, and each ask is a query.
+  def awaiting_groups?
+    return @awaiting_groups if defined?(@awaiting_groups)
+
+    @awaiting_groups = current_user.awaiting_groups?
+  end
+
   # In no group, and there is a group they may join. awaiting_groups? goes first
   # so someone already in a group costs no tree query.
   def group_onboarding_offered?
-    current_user.awaiting_groups? && self_joinable_group_ids.any?
+    awaiting_groups? && self_joinable_group_ids.any?
   end
 
   # Skip lasts for the session (Q3). Devise signs out with sign_out_all_scopes,

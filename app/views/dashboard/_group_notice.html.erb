@@ -2,7 +2,7 @@
     got no explanation (spec 2026-09-11 Q10). With groups to join it links back
     to the welcome page they skipped; with none it says who will act. Secondary,
     not primary: the greeting above already carries the page's filled button. %>
-<% if current_user.awaiting_groups? %>
+<% if awaiting_groups? %>
   <section class="list-section" aria-label="Your groups">
     <div class="list-section__body">
       <div class="list-row">

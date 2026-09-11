@@ -174,6 +174,17 @@ class GroupOnboardingTest < ActionDispatch::IntegrationTest
     assert_select "section[aria-label='Your groups'] a[href=?]", welcome_path, count: 0
   end
 
+  test "the dashboard asks whether someone is in a group once" do
+    post welcome_skip_path
+    membership_checks = 0
+    counter = ->(*, payload) { membership_checks += 1 if payload[:sql].start_with?('SELECT 1 AS one FROM "user_groups"') }
+
+    ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { get root_path }
+
+    assert_response :success
+    assert_equal 1, membership_checks
+  end
+
   test "nobody in a group sees the notice" do
     UserGroup.create!(user: @user, group: @hr)
 
