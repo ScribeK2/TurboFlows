@@ -4,13 +4,8 @@ class Profiles::MembershipsController < ApplicationController
   include GroupOnboarding
 
   def create
-    ids = Array(params[:group_ids]).compact_blank
-    return redirect_to(my_groups_path, alert: "Choose at least one group to join.") if ids.empty?
-
-    current_user.join_groups!(ids)
-    redirect_to my_groups_path, notice: "You're in #{group_paths_sentence(ids)}."
-  rescue Group::NotSelfJoinable
-    redirect_to my_groups_path, alert: "An administrator adds people to that group."
+    join_posted_groups joined_path: my_groups_path, retry_path: my_groups_path,
+                       nothing_chosen: "Choose at least one group to join."
   end
 
   def destroy

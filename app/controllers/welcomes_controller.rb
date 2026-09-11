@@ -12,13 +12,8 @@ class WelcomesController < ApplicationController
   end
 
   def create
-    ids = Array(params[:group_ids]).compact_blank
-    return redirect_to(welcome_path, alert: "Choose at least one group, or skip for now.") if ids.empty?
-
-    current_user.join_groups!(ids)
-    redirect_to root_path, notice: "You're in #{group_paths_sentence(ids)}."
-  rescue Group::NotSelfJoinable
-    redirect_to welcome_path, alert: "An administrator adds people to that group."
+    join_posted_groups joined_path: root_path, retry_path: welcome_path,
+                       nothing_chosen: "Choose at least one group, or skip for now."
   end
 
   private

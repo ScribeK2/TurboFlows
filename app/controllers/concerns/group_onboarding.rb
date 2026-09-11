@@ -39,8 +39,27 @@ module GroupOnboarding
     redirect_to welcome_path if group_onboarding_offered? && !group_onboarding_skipped?
   end
 
+  # Joins the groups a join form posted and says which (Q7, Q12). The welcome
+  # page and My groups share it; they differ only in where the person goes.
+  def join_posted_groups(joined_path:, retry_path:, nothing_chosen:)
+    ids = posted_group_ids
+    return redirect_to(retry_path, alert: nothing_chosen) if ids.empty?
+
+    current_user.join_groups!(ids, joinable_ids: self_joinable_group_ids)
+    redirect_to joined_path, notice: "You're in #{group_paths_sentence(ids)}."
+  rescue Group::NotSelfJoinable
+    redirect_to retry_path, alert: "An administrator adds people to that group."
+  end
+
+  # A join form posts group_ids[] as a list of ids. Any other shape came from a
+  # hand-built request and reads as nothing chosen, not as an error page.
+  def posted_group_ids
+    ids = params[:group_ids]
+    ids.is_a?(Array) ? ids.grep(String).compact_blank.uniq : []
+  end
+
   # "A and B / C" for a flash, each group by its full path, alphabetical.
   def group_paths_sentence(ids)
-    Group.paths_by_id.values_at(*Array(ids).compact_blank.map(&:to_i)).compact.sort_by(&:downcase).to_sentence
+    Group.paths_by_id.values_at(*Array(ids).compact_blank.map(&:to_i).uniq).compact.sort_by(&:downcase).to_sentence
   end
 end

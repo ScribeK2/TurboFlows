@@ -94,6 +94,36 @@ class GroupOnboardingTest < ActionDispatch::IntegrationTest
     assert_equal "Choose at least one group, or skip for now.", flash[:alert]
   end
 
+  test "nothing chosen, posted as no field at all, asks for a group" do
+    post welcome_path
+
+    assert_redirected_to welcome_path
+    assert_equal "Choose at least one group, or skip for now.", flash[:alert]
+  end
+
+  # A form sends group_ids[] as a list. Anything else came from a hand-built
+  # request, and reads as nothing chosen rather than an error page.
+  test "group ids posted in the wrong shape join nothing and ask for a group" do
+    post welcome_path, params: { group_ids: { a: @hr.id } }
+
+    assert_redirected_to welcome_path
+    assert_equal "Choose at least one group, or skip for now.", flash[:alert]
+    assert_empty @user.user_groups.reload
+  end
+
+  test "a group posted twice is joined once and named once" do
+    post welcome_path, params: { group_ids: [@hr.id, @hr.id] }
+
+    assert_equal "You're in Onboard HR #{@tag}.", flash[:notice]
+    assert_equal [@hr.id], @user.user_groups.reload.map(&:group_id)
+  end
+
+  test "joining reads the group tree once" do
+    tree_reads = count_self_joinable_reads { post welcome_path, params: { group_ids: [@hr.id] } }
+
+    assert_equal 1, tree_reads
+  end
+
   test "a posted group nobody offered is refused and joins nothing" do
     post welcome_path, params: { group_ids: [@hr.id, @escalations.id] }
 
@@ -153,6 +183,14 @@ class GroupOnboardingTest < ActionDispatch::IntegrationTest
   end
 
   private
+
+  # Group.self_joinable_ids is the one query that plucks admins_add_members.
+  def count_self_joinable_reads(&)
+    reads = 0
+    counter = ->(*, payload) { reads += 1 if payload[:sql].include?("admins_add_members") && payload[:sql].start_with?("SELECT") }
+    ActiveSupport::Notifications.subscribed(counter, "sql.active_record", &)
+    reads
+  end
 
   def person(role)
     User.create!(email: "onboard-#{role}-#{SecureRandom.hex(4)}@example.com", password: "password123!",

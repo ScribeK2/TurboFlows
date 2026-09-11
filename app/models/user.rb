@@ -138,9 +138,12 @@ class User < ApplicationRecord
   # whole request if any group is not self-joinable rather than joining the rest:
   # an id the picker never offered is not a mistake to paper over. A group they
   # are already in keeps the origin it has (Q15). Returns the ids newly joined.
-  def join_groups!(group_ids)
+  #
+  # joinable_ids lets a request that already read the tree pass it in, rather
+  # than reading every group again.
+  def join_groups!(group_ids, joinable_ids: Group.self_joinable_ids)
     ids = Array(group_ids).compact_blank.map(&:to_i).uniq
-    raise Group::NotSelfJoinable if (ids - Group.self_joinable_ids).any?
+    raise Group::NotSelfJoinable if (ids - joinable_ids).any?
 
     new_ids = ids - user_groups.pluck(:group_id)
     transaction do

@@ -64,6 +64,9 @@ class Profiles::MembershipsControllerTest < ActionDispatch::IntegrationTest
     post profile_memberships_path, params: { group_ids: [@escalations.id] }
     assert_equal "An administrator adds people to that group.", flash[:alert]
 
+    post profile_memberships_path, params: { group_ids: { a: @hr.id } }
+    assert_equal "Choose at least one group to join.", flash[:alert]
+
     assert_empty @user.user_groups.reload
   end
 
