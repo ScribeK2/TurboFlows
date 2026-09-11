@@ -10,7 +10,7 @@
         <div class="list-row__body">
           <div class="list-row__title">You're not in a group yet</div>
           <p class="list-row__sub">
-            Until you are, you see only the workflows everyone can see.
+            <%= current_user.editor? ? "Until you are, you see only the workflows everyone can see and the ones you made." : "Until you are, you see only the workflows everyone can see." %>
             <%= "An administrator will add you to a group." unless group_onboarding_offered? %>
           </p>
         </div>

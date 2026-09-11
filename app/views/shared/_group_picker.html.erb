@@ -37,15 +37,19 @@
         <% groups.each do |node| %>
           <li class="group-picker__option" style="--depth: <%= node.depth %>;"
               data-group-picker-target="option" data-path="<%= node.path.downcase %>">
+            <% note = notes[node.id] %>
+            <% note_id = "group-picker-note-#{node.id}" if note %>
             <label class="group-picker__label">
               <input type="checkbox" name="<%= field_name %>" value="<%= node.id %>" class="form-checkbox"
-                     <%= "checked" if selected_ids.include?(node.id) %> <%= tag.attributes(data: input_data) %>>
+                     <%= "checked" if selected_ids.include?(node.id) %> <%= tag.attributes(data: input_data, aria: { describedby: note_id }) %>>
               <span class="group-picker__name"><%= node.name %></span>
               <% if node.depth.positive? %>
                 <span class="group-picker__path"><%= node.path %></span>
               <% end %>
-              <% if (note = notes[node.id]) %>
-                <span class="group-picker__note"><%= note %></span>
+              <%# Hidden from the label's text so it isn't read as part of the
+                  name; aria-describedby still reads a hidden element it names. %>
+              <% if note %>
+                <span class="group-picker__note" id="<%= note_id %>" aria-hidden="true"><%= note %></span>
               <% end %>
             </label>
           </li>

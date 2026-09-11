@@ -67,6 +67,19 @@ class GroupOnboardingTest < ActionDispatch::IntegrationTest
     assert_select ".btn--primary", 1
   end
 
+  # The description sits inside the label for layout. Hidden from the label's
+  # text and pointed at by aria-describedby, it is read after the name instead
+  # of as part of it.
+  test "a group's description is announced as its checkbox's description, not its name" do
+    get welcome_path
+
+    path = "onboard support #{@tag} / tier 1"
+    note = css_select(".group-picker__option[data-path='#{path}'] .group-picker__note").first
+    assert_equal "true", note["aria-hidden"]
+    assert_predicate note["id"], :present?
+    assert_select ".group-picker__option[data-path=?] input[aria-describedby=?]", path, note["id"].to_s
+  end
+
   test "someone who has nothing to be welcomed to goes back to the dashboard" do
     UserGroup.create!(user: @user, group: @hr)
 
@@ -172,6 +185,15 @@ class GroupOnboardingTest < ActionDispatch::IntegrationTest
 
     assert_select "section[aria-label='Your groups']", text: /An administrator will add you to a group\./
     assert_select "section[aria-label='Your groups'] a[href=?]", welcome_path, count: 0
+  end
+
+  test "an Editor's notice counts the workflows they made" do
+    @user.update!(role: "editor")
+    post welcome_skip_path
+
+    get root_path
+
+    assert_select "section[aria-label='Your groups'] .list-row__sub", text: /the workflows everyone can see and the ones you made\./
   end
 
   test "the dashboard asks whether someone is in a group once" do
