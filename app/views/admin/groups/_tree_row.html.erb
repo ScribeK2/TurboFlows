@@ -1,4 +1,4 @@
-<%# locals: (node:, ancestor_ids:, has_children:, members:, workflows:) %>
+<%# locals: (node:, ancestor_ids:, has_children:, members:, workflows:, admins_add_members: false) %>
 <li class="group-tree__row<%= " is-hidden" unless node.depth.zero? %>"
     style="--tree-depth: <%= node.depth %>;"
     data-group-tree-target="row"
@@ -15,6 +15,9 @@
   <% end %>
   <div class="group-tree__label">
     <%= link_to node.name, admin_group_path(node.id), class: "group-tree__name" %>
+    <% if admins_add_members %>
+      <span class="group-tree__managed">Admins add people</span>
+    <% end %>
     <%# Shown only while filtering, so a match deep in the tree says where it lives. %>
     <span class="group-tree__path is-hidden"><%= node.path %></span>
   </div>

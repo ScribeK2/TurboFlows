@@ -31,6 +31,7 @@
     <div class="form-group">
       <%= form.label :description, class: "form-label" %>
       <%= form.text_area :description, rows: 3, class: "form-textarea" %>
+      <p class="form-hint">Shown to people choosing a group.</p>
     </div>
 
     <div class="form-group">
@@ -38,6 +39,14 @@
       <p class="form-hint">Members of a parent group also see this group's workflows.</p>
       <%= form.select :parent_id, parent_options.map { [it.path, it.id] },
             { include_blank: "None — a top-level group" }, { class: "form-select" } %>
+    </div>
+
+    <div class="form-group">
+      <label class="flex items-center gap-2">
+        <%= form.check_box :admins_add_members, class: "form-checkbox" %>
+        <span class="form-label">Only administrators add people</span>
+      </label>
+      <p class="form-hint">People choosing their own groups won't be offered this group, or any group above or below it. Anyone already in it stays.</p>
     </div>
   </div>
 

@@ -7,6 +7,7 @@ class Admin::GroupsController < Admin::BaseController
     @member_counts = Group.member_counts
     @workflow_counts = Group.workflow_counts_including_subgroups
     @parent_ids = @nodes.filter_map(&:parent_id).to_set
+    @managed_ids = Group.where(admins_add_members: true).pluck(:id).to_set
   end
 
   def show
@@ -80,6 +81,6 @@ class Admin::GroupsController < Admin::BaseController
 
   # Groups sort by name everywhere (spec Q33); there is no position column.
   def group_params
-    params.expect(group: %i[name description parent_id])
+    params.expect(group: %i[name description parent_id admins_add_members])
   end
 end

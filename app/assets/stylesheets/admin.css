@@ -121,6 +121,13 @@
   text-underline-offset: 2px;
 }
 
+/* Plain text, never a pill: a managed group is a setting, not a problem (spec
+   2026-09-11 Q11). Shown only on the group an admin set it on. */
+.group-tree__managed {
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+}
+
 .group-tree__path {
   font-size: var(--text-xs);
   color: var(--color-ink-muted);

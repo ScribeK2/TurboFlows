@@ -27,7 +27,8 @@
           <%= render "admin/groups/tree_row", node:, ancestor_ids:,
                 has_children: @parent_ids.include?(node.id),
                 members: @member_counts.fetch(node.id, 0),
-                workflows: @workflow_counts.fetch(node.id, 0) %>
+                workflows: @workflow_counts.fetch(node.id, 0),
+                admins_add_members: @managed_ids.include?(node.id) %>
         <% end %>
       </ul>
       <p class="group-tree__empty is-hidden" data-group-tree-target="empty">No group matches that filter.</p>

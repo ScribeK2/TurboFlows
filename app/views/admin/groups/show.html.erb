@@ -14,7 +14,7 @@
         search, folders and every action. %>
     <p class="page-header-section__ident">
       <%= pluralize(@workflow_counts.fetch(@group.id, 0), "workflow") %><%= ", including subgroups" unless @group.global? %> ·
-      <%= link_to "View in Workflows", workflows_path(group_id: @group.id) %>
+      <%= link_to "View in Workflows", workflows_path(group_id: @group.id) %><%= " · Admins add people" if @group.admins_add_members? %>
     </p>
   </div>
 
