@@ -17,6 +17,10 @@ class GroupOnboardingSystemTest < ApplicationSystemTestCase
   end
 
   teardown do
+    # The browser is shared across system tests, so a window one test shrinks
+    # stays shrunk for the next: a 500px-tall window made a later test's Back
+    # button unclickable. Put it back to the driver's size.
+    page.current_window.resize_to(*ApplicationSystemTestCase::SCREEN_SIZE)
     Group.where("name LIKE ?", "wf-system-test-%").find_each do |root|
       Group.where(id: root.descendant_ids).destroy_all
       root.destroy
