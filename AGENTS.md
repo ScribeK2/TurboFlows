@@ -170,7 +170,8 @@ holds the query and the per-record check together. Global is the root group ever
 signed in sees (`Group::GLOBAL_NAME`). It replaced Uncategorized
 (`db/migrate/20260910120000`), which auto-filing filled and almost nobody could see,
 and the Public flag (`is_public` is an ignored column now). It is looked up and
-never created on read, and it refuses rename, move, delete, subgroups and members.
+never created on read, and it refuses rename, move, delete, subgroups, members
+and "Only administrators add people".
 The safeguards against someone forgetting to choose ship together and must stay
 together:
 - new workflows start in no group;
