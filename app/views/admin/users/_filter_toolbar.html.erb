@@ -18,7 +18,8 @@
     <%= form.select :role,
       options_for_select([["All Roles", ""]] + User::ROLE_OPTIONS, params[:role]),
       {},
-      { class: "form-select", data: { action: "change->admin-users-filter#filter" } } %>
+      { class: "form-select", aria: { label: "Filter by role" },
+        data: { action: "change->admin-users-filter#filter" } } %>
 
     <%# "Waiting for a group" is User.awaiting_groups, not a group — the Overview's
         "View all" link lands on it. Groups are named by path (never a bare
@@ -27,11 +28,12 @@
       options_for_select([["All Groups", ""], ["Waiting for a group", Admin::UsersFilter::AWAITING_GROUPS]] +
                          @group_nodes.map { [it.path, it.id] }, params[:group]),
       {},
-      { class: "form-select", data: { action: "change->admin-users-filter#filter" } } %>
+      { class: "form-select", aria: { label: "Filter by group" },
+        data: { action: "change->admin-users-filter#filter" } } %>
 
     <%# Sorting lives on the column headers now. The value still rides along
         here so searching or filtering does not silently reset the order. %>
-    <%= form.hidden_field :sort, value: params[:sort] %>
+    <%= form.hidden_field :sort, value: params[:sort], id: nil %>
   </div>
 
   <% if params[:q].present? || params[:role].present? || params[:group].present? %>
@@ -70,5 +72,7 @@
   <% end %>
 
   <%# Preserve per_page in form submission %>
-  <%= form.hidden_field :per_page, value: params[:per_page] %>
+  <%# No id: the pagination's "Per page" select owns id="per_page", and its label
+      pointed here while this field shared it. %>
+  <%= form.hidden_field :per_page, value: params[:per_page], id: nil %>
 <% end %>

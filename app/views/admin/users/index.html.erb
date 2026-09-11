@@ -82,7 +82,7 @@
                     <%# The role control is the one action left on the row: it is quick,
                         common, and says the role without a second badge. %>
                     <%= form_with url: update_role_admin_user_path(user), method: :patch, data: { turbo: false, controller: "auto-submit" }, class: "inline-flex items-center" do |form| %>
-                      <%= form.select :role, options_for_select(User::ROLE_OPTIONS, user.role), {}, { class: "form-select form-select--sm", "aria-label": "Role for #{user.email}", data: { action: "change->auto-submit#submit" } } %>
+                      <%= form.select :role, options_for_select(User::ROLE_OPTIONS, user.role), {}, { id: nil, class: "form-select form-select--sm", "aria-label": "Role for #{user.email}", data: { action: "change->auto-submit#submit" } } %>
                     <% end %>
                   </td>
                   <td>
@@ -174,8 +174,10 @@
       </button>
     </div>
     <div class="dialog__body">
-      <%= form.label :role, "New role for the selected users", class: "form-label" %>
-      <%= form.select :role, options_for_select(User::ROLE_OPTIONS), {}, { class: "form-select" } %>
+      <%# Its own id: the filter toolbar's role select is also a form_with :role, and
+          with both at id="role" this label named the filter instead (/qa ISSUE-003). %>
+      <%= form.label :role, "New role for the selected users", for: "bulk_role", class: "form-label" %>
+      <%= form.select :role, options_for_select(User::ROLE_OPTIONS), {}, { id: "bulk_role", class: "form-select" } %>
     </div>
     <div class="dialog__footer">
       <button type="button" class="btn btn--plain" data-action="admin-users#closeRoleModal">Cancel</button>

@@ -45,7 +45,7 @@
   <%= form_with url: workflows_path, method: :get, local: true,
         class: "pagination-bar__per-page", data: { controller: "auto-submit" } do %>
     <% keep.except(:per_page).compact_blank.each do |name, value| %>
-      <%= hidden_field_tag name, value %>
+      <%= hidden_field_tag name, value, id: nil %>
     <% end %>
     <%= label_tag :per_page, "Per page", class: "pagination-bar__per-page-label" %>
     <%= select_tag :per_page,

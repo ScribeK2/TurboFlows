@@ -95,4 +95,27 @@ class Admin::UsersTableTest < ActionDispatch::IntegrationTest
     assert_select ".admin-filter-pill", text: %r{Group: #{Regexp.escape(parent.name)} / Filter Child}
     assert_select "tbody a[href=?]", admin_user_path(@user), 0
   end
+
+  # The filter toolbar and the Change Role dialog each rendered a role select
+  # through form_with, and both came out as id="role". The dialog's label then
+  # named the filter "New role for the selected users" and left its own select
+  # unlabelled. Found by /qa on 2026-09-11 (ISSUE-003).
+  test "the page has no duplicate ids, with every filter in the URL" do
+    group = Group.create!(name: "Ids #{SecureRandom.hex(3)}")
+    UserGroup.create!(user: @user, group: group)
+
+    get admin_users_path(q: "table-user", role: "regular", group: group.id, sort: "email_asc", per_page: 25)
+
+    ids = css_select("[id]").pluck("id")
+    assert_empty ids.tally.select { |_, count| count > 1 }.keys
+  end
+
+  test "the Change Role label names the dialog's own select, and each filter has its own name" do
+    get admin_users_path
+
+    label = css_select("dialog[data-admin-users-target=roleModal] label").first
+    assert_select "dialog[data-admin-users-target=roleModal] select[id=?]", label["for"]
+    assert_select ".admin-filter-toolbar select[name=role][aria-label=?]", "Filter by role"
+    assert_select ".admin-filter-toolbar select[name=group][aria-label=?]", "Filter by group"
+  end
 end

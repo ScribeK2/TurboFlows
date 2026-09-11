@@ -4,12 +4,14 @@
 <% filters = active_workflow_filters(selected_group: @selected_group) %>
 
 <div class="wf-toolbar">
+  <%# Hidden fields carry no id: the pagination's per-page form carries the same
+      params, and two elements per id left its "Per page" label on the wrong one. %>
   <%= form_with url: workflows_path, method: :get, local: true,
         class: "wf-toolbar__search", data: { controller: "workflow-search" } do |form| %>
-    <%= hidden_field_tag :group_id, params[:group_id] if params[:group_id].present? %>
-    <%= hidden_field_tag :status, params[:status] if params[:status].present? %>
-    <%= hidden_field_tag :audience, params[:audience] if params[:audience].present? %>
-    <%= hidden_field_tag :per_page, params[:per_page] if params[:per_page].present? %>
+    <%= hidden_field_tag :group_id, params[:group_id], id: nil if params[:group_id].present? %>
+    <%= hidden_field_tag :status, params[:status], id: nil if params[:status].present? %>
+    <%= hidden_field_tag :audience, params[:audience], id: nil if params[:audience].present? %>
+    <%= hidden_field_tag :per_page, params[:per_page], id: nil if params[:per_page].present? %>
     <span class="wf-toolbar__search-icon" aria-hidden="true">
       <%= icon "magnifying-glass", class: "icon icon--sm" %>
     </span>
