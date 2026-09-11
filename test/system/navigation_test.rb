@@ -1,5 +1,8 @@
 require "application_system_test_case"
 
+# The header's chevron menu was deleted 2026-09-09 (every destination is now a
+# labelled link, covered by nav_controller_test.rb), and its three tests went
+# with it. The search dialog is the header's only dialog.
 class NavigationTest < ApplicationSystemTestCase
   setup do
     @user = User.create!(
@@ -11,43 +14,7 @@ class NavigationTest < ApplicationSystemTestCase
     sign_in_as @user
   end
 
-  test "nav menu opens below the header bar" do
-    visit root_path
-
-    find(".nav__menu-trigger").click
-    assert_selector "dialog.nav__menu[open]", wait: 3
-
-    menu = find("dialog.nav__menu[open]")
-    header = find(".page-header")
-
-    menu_top = menu.evaluate_script("this.getBoundingClientRect().top")
-    header_bottom = header.evaluate_script("this.getBoundingClientRect().bottom")
-
-    assert_operator menu_top, :>=, header_bottom - 1, "Menu top (#{menu_top}) should be at or below header bottom (#{header_bottom})"
-  end
-
-  test "nav menu closes on Escape key" do
-    visit root_path
-
-    find(".nav__menu-trigger").click
-    assert_selector "dialog.nav__menu[open]", wait: 3
-
-    send_keys :escape
-    assert_no_selector "dialog.nav__menu[open]", wait: 3
-  end
-
-  test "nav menu closes on click outside" do
-    visit root_path
-
-    find(".nav__menu-trigger").click
-    assert_selector "dialog.nav__menu[open]", wait: 3
-
-    # Click outside the menu (on the page body)
-    find("body").click
-    assert_no_selector "dialog.nav__menu[open]", wait: 3
-  end
-
-  test "search dialog still opens centered with scale animation" do
+  test "search dialog opens centered with scale animation" do
     visit root_path
 
     find(".nav__search-pill").click
@@ -57,7 +24,7 @@ class NavigationTest < ApplicationSystemTestCase
     search_top = search.evaluate_script("this.getBoundingClientRect().top")
     viewport_height = evaluate_script("window.innerHeight")
 
-    # Search dialog should be roughly vertically centered (within the middle 60% of viewport)
-    assert_operator search_top, :>, viewport_height * 0.1, "Search dialog should not be pinned to top like nav menu"
+    # Roughly vertically centred: not pinned to the top of the viewport.
+    assert_operator search_top, :>, viewport_height * 0.1, "Search dialog should not be pinned to the top of the viewport"
   end
 end
