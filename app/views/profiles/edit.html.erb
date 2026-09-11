@@ -79,18 +79,20 @@
             <div class="list-section__body mb-4">
               <% @memberships.each do |membership| %>
                 <% path = @group_paths[membership.group_id] %>
+                <% joinable = self_joinable_group_ids.include?(membership.group_id) %>
                 <div class="list-row list-row--compact">
                   <div class="list-row__body">
                     <div class="list-row__title"><%= path %></div>
-                  </div>
-                  <div class="list-row__actions">
-                    <% if self_joinable_group_ids.include?(membership.group_id) %>
-                      <%= button_to "Leave", profile_membership_path(membership), method: :delete,
-                            class: "btn btn--plain btn--sm", aria: { label: "Leave #{path}" } %>
-                    <% else %>
-                      <span class="list-row__sub">Only an administrator can change this</span>
+                    <% unless joinable %>
+                      <p class="list-row__sub">Only an administrator can change this</p>
                     <% end %>
                   </div>
+                  <% if joinable %>
+                    <div class="list-row__actions">
+                      <%= button_to "Leave", profile_membership_path(membership), method: :delete,
+                            class: "btn btn--plain btn--sm", aria: { label: "Leave #{path}" } %>
+                    </div>
+                  <% end %>
                 </div>
               <% end %>
             </div>
