@@ -56,6 +56,12 @@ class User < ApplicationRecord
     where(role: %w[regular editor], deactivated_at: nil).where.missing(:user_groups)
   }
 
+  # awaiting_groups for one account. The two must agree; user_self_join_test.rb
+  # holds them together.
+  def awaiting_groups?
+    !admin? && !deactivated? && !user_groups.exists?
+  end
+
   # Sortable columns for the admin users table. Every column gets both
   # directions by construction — the previous case statement had role_asc with
   # no role_desc, and reached created_at_desc only by falling through `else`,
@@ -124,6 +130,43 @@ class User < ApplicationRecord
   def reactivate!
     update!(deactivated_at: nil)
     unlock_access! if access_locked?
+  end
+
+  # -- Groups --
+
+  # Joins groups on this person's own say (spec 2026-09-11 Q1, Q7). Refuses the
+  # whole request if any group is not self-joinable rather than joining the rest:
+  # an id the picker never offered is not a mistake to paper over. A group they
+  # are already in keeps the origin it has (Q15). Returns the ids newly joined.
+  def join_groups!(group_ids)
+    ids = Array(group_ids).compact_blank.map(&:to_i).uniq
+    raise Group::NotSelfJoinable if (ids - Group.self_joinable_ids).any?
+
+    new_ids = ids - user_groups.pluck(:group_id)
+    transaction do
+      new_ids.each { user_groups.create!(group_id: it, self_joined: true) }
+    end
+    new_ids
+  end
+
+  # Leaves a group on this person's own say (Q8). A group they could not rejoin
+  # is left only by an administrator.
+  def leave_group!(group)
+    raise Group::NotSelfJoinable unless Group.self_joinable_ids.include?(group.id)
+
+    user_groups.find_by!(group_id: group.id).destroy!
+  end
+
+  # An administrator's choice of this person's groups: a diff, not a wipe. A
+  # membership that stays keeps its self_joined origin (Q15), which the
+  # destroy_all-and-recreate this replaced erased on every save.
+  def replace_groups!(group_ids)
+    ids = Array(group_ids).compact_blank.map(&:to_i).uniq
+
+    transaction do
+      user_groups.where.not(group_id: ids).destroy_all
+      (ids - user_groups.pluck(:group_id)).each { user_groups.create!(group_id: it) }
+    end
   end
 
   # Devise consults this on every sign-in and on every request for a remembered
