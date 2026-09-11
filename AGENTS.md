@@ -186,6 +186,21 @@ can add or remove only groups they reach (`Group.assignable_ids_for`).
 once, and recreating the rows wiped the folder filed on each. The `/workflows`
 sidebar lists the top-most groups a person reaches, and a workflow in none of its
 group's folders is **Unfiled**.
+**People choose their own groups, unless an administrator keeps one.** A Regular or
+Editor account in no group (`User#awaiting_groups?`, the one-record form of the
+Overview's scope) is sent from the dashboard — and only the dashboard — to
+`/welcome`, which `GroupOnboarding` owns together with the dashboard notice and a
+session-long Skip. `/profile/edit` has My groups for later. Both write through
+`User#join_groups!` / `#leave_group!`, which refuse anything outside
+`Group.self_joinable_ids`: not Global, not `admins_add_members`, and **not any group
+above or below one that is** — membership covers subgroups, so joining the parent
+of a managed group would reach it, and a group that could not be rejoined must not
+be left. The rule is enforced on write; hiding a group in the picker is not the
+guard. `user_groups.self_joined` records where a membership came from, never
+whether anyone reviewed it, so `User#replace_groups!` (both admin writers) is a
+diff: wiping and recreating erased every mark on each admin save. Locking a group
+removes nobody. Self-join does not touch the workflow-audience safeguards above —
+it changes who is in a group, not which group a workflow is in.
 **Users** are a table plus a page per user (`/admin/users/:id`). The table row is
 email (linking out of its Turbo Frame with `data-turbo-frame="_top"`), the inline
 role select, groups and joined; everything else — groups, password reset,
