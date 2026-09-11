@@ -497,14 +497,27 @@
   background: var(--color-canvas-alt);
 }
 
+/* flex-basis: 0 (not auto) keeps the checkbox and the name on the same flex
+   line: a flex container packs items onto a line using each item's *unshrunk*
+   hypothetical size, so a content-sized (flex-basis: auto) name wider than the
+   row got pushed to a line of its own, stranding the checkbox above it. Basis 0
+   makes that hypothetical size ~0, so it always packs beside the checkbox, then
+   grows to fill the line; min-width: 0 lets it shrink below its content width
+   and overflow-wrap: anywhere lets a long word break, so it wraps within its
+   own box instead of overflowing the list into a horizontal scrollbar. */
 .group-picker__name {
-  flex-shrink: 0;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-weight: 500;
   color: var(--color-ink);
 }
 
+/* No flex-grow, and flex-basis: auto (the default): the path takes only the
+   room its own content needs beside the name, rather than an equal forced
+   share of the row — and shrinks (min-width: 0) to ellipsis only when the line
+   is actually out of room. */
 .group-picker__path {
-  flex: 1 1 0;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
