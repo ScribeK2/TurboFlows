@@ -1,0 +1,46 @@
+<%# locals: (memberships:, group_paths:, join_nodes:, join_descriptions:) %>
+<%# My groups (spec 2026-09-11 Q8). Rendered by the profile page and replaced
+    whole by profiles/memberships/changed after a Join or Leave, so the page
+    stays where the person was. No confirm on Leave: a group left here is one
+    that can be joined straight back. The profile form owns the page's filled
+    button, so Join is secondary. %>
+<section id="my-groups" class="card mt-4" aria-labelledby="my-groups-heading">
+  <div class="card__body">
+    <h2 id="my-groups-heading" class="font-semibold mb-1" style="font-size: var(--text-lg);">My groups</h2>
+    <p class="text-sm mb-4" style="color: var(--color-ink-muted);">You see Global workflows and the workflows in these groups, including their subgroups.</p>
+
+    <% if memberships.any? %>
+      <div class="list-section__body mb-4">
+        <% memberships.each do |membership| %>
+          <% path = group_paths[membership.group_id] %>
+          <% joinable = self_joinable_group_ids.include?(membership.group_id) %>
+          <div class="list-row list-row--compact">
+            <div class="list-row__body">
+              <div class="list-row__title"><%= path %></div>
+              <% unless joinable %>
+                <p class="list-row__sub">Only an administrator can change this</p>
+              <% end %>
+            </div>
+            <% if joinable %>
+              <div class="list-row__actions">
+                <%= button_to "Leave", profile_membership_path(membership), method: :delete,
+                      class: "btn btn--plain btn--sm", aria: { label: "Leave #{path}" } %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="form-hint mb-4">You're not in a group yet.</p>
+    <% end %>
+
+    <% if join_nodes.any? %>
+      <%= form_with url: profile_memberships_path, method: :post do %>
+        <%= render "shared/group_picker", nodes: join_nodes, field_name: "group_ids[]", notes: join_descriptions %>
+        <div class="flex justify-end mt-3">
+          <%= submit_tag "Join", name: nil, class: "btn btn--secondary" %>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</section>

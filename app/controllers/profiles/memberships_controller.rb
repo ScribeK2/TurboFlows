@@ -4,21 +4,31 @@ class Profiles::MembershipsController < ApplicationController
   include GroupOnboarding
 
   def create
-    join_posted_groups joined_path: my_groups_path, retry_path: my_groups_path,
-                       nothing_chosen: "Choose at least one group to join."
+    respond_with_my_groups(*join_posted_groups(nothing_chosen: "Choose at least one group to join."))
   end
 
   def destroy
     membership = current_user.user_groups.find(params[:id])
     current_user.leave_group!(membership.group)
-    redirect_to my_groups_path, notice: "You left #{group_paths_sentence([membership.group_id])}."
+    respond_with_my_groups :notice, "You left #{group_paths_sentence([membership.group_id])}."
   rescue Group::NotSelfJoinable
-    redirect_to my_groups_path, alert: "Only an administrator can take you out of that group."
+    respond_with_my_groups :alert, "Only an administrator can take you out of that group."
   end
 
   private
 
-  def my_groups_path
-    edit_profile_path(anchor: "my-groups")
+  # Turbo gets My groups replaced where it is. A redirect back to
+  # /profile/edit#my-groups lost its anchor, because a fetch drops the fragment,
+  # so the page landed at its top with My groups off screen (found by /qa,
+  # 2026-09-11). Without Turbo the browser keeps the anchor, so HTML redirects.
+  def respond_with_my_groups(kind, message)
+    respond_to do |format|
+      format.turbo_stream do
+        flash.now[kind] = message
+        set_my_groups
+        render "profiles/memberships/changed"
+      end
+      format.html { redirect_to edit_profile_path(anchor: "my-groups"), kind => message }
+    end
   end
 end

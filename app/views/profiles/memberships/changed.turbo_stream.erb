@@ -1,0 +1,4 @@
+<%= turbo_stream.replace "my-groups", partial: "profiles/my_groups",
+      locals: { memberships: @memberships, group_paths: @group_paths,
+                join_nodes: @join_nodes, join_descriptions: @join_descriptions } %>
+<%= turbo_stream.update "flash", partial: "shared/flash_messages" %>

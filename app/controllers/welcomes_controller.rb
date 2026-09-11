@@ -12,8 +12,8 @@ class WelcomesController < ApplicationController
   end
 
   def create
-    join_posted_groups joined_path: root_path, retry_path: welcome_path,
-                       nothing_chosen: "Choose at least one group, or skip for now."
+    kind, message = join_posted_groups(nothing_chosen: "Choose at least one group, or skip for now.")
+    redirect_to kind == :notice ? root_path : welcome_path, kind => message
   end
 
   private

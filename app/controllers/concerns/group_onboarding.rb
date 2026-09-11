@@ -47,16 +47,17 @@ module GroupOnboarding
     redirect_to welcome_path if group_onboarding_offered? && !group_onboarding_skipped?
   end
 
-  # Joins the groups a join form posted and says which (Q7, Q12). The welcome
-  # page and My groups share it; they differ only in where the person goes.
-  def join_posted_groups(joined_path:, retry_path:, nothing_chosen:)
+  # Joins the groups a join form posted (Q7, Q12) and returns what to tell the
+  # person, as [:notice or :alert, message]. The welcome page and My groups
+  # share it; they differ in where the person goes and how the page answers.
+  def join_posted_groups(nothing_chosen:)
     ids = posted_group_ids
-    return redirect_to(retry_path, alert: nothing_chosen) if ids.empty?
+    return [:alert, nothing_chosen] if ids.empty?
 
     current_user.join_groups!(ids, joinable_ids: self_joinable_group_ids)
-    redirect_to joined_path, notice: "You're in #{group_paths_sentence(ids)}."
+    [:notice, "You're in #{group_paths_sentence(ids)}."]
   rescue Group::NotSelfJoinable
-    redirect_to retry_path, alert: "An administrator adds people to that group."
+    [:alert, "An administrator adds people to that group."]
   end
 
   # A join form posts group_ids[] as a list of ids. Any other shape came from a
@@ -64,6 +65,27 @@ module GroupOnboarding
   def posted_group_ids
     ids = params[:group_ids]
     ids.is_a?(Array) ? ids.grep(String).compact_blank.uniq : []
+  end
+
+  # My groups (spec 2026-09-11 Q8): memberships by path, and the joinable groups
+  # this person does not already see. Administrators see every workflow whatever
+  # their groups, so they get no section. One tree read feeds both lists.
+  def set_my_groups
+    return if current_user.admin?
+
+    nodes = Group.tree_nodes
+    @group_paths = nodes.to_h { [it.id, it.path] }
+    @memberships = current_user.user_groups.to_a.sort_by { @group_paths[it.group_id].to_s.downcase }
+    join_ids = self_joinable_group_ids - covered_group_ids(nodes, @memberships.map(&:group_id)).to_a
+    @join_nodes = nodes.select { join_ids.include?(it.id) }
+    @join_descriptions = Group.descriptions_by_id(join_ids)
+  end
+
+  # The groups a person is in and every group below them: membership covers
+  # subgroups, so joining one of those adds a row that changes nothing. Nodes
+  # come depth-first, so a parent is always met before its children.
+  def covered_group_ids(nodes, member_ids)
+    nodes.each_with_object(member_ids.to_set) { |node, covered| covered << node.id if covered.include?(node.parent_id) }
   end
 
   # "A and B / C" for a flash, each group by its full path, alphabetical.

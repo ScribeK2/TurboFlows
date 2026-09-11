@@ -89,12 +89,22 @@ class GroupOnboardingSystemTest < ApplicationSystemTestCase
 
   private
 
-  def assert_my_groups_in_view
-    top, bottom, height = evaluate_script(<<~JS)
-      (() => { const r = document.getElementById("my-groups").getBoundingClientRect();
-               return [r.top, r.bottom, window.innerHeight]; })()
-    JS
-    assert_operator top, :<, height, "My groups starts below the visible window"
-    assert_operator bottom, :>, 0, "My groups ends above the visible window"
+  # Checked repeatedly, not once: a Turbo visit renders the new page first and
+  # scrolls to its top a moment later, so a single check right after the flash
+  # appears can pass on a page about to jump away from My groups. It did, until
+  # a /qa pass on 2026-09-11 caught it.
+  def assert_my_groups_in_view(for_seconds: 1.5)
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + for_seconds
+    loop do
+      top, bottom, height = evaluate_script(<<~JS)
+        (() => { const r = document.getElementById("my-groups").getBoundingClientRect();
+                 return [r.top, r.bottom, window.innerHeight]; })()
+      JS
+      assert_operator top, :<, height, "My groups starts below the visible window"
+      assert_operator bottom, :>, 0, "My groups ends above the visible window"
+      break if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+
+      sleep 0.1
+    end
   end
 end

@@ -67,6 +67,40 @@ class Profiles::MembershipsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 1, tree_reads
   end
 
+  # Under Turbo, a redirect back to /profile/edit#my-groups lost its anchor (a
+  # fetch drops the fragment), so the page landed at its top with My groups off
+  # screen. Found by /qa on 2026-09-11. Turbo gets My groups replaced in place.
+  test "joining under Turbo replaces My groups in place and names the group" do
+    post profile_memberships_path, params: { group_ids: [@hr.id] }, as: :turbo_stream
+
+    assert_response :success
+    section = stream_content("my-groups", action: "replace")
+    assert_includes section.css("#my-groups .list-row__title").map { it.text.strip }, "Mine HR #{@tag}"
+    assert_match "You're in Mine HR #{@tag}.", stream_content("flash", action: "update").text
+  end
+
+  test "leaving under Turbo replaces My groups in place" do
+    membership = UserGroup.create!(user: @user, group: @tier1)
+
+    delete profile_membership_path(membership), as: :turbo_stream
+
+    assert_response :success
+    assert_not UserGroup.exists?(membership.id)
+    assert_empty stream_content("my-groups", action: "replace").css("#my-groups .list-row")
+    assert_match "You left Mine Support #{@tag} / Tier 1.", stream_content("flash", action: "update").text
+  end
+
+  test "a refused join or leave under Turbo changes nothing and says why" do
+    membership = UserGroup.create!(user: @user, group: @escalations)
+
+    post profile_memberships_path, params: { group_ids: [@escalations.id] }, as: :turbo_stream
+    assert_match "An administrator adds people to that group.", stream_content("flash", action: "update").text
+
+    delete profile_membership_path(membership), as: :turbo_stream
+    assert_match "Only an administrator can take you out of that group.", stream_content("flash", action: "update").text
+    assert UserGroup.exists?(membership.id)
+  end
+
   test "an administrator's profile has no My groups" do
     @user.update!(role: "admin")
 
@@ -124,5 +158,13 @@ class Profiles::MembershipsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :not_found
     assert UserGroup.exists?(membership.id)
+  end
+
+  private
+
+  def stream_content(target, action:)
+    stream = css_select("turbo-stream[action=#{action}][target=#{target}]").first
+    assert stream, "no #{action} stream for ##{target}"
+    Nokogiri::HTML5.fragment(stream.at_css("template").inner_html)
   end
 end
