@@ -19,7 +19,7 @@
         <% memberships.each do |membership| %>
           <li class="admin-group__item">
             <%= link_to membership.user.email, admin_user_path(membership.user), class: "admin-group__name" %>
-            <span class="admin-group__meta"><%= membership.user.role.capitalize %></span>
+            <span class="admin-group__meta"><%= membership.user.role.capitalize %><%= " · Joined themselves" if membership.self_joined? %></span>
             <%= button_to "Remove", admin_group_membership_path(group, membership), method: :delete,
                   params: { q: query }, class: "btn btn--plain btn--sm",
                   aria: { label: "Remove #{membership.user.email} from #{group.name}" } %>

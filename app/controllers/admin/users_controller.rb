@@ -16,6 +16,7 @@ class Admin::UsersController < Admin::BaseController
   def show
     @user = User.find(params[:id])
     @group_nodes = Group.assignable_tree_nodes
+    @group_notes = @user.user_groups.where(self_joined: true).pluck(:group_id).index_with("Joined themselves")
   end
 
   def update
@@ -59,17 +60,7 @@ class Admin::UsersController < Admin::BaseController
 
   def update_groups
     @user = User.find(params[:id])
-    group_ids = params[:group_ids] || []
-
-    # Remove all existing group assignments
-    @user.user_groups.destroy_all
-
-    # Add new group assignments
-    group_ids.each do |group_id|
-      next if group_id.blank?
-
-      @user.user_groups.create!(group_id: group_id)
-    end
+    @user.replace_groups!(params[:group_ids])
 
     redirect_to admin_user_path(@user), notice: "Groups updated for #{@user.email}."
   end
@@ -152,17 +143,9 @@ class Admin::UsersController < Admin::BaseController
     end
 
     users = User.where(id: user_ids)
-    users.each do |user|
-      # Remove all existing group assignments
-      user.user_groups.destroy_all
-
-      # Add new group assignments
-      group_ids.each do |group_id|
-        next if group_id.blank?
-
-        user.user_groups.create!(group_id: group_id)
-      end
-    end
+    # Still a replace: each person ends up in exactly the groups chosen. The diff
+    # only keeps a self-join's origin on a group that stays (spec 2026-09-11 Q15).
+    users.each { it.replace_groups!(group_ids) }
 
     redirect_to admin_users_path, notice: "Groups assigned to #{users.count} user(s)."
   end

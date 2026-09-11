@@ -1,4 +1,4 @@
-<%# locals: (nodes:, field_name:, selected_ids: [], input_data: {}) %>
+<%# locals: (nodes:, field_name:, selected_ids: [], input_data: {}, notes: {}) %>
 <%# Every group with its full path, filterable by any part of that path.
     Flat and indented by depth rather than an expandable tree: at hundreds of
     nested department groups, typing beats expanding, and a match needs no
@@ -8,7 +8,10 @@
     Global, when offered, sits on its own row above the rest (spec Q50): it is
     not one department among many but the answer "everyone", so it stays put
     whatever the filter says. input_data lands on every checkbox — the builder's
-    Details panel passes its autosave action. %>
+    Details panel passes its autosave action.
+
+    notes, keyed by group id, is a line under that group: its description where
+    people choose their own groups, "Joined themselves" on the admin user page. %>
 <% global, groups = nodes.partition(&:global?) %>
 <div class="group-picker" data-controller="group-picker">
   <% if nodes.any? %>
@@ -40,6 +43,9 @@
               <span class="group-picker__name"><%= node.name %></span>
               <% if node.depth.positive? %>
                 <span class="group-picker__path"><%= node.path %></span>
+              <% end %>
+              <% if (note = notes[node.id]) %>
+                <span class="group-picker__note"><%= note %></span>
               <% end %>
             </label>
           </li>

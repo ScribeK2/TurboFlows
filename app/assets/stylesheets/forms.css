@@ -484,6 +484,7 @@
 /* --depth is set per option; indentation is the only layout it drives. */
 .group-picker__label {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
@@ -503,10 +504,21 @@
 }
 
 .group-picker__path {
+  flex: 1 1 0;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+}
+
+/* A line under a group: its description where people choose their own groups,
+   or "Joined themselves" on the admin user page. The label wraps so the note
+   takes its own line, indented past the 1rem checkbox and the label's gap. */
+.group-picker__note {
+  flex-basis: 100%;
+  padding-inline-start: calc(1rem + var(--space-2));
   font-size: var(--text-xs);
   color: var(--color-ink-muted);
 }

@@ -69,7 +69,7 @@
         <% end %>
       </p>
       <%= form_with url: update_groups_admin_user_path(@user), method: :patch do %>
-        <%= render "shared/group_picker", nodes: @group_nodes, field_name: "group_ids[]", selected_ids: @user.group_ids %>
+        <%= render "shared/group_picker", nodes: @group_nodes, field_name: "group_ids[]", selected_ids: @user.group_ids, notes: @group_notes %>
         <div class="admin-user__actions">
           <%= submit_tag "Save Groups", class: "btn btn--primary" %>
         </div>
