@@ -8,6 +8,10 @@ class Group < ApplicationRecord
   # Levels a group tree may have: a root and four below it.
   MAX_DEPTH = 5
 
+  # A person asked to join or leave, on their own, a group only an administrator
+  # may put them in or take them out of (spec 2026-09-11 Q6, Q8).
+  class NotSelfJoinable < StandardError; end
+
   # Associations
   belongs_to :parent, class_name: 'Group', optional: true
   has_many :children, class_name: 'Group', foreign_key: 'parent_id', inverse_of: :parent, dependent: :nullify
@@ -265,6 +269,50 @@ class Group < ApplicationRecord
   # Global is not a group anyone joins — its audience is everyone signed in.
   def self.assignable_tree_nodes
     tree_nodes.reject(&:global?)
+  end
+
+  # Groups a person may join or leave on their own (spec 2026-09-11 Q6): not
+  # Global, not one an administrator manages (admins_add_members), and not any
+  # group above or below one. Membership covers subgroups, so joining the parent
+  # of a managed group would reach it; and a group that could not be rejoined
+  # must not be left either. One query, however many groups exist.
+  def self.self_joinable_ids
+    rows = pluck(:id, :parent_id, :name, :admins_add_members)
+    parent_of = rows.to_h { |id, parent_id, _, _| [id, parent_id] }
+    children_of = rows.group_by { |_, parent_id, _, _| parent_id }.transform_values { it.map(&:first) }
+    blocked = Set.new
+
+    rows.each do |id, _, _, managed|
+      next unless managed
+
+      # max_depth_allowed caps real trees at 5; the bound only stops a corrupt cycle.
+      ancestor = id
+      10.times do
+        break if ancestor.nil?
+
+        blocked << ancestor
+        ancestor = parent_of[ancestor]
+      end
+
+      # Never stop at a group already blocked: walking up from another managed
+      # group may have marked it without marking its other children.
+      queue = children_of.fetch(id, []).map { [it, 1] }
+      until queue.empty?
+        child, depth = queue.shift
+        blocked << child
+        queue.concat(children_of.fetch(child, []).map { [it, depth + 1] }) if depth < 10
+      end
+    end
+
+    rows.filter_map do |id, parent_id, name, _|
+      id unless blocked.include?(id) || (parent_id.nil? && name == GLOBAL_NAME)
+    end
+  end
+
+  # { group_id => description } for the given groups that have one. The welcome
+  # page and My groups show it under a group's path (spec 2026-09-11 Q5).
+  def self.descriptions_by_id(ids)
+    where(id: ids).where.not(description: [nil, ""]).pluck(:id, :description).to_h
   end
 
   def self.sibling_sort_key(name, parent_id)
