@@ -272,6 +272,31 @@ class Workflow < ApplicationRecord
     end
   end
 
+  # Most recently edited first, as [[workflow, last_edited_at], ...].
+  #
+  # Last edited is the later of the workflow row and its newest step: a step edit
+  # never touches the workflow (`Step belongs_to :workflow` has a counter cache
+  # and no touch:). A transition-only change touches neither, deliberately — see
+  # the spec's Known gaps. The true top `limit` by that later time is always in
+  # the union of the top `limit` by each column, so this reads both and merges in
+  # Ruby, which needs no GREATEST (SQLite has none).
+  def self.recently_edited(scope, limit:)
+    by_row = scope.reorder(updated_at: :desc).limit(limit).pluck(:id)
+    by_step = Step.where(workflow_id: scope.select(:id))
+                  .group(:workflow_id)
+                  .order(Arel.sql("MAX(steps.updated_at) DESC"))
+                  .limit(limit)
+                  .maximum(:updated_at)
+                  .keys
+    candidate_ids = (by_row + by_step).uniq
+    step_times = Step.where(workflow_id: candidate_ids).group(:workflow_id).maximum(:updated_at)
+
+    Workflow.where(id: candidate_ids).includes(:user).to_a
+            .map { |workflow| [workflow, [workflow.updated_at, step_times[workflow.id]].compact.max] }
+            .sort_by { |workflow, edited_at| [-edited_at.to_f, -workflow.id] }
+            .first(limit)
+  end
+
   # Group helper methods
   def primary_group
     if group_workflows.loaded?
