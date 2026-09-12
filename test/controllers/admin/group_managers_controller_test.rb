@@ -96,7 +96,7 @@ class Admin::GroupManagersControllerTest < ActionDispatch::IntegrationTest
     get admin_user_path(@ada)
 
     assert_select "#user-manages a[href=?]", admin_group_path(@group), text: @group.name
-    assert_select "#user-last-active a[href=?]", analytics_agent_path(@ada), text: "View runs"
+    assert_select "#user-last-active a[href=?]", analytics_agent_path(@ada, range: "all"), text: "View runs"
   end
 
   private

@@ -53,7 +53,10 @@
           <dd id="user-last-active">
             <%= last_active ? "#{time_ago_in_words(last_active)} ago" : "Has not run a workflow yet" %>
             <% if last_active %>
-              · <%= link_to "View runs", analytics_agent_path(@user) %>
+              <%# The default 30-day range can be empty even when last_active_at
+                  is old, so this links to every run still held (this link is
+                  admin-only, unlike the manager view — see Analytics::AgentsController). %>
+              · <%= link_to "View runs", analytics_agent_path(@user, range: "all") %>
             <% end %>
           </dd>
         </div>
