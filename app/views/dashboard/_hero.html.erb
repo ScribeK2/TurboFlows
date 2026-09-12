@@ -2,12 +2,13 @@
 <%# The workflow you were last in. A draft's publish blockers are the one
     health check on this page (Dashboard::Home#hero_blockers). %>
 <% workflow, edited_at = home.hero %>
-<section class="home-resume" aria-label="Pick up where you left off">
-  <p class="home-resume__eyebrow"><%= home.showing_library? ? "Last edited in the library" : "Pick up where you left off" %></p>
-  <div class="home-resume__title">
+<% eyebrow = home.showing_library? ? "Last edited in the library" : "Pick up where you left off" %>
+<section class="home-resume" aria-label="<%= eyebrow %>">
+  <p class="home-resume__eyebrow"><%= eyebrow %></p>
+  <h2 class="home-resume__title">
     <%= workflow.title %>
     <%= workflow_status_badge(workflow) %>
-  </div>
+  </h2>
   <p class="home-resume__meta">
     Edited <%= time_ago_in_words(edited_at) %> ago &middot; <%= pluralize(workflow.steps_count, "step") %><%= " · #{workflow.user.display_label}" if home.showing_library? %>
   </p>

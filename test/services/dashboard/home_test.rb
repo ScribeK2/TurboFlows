@@ -97,6 +97,18 @@ class Dashboard::HomeTest < ActiveSupport::TestCase
     assert_predicate home, :waiting?
   end
 
+  test "named_no_audience preloads owners, so the waiting row's edit-link check costs no query" do
+    workflow_with_step("Nobody sees 1", user: @editor, status: "published")
+    workflow_with_step("Nobody sees 2", user: @editor, status: "published")
+
+    home = Dashboard::Home.new(@editor)
+    list = home.named_no_audience
+
+    queries = count_queries { list.each(&:user) }
+
+    assert_equal 0, queries, "named_no_audience must preload :user"
+  end
+
   test "an admin gets no no-audience row, because the attention strip counts every one" do
     workflow_with_step("Admin's hidden", user: @admin, status: "published")
 

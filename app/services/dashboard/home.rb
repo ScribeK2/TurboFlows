@@ -61,7 +61,7 @@ module Dashboard
     def named_no_audience
       return [] if admin?
 
-      @named_no_audience ||= own_no_audience.order(updated_at: :desc).limit(NAMED_LIMIT).to_a
+      @named_no_audience ||= own_no_audience.includes(:user).order(updated_at: :desc).limit(NAMED_LIMIT).to_a
     end
 
     def waiting?

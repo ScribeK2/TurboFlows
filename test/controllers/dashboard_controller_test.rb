@@ -242,6 +242,19 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "meta[name='turbo-cache-control'][content='no-preview']"
   end
 
+  test "an admin's fullest page still has exactly one filled button" do
+    @user.update!(role: "admin")
+    workflow_with_step("Admin draft")
+    workflow_with_step("Admin hidden live", status: "published")
+
+    get root_path
+
+    assert_select ".home-resume"
+    assert_select "#home-admin-attention"
+    assert_select "#home-waiting"
+    assert_select ".dashboard-layout .btn--primary", count: 1
+  end
+
   private
 
   def workflow_with_step(title, user: @user, status: "draft", edited_at: Time.current)

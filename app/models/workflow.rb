@@ -281,7 +281,7 @@ class Workflow < ApplicationRecord
   # the union of the top `limit` by each column, so this reads both and merges in
   # Ruby, which needs no GREATEST (SQLite has none).
   def self.recently_edited(scope, limit:)
-    by_row = scope.reorder(updated_at: :desc).limit(limit).pluck(:id)
+    by_row = scope.reorder(updated_at: :desc, id: :desc).limit(limit).pluck(:id)
     by_step = Step.where(workflow_id: scope.select(:id))
                   .group(:workflow_id)
                   .order(Arel.sql("MAX(steps.updated_at) DESC"))
