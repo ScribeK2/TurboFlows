@@ -1,0 +1,42 @@
+<%# One call, read-only (spec 2026-09-12): a manager's drill-down into what a
+    CSR did at each step and how the call ended, reusing the results page's own
+    panels. Nothing here acts on the run — no Run Again, Edit Workflow, or
+    Copy Link — and the workflow is linked only if the viewer can open it. %>
+<div class="page-content">
+  <div class="page-header-section">
+    <%= render "scenarios/status_header", scenario: @scenario, ending: @ending, workflow: @workflow,
+          title: "Call by #{@agent_name}", back_label: @back_label, back_path: @back_path,
+          link_workflow: @workflow.can_be_viewed_by?(current_user) %>
+  </div>
+
+  <div data-controller="tabs" data-tabs-active-value="0">
+    <div class="tab-bar mb-4" role="tablist">
+      <button type="button"
+              class="tab-bar__tab is-active"
+              data-tabs-target="tab"
+              data-action="click->tabs#switch"
+              role="tab"
+              aria-selected="true">
+        <%= icon "chevron-right", class: "icon icon--xs inline mr-1.5" %>
+        Execution Path
+      </button>
+      <button type="button"
+              class="tab-bar__tab"
+              data-tabs-target="tab"
+              data-action="click->tabs#switch"
+              role="tab"
+              aria-selected="false">
+        <%= icon "document-chart-bar", class: "icon icon--xs inline mr-1.5" %>
+        Results Summary
+      </button>
+    </div>
+
+    <div data-tabs-target="panel">
+      <%= render "scenarios/execution_path", scenario: @scenario %>
+    </div>
+
+    <div data-tabs-target="panel">
+      <%= render "scenarios/results_summary", ending: @ending %>
+    </div>
+  </div>
+</div>
