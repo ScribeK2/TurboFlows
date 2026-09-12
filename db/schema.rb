@@ -69,7 +69,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_12_130000) do
     t.datetime "updated_at", null: false
     t.integer "user_id", null: false
     t.index ["group_id", "user_id"], name: "index_group_managers_on_group_id_and_user_id", unique: true
-    t.index ["group_id"], name: "index_group_managers_on_group_id"
     t.index ["user_id"], name: "index_group_managers_on_user_id"
   end
 

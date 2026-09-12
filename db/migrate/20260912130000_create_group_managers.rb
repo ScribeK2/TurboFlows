@@ -4,7 +4,8 @@
 class CreateGroupManagers < ActiveRecord::Migration[8.1]
   def change
     create_table :group_managers do |t|
-      t.references :group, null: false, foreign_key: { on_delete: :cascade }
+      # No index of its own: the unique [group_id, user_id] index below leads with it.
+      t.references :group, null: false, index: false, foreign_key: { on_delete: :cascade }
       t.references :user, null: false, foreign_key: { on_delete: :cascade }
       t.timestamps
     end
