@@ -85,10 +85,13 @@ module Admin
       assert_select "table a[href=?]", workflow_path(elsewhere), 0
     end
 
+    # A day rolled up since calls were counted (ISSUE-003): each run here is a
+    # call on its own, so both counters hold the same numbers.
     def rolled_up_day(day, outcome:, count:, purpose: "live", duration_sum: 0, duration_count: 0)
       ScenarioRollup.create!(
         workflow: @workflow, day: day, purpose: purpose, outcome: outcome,
-        runs_count: count, duration_sum_seconds: duration_sum, duration_count: duration_count
+        runs_count: count, duration_sum_seconds: duration_sum, duration_count: duration_count,
+        calls_count: count, call_duration_sum_seconds: duration_sum, call_duration_count: duration_count
       )
     end
 
@@ -213,10 +216,10 @@ module Admin
       get admin_analytics_path(workflow_id: @workflow.id)
 
       cells = css_select(".stat-cell").index_by { it.at_css(".stat-cell__label").text.strip }
-      assert_equal "5", cells["Total Runs"].at_css(".stat-cell__value").text.strip
+      assert_equal "5", cells["Total Calls"].at_css(".stat-cell__value").text.strip
       assert_equal "75.0%", cells["Completion Rate"].at_css(".stat-cell__value").text.strip
       assert_equal "25.0%", cells["Escalation Rate"].at_css(".stat-cell__value").text.strip
-      assert_match "of 4 finished runs", cells["Completion Rate"].text
+      assert_match "of 4 finished calls", cells["Completion Rate"].text
 
       usage = css_select("#workflow-usage tbody tr").first.css("td").map { it.text.strip }
       assert_equal ["5", "75.0%"], usage[1, 2]
@@ -245,7 +248,7 @@ module Admin
 
       cells = css_select(".stat-cell").index_by { it.at_css(".stat-cell__label").text.strip }
       assert_equal "100.0%", cells["Completion Rate"].at_css(".stat-cell__value").text.strip
-      assert_match "of 2 finished runs", cells["Completion Rate"].text
+      assert_match "of 2 finished calls", cells["Completion Rate"].text
     end
 
     test "admin can access analytics page" do
