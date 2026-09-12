@@ -50,9 +50,16 @@ class NavHelperTest < ActionView::TestCase
 
   test "every admin page lights Admin" do
     %w[admin/dashboard admin/users admin/workflows admin/groups
-       admin/analytics admin/data_health admin/smtp_settings].each do |path|
+       admin/data_health admin/smtp_settings].each do |path|
       self.controller_path = path
       assert_equal :admin, nav_section, "#{path} should light Admin"
+    end
+  end
+
+  test "analytics and its drill-downs light Analytics" do
+    %w[analytics analytics/agents analytics/runs].each do |path|
+      self.controller_path = path
+      assert_equal :analytics, nav_section, "#{path} should light Analytics"
     end
   end
 
