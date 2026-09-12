@@ -19,6 +19,8 @@ class Group < ApplicationRecord
   has_many :workflows, through: :group_workflows
   has_many :user_groups, dependent: :destroy
   has_many :users, through: :user_groups
+  has_many :group_managers, dependent: :destroy
+  has_many :managers, through: :group_managers, source: :user
   has_many :folders, dependent: :destroy
 
   # Validations
@@ -480,6 +482,10 @@ class Group < ApplicationRecord
   # Direct members by email, accounts loaded for display.
   def memberships_by_email
     user_groups.eager_load(:user).merge(User.order(:email))
+  end
+
+  def managers_by_email
+    group_managers.eager_load(:user).merge(User.order(:email))
   end
 
   # Parent groups whose members reach this group's workflows too, root first,

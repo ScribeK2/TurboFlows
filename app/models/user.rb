@@ -14,6 +14,8 @@ class User < ApplicationRecord
            source: :workflow
   has_many :user_groups, dependent: :destroy
   has_many :groups, through: :user_groups
+  has_many :group_managers, dependent: :destroy
+  has_many :managed_groups, through: :group_managers, source: :group
 
   # String-backed enum — maps to existing column values with no migration needed.
   # :regular maps to DB value "user" to avoid User.user naming collision.
