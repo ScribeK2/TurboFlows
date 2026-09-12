@@ -1,0 +1,28 @@
+<%# locals: (home:) %>
+<section class="list-section" id="home-also-recent">
+  <div class="list-section__head">
+    <h2 class="list-section__title">Also recent</h2>
+    <%= link_to "View all", home.showing_library? ? workflows_path : workflows_path(owner: WorkflowsFilter::OWNER_ME),
+          class: "list-section__link" %>
+  </div>
+
+  <div class="list-section__body">
+    <% home.also_recent.each do |workflow, edited_at| %>
+      <div class="list-row list-row--compact">
+        <span class="list-row__icon" aria-hidden="true"><%= icon "document-text", class: "icon icon--sm" %></span>
+        <div class="list-row__body">
+          <div class="list-row__title">
+            <%= link_to workflow.title, workflow_open_path(workflow) %>
+            <%= workflow_status_badge(workflow) %>
+          </div>
+          <p class="list-row__sub">
+            Edited <%= time_ago_in_words(edited_at) %> ago &middot; <%= pluralize(workflow.steps_count, "step") %><%= " · #{workflow.user.display_label}" if home.showing_library? %>
+          </p>
+        </div>
+        <div class="list-row__actions">
+          <%= link_to "Open", workflow_open_path(workflow), class: "btn btn--plain btn--sm" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</section>

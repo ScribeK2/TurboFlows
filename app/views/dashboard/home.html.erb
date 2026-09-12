@@ -1,0 +1,30 @@
+<%# Editor and Admin home (spec docs/designs/2026-09-12-editor-admin-home.md).
+    Everything is in this response: no lazy frame, no fetch, no entrance
+    animation, and no Turbo preview. Each of those made returning here jitter. %>
+<% content_for :head do %>
+  <meta name="turbo-cache-control" content="no-preview">
+<% end %>
+
+<div class="dashboard-layout">
+  <%= render "dashboard/header", create_primary: @home.hero.nil? %>
+
+  <%= render "dashboard/group_notice" %>
+
+  <% if @home.attention&.any? %>
+    <%= render "dashboard/admin_strip", attention: @home.attention %>
+  <% end %>
+
+  <% if @home.hero %>
+    <%= render "dashboard/hero", home: @home %>
+  <% else %>
+    <p class="dashboard-empty__text">Workflows you create will appear here, most recently edited first.</p>
+  <% end %>
+
+  <% if @home.waiting? %>
+    <%= render "dashboard/waiting", home: @home %>
+  <% end %>
+
+  <% if @home.also_recent.any? %>
+    <%= render "dashboard/also_recent", home: @home %>
+  <% end %>
+</div>

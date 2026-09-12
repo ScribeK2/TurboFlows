@@ -27,22 +27,6 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "h3", text: "No pinned workflows"
   end
 
-  test "editor renders SME dashboard" do
-    @user.update!(role: "editor")
-    Workflow.create!(title: "Mine", user: @user, status: "published")
-    get root_path
-    assert_response :success
-    assert_select "[aria-label*='Published workflows']"
-  end
-
-  test "admin renders SME dashboard" do
-    @user.update!(role: "admin")
-    Workflow.create!(title: "Mine", user: @user, status: "published")
-    get root_path
-    assert_response :success
-    assert_select "[aria-label*='Published workflows']"
-  end
-
   # -- CSR dashboard --
 
   test "CSR sees Start a Simulation button" do
@@ -108,82 +92,157 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "[aria-label*='Most used flow']", count: 0
   end
 
-  # -- SME dashboard --
+  # -- Editor and Admin home (spec docs/designs/2026-09-12-editor-admin-home.md) --
 
-  test "SME sees Create Workflow button" do
+  test "an editor gets the home page, not the old stats" do
     @user.update!(role: "editor")
-    get root_path
-    assert_select "button[aria-label='Create a new workflow']"
-  end
-
-  test "SME empty state does not add a second Create button" do
-    @user.update!(role: "editor")
-    get root_path
-    assert_select "button[aria-label='Create a new workflow']", count: 1
-    assert_select "button[aria-label='Create your first workflow']", count: 0
-  end
-
-  test "SME drafts waiting links to the Drafts tab" do
-    @user.update!(role: "editor")
-    Workflow.create!(title: "Draft WF", user: @user, status: "draft")
-
-    get root_path
-    assert_select ".dashboard-greet__attention[href=?]", workflows_path(status: "draft")
-  end
-
-  test "SME sees draft count" do
-    @user.update!(role: "editor")
-    Workflow.create!(title: "Published WF", user: @user, status: "published")
-    Workflow.create!(title: "Draft WF", user: @user, status: "draft")
-
-    get root_path
-    assert_response :success
-    assert_select ".dashboard-greet__attention", text: /1 draft/
-    assert_select ".stat-cell__chip", count: 0
-  end
-
-  # The greeting chip used to run WorkflowHealthCheck across the viewer's
-  # published library on every home-page load. A published Action with nowhere
-  # to go is an error the health panel still reports; the dashboard must not.
-  test "SME attention chip does not appear for a published workflow with health errors" do
-    @user.update!(role: "editor")
-    workflow = Workflow.create!(title: "Broken published", user: @user, status: "published")
-    Steps::Action.create!(
-      workflow: workflow, uuid: SecureRandom.uuid, position: 0,
-      title: "Do it", instructions: "Do it"
-    )
 
     get root_path
 
     assert_response :success
+    assert_select ".dashboard-greet"
+    assert_select ".stat-panel", count: 0
     assert_select ".dashboard-greet__attention", count: 0
   end
 
-  test "SME sees company-wide scenario stats" do
+  test "an editor's last workflow is the hero, and Continue editing is the one filled button" do
     @user.update!(role: "editor")
-    other_user = User.create!(
-      email: "csr-#{SecureRandom.hex(4)}@example.com",
-      password: "password123!",
-      password_confirmation: "password123!"
-    )
-    workflow = Workflow.create!(title: "Test WF", user: @user)
-    Scenario.create!(workflow: workflow, user: other_user, purpose: "live", status: "completed")
+    workflow = workflow_with_step("My Draft")
 
     get root_path
-    assert_response :success
-    # Company-wide total includes scenarios from all users
-    assert_select "[aria-label*='Total scenarios']"
+
+    assert_select ".home-resume__title", text: /My Draft/
+    assert_select ".home-resume a.btn--primary[href=?]", workflow_path(workflow, edit: true), text: "Continue editing"
+    assert_select "button.btn--secondary[aria-label='Create a new workflow']"
+    assert_select ".dashboard-layout .btn--primary", count: 1
   end
 
-  test "SME recent workflow title opens the builder in edit" do
+  test "an editor with nothing yet gets a filled Create Workflow and one line about what will appear" do
     @user.update!(role: "editor")
-    workflow = Workflow.create!(title: "My Workflow", user: @user)
 
     get root_path
-    assert_response :success
-    assert_select "h2", text: /Recent Workflows/
-    assert_select ".list-row__title a[href=?]", workflow_path(workflow, edit: true)
-    assert_select ".list-row__actions a", text: "View", count: 0
-    assert_select ".list-row__actions a", text: "Edit", count: 0
+
+    assert_select ".home-resume", count: 0
+    assert_select "button.btn--primary[aria-label='Create a new workflow']", count: 1
+    assert_select ".dashboard-layout p", text: /Workflows you create will appear here/
+    assert_select "#home-waiting", count: 0
+    assert_select "#home-also-recent", count: 0
+  end
+
+  test "a draft hero says what blocks its publish and links to the health panel" do
+    @user.update!(role: "editor")
+    workflow = workflow_with_step("Unpublishable")
+
+    get root_path
+
+    assert_select ".home-resume__blockers a[href=?]", workflow_path(workflow, edit: true, health: true),
+                  text: /1 thing to fix before publishing/
+  end
+
+  test "a published hero shows no blockers line" do
+    @user.update!(role: "editor")
+    file_in_global(workflow_with_step("Live", status: "published"))
+
+    get root_path
+
+    assert_select ".home-resume"
+    assert_select ".home-resume__blockers", count: 0
+  end
+
+  test "waiting on you names five drafts and links the rest to your own drafts" do
+    @user.update!(role: "editor")
+    7.times { |i| workflow_with_step("Draft #{i}", edited_at: i.hours.ago) }
+
+    get root_path
+
+    assert_select "#home-waiting-drafts .list-row__title", text: "7 drafts not yet published"
+    assert_select "#home-waiting-drafts li a", count: 6
+    assert_select "#home-waiting-drafts a[href=?]", workflows_path(owner: "me", status: "draft"), text: "+2 more"
+  end
+
+  test "also recent lists your other workflows and links to all of yours" do
+    @user.update!(role: "editor")
+    workflow_with_step("Newest", edited_at: 1.hour.ago)
+    workflow_with_step("Older", edited_at: 1.day.ago)
+
+    get root_path
+
+    assert_select "#home-also-recent .list-row__title", text: /Older/
+    assert_select "#home-also-recent .list-row__title", text: /Newest/, count: 0
+    assert_select "#home-also-recent a[href=?]", workflows_path(owner: "me"), text: "View all"
+  end
+
+  test "an editor's published workflows with no audience are named" do
+    @user.update!(role: "editor")
+    workflow_with_step("Hidden live", status: "published")
+
+    get root_path
+
+    assert_select "#home-waiting-no-audience a", text: "Hidden live"
+  end
+
+  test "an admin gets the attention strip instead of a no-audience row" do
+    @user.update!(role: "admin")
+    workflow_with_step("Admin hidden live", status: "published")
+
+    get root_path
+
+    assert_select "#home-waiting-no-audience", count: 0
+    assert_select "#home-admin-attention", text: /with no audience/
+    assert_select "#home-admin-attention a[href=?]", admin_root_path, text: "Admin Overview"
+  end
+
+  test "the admin strip is absent when nothing waits on an administrator" do
+    @user.update!(role: "admin")
+    # Fixture rows persist: published workflows in no group, and users in no group.
+    Workflow.where(id: Workflow.published_without_audience.select(:id)).update_all(status: "draft")
+    User.where(id: User.awaiting_groups.select(:id)).update_all(deactivated_at: Time.current)
+
+    get root_path
+
+    assert_select "#home-admin-attention", count: 0
+  end
+
+  test "an admin who has built nothing sees the library's last edit, with its owner" do
+    @user.update!(role: "admin")
+    editor = User.create!(email: "home-editor-#{SecureRandom.hex(4)}@example.com", password: "password123!",
+                          password_confirmation: "password123!", role: "editor")
+    workflow_with_step("Editor's work", user: editor, edited_at: 1.minute.from_now)
+
+    get root_path
+
+    assert_select ".home-resume__eyebrow", text: "Last edited in the library"
+    assert_select ".home-resume__title", text: /Editor's work/
+    assert_select ".home-resume__meta", text: /#{Regexp.escape(editor.display_label)}/
+  end
+
+  test "the home page skips Turbo's cached preview" do
+    @user.update!(role: "editor")
+
+    get root_path
+
+    assert_select "meta[name='turbo-cache-control'][content='no-preview']"
+  end
+
+  test "home page queries do not grow with the workflows you own" do
+    @user.update!(role: "editor")
+    file_in_global(workflow_with_step("Live 0", status: "published"))
+    get root_path
+
+    small = count_queries { get root_path }
+    9.times { |i| file_in_global(workflow_with_step("Live #{i + 1}", status: "published", edited_at: 1.day.ago)) }
+    large = count_queries { get root_path }
+
+    assert_equal small, large, "something on home is queried per workflow"
+  end
+
+  private
+
+  def workflow_with_step(title, user: @user, status: "draft", edited_at: Time.current)
+    workflow = Workflow.create!(title:, user:, status:)
+    step = Steps::Resolve.create!(workflow:, position: 0, title: "Done", resolution_type: "success")
+    step.update_columns(updated_at: edited_at)
+    workflow.update_columns(updated_at: edited_at)
+    workflow
   end
 end

@@ -9,7 +9,8 @@ class DashboardController < ApplicationController
     if @dashboard.csr?
       render "dashboard/csr"
     else
-      render "dashboard/sme"
+      @home = Dashboard::Home.new(current_user)
+      render "dashboard/home"
     end
   end
 end

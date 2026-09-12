@@ -1,0 +1,25 @@
+<%# locals: (home:) %>
+<%# One row per kind of problem, naming the workflows it covers, so eleven of the
+    same thing cannot flood the page (the mockup's finding). %>
+<section class="list-section admin-attention" id="home-waiting">
+  <div class="list-section__head">
+    <h2 class="list-section__title">Waiting on you</h2>
+  </div>
+
+  <div class="list-section__body">
+    <% if home.draft_count.positive? %>
+      <%= render "dashboard/waiting_row", id: "home-waiting-drafts", icon_name: "pencil-square",
+            title: "#{pluralize(home.draft_count, 'draft')} not yet published",
+            workflows: home.named_drafts, total: home.draft_count,
+            more_path: workflows_path(owner: WorkflowsFilter::OWNER_ME, status: "draft") %>
+    <% end %>
+
+    <% if home.no_audience_count.positive? %>
+      <%= render "dashboard/waiting_row", id: "home-waiting-no-audience", icon_name: "eye-slash",
+            title: "#{pluralize(home.no_audience_count, 'published workflow')} nobody else can see",
+            sub: "Only you and admins can see these. Choose groups, or Global, in each one's Details.",
+            workflows: home.named_no_audience, total: home.no_audience_count,
+            more_path: workflows_path(owner: WorkflowsFilter::OWNER_ME, status: "published") %>
+    <% end %>
+  </div>
+</section>

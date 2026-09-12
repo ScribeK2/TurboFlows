@@ -1,4 +1,9 @@
-<div class="dashboard-greet animate-fade-in">
+<%# locals: (create_primary: true) %>
+<%# Shared by both dashboards. Create Workflow is the page's one filled button
+    only when home has no hero card to continue (spec D7). No drafts chip: for an
+    admin it counted the org's drafts beside "Waiting on you" counting their own.
+    No entrance animation: see test/integration/dashboard_motion_test.rb. %>
+<div class="dashboard-greet">
   <div class="dashboard-greet__intro">
     <h1 class="dashboard-greet__title">
       <%= time_based_greeting(current_user) %><%= ", #{greeting_name(current_user)}" if greeting_name(current_user).present? %>
@@ -6,18 +11,9 @@
     <p class="dashboard-greet__subtitle"><%= greeting_date(current_user) %></p>
   </div>
 
-  <% if current_user.can_create_workflows? %>
-    <% drafts = @dashboard.draft_count %>
-    <% if drafts.positive? %>
-      <%= link_to workflows_path(status: "draft"), class: "dashboard-greet__attention", aria: { label: "Drafts waiting to be published" } do %>
-        <strong><%= drafts %></strong> draft<%= drafts == 1 ? "" : "s" %> waiting
-      <% end %>
-    <% end %>
-  <% end %>
-
   <div class="dashboard-greet__actions">
     <% if current_user.can_create_workflows? %>
-      <%= start_workflow_button "Create Workflow", html_class: "btn btn--primary" %>
+      <%= start_workflow_button "Create Workflow", html_class: create_primary ? "btn btn--primary" : "btn btn--secondary" %>
     <% else %>
       <%= link_to play_path, class: "btn btn--primary", aria: { label: "Run a flow" } do %>
         <%= icon "play", class: "icon icon--sm" %>

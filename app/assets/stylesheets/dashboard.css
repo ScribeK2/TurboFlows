@@ -167,24 +167,6 @@
   margin-top: var(--space-1);
 }
 
-.dashboard-greet__attention {
-  font-size: var(--text-sm);
-  color: var(--color-ink-subtle);
-  text-decoration: none;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-canvas-raised);
-  transition: border-color var(--duration-fast) var(--ease-out);
-}
-
-.dashboard-greet__attention:hover { border-color: var(--color-border-strong); }
-
-.dashboard-greet__attention strong {
-  font-weight: 700;
-  color: var(--color-ink);
-}
-
 .dashboard-greet__actions {
   display: flex;
   align-items: center;
@@ -194,6 +176,52 @@
 
 @media (max-width: 640px) {
   .dashboard-greet__title { font-size: var(--text-xl); }
+}
+
+/* ============================================================================
+   Resume card (home hero): the workflow you were last in
+   ============================================================================ */
+
+.home-resume {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-6);
+  margin-bottom: var(--space-8);
+  background: var(--color-canvas-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.home-resume__eyebrow {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+  color: var(--color-ink-muted);
+}
+
+.home-resume__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--color-ink);
+  letter-spacing: var(--letter-spacing-tight);
+  overflow-wrap: anywhere;
+}
+
+.home-resume__meta { font-size: var(--text-sm); color: var(--color-ink-subtle); }
+
+.home-resume__blockers a { text-decoration: none; }
+
+.home-resume__actions { margin-top: var(--space-3); }
+
+@media (max-width: 640px) {
+  .home-resume { padding: var(--space-4); }
+  .home-resume__title { font-size: var(--text-xl); }
 }
 
 /* ============================================================================

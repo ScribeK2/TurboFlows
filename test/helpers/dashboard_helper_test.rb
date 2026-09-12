@@ -82,4 +82,36 @@ class DashboardHelperTest < ActionView::TestCase
       assert_equal "Tuesday, April 28", greeting_date(@user)
     end
   end
+
+  # A stand-in with Admin::Attention's reader names; the helper only reads them.
+  AttentionStandIn = Struct.new(:awaiting_groups_count, :no_audience_count, :email_unconfigured,
+                                :worker_down, :failed_jobs_count, :stalled_task_keys, keyword_init: true) do
+    def email_unconfigured? = email_unconfigured
+
+    def worker_down? = worker_down
+  end
+
+  def attention_stand_in(**overrides)
+    AttentionStandIn.new(awaiting_groups_count: 0, no_audience_count: 0, email_unconfigured: false,
+                         worker_down: false, failed_jobs_count: 0, stalled_task_keys: [], **overrides)
+  end
+
+  test "attention_summary names each kind of problem in one sentence" do
+    summary = attention_summary(attention_stand_in(awaiting_groups_count: 29, email_unconfigured: true,
+                                                   failed_jobs_count: 3))
+
+    assert_equal "29 users waiting for a group, email is not set up, and 3 failed jobs", summary
+  end
+
+  test "attention_summary starts with a capital when a sentence begins with a word" do
+    assert_equal "Email is not set up", attention_summary(attention_stand_in(email_unconfigured: true))
+  end
+
+  test "attention_summary covers workers, audience and stalled jobs" do
+    summary = attention_summary(attention_stand_in(no_audience_count: 1, worker_down: true,
+                                                   stalled_task_keys: ["cleanup"]))
+
+    assert_equal "1 published workflow with no audience, background jobs are not running, " \
+                 "and nightly jobs have stalled", summary
+  end
 end

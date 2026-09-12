@@ -1,0 +1,24 @@
+<%# locals: (home:) %>
+<%# The workflow you were last in. A draft's publish blockers are the one
+    health check on this page (Dashboard::Home#hero_blockers). %>
+<% workflow, edited_at = home.hero %>
+<section class="home-resume" aria-label="Pick up where you left off">
+  <p class="home-resume__eyebrow"><%= home.showing_library? ? "Last edited in the library" : "Pick up where you left off" %></p>
+  <div class="home-resume__title">
+    <%= workflow.title %>
+    <%= workflow_status_badge(workflow) %>
+  </div>
+  <p class="home-resume__meta">
+    Edited <%= time_ago_in_words(edited_at) %> ago &middot; <%= pluralize(workflow.steps_count, "step") %><%= " · #{workflow.user.display_label}" if home.showing_library? %>
+  </p>
+  <% if home.hero_blockers.present? %>
+    <p class="home-resume__blockers">
+      <%= link_to workflow_path(workflow, edit: true, health: true), class: "badge badge--alert" do %>
+        <%= pluralize(home.hero_blockers.size, "thing") %> to fix before publishing
+      <% end %>
+    </p>
+  <% end %>
+  <div class="home-resume__actions">
+    <%= link_to "Continue editing", workflow_open_path(workflow), class: "btn btn--primary" %>
+  </div>
+</section>

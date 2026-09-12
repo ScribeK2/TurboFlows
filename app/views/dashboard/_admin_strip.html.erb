@@ -1,0 +1,19 @@
+<%# locals: (attention:) %>
+<%# Every kind of admin problem folded into one row. It reads the same
+    Admin::Attention as the admin sidebar badge, so the two cannot disagree. %>
+<section class="list-section" id="home-admin-attention" aria-label="Needs attention">
+  <div class="list-section__body">
+    <div class="list-row list-row--compact">
+      <span class="list-row__icon" aria-hidden="true"><%= icon "exclamation-triangle", class: "icon icon--sm" %></span>
+      <div class="list-row__body">
+        <div class="list-row__title">
+          <%= pluralize(attention.count, "admin issue") %> <%= attention.count == 1 ? "needs" : "need" %> attention
+        </div>
+        <p class="list-row__sub"><%= attention_summary(attention) %></p>
+      </div>
+      <div class="list-row__actions">
+        <%= link_to "Admin Overview", admin_root_path, class: "btn btn--secondary btn--sm" %>
+      </div>
+    </div>
+  </div>
+</section>
