@@ -58,8 +58,11 @@ class AnalyticsScope
     @managed_group_ids ||= @user ? GroupManager.where(user: @user).pluck(:group_id) : []
   end
 
-  def team_member_ids
+  def team_group_ids
     @team_group_ids ||= managed_group_ids + Group.descendant_ids_for(managed_group_ids)
-    UserGroup.where(group_id: @team_group_ids).select(:user_id)
+  end
+
+  def team_member_ids
+    UserGroup.where(group_id: team_group_ids).select(:user_id)
   end
 end
