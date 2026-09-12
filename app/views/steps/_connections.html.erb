@@ -1,0 +1,17 @@
+<%#
+  The step panel's Connections section, rendered on its own so a save that
+  flips "Come back to this workflow" can re-render it in place
+  (StepsController#update).
+
+  A handoff takes no connections: it ends this workflow by handing the run on,
+  and the Sub-Flow fields say so right above. Offering Add Connection there
+  invited a state the strict import refuses. One that still carries a
+  connection keeps the editor, or there would be no way to remove it.
+
+  Local variables:
+  - step: AR Step object
+  - workflow: Workflow object
+%>
+<% if !step.hands_off? || step.transitions.any? %>
+  <%= render "steps/transitions_editor", step: step, workflow: workflow %>
+<% end %>

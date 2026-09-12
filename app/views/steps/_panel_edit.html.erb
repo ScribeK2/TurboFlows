@@ -80,7 +80,9 @@
 
         <%# Connections section %>
         <% unless step.is_a?(Steps::Resolve) %>
-          <%= render "steps/transitions_editor", step: step, workflow: workflow %>
+          <div id="<%= dom_id(step, :connections) %>">
+            <%= render "steps/connections", step: step, workflow: workflow %>
+          </div>
         <% end %>
       <% end %>
     <% end %>

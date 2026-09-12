@@ -45,7 +45,9 @@
   <div class="list-row__body">
     <div class="list-row__title">
       <%= step.title.presence || "Untitled #{step.step_type.titleize}" %>
-      <% if step.transitions.empty? && !step.is_a?(Steps::Resolve) %>
+      <%# A handoff ends the workflow on purpose, so no connections is its shape,
+          not something forgotten. %>
+      <% if step.transitions.empty? && !step.is_a?(Steps::Resolve) && !step.hands_off? %>
         <span class="badge badge--warning">No connections</span>
       <% end %>
     </div>

@@ -136,6 +136,16 @@ class StepsController < ApplicationController
             )
           end
 
+          # Come back decides whether the step takes connections at all, so the
+          # open panel's Connections section has to follow it.
+          if @step.is_a?(Steps::SubFlow) && step_params.key?(:sub_flow_returns)
+            streams << turbo_stream.update(
+              dom_id(@step, :connections),
+              partial: "steps/connections",
+              locals: { step: @step, workflow: @workflow }
+            )
+          end
+
           render turbo_stream: streams
         end
         format.html { redirect_to workflow_path(@workflow, edit: true), notice: "Step updated." }

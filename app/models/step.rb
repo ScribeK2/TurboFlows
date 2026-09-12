@@ -54,6 +54,12 @@ class Step < ApplicationRecord
     transitions.empty?
   end
 
+  # Whether this step ends its workflow by handing the run to another one. Only a
+  # Sub-Flow that does not come back does — see Steps::SubFlow#hands_off?.
+  def hands_off?
+    false
+  end
+
   # Summary of outgoing transitions for display in collapsed cards
   def condition_summary
     return "Terminal" if terminal? && is_a?(Steps::Resolve)
@@ -63,7 +69,7 @@ class Step < ApplicationRecord
     # Without this it rendered with no summary at all — indistinguishable from
     # the dead end the health panel warns about, which is the opposite of what
     # it is.
-    if is_a?(Steps::SubFlow) && !sub_flow_returns
+    if hands_off?
       return "Continues in #{target_workflow&.title || 'another workflow'}"
     end
 
