@@ -25,6 +25,7 @@
           member_counts: @member_counts, workflow_counts: @workflow_counts,
           accepts_subgroups: @group.accepts_subgroups? %>
     <%= render "members", group: @group %>
+    <%= render "managers", group: @group %>
   <% end %>
 
   <%= render "folders", group: @group %>

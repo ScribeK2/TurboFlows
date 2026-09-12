@@ -1,0 +1,3 @@
+<%= turbo_stream.replace "group-managers", partial: "admin/groups/managers",
+      locals: { group: @group, query: @query, candidates: @candidates } %>
+<%= turbo_stream.update "flash", partial: "shared/flash_messages" %>

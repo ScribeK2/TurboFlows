@@ -131,6 +131,7 @@ Rails.application.routes.draw do
     end
     resources :groups do
       resources :memberships, only: %i[index create destroy]
+      resources :managers, only: %i[index create destroy], controller: "group_managers"
       patch 'folders/reorder', to: 'folders#reorder', as: :reorder_folders
       resources :folders, only: %i[create update destroy]
     end

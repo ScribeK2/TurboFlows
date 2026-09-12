@@ -17,6 +17,7 @@ class Admin::UsersController < Admin::BaseController
     @user = User.find(params[:id])
     @group_nodes = Group.assignable_tree_nodes
     @group_notes = @user.user_groups.where(self_joined: true).pluck(:group_id).index_with("Joined themselves")
+    @managed_groups = @user.managed_groups.order(:name)
   end
 
   def update

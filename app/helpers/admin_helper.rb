@@ -8,6 +8,7 @@ module AdminHelper
     "admin/users" => :users,
     "admin/groups" => :groups,
     "admin/memberships" => :groups,
+    "admin/group_managers" => :groups,
     "admin/data_health" => :data_health,
     "admin/smtp_settings" => :email
   }.freeze

@@ -52,6 +52,9 @@
           <dt class="form-label">Last Active</dt>
           <dd id="user-last-active">
             <%= last_active ? "#{time_ago_in_words(last_active)} ago" : "Has not run a workflow yet" %>
+            <% if last_active %>
+              · <%= link_to "View runs", analytics_agent_path(@user) %>
+            <% end %>
           </dd>
         </div>
       </dl>
@@ -68,6 +71,12 @@
           A Regular or Editor account sees Global workflows and the workflows in these groups. Membership of a group covers its subgroups.
         <% end %>
       </p>
+      <% if @managed_groups.any? %>
+        <p class="form-hint mb-3" id="user-manages">
+          Manages <%= safe_join(@managed_groups.map { link_to(it.name, admin_group_path(it)) }, ", ") %>,
+          so they see Analytics for those teams. Change this on the group's page.
+        </p>
+      <% end %>
       <%= form_with url: update_groups_admin_user_path(@user), method: :patch do %>
         <%= render "shared/group_picker", nodes: @group_nodes, field_name: "group_ids[]", selected_ids: @user.group_ids, notes: @group_notes %>
         <div class="admin-user__actions">

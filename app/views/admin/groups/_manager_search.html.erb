@@ -1,0 +1,22 @@
+<%# locals: (group:, query:, candidates:) %>
+<%# The results only: the search field lives in _managers, outside this frame.
+    The search stays open after an Add: the managers stream re-renders this
+    frame for the same words, minus whoever was just added. %>
+<turbo-frame id="group-manager-search">
+  <% if query.present? %>
+    <% if candidates.any? %>
+      <ul class="admin-group__list" role="list">
+        <% candidates.each do |user| %>
+          <li class="admin-group__item">
+            <span class="admin-group__name"><%= user.email %></span>
+            <span class="admin-group__meta"><%= [user.display_name.presence, user.role.capitalize].compact.join(" · ") %></span>
+            <%= button_to "Add", admin_group_managers_path(group), params: { user_id: user.id, q: query },
+                  class: "btn btn--secondary btn--sm", aria: { label: "Make #{user.email} a manager of #{group.name}" } %>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="form-hint">Nobody else matches “<%= query %>”.</p>
+    <% end %>
+  <% end %>
+</turbo-frame>

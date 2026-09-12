@@ -1,0 +1,44 @@
+<%# locals: (group:, query: "", candidates: User.none) %>
+<%# Managers see Analytics for this group's members and its sub-teams (spec
+    2026-09-12). admin/group_managers/changed replaces this section whole. %>
+<% grants = group.managers_by_email %>
+<section id="group-managers" class="card mb-4" aria-labelledby="group-managers-heading">
+  <div class="card__body">
+    <h2 id="group-managers-heading" class="admin-card__heading">Managers</h2>
+    <p class="form-hint mb-3">
+      Managers see Analytics for this group's members and its sub-teams, including each person's calls.
+      It doesn't change their role, and they don't need to be members.
+      <% if Group.self_joinable_ids.include?(group.id) %>
+        People can join this group themselves, and a manager sees whoever does.
+      <% end %>
+    </p>
+
+    <% if grants.any? %>
+      <ul class="admin-group__list mb-4" role="list">
+        <% grants.each do |grant| %>
+          <li class="admin-group__item">
+            <%= link_to grant.user.email, admin_user_path(grant.user), class: "admin-group__name" %>
+            <span class="admin-group__meta"><%= grant.user.role.capitalize %></span>
+            <%= button_to "Remove", admin_group_manager_path(group, grant), method: :delete,
+                  params: { q: query }, class: "btn btn--plain btn--sm",
+                  aria: { label: "Remove #{grant.user.email} as a manager of #{group.name}" } %>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="form-hint mb-4">No managers yet. Find people below to add one.</p>
+    <% end %>
+
+    <%# The field sits outside the frame it fills, as on Members, so answering as
+        you type never replaces the input. Its own id: Members' field is "q". %>
+    <%= form_with url: admin_group_managers_path(group), method: :get, class: "admin-group__search",
+          data: { controller: "debounced-submit", turbo_frame: "group-manager-search" } do |form| %>
+      <%= form.search_field :q, value: query, id: "group-manager-q", class: "form-input form-input--sm",
+            placeholder: "Find people by email or name", autocomplete: "off",
+            aria: { label: "Find people to make managers of #{group.name}" },
+            data: { action: "input->debounced-submit#submit" } %>
+      <%= form.submit "Search", name: nil, class: "btn btn--secondary btn--sm" %>
+    <% end %>
+    <%= render "admin/groups/manager_search", group:, query:, candidates: %>
+  </div>
+</section>
