@@ -7,10 +7,11 @@ module Analytics
 
     def show
       @scenario = Scenario.find_by(id: params[:id])
-      return deny_analytics_access! unless analytics_scope.includes_run?(@scenario)
-
-      # A call is read from its origin, as the results pages read it.
-      origin = @scenario.run_origin
+      # A call is read from its origin, as the results pages read it — computed
+      # once here, rather than once more inside includes_run?, which would
+      # otherwise walk the same chain twice.
+      origin = @scenario&.run_origin
+      return deny_analytics_access! unless analytics_scope.includes_run?(origin)
       return redirect_to(analytics_run_path(origin)) if origin != @scenario
 
       @workflow = @scenario.workflow
