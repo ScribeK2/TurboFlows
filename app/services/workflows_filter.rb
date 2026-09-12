@@ -141,6 +141,7 @@ class WorkflowsFilter
     @unfiled_workflows = @selected_group.unfiled_workflows
                                         .includes(:user)
                                         .search_by(@params[:search])
+    @unfiled_workflows = @unfiled_workflows.where(user: @user) if owner_filter
     @unfiled_workflows = case sort_by
                          when "alphabetical"
                            @unfiled_workflows.order(Arel.sql("LOWER(title) ASC"))

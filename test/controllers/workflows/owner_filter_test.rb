@@ -34,4 +34,21 @@ class Workflows::OwnerFilterTest < ActionDispatch::IntegrationTest
 
     assert_select ".group-sidebar__link", text: /#{Group::GLOBAL_NAME}\s+1\b/o
   end
+
+  test "owner=me narrows a group's Unfiled section to your own workflows" do
+    group = Group.create!(name: "Owner Filter Group #{SecureRandom.hex(4)}")
+    UserGroup.create!(user: @editor, group: group)
+    Folder.create!(name: "A Folder", group: group)
+    other = User.create!(email: "owner-other2-#{SecureRandom.hex(4)}@example.com", password: "password123!",
+                         password_confirmation: "password123!", role: "editor")
+    mine_unfiled = Workflow.create!(title: "Mine Unfiled #{SecureRandom.hex(3)}", user: @editor, status: "published")
+    their_unfiled = Workflow.create!(title: "Theirs Unfiled #{SecureRandom.hex(3)}", user: other, status: "published")
+    GroupWorkflow.create!(group: group, workflow: mine_unfiled, is_primary: true)
+    GroupWorkflow.create!(group: group, workflow: their_unfiled, is_primary: true)
+
+    get workflows_path(group_id: group.id, owner: "me")
+
+    assert_match mine_unfiled.title, response.body
+    assert_no_match their_unfiled.title, response.body
+  end
 end
