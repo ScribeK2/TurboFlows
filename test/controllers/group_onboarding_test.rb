@@ -45,6 +45,19 @@ class GroupOnboardingTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  # A refused page sends people to the dashboard with a reason, and the dashboard
+  # passes them on. The reason used to be spent on that middle hop.
+  test "a reason given on the way to the dashboard is still read on the welcome page" do
+    get analytics_path
+    assert_redirected_to root_path
+
+    follow_redirect!
+    assert_redirected_to welcome_path
+
+    follow_redirect!
+    assert_select ".flash--alert", text: /You don't have permission to access this page\./
+  end
+
   test "only the dashboard redirects" do
     get play_path
 
