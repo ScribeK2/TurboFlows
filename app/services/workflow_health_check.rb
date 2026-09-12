@@ -11,6 +11,11 @@ class WorkflowHealthCheck
     def clean?
       summary[:total].zero?
     end
+
+    # The issues a publish would refuse, whatever their severity.
+    def publish_blockers
+      issues.values.flatten.select { |issue| WorkflowHealthCheck::PUBLISH_BLOCKING_CODES.include?(issue[:code]) }
+    end
   end
 
   def self.call(workflow)
@@ -27,6 +32,24 @@ class WorkflowHealthCheck
   # publish, and still carries the Fix. The findings dropped are true only
   # *because* the step has no transitions, which is what the survivor says.
   RESTATED_BY_NO_TRANSITIONS = %i[no_path_to_resolve terminal_not_resolve].freeze
+
+  # What WorkflowPublisher and Workflow#while_publishing refuse. An allowlist, like
+  # SubflowValidator::SAVE_BLOCKING_CODES, and not a severity: no_audience and the
+  # sub-flow codes are warnings, and each of them blocks a publish. Every code this
+  # check can report is in exactly one of these two lists, which a test enforces.
+  PUBLISH_BLOCKING_CODES = %i[
+    no_steps start_node_missing transition_target_missing unreachable_step
+    no_terminal_nodes terminal_not_resolve no_path_to_resolve no_outgoing_transitions
+    circular_subflow subflow_target_missing subflow_target_required max_depth_exceeded
+    no_resolve_across_workflows no_audience
+  ].freeze
+
+  # subflow_target_unpublished does not block: WorkflowSetPublisher publishes the
+  # linked drafts together. The rest only make an export unreadable.
+  NON_BLOCKING_CODES = %i[
+    subflow_target_unpublished title_required question_text_required
+    handoff_has_transitions select_options_required form_field_incomplete
+  ].freeze
 
   def collapse_no_transition_restatements(issues)
     issues.each_value do |step_issues|

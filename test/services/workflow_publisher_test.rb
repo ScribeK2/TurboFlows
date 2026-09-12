@@ -227,4 +227,25 @@ class WorkflowPublisherTest < ActiveSupport::TestCase
     assert_equal WorkflowPublisher::NO_AUDIENCE, result.error
     assert_empty @workflow.versions
   end
+
+  # no_path_to_resolve is a publish blocker (PUBLISH_BLOCKING_CODES), and the
+  # other refusals above each had a test; this one had none.
+  test "refuses a workflow whose only path leads into a loop with no way out" do
+    loop_wf = Workflow.create!(title: "Loop", user: @user, graph_mode: true, status: "draft")
+    start = Steps::Action.create!(workflow: loop_wf, position: 0, title: "Start")
+    a = Steps::Action.create!(workflow: loop_wf, position: 1, title: "A")
+    b = Steps::Action.create!(workflow: loop_wf, position: 2, title: "B")
+    Steps::Resolve.create!(workflow: loop_wf, position: 3, title: "Done", resolution_type: "success")
+    Transition.create!(step: start, target_step: a, position: 0)
+    Transition.create!(step: a, target_step: b, position: 0)
+    Transition.create!(step: b, target_step: a, position: 0)
+    loop_wf.update_column(:start_step_id, start.id)
+    file_in_global(loop_wf)
+
+    result = WorkflowPublisher.publish(loop_wf.reload, @user)
+
+    assert_not result.success?
+    assert_match(/no path to a Resolve step/i, result.error)
+    assert_equal "draft", loop_wf.reload.status
+  end
 end
