@@ -143,9 +143,10 @@ Transitions are subtle and purposeful. Spring easing for interactive feedback.
 of a page as a preview, then swaps in the fresh one. A `fadeIn`/`fadeInUp` on the
 page starts on the preview and restarts ~360ms later on the swap, mid-flight, and
 the Back button replays it every time. That was the dashboard's "jittery load".
-A home or index page therefore carries no `animate-*` class and renders
-`<meta name="turbo-cache-control" content="no-preview">`, and nothing on it loads
-after render. `test/integration/dashboard_motion_test.rb` guards both dashboards.
+So both dashboards (`dashboard/home` and `dashboard/csr`) carry no `animate-*`
+class, render `<meta name="turbo-cache-control" content="no-preview">`, and load
+nothing after render. A new page people return to should follow the same rule.
+`test/integration/dashboard_motion_test.rb` guards both dashboards.
 The `animations.css` utilities remain for one-shot surfaces.
 
 ### Dark Mode
