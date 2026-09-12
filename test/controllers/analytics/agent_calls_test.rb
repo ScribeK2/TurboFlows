@@ -24,8 +24,8 @@ module Analytics
       user
     end
 
-    def run_scenario(workflow:, user:, started:, outcome: "resolved", handed_off_from: nil)
-      Scenario.create!(workflow:, user:, purpose: "live", status: "completed", outcome:, handed_off_from:,
+    def run_scenario(workflow:, user:, started:, outcome: "resolved", handed_off_from: nil, purpose: "live")
+      Scenario.create!(workflow:, user:, purpose:, status: "completed", outcome:, handed_off_from:,
                        started_at: started, completed_at: started + 2.minutes,
                        execution_path: [], results: {}, inputs: {})
     end
@@ -78,6 +78,22 @@ module Analytics
 
       get analytics_agent_path(@csr, range: "90d")
       assert_equal 1, rows.size
+    end
+
+    test "the purpose filter narrows the calls to live or simulated ones" do
+      live = run_scenario(workflow: @start, user: @csr, started: 2.hours.ago)
+      simulated = run_scenario(workflow: @start, user: @csr, started: 1.hour.ago, purpose: "simulation")
+
+      get analytics_agent_path(@csr, purpose: "simulation")
+      assert_equal 1, rows.size
+      assert_select rows.first, "a[href=?]", analytics_run_path(simulated)
+
+      get analytics_agent_path(@csr, purpose: "live")
+      assert_equal 1, rows.size
+      assert_select rows.first, "a[href=?]", analytics_run_path(live)
+
+      get analytics_agent_path(@csr)
+      assert_equal 2, rows.size
     end
 
     test "calls come 25 to a page" do

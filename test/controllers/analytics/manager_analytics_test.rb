@@ -69,6 +69,23 @@ module Analytics
       assert_no_match(/#{Regexp.escape(@leak_step_title)}/, response.body)
     end
 
+    # An Editor opens workflows WorkflowAuthorization lets them see, so the
+    # Workflows tab links those and leaves the rest as text.
+    test "an Editor manager gets a link to a workflow they can open, and text for one they cannot" do
+      editor = person("editor", role: "editor")
+      GroupManager.create!(group: @team, user: editor)
+      own_flow = Workflow.create!(title: "Mgr Editor Flow #{@tag}", user: editor, status: "published")
+      run_scenario(own_flow, @csr)
+      sign_in editor
+
+      get analytics_path
+
+      assert_response :success
+      assert_select "#workflow-usage a[href=?]", workflow_path(own_flow)
+      assert_select "#workflow-usage a[href=?]", workflow_path(@team_flow), 0
+      assert_select "#workflow-usage", text: /#{Regexp.escape(@team_flow.title)}/
+    end
+
     test "a manager gets no All time and no Group filter, and All time reads as 30 days" do
       sign_in @manager
 
