@@ -48,6 +48,12 @@
           <%= link_to "Show all workflows", workflows_path %>
         </p>
       <% end %>
+      <% if @owner_filter %>
+        <p class="wf-audience-note">
+          Showing only your workflows.
+          <%= link_to "Show all", workflows_path %>
+        </p>
+      <% end %>
       <!-- Workflows List -->
       <% if @selected_group.present? && @folders.present? && @folders.any? %>
         <div class="card mb-4">
@@ -99,6 +105,8 @@
                 — it just could not see them. %>
             <% if @audience_filter %>
               Every published workflow has an audience.
+            <% elsif @owner_filter %>
+              You have no workflows in this list yet.
             <% elsif @search_query.present? %>
               No workflows found matching "<%= @search_query %>"<% if @selected_group %> in <%= @selected_group.name %><% end %>.
             <% elsif @selected_group.present? %>

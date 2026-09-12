@@ -18,7 +18,7 @@
       <span class="w-6 inline-block"></span>
     <% end %>
 
-    <%= link_to workflows_path(group_id: group.id, search: params[:search]),
+    <%= link_to workflows_path(group_id: group.id, search: params[:search], owner: params[:owner]),
                 class: "group-sidebar__link flex-1 #{is_selected ? 'group-sidebar__link--active' : ''}" do %>
       <%= icon "folder", class: "icon icon--sm mr-2 flex-shrink-0" %>
       <span class="flex-1 break-words min-w-0"><%= group.name %></span>

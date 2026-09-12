@@ -19,7 +19,7 @@
       <ul class="group-sidebar__nav-list">
         <!-- All Workflows Option -->
         <li>
-          <%= link_to workflows_path(search: params[:search]),
+          <%= link_to workflows_path(search: params[:search], owner: params[:owner]),
                       class: "group-sidebar__link #{@selected_group.nil? ? 'group-sidebar__link--active' : ''}" do %>
             <%= icon "document-text", class: "icon icon--sm mr-2" %>
             All Workflows

@@ -136,4 +136,32 @@ class WorkflowsFilterTest < ActiveSupport::TestCase
                  "asking for page 3 at a size that yields fewer pages must clamp, not return an empty page"
     assert_predicate filter.workflows_paginated, :any?
   end
+
+  # Spec 2026-09-12 (editor-admin home): the home page's "View all" and "+N more"
+  # links must land on a list that is really yours.
+  test "owner me narrows the list to the viewer's own workflows" do
+    filter = WorkflowsFilter.new(user: @editor, params: { owner: "me" }).call
+    ids = filter.workflows.pluck(:id)
+
+    assert_equal "me", filter.owner_filter
+    assert_includes ids, @published_wf.id
+    assert_includes ids, @draft_wf.id
+    assert_not_includes ids, @other_wf.id
+  end
+
+  test "owner me narrows an admin's org-wide Drafts tab to their own drafts" do
+    admin_draft = Workflow.create!(title: "Admin Draft", user: @admin, status: "draft")
+
+    ids = WorkflowsFilter.new(user: @admin, params: { owner: "me", status: "draft" }).call.workflows.pluck(:id)
+
+    assert_includes ids, admin_draft.id
+    assert_not_includes ids, @draft_wf.id, "the Drafts tab is org-wide for an admin; owner=me must narrow it"
+  end
+
+  test "any other owner value is ignored" do
+    filter = WorkflowsFilter.new(user: @editor, params: { owner: @admin.id.to_s }).call
+
+    assert_nil filter.owner_filter
+    assert_includes filter.workflows.pluck(:id), @other_wf.id
+  end
 end

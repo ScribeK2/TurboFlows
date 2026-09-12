@@ -266,6 +266,7 @@ module WorkflowsHelper
     filters << :group if selected_group.present?
     filters << :status if params[:status].present? && params[:status] != "all"
     filters << :search if params[:search].present?
+    filters << :owner if params[:owner] == WorkflowsFilter::OWNER_ME
     filters << :sort if params[:sort].present? && params[:sort] != DEFAULT_SORT
     filters
   end

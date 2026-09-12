@@ -12,6 +12,9 @@ class WorkflowsFilter
   # Admin-only: published workflows filed in no group. The Overview links here.
   NO_AUDIENCE = "none".freeze
 
+  # Anyone's own workflows. The home page's "View all" and "+N more" link here.
+  OWNER_ME = "me".freeze
+
   def initialize(user:, params:)
     @user = user
     @params = params
@@ -21,6 +24,7 @@ class WorkflowsFilter
   def call
     build_base_scope
     apply_audience_filter
+    apply_owner_filter
     apply_search
     apply_sort
     apply_group_filter
@@ -44,6 +48,10 @@ class WorkflowsFilter
 
   def audience_filter
     @params[:audience] == NO_AUDIENCE && @user.admin? ? NO_AUDIENCE : nil
+  end
+
+  def owner_filter
+    @params[:owner] == OWNER_ME ? OWNER_ME : nil
   end
 
   def per_page_size = per_page
@@ -83,6 +91,12 @@ class WorkflowsFilter
     return unless audience_filter
 
     @workflows = @workflows.where(id: Workflow.published_without_audience.select(:id))
+  end
+
+  def apply_owner_filter
+    return unless owner_filter
+
+    @workflows = @workflows.where(user: @user)
   end
 
   def apply_search

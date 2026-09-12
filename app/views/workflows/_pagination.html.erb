@@ -8,7 +8,8 @@
   keep = {
     status: params[:status], search: params[:search],
     group_id: params[:group_id], sort: params[:sort],
-    per_page: params[:per_page], audience: params[:audience]
+    per_page: params[:per_page], audience: params[:audience],
+    owner: params[:owner]
   }
   window = 5
   first_shown = [[page - (window / 2), 1].max, [total_pages - window + 1, 1].max].min
