@@ -18,19 +18,24 @@ module Admin
       @date_range = parse_date_range
       @base_scope = build_base_scope
 
-      # Stat cards. Rates are over runs that have ended (spec Q67, Q71): a run
-      # still going has not failed to complete.
-      @total_runs = @base_scope.count
-      @finished_runs = @base_scope.where.not(outcome: nil).count
-      @completed_count = @base_scope.where(outcome: Scenario::COMPLETED_OUTCOMES).count
-      @completion_rate = percentage(@completed_count, @finished_runs)
-      @avg_duration = @base_scope.where.not(duration_seconds: nil).average(:duration_seconds)&.round || 0
-      @escalated_count = @base_scope.where(outcome: "escalated").count
-      @escalation_rate = percentage(@escalated_count, @finished_runs)
+      # Stat cards and the Overview count calls (ISSUE-003): a call handed through
+      # three workflows is one call, not three runs, and lasts from where it
+      # started to where it ended. Rates are over calls that have ended (spec
+      # Q67, Q71): a call still going has not failed to complete. The Workflows
+      # and Agents tabs still count each workflow's own runs.
+      calls = CallStatistics.new(@base_scope)
+      @total_calls = calls.total
+      @finished_calls = calls.finished
+      @completed_count = calls.completed
+      @completion_rate = percentage(@completed_count, @finished_calls)
+      @avg_duration = calls.average_duration_seconds
+      @escalated_count = calls.escalated
+      @escalation_rate = percentage(@escalated_count, @finished_calls)
 
       # Overview tab
-      @outcome_breakdown = @base_scope.group(:outcome).count
-      @runs_over_time = build_runs_over_time
+      @outcome_breakdown = calls.outcome_breakdown
+      @runs_grouped_by_week = @date_range.nil? || (@date_range.last - @date_range.first) > 30.days
+      @calls_over_time = calls.over_time(weekly: @runs_grouped_by_week)
 
       # Workflows tab
       @workflow_stats = build_workflow_stats
@@ -76,21 +81,24 @@ module Admin
       dropoffs = ScenarioDropoffRollup.all
       @rollup_earliest_day = ScenarioRollup.minimum(:day)
 
-      totals = scope.group(:outcome).sum(:runs_count)
-      @total_runs = totals.values.sum
-      @finished_runs = @total_runs - totals.fetch(ScenarioRollup::PENDING, 0)
+      # Calls, as in every other range. Days rolled up before calls were counted
+      # carry none, so the page says from when they are.
+      totals = scope.group(:outcome).sum(:calls_count).select { |_outcome, count| count.positive? }
+      @total_calls = totals.values.sum
+      @finished_calls = @total_calls - totals.fetch(ScenarioRollup::PENDING, 0)
       @completed_count = totals.slice(*Scenario::COMPLETED_OUTCOMES).values.sum
       @escalated_count = totals.fetch("escalated", 0)
-      @completion_rate = percentage(@completed_count, @finished_runs)
-      @escalation_rate = percentage(@escalated_count, @finished_runs)
-      @avg_duration = scope.average_duration_seconds
+      @completion_rate = percentage(@completed_count, @finished_calls)
+      @escalation_rate = percentage(@escalated_count, @finished_calls)
+      @avg_duration = scope.average_call_duration_seconds
       @outcome_breakdown = totals
+      @calls_counted_from = scope.where(calls_count: 1..).minimum(:day)
 
       @runs_grouped_by_week = true
-      @runs_over_time = scope.group(:day).sum(:runs_count)
-                             .transform_keys { |d| d.to_date.beginning_of_week }
-                             .each_with_object(Hash.new(0)) { |(week, n), acc| acc[week] += n }
-                             .sort.to_h
+      @calls_over_time = scope.group(:day).sum(:calls_count)
+                              .transform_keys { |d| d.to_date.beginning_of_week }
+                              .each_with_object(Hash.new(0)) { |(week, n), acc| acc[week] += n }
+                              .sort.to_h
 
       @workflow_stats = rollup_workflow_stats
       @dropoff_points = rollup_dropoff_points(dropoffs)
@@ -184,16 +192,6 @@ module Admin
       scope
     end
 
-    def build_runs_over_time
-      scope = @base_scope.where.not(started_at: nil)
-      @runs_grouped_by_week = @date_range.nil? || (@date_range.last - @date_range.first) > 30.days
-      if @runs_grouped_by_week
-        scope.group(week_start_sql).count
-      else
-        scope.group(date_sql).count
-      end
-    end
-
     def sqlite?
       ActiveRecord::Base.connection.adapter_name.downcase.include?("sqlite")
     end
@@ -203,23 +201,6 @@ module Admin
         "strftime('%H', started_at)"
       else
         "to_char(started_at, 'HH24')"
-      end
-    end
-
-    def date_sql
-      if sqlite?
-        "date(started_at)"
-      else
-        "started_at::date"
-      end
-    end
-
-    def week_start_sql
-      if sqlite?
-        # Group by Monday: subtract days since Monday using (weekday + 6) % 7
-        "date(started_at, '-' || ((strftime('%w', started_at) + 6) % 7) || ' days')"
-      else
-        "date_trunc('week', started_at)::date"
       end
     end
 

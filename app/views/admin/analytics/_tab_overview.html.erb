@@ -16,7 +16,7 @@
           </thead>
           <tbody>
             <% @outcome_breakdown.each do |outcome, count| %>
-              <% pct = @total_runs > 0 ? (count.to_f / @total_runs * 100).round(1) : 0 %>
+              <% pct = @total_calls > 0 ? (count.to_f / @total_calls * 100).round(1) : 0 %>
               <%# The bar carries the outcome's hue; the label is plain text, since a
                   pill here would make every row an exception. %>
               <% bar_class = analytics_outcome_bar_class(outcome) %>
@@ -44,23 +44,23 @@
     <% end %>
   </div>
 
-  <%# Runs Over Time %>
+  <%# Calls Over Time: each call once, on the day it started %>
   <div class="card">
     <div class="card__header">
-      <h3>Runs Over Time</h3>
+      <h3>Calls Over Time</h3>
     </div>
-    <% if @runs_over_time.any? %>
-      <% max_runs = @runs_over_time.values.max %>
+    <% if @calls_over_time.any? %>
+      <% max_runs = @calls_over_time.values.max %>
       <div class="table-wrap">
         <table class="table">
           <thead>
             <tr>
               <th class="w-48">Period</th>
-              <th>Runs</th>
+              <th>Calls</th>
             </tr>
           </thead>
           <tbody>
-            <% @runs_over_time.sort.each do |period, count| %>
+            <% @calls_over_time.sort.each do |period, count| %>
               <% bar_pct = max_runs > 0 ? (count.to_f / max_runs * 100).round : 0 %>
               <tr>
                 <td>

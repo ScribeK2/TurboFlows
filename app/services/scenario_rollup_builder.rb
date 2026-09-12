@@ -58,8 +58,12 @@ class ScenarioRollupBuilder
     with_raw.select { |day| already_rolled.exclude?(day) || day >= window_start }
   end
 
+  # Runs on the workflow each ran in; calls on the workflow each started in, with
+  # the outcome it ended with. Both share the grain, so one row can carry runs,
+  # calls, or both, and every row carries every column for insert_all!.
   def daily_rows(days)
     now = Time.current
+    rows = {}
     grouped = Scenario.where.not(started_at: nil)
                       .group(Arel.sql(date_sql), :workflow_id, :purpose, :outcome)
                       .pluck(
@@ -69,18 +73,47 @@ class ScenarioRollupBuilder
                         Arel.sql("COUNT(duration_seconds)")
                       )
 
-    grouped.filter_map do |row|
-      day, workflow_id, purpose, outcome, count, sum, dur_count = row
+    grouped.each do |grouped_row|
+      day, workflow_id, purpose, outcome, count, sum, dur_count = grouped_row
       date = to_date(day)
       next unless date && days.include?(date)
 
-      {
-        workflow_id: workflow_id, day: date, purpose: purpose,
-        outcome: outcome.presence || ScenarioRollup::PENDING,
-        runs_count: count, duration_sum_seconds: sum.to_i, duration_count: dur_count.to_i,
-        created_at: now, updated_at: now
-      }
+      row = row_for(rows, [workflow_id, date, purpose, outcome], now)
+      row[:runs_count] += count
+      row[:duration_sum_seconds] += sum.to_i
+      row[:duration_count] += dur_count.to_i
     end
+
+    add_calls(rows, days, now)
+    rows.values
+  end
+
+  # Calls that started on the days being rolled. Their endings can have started
+  # later; CallStatistics finds those whatever the window.
+  def add_calls(rows, days, now)
+    window = days.min.to_time(:utc)...(days.max + 1).to_time(:utc)
+
+    CallStatistics.new(Scenario.where(started_at: window)).calls.each do |call|
+      date = call.started_at.utc.to_date
+      next unless days.include?(date)
+
+      row = row_for(rows, [call.workflow_id, date, call.purpose, call.outcome], now)
+      row[:calls_count] += 1
+      next unless call.duration_seconds
+
+      row[:call_duration_sum_seconds] += call.duration_seconds
+      row[:call_duration_count] += 1
+    end
+  end
+
+  def row_for(rows, (workflow_id, day, purpose, outcome), now)
+    outcome = outcome.presence || ScenarioRollup::PENDING
+    rows[[workflow_id, day, purpose, outcome]] ||= {
+      workflow_id: workflow_id, day: day, purpose: purpose, outcome: outcome,
+      runs_count: 0, duration_sum_seconds: 0, duration_count: 0,
+      calls_count: 0, call_duration_sum_seconds: 0, call_duration_count: 0,
+      created_at: now, updated_at: now
+    }
   end
 
   # execution_path is JSON, so the last step cannot be grouped in portable SQL.

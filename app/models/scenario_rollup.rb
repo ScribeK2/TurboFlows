@@ -1,8 +1,12 @@
-# One day of runs for one workflow, at one purpose and outcome.
+# One day of runs, and of calls, for one workflow, at one purpose and outcome.
 #
 # Written by ScenarioRollupBuilder before the runs it describes are deleted, so
 # trend history survives the retention horizon. Read by Admin::AnalyticsController
 # in its all-time mode.
+#
+# Runs are counted on the workflow each ran in. Calls (ISSUE-003) are counted on
+# the workflow each started in, with the outcome it ended with — so a row can
+# carry runs, calls, or both. Days rolled before calls were counted carry none.
 #
 # Durations are kept as a sum and a count, never an average: averaging daily
 # averages weights a day with three runs the same as a day with three hundred.
@@ -18,6 +22,7 @@ class ScenarioRollup < ApplicationRecord
 
   validates :day, :purpose, :outcome, presence: true
   validates :runs_count, :duration_sum_seconds, :duration_count,
+            :calls_count, :call_duration_sum_seconds, :call_duration_count,
             numericality: { greater_than_or_equal_to: 0 }
 
   scope :for_days, ->(days) { where(day: days) }
@@ -25,6 +30,13 @@ class ScenarioRollup < ApplicationRecord
   def self.average_duration_seconds
     totals = pick(Arel.sql("SUM(duration_sum_seconds)"), Arel.sql("SUM(duration_count)"))
     sum, count = totals
+    return 0 if count.nil? || count.zero?
+
+    (sum.to_f / count).round
+  end
+
+  def self.average_call_duration_seconds
+    sum, count = pick(Arel.sql("SUM(call_duration_sum_seconds)"), Arel.sql("SUM(call_duration_count)"))
     return 0 if count.nil? || count.zero?
 
     (sum.to_f / count).round

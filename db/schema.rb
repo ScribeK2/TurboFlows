@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_11_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_12_120100) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -100,6 +100,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_11_120000) do
   end
 
   create_table "scenario_rollups", force: :cascade do |t|
+    t.integer "call_duration_count", default: 0, null: false
+    t.integer "call_duration_sum_seconds", default: 0, null: false
+    t.integer "calls_count", default: 0, null: false
     t.datetime "created_at", null: false
     t.date "day", null: false
     t.integer "duration_count", default: 0, null: false
@@ -129,6 +132,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_11_120000) do
     t.string "purpose", default: "simulation", null: false
     t.json "results"
     t.string "resume_node_uuid"
+    t.integer "run_origin_id"
     t.boolean "shared_access", default: false, null: false
     t.datetime "started_at"
     t.string "status", default: "active", null: false
@@ -142,6 +146,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_11_120000) do
     t.index ["outcome"], name: "index_scenarios_on_outcome"
     t.index ["parent_scenario_id"], name: "index_scenarios_on_parent_scenario_id"
     t.index ["purpose", "started_at"], name: "index_scenarios_on_purpose_and_started_at"
+    t.index ["run_origin_id"], name: "index_scenarios_on_run_origin_id"
     t.index ["status", "purpose", "completed_at"], name: "index_scenarios_on_cleanup_scope"
     t.index ["status"], name: "index_scenarios_on_status"
     t.index ["user_id", "purpose", "created_at"], name: "index_scenarios_on_user_id_and_purpose_and_created_at"
@@ -345,6 +350,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_11_120000) do
   add_foreign_key "scenario_rollups", "workflows"
   add_foreign_key "scenarios", "scenarios", column: "handed_off_from_id", on_delete: :nullify
   add_foreign_key "scenarios", "scenarios", column: "parent_scenario_id", on_delete: :nullify
+  add_foreign_key "scenarios", "scenarios", column: "run_origin_id", on_delete: :nullify
   add_foreign_key "scenarios", "users"
   add_foreign_key "scenarios", "workflow_versions", on_delete: :nullify
   add_foreign_key "scenarios", "workflows"

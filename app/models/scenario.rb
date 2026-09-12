@@ -80,6 +80,11 @@ class Scenario < ApplicationRecord
   # Analytics tracking
   before_create :set_started_at
 
+  # Which call this frame belongs to, for SQL that counts calls (ISSUE-003):
+  # `run_origin` written down at creation, from the one link a new frame is
+  # born with. NULL on an origin, so a frame's call is COALESCE(run_origin_id, id).
+  before_create :record_run_origin
+
   # Which script the agent was actually following.
   #
   # The column, its index and its foreign key existed for a long time and nothing
@@ -853,6 +858,11 @@ class Scenario < ApplicationRecord
 
   def set_started_at
     self.started_at ||= Time.current
+  end
+
+  def record_run_origin
+    frame = parent_scenario || handed_off_from
+    self.run_origin_id ||= frame && (frame.run_origin_id || frame.id)
   end
 
   # Build execution path entry for a step

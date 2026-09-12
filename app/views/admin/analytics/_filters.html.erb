@@ -90,6 +90,14 @@
   <p class="form-hint mt-3">
     <% if @rollup_mode %>
       Daily totals, kept indefinitely<%= " since #{l(@rollup_earliest_day, format: :long)}" if @rollup_earliest_day %>.
+      <%# Days rolled up before calls were counted carry none (ISSUE-003); saying
+          where the count begins keeps a shorter history from reading as less
+          activity. %>
+      <% if @calls_counted_from %>
+        Calls are counted from <%= l(@calls_counted_from, format: :long) %>.
+      <% else %>
+        Calls are counted from the next nightly rollup.
+      <% end %>
       Individual runs are deleted after <%= Scenario.live_retention_days %> days, so
       per-agent, per-step and time-of-day views are unavailable here.
     <% else %>

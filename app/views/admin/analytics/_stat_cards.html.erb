@@ -1,10 +1,14 @@
 <%# One bordered panel, hairline-divided cells (reference image 3).
-    No decorative icons: the reference stat card is label + value only. %>
+    No decorative icons: the reference stat card is label + value only.
+
+    Calls, not scenario rows (ISSUE-003): a call handed through three workflows
+    is one call, and it lasts from where it started to where it ended. The
+    Workflows and Agents tabs still count each workflow's own runs. %>
 <div class="stat-panel">
   <div class="stat-panel__grid">
     <div class="stat-cell">
-      <span class="stat-cell__label">Total Runs</span>
-      <p class="stat-cell__value"><%= number_with_delimiter(@total_runs) %></p>
+      <span class="stat-cell__label">Total Calls</span>
+      <p class="stat-cell__value"><%= number_with_delimiter(@total_calls) %></p>
     </div>
 
     <div class="stat-cell">
@@ -13,8 +17,8 @@
       <div class="stat-cell__bar" aria-hidden="true">
         <span style="width: <%= @completion_rate %>%"></span>
       </div>
-      <%# Over finished runs: a run still going has not failed to complete (spec Q67). %>
-      <span class="stat-cell__detail">of <%= pluralize(number_with_delimiter(@finished_runs), "finished run") %></span>
+      <%# Over finished calls: a call still going has not failed to complete (spec Q67). %>
+      <span class="stat-cell__detail">of <%= pluralize(number_with_delimiter(@finished_calls), "finished call") %></span>
     </div>
 
     <div class="stat-cell">
@@ -27,7 +31,7 @@
     <div class="stat-cell">
       <span class="stat-cell__label">Escalation Rate</span>
       <p class="stat-cell__value"><%= @escalation_rate %>%</p>
-      <span class="stat-cell__detail">of <%= pluralize(number_with_delimiter(@finished_runs), "finished run") %></span>
+      <span class="stat-cell__detail">of <%= pluralize(number_with_delimiter(@finished_calls), "finished call") %></span>
     </div>
   </div>
 </div>
