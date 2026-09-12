@@ -1,0 +1,107 @@
+<%# locals: (ending:) %>
+<%# What the call collected and how it ended, read from the frame it ended in.
+    Shared by the results page and Analytics' call view. %>
+<div class="card mb-4">
+  <div class="card__header">
+    <h2>Results Summary</h2>
+  </div>
+  <% if ending.results.present? %>
+    <div class="card__body">
+      <%# Display escalation info if present %>
+      <% if ending.results['_escalation'].present? %>
+        <% escalation = ending.results['_escalation'] %>
+        <div class="admin-info-box admin-info-box--warning mb-4">
+          <div class="scenario-warning__inner">
+            <%= icon "arrow-up", class: "icon icon--sm flex-shrink-0 mt-0.5" %>
+            <div class="scenario-warning__content">
+              <h3 class="text-sm font-semibold mb-2">Escalation Details</h3>
+              <dl class="text-sm">
+                <% if escalation['type'].present? %>
+                  <div class="scenario-detail-row">
+                    <dt class="scenario-detail-row__label">Target:</dt>
+                    <dd><%= escalation['type']&.titleize %><%= " - #{escalation['value']}" if escalation['value'].present? %></dd>
+                  </div>
+                <% end %>
+                <% if escalation['priority'].present? && !%w[normal medium].include?(escalation['priority']) %>
+                  <div class="scenario-detail-row">
+                    <dt class="scenario-detail-row__label">Priority:</dt>
+                    <dd><%= escalation['priority']&.titleize %></dd>
+                  </div>
+                <% end %>
+                <% if escalation['notes'].present? %>
+                  <div class="scenario-detail-row">
+                    <dt class="scenario-detail-row__label">Notes:</dt>
+                    <dd><%= escalation['notes'] %></dd>
+                  </div>
+                <% end %>
+              </dl>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <%# Display resolution info if present %>
+      <% if ending.results['_resolution'].present? %>
+        <% resolution = ending.results['_resolution'] %>
+        <div class="admin-info-box admin-info-box--info mb-4">
+          <div class="scenario-warning__inner">
+            <%= icon "check-circle", class: "icon icon--sm flex-shrink-0 mt-0.5" %>
+            <div class="scenario-warning__content">
+              <h3 class="text-sm font-semibold mb-2">Resolution Details</h3>
+              <dl class="text-sm">
+                <% if resolution['type'].present? %>
+                  <div class="scenario-detail-row">
+                    <dt class="scenario-detail-row__label">Type:</dt>
+                    <dd><%= resolution['type']&.titleize %></dd>
+                  </div>
+                <% end %>
+              </dl>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <%# Display error info if present %>
+      <% if ending.results['_error'].present? %>
+        <div class="flash flash--alert mb-4">
+          <div class="flash__body">
+            <p class="font-semibold mb-1">Error</p>
+            <p class="text-sm"><%= ending.results['_error'] %></p>
+          </div>
+        </div>
+      <% end %>
+
+      <%# Display categorized regular results %>
+      <% result_groups = categorize_scenario_results(ending) %>
+      <% if result_groups.any? %>
+        <% result_groups.each do |group| %>
+          <div class="mb-4">
+            <h3 class="text-sm font-semibold uppercase tracking-wide mb-3"><%= group[:label] %></h3>
+            <div class="scenario-results-grid">
+              <% group[:results].each do |key, value| %>
+                <dt class="text-sm font-medium py-1"><%= format_result_key(key) %></dt>
+                <dd class="text-sm py-1 flex items-center justify-between scenario-result__row" data-controller="clipboard">
+                  <span data-clipboard-target="source"><%= value.is_a?(Hash) ? value.to_json : value %></span>
+                  <button type="button"
+                          class="btn btn--plain btn--sm scenario-result__copy ml-2"
+                          title="Copy value"
+                          data-action="click->clipboard#copy"
+                          data-clipboard-target="button">
+                    <%= icon "clipboard-document-list", class: "icon icon--xs" %>
+                  </button>
+                </dd>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      <% elsif ending.results.keys.all? { |k| k.to_s.start_with?('_') } %>
+        <%# All results are internal, don't show "No results" message %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="empty-state p-4">
+      <h3 class="empty-state__title">No results recorded</h3>
+      <p class="empty-state__text">Answers and resolutions collected during the run will be summarised here.</p>
+    </div>
+  <% end %>
+</div>

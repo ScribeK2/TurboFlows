@@ -1,0 +1,89 @@
+<%# locals: (scenario:) %>
+<%# Every step of the call and what was chosen at it, across sub-flows and
+    handoffs. Shared by the results page and Analytics' call view. %>
+<div class="card mb-4" data-controller="scenario-results">
+  <div class="card__header scenario-card-header">
+    <h2>Execution Path</h2>
+    <% flat_path = flattened_execution_path(scenario) %>
+    <% if flat_path.present? && flat_path.length > 1 %>
+      <div class="scenario-card-header__actions">
+        <button type="button"
+                class="btn btn--plain btn--sm"
+                data-action="click->scenario-results#expandAll">
+          Expand All
+        </button>
+        <span>|</span>
+        <button type="button"
+                class="btn btn--plain btn--sm"
+                data-action="click->scenario-results#collapseAll">
+          Collapse All
+        </button>
+      </div>
+    <% end %>
+  </div>
+  <% if flat_path.present? && flat_path.any? %>
+    <div class="card__body" role="list">
+      <% flat_path.each_with_index do |path_item, index| %>
+        <% step_type = path_item['step_type'] || path_item['type'] %>
+        <div class="exec-step exec-step--<%= step_type %> mb-2"
+             role="listitem"
+             aria-label="Step <%= index + 1 %>: <%= path_item['step_title'] %> - <%= step_type %>"
+             data-scenario-results-target="item">
+          <button type="button"
+                  class="scenario-exec-toggle"
+                  data-action="click->scenario-results#toggle"
+                  aria-expanded="false">
+            <div class="scenario-exec-toggle__body">
+              <h3 class="font-semibold truncate"><%= path_item['step_title'] %></h3>
+              <span class="ml-3 flex-shrink-0 <%= step_type_badge_classes(step_type) %>">
+                <%= step_type_label(step_type) %>
+              </span>
+              <span class="ml-2 text-xs flex-shrink-0"><%= index + 1 %></span>
+            </div>
+            <%= icon "chevron-right", class: "icon icon--sm ml-2 flex-shrink-0 transition-transform duration-200" %>
+          </button>
+          <div class="is-hidden mt-2 ml-11" data-scenario-results-target="details">
+            <% if path_item['answer'].present? %>
+              <p class="text-sm">
+                <strong>Answer:</strong>
+                <span class="font-medium"><%= path_item['answer'] %></span>
+              </p>
+            <% end %>
+            <% if path_item['condition_result'].present? %>
+              <p class="text-sm mt-1">
+                <strong>Routing:</strong>
+                <span class="font-medium">
+                  <% if path_item['condition_result'].is_a?(String) %>
+                    <%= path_item['condition_result'] %>
+                  <% else %>
+                    <%= path_item['condition_result'] ? 'True' : 'False' %>
+                  <% end %>
+                </span>
+              </p>
+            <% end %>
+            <% if path_item['action_completed'].present? %>
+              <p class="text-sm mt-1">Action completed</p>
+            <% end %>
+            <% if path_item['message_displayed'].present? %>
+              <p class="text-sm mt-1">Message displayed</p>
+              <% if path_item['content'].present? %>
+                <p class="text-sm mt-1"><%= path_item['content'] %></p>
+              <% end %>
+            <% end %>
+            <% if path_item['escalated'].present? %>
+              <p class="text-sm mt-1">Escalated</p>
+            <% end %>
+            <% if path_item['resolved'] == true %>
+              <p class="text-sm mt-1">Issue resolved</p>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="empty-state p-4">
+      <h3 class="empty-state__title">No execution path recorded</h3>
+      <p class="empty-state__text">Steps appear here as the scenario is run.</p>
+    </div>
+  <% end %>
+</div>

@@ -1,0 +1,51 @@
+<%# locals: (scenario:, ending:, workflow:, title:, back_label:, back_path:, link_workflow: false) %>
+<%# A call's heading. Read from two frames: scenario is where the call started
+    (its path and duration), ending is where it ended (its status). Shared by the
+    results page and Analytics' read-only call view (spec 2026-09-12), which
+    links the workflow only for a viewer who can open it. %>
+<div class="scenario-header">
+  <div>
+    <%= link_to back_path, class: "page-back" do %>
+      <%= icon "chevron-left", class: "icon icon--xs" %>
+      <%= back_label %>
+    <% end %>
+    <h1 class="page-header-section__title"><%= title %></h1>
+    <p class="page-header-section__ident"><%= link_workflow ? link_to(workflow.title, workflow_path(workflow)) : workflow.title %></p>
+    <% if ending.complete? && !ending.stopped? %>
+      <%# scenario_summary_sentence says all of this in a sentence: how long,
+          how many steps, how many questions, and how it ended. It rendered
+          as four pills for facts that are ordinary status, not exceptions. %>
+      <p class="mt-2 text-sm" style="color: var(--color-ink-muted);">
+        <%= scenario_summary_sentence(scenario) %>
+      </p>
+    <% else %>
+      <p class="mt-2 text-sm">Execution path and results for <%= workflow.title %></p>
+    <% end %>
+  </div>
+  <% if ending.stopped? %>
+    <div class="badge badge--alert scenario-status-badge" role="status">
+      <%= icon "x-mark", class: "icon icon--sm" %>
+      Workflow Stopped
+    </div>
+  <% elsif ending.timed_out? %>
+    <div class="badge badge--alert scenario-status-badge" role="status">
+      <%= icon "clock", class: "icon icon--sm" %>
+      Timed Out
+    </div>
+  <% elsif ending.errored? %>
+    <div class="badge badge--alert scenario-status-badge" role="status">
+      <%= icon "exclamation-circle", class: "icon icon--sm" %>
+      Error
+    </div>
+  <% elsif ending.complete? %>
+    <div class="badge badge--published scenario-status-badge" role="status">
+      <%= icon "check", class: "icon icon--sm" %>
+      Completed
+    </div>
+  <% else %>
+    <div class="badge scenario-status-badge" role="status">
+      <%= icon "clock", class: "icon icon--sm" %>
+      In Progress
+    </div>
+  <% end %>
+</div>
