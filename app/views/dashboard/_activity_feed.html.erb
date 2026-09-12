@@ -9,7 +9,7 @@
         <div class="list-row__body">
           <p class="list-row__title"><%= workflow.title %></p>
           <p class="list-row__sub">
-            <%= scenario.status.capitalize %> &middot; <%= time_ago_in_words(scenario.created_at) %> ago
+            <%= scenario_status_label(scenario) %> &middot; <%= time_ago_in_words(scenario.created_at) %> ago
           </p>
         </div>
       <% end %>
@@ -19,7 +19,7 @@
         <div class="list-row__body">
           <p class="list-row__title list-row__title--muted">Deleted workflow</p>
           <p class="list-row__sub">
-            <%= scenario.status.capitalize %> &middot; <%= time_ago_in_words(scenario.created_at) %> ago
+            <%= scenario_status_label(scenario) %> &middot; <%= time_ago_in_words(scenario.created_at) %> ago
           </p>
         </div>
       </div>

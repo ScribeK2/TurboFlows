@@ -236,6 +236,12 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_equal small, large, "something on home is queried per workflow"
   end
 
+  test "the CSR dashboard skips Turbo's cached preview too" do
+    get root_path
+
+    assert_select "meta[name='turbo-cache-control'][content='no-preview']"
+  end
+
   private
 
   def workflow_with_step(title, user: @user, status: "draft", edited_at: Time.current)

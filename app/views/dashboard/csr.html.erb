@@ -1,3 +1,9 @@
+<%# No Turbo preview and no entrance animation: returning here must render once.
+    See test/integration/dashboard_motion_test.rb. %>
+<% content_for :head do %>
+  <meta name="turbo-cache-control" content="no-preview">
+<% end %>
+
 <div class="dashboard-layout">
   <%= render "dashboard/header" %>
 
@@ -9,7 +15,7 @@
   <%# -- Two-Column Content -- %>
   <div class="dashboard-grid">
     <%# Left: Recently Run %>
-    <section class="list-section animate-fade-in-up" style="animation-delay: 0.1s;">
+    <section class="list-section">
       <div class="list-section__head">
         <h2 class="list-section__title">Recently Run</h2>
         <% if @dashboard.recently_run_workflows.any? %>
@@ -31,7 +37,7 @@
                   <%= link_to workflow.title, workflow_path(workflow), aria: { label: "View workflow: #{workflow.title}" } %>
                 </div>
                 <p class="list-row__sub">
-                  <%= scenario.status.titleize %> &middot; last run <%= time_ago_in_words(scenario.created_at) %> ago
+                  <%= scenario_status_label(scenario) %> &middot; last run <%= time_ago_in_words(scenario.created_at) %> ago
                 </p>
                 <% if workflow.tags.any? %>
                   <div class="list-row__tags flex flex-wrap gap-1">
@@ -65,7 +71,7 @@
     </section>
 
     <%# Right: Recent Activity %>
-    <section class="list-section animate-fade-in-up" style="animation-delay: 0.15s;">
+    <section class="list-section">
       <div class="list-section__head">
         <h2 class="list-section__title">Recent Activity</h2>
         <% if @dashboard.recent_scenarios.any? %>

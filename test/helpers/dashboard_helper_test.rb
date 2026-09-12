@@ -114,4 +114,16 @@ class DashboardHelperTest < ActionView::TestCase
     assert_equal "1 published workflow with no audience, background jobs are not running, " \
                  "and nightly jobs have stalled", summary
   end
+
+  test "scenario_status_label reads as words for every status" do
+    expected = {
+      "active" => "Active", "completed" => "Completed", "stopped" => "Stopped",
+      "timed_out" => "Timed out", "errored" => "Errored", "awaiting_subflow" => "Awaiting sub-flow"
+    }
+
+    assert_equal Scenario.statuses.keys.sort, expected.keys.sort, "a new status needs a label here"
+    expected.each do |status, label|
+      assert_equal label, scenario_status_label(Scenario.new(status:))
+    end
+  end
 end
