@@ -13,7 +13,7 @@ class Admin::GroupManagersController < Admin::BaseController
   end
 
   def create
-    user = User.find(params[:user_id])
+    user = User.where(deactivated_at: nil).find(params[:user_id])
     grant = @group.group_managers.build(user:)
 
     if grant.save
@@ -21,6 +21,11 @@ class Admin::GroupManagersController < Admin::BaseController
     else
       respond_with_managers alert: grant.errors.full_messages.to_sentence
     end
+  rescue ActiveRecord::RecordNotUnique
+    # Two concurrent Adds for the same person: the loser hits the DB's
+    # uniqueness constraint after the validation already passed. The person
+    # ends up managing the group either way, so report it as the same success.
+    respond_with_managers notice: "#{user.email} now manages #{@group.name}."
   end
 
   def destroy

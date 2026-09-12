@@ -36,6 +36,16 @@ class Admin::GroupManagersControllerTest < ActionDispatch::IntegrationTest
     assert_match "#{@ada.email} now manages #{@group.name}.", stream_content("flash", action: "update").text
   end
 
+  test "a deactivated account cannot be granted a manager slot by a hand-built POST" do
+    deactivated = person("gone")
+    deactivated.deactivate!
+
+    post admin_group_managers_path(@group), params: { user_id: deactivated.id }, as: :turbo_stream
+
+    assert_response :not_found
+    assert_not GroupManager.exists?(user: deactivated, group: @group)
+  end
+
   test "Remove streams the card back without them" do
     grant = GroupManager.create!(user: @ada, group: @group)
 
