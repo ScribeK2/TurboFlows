@@ -1,6 +1,6 @@
 require "test_helper"
 
-module Admin
+module Analytics
   # Last Run and Last Active read MAX(started_at) through a select alias, which
   # SQLite hands back as a String; time_ago_in_words then read that String in the
   # server's own zone, so at UTC-4 a run started minutes ago read "about 4 hours
@@ -46,7 +46,7 @@ module Admin
                        outcome: "resolved", started_at: started, completed_at: started + 1.minute,
                        execution_path: [], results: {}, inputs: {})
 
-      get admin_analytics_path
+      get analytics_path
 
       assert_response :success
       assert_equal "5 minutes ago", cell("workflow-usage", @workflow.title)
@@ -58,7 +58,7 @@ module Admin
       rolled_up_day(@workflow, Date.current)
       rolled_up_day(earlier, Date.current - 3)
 
-      get admin_analytics_path(range: "all")
+      get analytics_path(range: "all")
 
       assert_response :success
       assert_equal "Today", cell("workflow-usage", @workflow.title)

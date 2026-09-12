@@ -16,6 +16,7 @@ module NavHelper
     "scenarios" => :workflows,
     "steps" => :workflows,
     "workflow_versions" => :workflows,
+    "analytics" => :analytics,
     # Only the Player *index* renders the app shell, so :play lights there and
     # nowhere else — see PlayerController#resolve_layout. The run screens swap
     # to the focused player layout, which has no top bar by design. This entry
@@ -28,6 +29,7 @@ module NavHelper
   def nav_section
     return :admin if controller_path.start_with?("admin/")
     return :workflows if controller_path.start_with?("workflows/")
+    return :analytics if controller_path.start_with?("analytics/")
 
     NAV_SECTIONS[controller_path]
   end

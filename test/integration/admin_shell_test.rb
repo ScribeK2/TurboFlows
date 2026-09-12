@@ -16,13 +16,12 @@ class AdminShellTest < ActionDispatch::IntegrationTest
       admin_groups_path => "Groups",
       admin_group_path(group) => "Groups",
       admin_group_memberships_path(group, q: "shell") => "Groups",
-      admin_analytics_path => "Analytics",
       admin_data_health_path => "Data Health",
       admin_smtp_setting_path => "Email"
     }.each do |path, current|
       get path
       assert_response :success, path
-      assert_select "nav.admin-nav a.admin-nav__link", 6
+      assert_select "nav.admin-nav a.admin-nav__link", 5
       assert_select "nav.admin-nav a[aria-current=page]", count: 1, text: /#{current}/
     end
   end
@@ -33,7 +32,7 @@ class AdminShellTest < ActionDispatch::IntegrationTest
     items = css_select("nav.admin-nav li").map do |li|
       li["class"].to_s.include?("admin-nav__divider") ? "|" : li.css(".admin-nav__label").text.strip
     end
-    assert_equal ["Overview", "Users", "Groups", "Analytics", "|", "Data Health", "Email"], items
+    assert_equal ["Overview", "Users", "Groups", "|", "Data Health", "Email"], items
   end
 
   test "pages outside admin keep the plain layout" do

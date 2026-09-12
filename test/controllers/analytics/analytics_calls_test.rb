@@ -1,6 +1,6 @@
 require "test_helper"
 
-module Admin
+module Analytics
   # Regression: ISSUE-003 — analytics counted every workflow a call passed through as a run
   # Found by /qa on 2026-09-12
   # Report: .gstack/qa-reports/qa-report-localhost-2026-09-12.md
@@ -50,7 +50,7 @@ module Admin
     test "the headline counts calls, not every workflow a call passed through" do
       two_calls
 
-      get admin_analytics_path(user_id: @admin.id)
+      get analytics_path(user_id: @admin.id)
 
       assert_response :success
       assert_equal "2", stat_value("Total Calls")
@@ -63,7 +63,7 @@ module Admin
     test "the outcome breakdown is how calls ended, with no row for a handoff along the way" do
       two_calls
 
-      get admin_analytics_path(user_id: @admin.id)
+      get analytics_path(user_id: @admin.id)
 
       rows = css_select("#outcome-breakdown tbody tr").to_h do |tr|
         cells = tr.css("td")
@@ -75,7 +75,7 @@ module Admin
     test "calls over time count each call once, on the day it started" do
       two_calls
 
-      get admin_analytics_path(user_id: @admin.id)
+      get analytics_path(user_id: @admin.id)
 
       assert_select ".card", text: /Calls Over Time/ do
         assert_select "tbody tr", 1
@@ -86,7 +86,7 @@ module Admin
     test "the workflow usage table still counts each workflow's own runs" do
       two_calls
 
-      get admin_analytics_path(user_id: @admin.id)
+      get analytics_path(user_id: @admin.id)
 
       usage = css_select("#workflow-usage tbody tr").to_h do |tr|
         cells = tr.css("td").map { it.text.strip }
@@ -99,7 +99,7 @@ module Admin
     test "filtering by workflow counts the calls that started there" do
       two_calls
 
-      get admin_analytics_path(user_id: @admin.id, workflow_id: @next_wf.id)
+      get analytics_path(user_id: @admin.id, workflow_id: @next_wf.id)
 
       assert_equal "0", stat_value("Total Calls")
     end
@@ -120,7 +120,7 @@ module Admin
                   call_duration_sum: 800, call_duration_count: 4)
       rollup(day, workflow: @next_wf, outcome: "resolved", runs: 4, calls: 0)
 
-      get admin_analytics_path(range: "all")
+      get analytics_path(range: "all")
 
       assert_equal "4", stat_value("Total Calls")
       assert_equal "3m 20s", stat_value("Avg Duration")
@@ -134,7 +134,7 @@ module Admin
       counted_from = 20.days.ago.to_date
       rollup(counted_from, workflow: @start_wf, outcome: "resolved", runs: 1, calls: 1)
 
-      get admin_analytics_path(range: "all")
+      get analytics_path(range: "all")
 
       assert_match "Calls are counted from #{I18n.l(counted_from, format: :long)}", response.body
     end

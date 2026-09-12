@@ -140,7 +140,7 @@ class Scenario < ApplicationRecord
   # of `active`/`awaiting_subflow` — so runs nobody finished were immortal, which
   # is the common case on a live call: agents close the tab, they do not click
   # Cancel. Settling them puts them into the existing retention pools AND makes
-  # abandonment visible to `Admin::AnalyticsController#build_dropoff_points`,
+  # abandonment visible to `AnalyticsController#build_dropoff_points`,
   # which until now only ever heard about the few who clicked Cancel.
   #
   # `dry_run:` reports the count without writing. Use it after deploying, before

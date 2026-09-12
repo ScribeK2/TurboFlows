@@ -208,6 +208,11 @@ class User < ApplicationRecord
     admin?
   end
 
+  # Analytics is for administrators and the managers of groups (spec 2026-09-12).
+  def can_view_analytics?
+    AnalyticsScope.new(self).allowed?
+  end
+
   # Get groups accessible to this user (admins see all, others see assigned groups)
   def accessible_groups
     admin? ? Group.all : groups

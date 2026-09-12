@@ -4,7 +4,7 @@ require "test_helper"
 #
 # PlayerController#show_shared stamped `user: @workflow.user`, so a stranger
 # following a share link produced a run recorded as the OWNER's. That is not a
-# cosmetic wrong: Admin::AnalyticsController#build_agent_stats groups runs by
+# cosmetic wrong: AnalyticsController#build_agent_stats groups runs by
 # users.email, so an editor who shared one workflow widely appeared to be the
 # busiest agent in the organisation.
 #
@@ -81,7 +81,7 @@ class SharedRunAttributionTest < ActionDispatch::IntegrationTest
     sign_in admin
 
     # 90d, explicitly: raw mode, where per-agent stats exist at all.
-    get admin_analytics_path(range: "90d")
+    get analytics_path(range: "90d")
 
     assert_response :success
     assert_no_match(/#{Regexp.escape(@owner.email)}/, response.body,

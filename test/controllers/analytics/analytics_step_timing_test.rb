@@ -1,6 +1,6 @@
 require "test_helper"
 
-module Admin
+module Analytics
   class AnalyticsStepTimingTest < ActionDispatch::IntegrationTest
     setup do
       @admin = User.create!(
@@ -29,7 +29,7 @@ module Admin
     end
 
     test "step performance tab renders" do
-      get admin_analytics_path
+      get analytics_path
       assert_response :success
       assert_select "[data-tab='step-performance']", minimum: 1
     end

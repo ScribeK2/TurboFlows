@@ -12,7 +12,6 @@ class AdminHelperTest < ActionView::TestCase
       "admin/dashboard" => :overview,
       "admin/users" => :users,
       "admin/groups" => :groups,
-      "admin/analytics" => :analytics,
       "admin/data_health" => :data_health,
       "admin/smtp_settings" => :email
     }.each do |path, section|

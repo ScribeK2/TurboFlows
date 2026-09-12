@@ -1,6 +1,6 @@
 require "test_helper"
 
-module Admin
+module Analytics
   class AnalyticsControllerTest < ActionDispatch::IntegrationTest
     def setup
       @admin = User.create!(
@@ -43,7 +43,7 @@ module Admin
       abandoned_run(purpose: "simulation", step_title: "Builder Test Step")
       sign_in @admin
 
-      get admin_analytics_path
+      get analytics_path
 
       assert_response :success
       assert_match "Real Agent Step", response.body
@@ -55,7 +55,7 @@ module Admin
       abandoned_run(purpose: "simulation", step_title: "Builder Test Step")
       sign_in @admin
 
-      get admin_analytics_path(purpose: "simulation")
+      get analytics_path(purpose: "simulation")
 
       assert_response :success
       assert_match "Builder Test Step", response.body,
@@ -76,7 +76,7 @@ module Admin
       end
       sign_in @admin
 
-      get admin_analytics_path(group_id: parent.id)
+      get analytics_path(group_id: parent.id)
 
       assert_response :success
       assert_select "select[name=group_id] option[selected][value=?]", parent.id.to_s, text: parent.name
@@ -105,7 +105,7 @@ module Admin
       rolled_up_day(400.days.ago.to_date, outcome: "escalated", count: 3)
       sign_in @admin
 
-      get admin_analytics_path(range: "all")
+      get analytics_path(range: "all")
 
       assert_response :success
       assert_match(/All time/, response.body)
@@ -118,7 +118,7 @@ module Admin
       rolled_up_day(400.days.ago.to_date, outcome: "completed", count: 1)
       sign_in @admin
 
-      get admin_analytics_path(range: "all")
+      get analytics_path(range: "all")
 
       assert_response :success
       assert_no_match(/All Agents/, response.body,
@@ -130,7 +130,7 @@ module Admin
       rolled_up_day(400.days.ago.to_date, outcome: "completed", count: 1)
       sign_in @admin
 
-      get admin_analytics_path(range: "all")
+      get analytics_path(range: "all")
 
       assert_response :success
       assert_match(/Not available for all time/, response.body,
@@ -140,7 +140,7 @@ module Admin
     test "a range within retention still reads runs and keeps every filter" do
       sign_in @admin
 
-      get admin_analytics_path(range: "90d")
+      get analytics_path(range: "90d")
 
       assert_response :success
       assert_match(/All Agents/, response.body, "raw mode keeps the run-level filters")
@@ -152,9 +152,9 @@ module Admin
     test "CSV export from the all-time view redirects rather than mislabelling itself" do
       sign_in @admin
 
-      get admin_analytics_path(range: "all", format: :csv)
+      get analytics_path(range: "all", format: :csv)
 
-      assert_redirected_to admin_analytics_path(range: "90d")
+      assert_redirected_to analytics_path(range: "90d")
       assert_match(/individual runs/i, flash[:alert])
     end
 
@@ -167,7 +167,7 @@ module Admin
                        duration_seconds: 30)
       sign_in @admin
 
-      get admin_analytics_path
+      get analytics_path
 
       assert_response :success
       assert_select "#outcome-breakdown td", text: "Completed"
@@ -190,7 +190,7 @@ module Admin
                        started_at: 1.hour.ago, completed_at: 50.minutes.ago, execution_path: [], results: {}, inputs: {})
       sign_in @admin
 
-      get admin_analytics_path(workflow_id: @workflow.id)
+      get analytics_path(workflow_id: @workflow.id)
 
       assert_select "#outcome-breakdown td", text: "In progress"
       assert_select "#outcome-breakdown td", text: "Unknown", count: 0
@@ -213,7 +213,7 @@ module Admin
       record_run(outcome: nil, status: "active")
       sign_in @admin
 
-      get admin_analytics_path(workflow_id: @workflow.id)
+      get analytics_path(workflow_id: @workflow.id)
 
       cells = css_select(".stat-cell").index_by { it.at_css(".stat-cell__label").text.strip }
       assert_equal "5", cells["Total Calls"].at_css(".stat-cell__value").text.strip
@@ -233,7 +233,7 @@ module Admin
       record_run(outcome: nil, status: "active")
       sign_in @admin
 
-      get admin_analytics_path(workflow_id: @workflow.id)
+      get analytics_path(workflow_id: @workflow.id)
 
       usage = css_select("#workflow-usage tbody tr").first.css("td").map { it.text.strip }
       assert_equal "—", usage[2]
@@ -244,7 +244,7 @@ module Admin
       rolled_up_day(400.days.ago.to_date, outcome: ScenarioRollup::PENDING, count: 2)
       sign_in @admin
 
-      get admin_analytics_path(range: "all")
+      get analytics_path(range: "all")
 
       cells = css_select(".stat-cell").index_by { it.at_css(".stat-cell__label").text.strip }
       assert_equal "100.0%", cells["Completion Rate"].at_css(".stat-cell__value").text.strip
@@ -253,7 +253,7 @@ module Admin
 
     test "admin can access analytics page" do
       sign_in @admin
-      get admin_analytics_path
+      get analytics_path
 
       assert_response :success
       assert_select "h1", text: /Analytics/
@@ -261,21 +261,21 @@ module Admin
 
     test "editor cannot access analytics page" do
       sign_in @editor
-      get admin_analytics_path
+      get analytics_path
 
       assert_redirected_to root_path
     end
 
     test "regular user cannot access analytics page" do
       sign_in @regular_user
-      get admin_analytics_path
+      get analytics_path
 
       assert_redirected_to root_path
     end
 
     test "analytics page shows stat cards" do
       sign_in @admin
-      get admin_analytics_path
+      get analytics_path
 
       assert_select ".stat-cell", minimum: 4
     end
@@ -293,14 +293,14 @@ module Admin
       )
 
       sign_in @admin
-      get admin_analytics_path, params: { range: "7d" }
+      get analytics_path, params: { range: "7d" }
 
       assert_response :success
     end
 
     test "analytics page filters by workflow" do
       sign_in @admin
-      get admin_analytics_path, params: { workflow_id: @workflow.id }
+      get analytics_path, params: { workflow_id: @workflow.id }
 
       assert_response :success
     end
@@ -318,7 +318,7 @@ module Admin
       )
 
       sign_in @admin
-      get admin_analytics_path(format: :csv)
+      get analytics_path(format: :csv)
 
       assert_response :success
       assert_equal "text/csv", response.content_type.split(";").first

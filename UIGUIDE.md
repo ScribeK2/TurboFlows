@@ -484,7 +484,7 @@ native and it needs no coordinator.
 **Admin has a second level: a section sidebar.** Admin pages render through
 `layouts/admin`, which fills `:content` with `.admin-shell` (sidebar + page) and
 renders the application layout, so the top bar still lights Admin. The sidebar
-lists Overview · Users · Groups · Analytics │ Data Health · Email as labelled
+lists Overview · Users · Groups │ Data Health · Email as labelled
 links — ordered by use, the divider setting apart the pages you open when
 something is wrong. Below 1024px it is a row that scrolls sideways, for the same
 reason the top bar never collapses into a menu. Which item is current is

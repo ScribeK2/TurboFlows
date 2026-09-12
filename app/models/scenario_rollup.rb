@@ -1,7 +1,7 @@
 # One day of runs, and of calls, for one workflow, at one purpose and outcome.
 #
 # Written by ScenarioRollupBuilder before the runs it describes are deleted, so
-# trend history survives the retention horizon. Read by Admin::AnalyticsController
+# trend history survives the retention horizon. Read by AnalyticsController
 # in its all-time mode.
 #
 # Runs are counted on the workflow each ran in. Calls (ISSUE-003) are counted on

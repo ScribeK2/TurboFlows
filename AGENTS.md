@@ -346,7 +346,7 @@ partials, not in a shell. Both shells are now branchless: neither contains an
   just `transferred`. `run_ending` is not `run_head`: `run_head` skips stopped
   branches, so from the origin of a run cancelled after a handoff it stops on
   the transferred frame before the one the agent stopped
-- **A share-link run belongs to the visitor, or to nobody — never to the owner.** `show_shared` stamped `user: @workflow.user`, so every anonymous run was recorded as the owner's, and `Admin::AnalyticsController#build_agent_stats` groups by `users.email` — an editor who shared one workflow widely appeared to be the busiest agent in the organisation. `scenarios.user_id` is now **nullable**: NULL says what is true, where naming the owner was a lie with a consumer. A signed-in visitor following a share link is a real agent and is recorded as one. Rejected: a sentinel "Anonymous" user, which keeps the constraint at the cost of a fake account in the admin user list and the agent filter, with every reader still having to know it is special. No reader needed changing — `build_agent_stats` uses `joins(:user)`, an INNER JOIN, so anonymous runs drop out of per-agent figures on their own; the CSV export already wrote `scenario.user&.email`; sub-flow children inherit the parent's user, so nil propagates; and the `current_user.scenarios` lookups are Scenario-mode, which always has a user
+- **A share-link run belongs to the visitor, or to nobody — never to the owner.** `show_shared` stamped `user: @workflow.user`, so every anonymous run was recorded as the owner's, and `AnalyticsController#build_agent_stats` groups by `users.email` — an editor who shared one workflow widely appeared to be the busiest agent in the organisation. `scenarios.user_id` is now **nullable**: NULL says what is true, where naming the owner was a lie with a consumer. A signed-in visitor following a share link is a real agent and is recorded as one. Rejected: a sentinel "Anonymous" user, which keeps the constraint at the cost of a fake account in the admin user list and the agent filter, with every reader still having to know it is special. No reader needed changing — `build_agent_stats` uses `joins(:user)`, an INNER JOIN, so anonymous runs drop out of per-agent figures on their own; the CSV export already wrote `scenario.user&.email`; sub-flow children inherit the parent's user, so nil propagates; and the `current_user.scenarios` lookups are Scenario-mode, which always has a user
 - Both runners operate on AR Step objects with method access (`step.title`), not
   execution-path hashes. `step['field']` access was removed in the shared-partial
   extraction; `execution_path` hashes remain only in the results view and in the
@@ -382,7 +382,7 @@ unexpected `answer_type` rendered radio cards with no way to submit.
   it and its route, views and Stimulus controller were deleted 2026-09-09
 - `nav_search_controller.js` — Cmd+K fuzzy search (Fuse.js) across workflows, respects user permissions
 - **Two-zone header: brand + destinations left, search + chrome right.** Every
-  destination is a labelled link — Workflows, Play, Admin — not a menu. The
+  destination is a labelled link — Workflows, Play, Analytics, Admin — not a menu. The
   wordmark used to hold the centre column of a `1fr auto 1fr` grid, which is
   what created the spare slot beside it that a chevron menu filled, and which
   pinned the destinations to the right edge next to the theme toggle and avatar,
