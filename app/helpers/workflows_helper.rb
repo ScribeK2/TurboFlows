@@ -105,7 +105,7 @@ module WorkflowsHelper
       n = ordinals[target.uuid]
       n ? "#{name} · #{n}" : name
     end
-    "→ #{titles.join(", ")}"
+    "→ #{titles.join(', ')}"
   end
 
   # Computed, not memoised: a helper's instance variables live in the view

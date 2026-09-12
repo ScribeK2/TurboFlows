@@ -38,7 +38,7 @@ class WorkflowsHelperTest < ActionView::TestCase
       workflow: workflow, position: 2, title: "Done", resolution_type: "success"
     )
 
-    names = condition_sentence_variables(workflow, later).map { |v| v[:name] }
+    names = condition_sentence_variables(workflow, later).pluck(:name)
     assert_equal %w[verified already_verified], names
   end
 
@@ -56,7 +56,7 @@ class WorkflowsHelperTest < ActionView::TestCase
     )
     action = Steps::Action.create!(workflow: workflow, position: 1, title: "Do it")
 
-    names = condition_sentence_variables(workflow, action).map { |v| v[:name] }
+    names = condition_sentence_variables(workflow, action).pluck(:name)
     assert_equal %w[q], names
   end
 
