@@ -92,7 +92,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "[aria-label*='Most used flow']", count: 0
   end
 
-  # -- Editor and Admin home (spec docs/designs/2026-09-12-editor-admin-home.md) --
+  # -- Editor and Admin home --
 
   test "an editor gets the home page, not the old stats" do
     @user.update!(role: "editor")

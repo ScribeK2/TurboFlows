@@ -28,7 +28,7 @@ module Analytics
     # Drop-off is about live agent behaviour. Until the idle sweep existed almost
     # nothing carried outcome "abandoned", so mixing purposes cost nothing; now
     # that abandoned runs are produced at volume, builder test-runs would swamp
-    # the signal. See docs/designs/idle-sweep-spike-findings.md.
+    # the signal.
     def abandoned_run(purpose:, step_title:)
       Scenario.create!(
         workflow: @workflow, user: @admin, purpose: purpose,

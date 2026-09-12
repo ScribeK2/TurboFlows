@@ -1,6 +1,6 @@
 require "test_helper"
 
-# Which findings stop a publish (spec docs/designs/2026-09-12-editor-admin-home.md).
+# Which findings stop a publish.
 # Severity is not the test: no_audience and the sub-flow codes are warnings, and
 # every one of them blocks. Dev data showed 8 unpublishable drafts with 0 errors.
 class WorkflowHealthCheckPublishBlockersTest < ActiveSupport::TestCase

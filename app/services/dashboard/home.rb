@@ -1,6 +1,6 @@
 module Dashboard
   # The Editor and Admin home page: the viewer's own work, and for an admin what
-  # waits on an administrator (spec docs/designs/2026-09-12-editor-admin-home.md).
+  # waits on an administrator.
   #
   # The page renders in one response with nothing loaded after it, so everything
   # here is bounded. The one per-workflow cost is the hero's health check, and it

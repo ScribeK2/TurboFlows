@@ -2,7 +2,9 @@ require "test_helper"
 
 # "Last edited" is the later of the workflow row and its newest step, because a
 # step edit never touches the workflow (Step belongs_to :workflow has a counter
-# cache and no touch:). Spec: docs/designs/2026-09-12-editor-admin-home.md.
+# cache and no touch:). A transition-only change counts as neither, deliberately:
+# touch: on Transition would bump the step's lock_version under the step panel's
+# autosave.
 class WorkflowRecentlyEditedTest < ActiveSupport::TestCase
   setup do
     @user = User.create!(email: "recent-#{SecureRandom.hex(4)}@example.com", password: "password123!",

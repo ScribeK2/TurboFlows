@@ -9,7 +9,7 @@ require "test_helper"
 # *completed* child and resurrects A. Twice found at `scenario.rb:314` by review,
 # once more by the spike.
 #
-# The exact state is `workflow-handoff.md` §T item 3, and the split matters:
+# The split matters:
 # `status` carries terminality, `outcome` carries how the run ended. A handed-off
 # run is not a completed one, and reporting has to be able to tell them apart.
 class ScenarioHandoffTerminationTest < ActiveSupport::TestCase

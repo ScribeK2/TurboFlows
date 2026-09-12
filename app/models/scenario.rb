@@ -483,7 +483,7 @@ class Scenario < ApplicationRecord
   # Every frame of the run this frame belongs to.
   #
   # The SIXTH reader of run topology, and the previous five were each wrong in a
-  # different way (see docs/designs/idle-sweep-spike-findings.md). It exists
+  # different way. It exists
   # because no earlier one answers "the whole run":
   #
   #   - `root_scenario` / `unfinished_descendants` walk `parent_scenario` only,

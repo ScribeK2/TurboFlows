@@ -2,8 +2,8 @@ require "test_helper"
 
 # The regression tests for the handoff tail call.
 #
-# Written before the feature existed, and kept as its guard. Their reason is
-# `docs/designs/handoff-spike-findings.md`: three review rounds on this subsystem
+# Written before the feature existed, and kept as its guard. Their reason: three
+# review rounds on this subsystem
 # produced three criticals, all of one shape — a reader that infers run structure
 # from `parent_scenario_id`/`root_scenario` instead of being told it — and every
 # one was found by reading code, never by reasoning about the design. A fourth

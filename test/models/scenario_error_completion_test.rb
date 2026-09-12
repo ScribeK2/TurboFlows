@@ -9,7 +9,7 @@ require "test_helper"
 # and invisible precisely because the rows read as terminal everywhere else.
 #
 # Found by driving Scenario#count_iteration! for real while verifying the
-# terminal?/enum fix. See docs/designs/idle-sweep-spike-findings.md.
+# terminal?/enum fix.
 class ScenarioErrorCompletionTest < ActiveSupport::TestCase
   setup do
     @user = User.create!(

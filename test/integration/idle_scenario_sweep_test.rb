@@ -12,7 +12,7 @@ require "test_helper"
 # sub-flow has a clock that stopped when it parked, and `run_head` returns that
 # parent. Anything keyed on one frame settles runs an agent is still working.
 # `test_a_parked_parent_with_a_live_child_is_not_swept` is the non-negotiable
-# test here. See docs/designs/idle-sweep-spike-findings.md § 1.
+# test here.
 class IdleScenarioSweepTest < ActionDispatch::IntegrationTest
   setup do
     @user = User.create!(

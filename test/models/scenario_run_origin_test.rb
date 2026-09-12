@@ -2,7 +2,7 @@ require "test_helper"
 
 # The two ends of a run, as primitives rather than inferences.
 #
-# `docs/designs/workflow-handoff.md` §T 13a: four separate readers each worked
+# Four separate readers each worked
 # out "where does this run live" for themselves, from `parent_scenario_id` or
 # `root_scenario`, and three review rounds each found a different one wrong —
 # twice at `scenario.rb:314`. The spike found a fourth from a third direction.

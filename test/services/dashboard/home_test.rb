@@ -1,6 +1,6 @@
 require "test_helper"
 
-# The Editor and Admin home page's data (spec docs/designs/2026-09-12-editor-admin-home.md).
+# The Editor and Admin home page's data.
 class Dashboard::HomeTest < ActiveSupport::TestCase
   setup do
     @editor = User.create!(email: "home-editor-#{SecureRandom.hex(4)}@example.com", password: "password123!",

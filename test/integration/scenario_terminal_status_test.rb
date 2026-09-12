@@ -12,8 +12,7 @@ require "test_helper"
 # so errored runs existed and every `terminal?` guard was open on them.
 #
 # Found by the idle-sweep spike, which needed to write `timeout` at ~500 runs/day
-# and would have turned each of these from rare into routine. See
-# docs/designs/idle-sweep-spike-findings.md § 2.
+# and would have turned each of these from rare into routine.
 class ScenarioTerminalStatusTest < ActionDispatch::IntegrationTest
   setup do
     @user = User.create!(
