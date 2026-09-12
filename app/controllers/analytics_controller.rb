@@ -13,10 +13,14 @@ class AnalyticsController < ApplicationController
   # this whole change exists to remove. So the mode is explicit and the page
   # says what it cannot show.
   def index
-    @rollup_mode = params[:range] == "all"
+    @ranges = analytics_ranges
+    @current_range = analytics_current_range
+    @team_names = analytics_scope.team_names
+    @show_group_filter = analytics_scope.everyone?
+    @rollup_mode = @current_range == "all"
     return render_from_rollups if @rollup_mode
 
-    @date_range = parse_date_range
+    @date_range = analytics_date_range
     @base_scope = build_base_scope
 
     # Stat cards and the Overview count calls (ISSUE-003): a call handed through
@@ -35,7 +39,7 @@ class AnalyticsController < ApplicationController
 
     # Overview tab
     @outcome_breakdown = calls.outcome_breakdown
-    @runs_grouped_by_week = @date_range.nil? || (@date_range.last - @date_range.first) > 30.days
+    @runs_grouped_by_week = (@date_range.last - @date_range.first) > 30.days
     @calls_over_time = calls.over_time(weekly: @runs_grouped_by_week)
 
     # Workflows tab
@@ -59,13 +63,16 @@ class AnalyticsController < ApplicationController
                                 .count
                                 .sort_by { |hour, _| hour.to_i }
 
-    # Filter dropdown data (deduplicate workflows with same title, keeping highest id)
-    @workflows_for_filter = Workflow.joins(:scenarios).distinct.order(:title)
+    # Filter dropdown data, from the runs this viewer may see: listing every
+    # agent would show a manager everyone's email (spec 2026-09-12). Workflows
+    # with the same title are deduplicated, keeping the highest id.
+    visible = analytics_scope.scenarios
+    @workflows_for_filter = Workflow.where(id: visible.select(:workflow_id)).order(:title)
                                     .select(:id, :title)
                                     .group_by(&:title)
                                     .map { |_title, wfs| wfs.max_by(&:id) }
-    @users_for_filter = User.joins(:scenarios).distinct.order(:email)
-    @groups_for_filter = Group.tree_nodes
+    @users_for_filter = User.where(id: visible.select(:user_id)).order(:email)
+    @groups_for_filter = @show_group_filter ? Group.tree_nodes : []
 
     if @step_performance_capped || @dropoff_capped
       flash.now[:notice] = "Analytics showing most recent 5,000 scenarios. Export CSV for full dataset."
@@ -169,29 +176,14 @@ class AnalyticsController < ApplicationController
     points.sort_by { |d| -d[:count] }.first(20)
   end
 
-  # "all" means every run STILL HELD, not all time — runs are deleted at the
-  # retention horizon, so this cannot reach further back than they are kept.
-  # The filter UI says so. The durable fix is rolling runs up before deleting
-  # them, so trend history outlives the transcripts; until that exists, nothing
-  # here should imply a longer history than the database holds.
-  def parse_date_range
-    case params[:range]
-    when "7d"  then 7.days.ago..Time.current
-    when "90d" then 90.days.ago..Time.current
-    when "all" then nil
-    else 30.days.ago..Time.current # default 30d
-    end
-  end
-
   def build_base_scope
-    scope = Scenario.all
-    scope = scope.where(started_at: @date_range) if @date_range
+    scope = analytics_scope.scenarios.where(started_at: @date_range)
     scope = scope.where(purpose: params[:purpose]) if params[:purpose].present? && params[:purpose] != "all"
     scope = scope.where(workflow_id: params[:workflow_id]) if params[:workflow_id].present?
     scope = scope.where(user_id: params[:user_id]) if params[:user_id].present?
     # A department's figures include its teams (spec Q37): the group and every
     # subgroup, the same reach membership gives.
-    if params[:group_id].present?
+    if params[:group_id].present? && @show_group_filter
       group_ids = [params[:group_id].to_i, *Group.descendant_ids_for([params[:group_id]])]
       workflow_ids = GroupWorkflow.where(group_id: group_ids).select(:workflow_id)
       scope = scope.where(workflow_id: workflow_ids)

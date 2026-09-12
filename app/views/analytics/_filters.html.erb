@@ -4,8 +4,8 @@
     <div>
       <label class="form-label text-xs uppercase tracking-wider mb-2">Date Range</label>
       <div class="wf-status-tabs" role="group" aria-label="Date range">
-        <% current_range = params[:range] || "30d" %>
-        <% %w[7d 30d 90d all].each do |range| %>
+        <% current_range = @current_range %>
+        <% @ranges.each do |range| %>
           <% active = current_range == range %>
           <button type="button"
                   class="wf-status-tabs__tab <%= "is-active" if active %>"
@@ -62,6 +62,7 @@
     </div>
 
     <%# Group %>
+    <% if @show_group_filter %>
     <div>
       <label class="form-label text-xs uppercase tracking-wider mb-2">Group</label>
       <%= select_tag :group_id,
@@ -70,6 +71,7 @@
             class: "form-select",
             onchange: "this.form.requestSubmit()" %>
     </div>
+    <% end %>
 
     <% end %>
 
@@ -103,8 +105,8 @@
     <% else %>
       Individual runs, with every filter. They are deleted after
       <%= Scenario.live_retention_days %> days (live) and
-      <%= Scenario.simulation_retention_days %> days (simulation) &mdash; choose
-      &ldquo;All time&rdquo; for daily totals reaching further back.
+      <%= Scenario.simulation_retention_days %> days (simulation)<% if @ranges.include?("all") %> &mdash; choose
+      &ldquo;All time&rdquo; for daily totals reaching further back<% end %>.
     <% end %>
   </p>
 <% end %>
