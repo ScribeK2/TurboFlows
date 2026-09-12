@@ -16,4 +16,13 @@ class AnalyticsHelperTest < ActionView::TestCase
     assert_equal "analytics-bar--muted", analytics_outcome_bar_class(nil)
     assert_equal "analytics-bar--muted", analytics_outcome_bar_class(ScenarioRollup::PENDING)
   end
+
+  test "a run's time reads in minutes and hours, a rolled-up day in days" do
+    assert_equal "Never", analytics_last_seen(nil)
+    assert_equal "5 minutes ago", analytics_last_seen(5.minutes.ago)
+    assert_equal "Today", analytics_last_seen(Date.current)
+    assert_equal "Yesterday", analytics_last_seen(Date.current - 1)
+    assert_equal "3 days ago", analytics_last_seen(Date.current - 3)
+    assert_equal "about 1 year ago", analytics_last_seen(Date.current - 400)
+  end
 end

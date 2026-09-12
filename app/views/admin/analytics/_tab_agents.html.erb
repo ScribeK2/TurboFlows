@@ -30,7 +30,7 @@
                 <% avg = row.avg_duration.to_i %>
                 <%= avg > 60 ? "#{avg / 60}m #{avg % 60}s" : "#{avg}s" %>
               </td>
-              <td><%= row.last_active ? time_ago_in_words(row.last_active) + " ago" : "Never" %></td>
+              <td><%= analytics_last_seen(@last_active[row.user_id]) %></td>
             </tr>
           <% end %>
         </tbody>

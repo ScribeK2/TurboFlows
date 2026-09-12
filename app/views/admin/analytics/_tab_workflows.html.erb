@@ -32,7 +32,7 @@
                 <%= avg > 60 ? "#{avg / 60}m #{avg % 60}s" : "#{avg}s" %>
               </td>
               <td><%= finished.positive? ? "#{(row.escalated_count.to_f / finished * 100).round(1)}%" : "—" %></td>
-              <td><%= row.last_run ? time_ago_in_words(row.last_run) + " ago" : "Never" %></td>
+              <td><%= analytics_last_seen(@last_runs[row.workflow_id]) %></td>
             </tr>
           <% end %>
         </tbody>

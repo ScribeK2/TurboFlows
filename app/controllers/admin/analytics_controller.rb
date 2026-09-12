@@ -39,9 +39,14 @@ module Admin
 
       # Workflows tab
       @workflow_stats = build_workflow_stats
+      # Last Run and Last Active come from maximum, which casts by the column's
+      # type. A MAX in the stats select came back from SQLite as a String, which
+      # time_ago_in_words read in the server's zone: hours off anywhere but UTC.
+      @last_runs = @base_scope.group(:workflow_id).maximum(:started_at)
 
       # Agents tab
       @agent_stats = build_agent_stats
+      @last_active = @base_scope.group(:user_id).maximum(:started_at)
 
       # Step Performance tab
       @step_performance = build_step_performance(@base_scope)
@@ -101,6 +106,8 @@ module Admin
                               .sort.to_h
 
       @workflow_stats = rollup_workflow_stats
+      # A Date: a rollup knows the day a workflow last ran, not the time.
+      @last_runs = scope.group(:workflow_id).maximum(:day)
       @dropoff_points = rollup_dropoff_points(dropoffs)
 
       # No rollup can reconstruct these: they are read from individual runs.
@@ -145,8 +152,7 @@ module Admin
           "THEN SUM(scenario_rollups.duration_sum_seconds) * 1.0 / SUM(scenario_rollups.duration_count) " \
           "ELSE NULL END as avg_duration",
           "SUM(CASE WHEN scenario_rollups.outcome = 'escalated' " \
-          "THEN scenario_rollups.runs_count ELSE 0 END) as escalated_count",
-          "MAX(scenario_rollups.day) as last_run"
+          "THEN scenario_rollups.runs_count ELSE 0 END) as escalated_count"
         )
         .order(Arel.sql("total_runs DESC"))
     end
@@ -217,8 +223,7 @@ module Admin
           "SUM(CASE WHEN scenarios.outcome IN ('completed','resolved','escalated','transferred') " \
           "THEN 1 ELSE 0 END) as completed_count",
           "AVG(scenarios.duration_seconds) as avg_duration",
-          "SUM(CASE WHEN scenarios.outcome = 'escalated' THEN 1 ELSE 0 END) as escalated_count",
-          "MAX(scenarios.started_at) as last_run"
+          "SUM(CASE WHEN scenarios.outcome = 'escalated' THEN 1 ELSE 0 END) as escalated_count"
         )
         .order(total_runs: :desc)
     end
@@ -236,8 +241,7 @@ module Admin
           "SUM(CASE WHEN scenarios.outcome IN ('completed','resolved','escalated','transferred') " \
           "THEN 1 ELSE 0 END) as completed_count",
           "SUM(CASE WHEN scenarios.outcome = 'escalated' THEN 1 ELSE 0 END) as escalated_count",
-          "AVG(scenarios.duration_seconds) as avg_duration",
-          "MAX(scenarios.started_at) as last_active"
+          "AVG(scenarios.duration_seconds) as avg_duration"
         )
         .order(total_runs: :desc)
     end
