@@ -303,6 +303,32 @@ All workflows are graphs. There is no separate "linear mode" — a sequential fl
 - Step UUIDs are immutable after creation
 - Optimistic locking on both Workflow and Step (`lock_version`)
 
+## Home Page
+
+`/` is two pages. A Regular user gets the CSR dashboard (pins, recently run). An
+Editor or Admin gets **home**, which is about their own work and nothing else
+(`docs/designs/2026-09-12-editor-admin-home.md`):
+- a hero card for the workflow they were last in;
+- "Waiting on you", one row per kind of problem, naming the workflows;
+- their other recent workflows;
+- for an admin, one strip from `Admin::Attention`.
+
+Org-wide stats and a feed of other people's runs used to live here. Analytics does
+the first properly, and the feed's links 404'd for anyone but the run's owner.
+
+- **Last edited is `Workflow.recently_edited`,** the later of the workflow row and
+  its newest step, because a step edit never touches the workflow. A
+  transition-only change counts as neither, deliberately: `touch:` on `Transition`
+  would bump the step's `lock_version` under the step panel's autosave.
+- **"Can't publish" is `WorkflowHealthCheck::PUBLISH_BLOCKING_CODES`,** an
+  allowlist, not a severity: `no_audience` and the sub-flow codes are warnings, and
+  each blocks a publish. Every code the check can emit is classified, and a test
+  scans the three emitters. Home runs the check once, for a draft hero only.
+- **Every "your" link lands on `/workflows?owner=me`.** An admin's Drafts tab is
+  org-wide, so a personal count linked there led to a list of other people's work.
+- **Returning to either dashboard must render once:** no entrance animation, no
+  Turbo preview, nothing loaded after render. See UIGUIDE § Motion.
+
 ## Player Mode
 
 The Player is the user-facing workflow execution UI, separate from the builder's Scenario mode. It has its own layout, routes, and controller.

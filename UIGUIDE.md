@@ -139,6 +139,15 @@ Transitions are subtle and purposeful. Spring easing for interactive feedback.
 - `var(--duration-slow)` 400ms — page transitions
 - Easing: `var(--ease-out)`, `var(--ease-in-out)`, `var(--ease-spring)` (bouncy)
 
+**No entrance animations on pages people return to.** Turbo renders a cached copy
+of a page as a preview, then swaps in the fresh one. A `fadeIn`/`fadeInUp` on the
+page starts on the preview and restarts ~360ms later on the swap, mid-flight, and
+the Back button replays it every time. That was the dashboard's "jittery load".
+A home or index page therefore carries no `animate-*` class and renders
+`<meta name="turbo-cache-control" content="no-preview">`, and nothing on it loads
+after render. `test/integration/dashboard_motion_test.rb` guards both dashboards.
+The `animations.css` utilities remain for one-shot surfaces.
+
 ### Dark Mode
 
 Dark mode is automatic. Use token names and they swap values via `[data-theme="dark"]` and `@media (prefers-color-scheme: dark)` in `_global.css`. **Do not write separate dark mode CSS.** If you use tokens correctly, dark mode works for free.
@@ -525,6 +534,7 @@ so `.tab-bar` drops into any existing tablist with no JS change.
 | Pagination | `.pagination-bar`, `.pagination`, `.pagination__item`, `.is-active` | `pagination.css` | `.pagination-bar` is a three-zone grid: summary left, numbered nav centred, page-size right |
 | Admin sidebar | `.admin-shell`, `__main`, `.admin-nav`, `__list`, `__link`, `__label`, `__divider`, `__count` | `admin.css` | Second-level nav for admin pages (see § Navigation). Current is `[aria-current="page"]`: primary-soft fill + primary text + weight — a different channel from hover. `__count` is a `.badge--warning`, rendered only when something needs attention, and counts *kinds* of problem, not affected records |
 | Needs attention | `.list-section.admin-attention` + `.list-row`, `.admin-attention__people`, `__meta`, `__clear` | `lists.css`, `admin.css` | The admin Overview. One row per kind of problem, each naming the problem, its cost in one line, and a secondary link to where it is fixed — no filled button. Rows align to the top, since one can list ten people. Nothing waiting renders one line (`__clear`), not an empty section |
+| Resume card | `.home-resume`, `__eyebrow`, `__title`, `__meta`, `__blockers`, `__actions` | `dashboard.css` | The Editor and Admin home's hero: the workflow you were last in, with the page's one filled button (Continue editing). A draft's publish blockers are a `.badge--alert` linking to the health panel. Below it, "Waiting on you" reuses `.list-section.admin-attention` rows that name the workflows each covers, so one kind of problem is one row |
 | Group picker | `.group-picker`, `__global`, `__hint`, `__search`, `__filter`, `__list`, `__option`, `__label`, `__name`, `__path`, `__note`, `__empty` | `forms.css` | `render "shared/group_picker", nodes: Group.tree_nodes, field_name:, selected_ids:, input_data: {}`. Every group as a checkbox, indented by depth, with its full path; `group-picker` filters by any part of the path. Flat rather than an expandable tree — at hundreds of department groups typing beats expanding. Costs one query however many groups exist; never build paths with `Group#full_path` in a loop. Global (when in `nodes`) renders on its own row above the list and outside the filter. Membership pickers pass `Group.assignable_tree_nodes`, which omits it; the builder's Details panel passes `tree_nodes(within:)` and its autosave action as `input_data`. Pass `notes: { id => text }` for a line under a group: its description on `/welcome` and My groups (both scoped to `Group.self_joinable_ids`, My groups minus what's already joined), "Joined themselves" on the admin user page. A note is read as the checkbox's description (`aria-describedby`, hidden from the label's own text), not as part of the group's name |
 | Group tree | `.group-tree`, `__toolbar`, `__filter`, `__list`, `__row`, `__toggle`, `__spacer`, `__label`, `__name`, `__path`, `__count`, `__empty` | `admin.css` | The admin groups index. Flat depth-first rows with `--tree-depth` set inline and `data-ancestors`; `group-tree` hides a row unless every ancestor is expanded, and while filtering shows matches (with `__path`) plus the groups above them. Toggle state is `aria-expanded`, which also rotates the chevron. Counts are plain text, never pills |
 | Admin cards | `.admin-card__heading`, `__heading--danger`, `__action-row`, `.admin-card--danger` | `admin.css` | Shared by the user page and the group page: a card heading, a sentence beside its one action (wraps once the sentence would squeeze below 16rem), and the danger card's red hairline |
@@ -893,7 +903,7 @@ For page types not covered by a recipe, read these exemplary views. They demonst
 | `steps.css` | modules | Step editor styles |
 | `editor.css` | modules | Grab bag, and mis-described here for a long time: it is not the Lexxy editor. It holds the button spinner, collaboration presence styles, empty-state text, the inline step creator, the step outline wrapper, the step editor's two-column layout and a flow preview section. The visual-editor chrome it also carried was deleted 2026-08-29, and the CSS of the unmounted Stimulus controllers (template cards, condition tokens, branch and step pickers, variable autocomplete) on 2026-09-10 |
 | `transitions.css` | modules | Transition editor |
-| `dashboard.css` | modules | Dashboard shell: `.dashboard-*`, `.stat-panel`/`.stat-cell` |
+| `dashboard.css` | modules | Dashboard shell: `.dashboard-*`, `.home-resume`, `.stat-panel`/`.stat-cell` |
 | `auth.css` | modules | Login/signup pages |
 | `admin.css` | modules | Admin shell (section sidebar), needs-attention list, breadcrumb spacing, users filter/bulk bar, group tree, user and group pages, Data Health, the admin disclosure, the Email card, analytics bars and card subtitles. Tokens only — `test/stylesheets/admin_css_audit_test.rb` refuses literal colours and theme blocks |
 | `utilities.css` | utilities | Layout utilities (.flex, .gap-*, .mb-*, .text-*) |
