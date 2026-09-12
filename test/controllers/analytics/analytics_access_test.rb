@@ -62,5 +62,14 @@ module Analytics
       assert_response :moved_permanently
       assert_redirected_to "/analytics?range=7d&tab=2"
     end
+
+    test "an old CSV export link still leads to the CSV, not the page" do
+      sign_in @admin
+
+      get "/admin/analytics.csv?range=7d"
+
+      assert_response :moved_permanently
+      assert_redirected_to "/analytics.csv?range=7d"
+    end
   end
 end

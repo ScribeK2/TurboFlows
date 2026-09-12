@@ -99,14 +99,15 @@ Rails.application.routes.draw do
 
   # Analytics, for administrators and the managers of groups (spec 2026-09-12).
   # It left the admin area so a manager can use it without being an admin; the
-  # old address stays as a redirect for bookmarks.
+  # old address stays as a redirect for bookmarks, CSV export links included.
   get "analytics", to: "analytics#index", as: :analytics
   namespace :analytics do
     resources :agents, only: :show
     resources :runs, only: :show
   end
-  get "admin/analytics", to: redirect(lambda { |_params, request|
-    ["/analytics", request.query_string.presence].compact.join("?")
+  get "admin/analytics", to: redirect(lambda { |params, request|
+    path = params[:format] ? "/analytics.#{params[:format]}" : "/analytics"
+    [path, request.query_string.presence].compact.join("?")
   })
 
   # Admin namespace
