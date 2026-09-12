@@ -363,6 +363,33 @@ class Scenario < ApplicationRecord
     current_node_uuid.nil? && !active?
   end
 
+  # The frame the run ended on, or is on now — where to read how it ended.
+  #
+  # Of every frame in the run, the top-level ones that did not hand it on. One
+  # still going beats a finished one; between finished ones the newest by id
+  # wins, which is MAX(id), so the SQL that counts calls can say the same thing.
+  #
+  # Not `run_head`, which skips stopped branches because a stopped handed-to row
+  # beside a live one is not where the run lives. When an agent cancels after a
+  # handoff, the stopped frame is the only thing after it: `run_head` from the
+  # origin stopped on the transferred frame before, and a results page reading
+  # that said "Completed" for a run the agent had stopped.
+  def run_ending
+    endings = run_frames.select { |frame| frame.parent_scenario_id.nil? && frame.outcome != "transferred" }
+    endings.reject(&:terminal?).max_by(&:id) || endings.max_by(&:id) || run_origin
+  end
+
+  # How long the whole run took, from where it started to where it ended — not
+  # this frame's own `duration_seconds`, which stops at a handoff. Nil while the
+  # run is still going.
+  def run_duration_seconds
+    finished = run_ending.completed_at
+    started = run_origin.started_at
+    return nil unless finished && started
+
+    (finished - started).to_i
+  end
+
   # Stop the workflow execution.
   #
   # A run spans a whole scenario tree once sub-flows are involved, so stopping

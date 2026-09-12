@@ -3,9 +3,16 @@ class ScenariosController < ApplicationController
 
   before_action :ensure_can_manage_workflows!
 
+  # A run's results live at its origin. Any other frame — a sub-flow, or the
+  # workflow a handoff moved the run to — sends the reader there, so an old link
+  # or a dashboard row cannot show one workflow's slice of the call as the call.
   def show
     @scenario = current_user.scenarios.find(params[:id])
+    origin = @scenario.run_origin
+    return redirect_to(scenario_path(origin)) if origin != @scenario
+
     @workflow = @scenario.workflow
+    @ending = @scenario.run_ending
   end
 
   # A pure read. It renders the run; it never moves it.
@@ -33,9 +40,10 @@ class ScenariosController < ApplicationController
     @workflow = @scenario.workflow
 
     # Stops the whole scenario tree, so report on the run the user actually
-    # started rather than the sub-flow frame they happened to be inside.
+    # started rather than the frame they happened to be inside. `run_origin`, not
+    # `root_scenario`: after a handoff the frame is its own root.
     @scenario.stop!(@scenario.current_step_index)
-    redirect_to runner_results_path(@scenario.root_scenario), notice: "Workflow stopped."
+    redirect_to runner_results_path(@scenario.run_origin), notice: "Workflow stopped."
   end
 
   # A stopped run gets no guard here. The settler halts it with :not_runnable

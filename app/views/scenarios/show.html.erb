@@ -1,3 +1,7 @@
+<%# The run is read from two frames: @scenario is where it started (its path,
+    its workflow, its URL), @ending is where it ended (status and results). After
+    a handoff those differ, and the origin alone reported "Completed" for a run
+    the agent went on to stop. %>
 <div class="page-content">
   <%# === Header Section === %>
   <div class="page-header-section">
@@ -9,7 +13,7 @@
         <% end %>
         <h1 class="page-header-section__title">Scenario Results</h1>
         <p class="page-header-section__ident"><%= @workflow.title %></p>
-        <% if @scenario.complete? && !@scenario.stopped? %>
+        <% if @ending.complete? && !@ending.stopped? %>
           <%# scenario_summary_sentence says all of this in a sentence: how long,
               how many steps, how many questions, and how it ended. It rendered
               as four pills for facts that are ordinary status, not exceptions. %>
@@ -20,22 +24,22 @@
           <p class="mt-2 text-sm">Execution path and results for <%= @workflow.title %></p>
         <% end %>
       </div>
-      <% if @scenario.stopped? %>
+      <% if @ending.stopped? %>
         <div class="badge badge--alert scenario-status-badge" role="status">
           <%= icon "x-mark", class: "icon icon--sm" %>
           Workflow Stopped
         </div>
-      <% elsif @scenario.timed_out? %>
+      <% elsif @ending.timed_out? %>
         <div class="badge badge--alert scenario-status-badge" role="status">
           <%= icon "clock", class: "icon icon--sm" %>
           Timed Out
         </div>
-      <% elsif @scenario.errored? %>
+      <% elsif @ending.errored? %>
         <div class="badge badge--alert scenario-status-badge" role="status">
           <%= icon "exclamation-circle", class: "icon icon--sm" %>
           Error
         </div>
-      <% elsif @scenario.complete? %>
+      <% elsif @ending.complete? %>
         <div class="badge badge--published scenario-status-badge" role="status">
           <%= icon "check", class: "icon icon--sm" %>
           Completed
@@ -50,7 +54,7 @@
   </div>
 
   <%# === Status Warning Cards === %>
-  <% if @scenario.stopped? %>
+  <% if @ending.stopped? %>
     <div class="card card--escalate mb-4">
       <div class="card__body scenario-warning__inner">
         <%= icon "exclamation-triangle", class: "icon icon--lg flex-shrink-0 mt-0.5" %>
@@ -58,12 +62,12 @@
           <h3 class="font-semibold mb-2">Workflow Stopped</h3>
           <p class="text-sm mb-2">
             This workflow was stopped before completion.
-            <% if @scenario.stopped_at_step_index.present? %>
-              It was stopped at step <%= @scenario.stopped_at_step_index + 1 %>.
+            <% if @ending.stopped_at_step_index.present? %>
+              It was stopped at step <%= @ending.stopped_at_step_index + 1 %>.
             <% end %>
           </p>
           <p class="text-xs mb-4">
-            Stopped on <%= @scenario.updated_at.strftime("%B %d, %Y at %I:%M %p") %>
+            Stopped on <%= @ending.updated_at.strftime("%B %d, %Y at %I:%M %p") %>
           </p>
           <%= button_to workflow_execution_path(@workflow), method: :post,
                 class: "btn btn--sm flex items-center gap-1.5" do %>
@@ -75,7 +79,7 @@
     </div>
   <% end %>
 
-  <% if @scenario.timed_out? %>
+  <% if @ending.timed_out? %>
     <div class="card mb-4">
       <div class="card__body scenario-warning__inner">
         <%= icon "clock", class: "icon icon--lg flex-shrink-0 mt-0.5" %>
@@ -85,7 +89,7 @@
             The scenario exceeded the maximum execution time. This usually happens when a workflow contains an infinite loop or overly complex routing logic.
           </p>
           <p class="text-xs mb-4">
-            Timed out on <%= @scenario.updated_at.strftime("%B %d, %Y at %I:%M %p") %>
+            Timed out on <%= @ending.updated_at.strftime("%B %d, %Y at %I:%M %p") %>
           </p>
           <%= button_to workflow_execution_path(@workflow), method: :post,
                 class: "btn btn--sm flex items-center gap-1.5" do %>
@@ -95,7 +99,7 @@
         </div>
       </div>
     </div>
-  <% elsif @scenario.errored? %>
+  <% elsif @ending.errored? %>
     <div class="card mb-4">
       <div class="card__body scenario-warning__inner">
         <%= icon "exclamation-circle", class: "icon icon--lg flex-shrink-0 mt-0.5" %>
@@ -105,7 +109,7 @@
             An error occurred during scenario execution. This may be caused by invalid step configuration or missing references in the workflow.
           </p>
           <p class="text-xs mb-4">
-            Error occurred on <%= @scenario.updated_at.strftime("%B %d, %Y at %I:%M %p") %>
+            Error occurred on <%= @ending.updated_at.strftime("%B %d, %Y at %I:%M %p") %>
           </p>
           <%= button_to workflow_execution_path(@workflow), method: :post,
                 class: "btn btn--sm flex items-center gap-1.5" do %>
@@ -236,11 +240,11 @@
         <div class="card__header">
           <h2>Results Summary</h2>
         </div>
-        <% if @scenario.results.present? %>
+        <% if @ending.results.present? %>
           <div class="card__body">
             <%# Display escalation info if present %>
-            <% if @scenario.results['_escalation'].present? %>
-              <% escalation = @scenario.results['_escalation'] %>
+            <% if @ending.results['_escalation'].present? %>
+              <% escalation = @ending.results['_escalation'] %>
               <div class="admin-info-box admin-info-box--warning mb-4">
                 <div class="scenario-warning__inner">
                   <%= icon "arrow-up", class: "icon icon--sm flex-shrink-0 mt-0.5" %>
@@ -272,8 +276,8 @@
             <% end %>
 
             <%# Display resolution info if present %>
-            <% if @scenario.results['_resolution'].present? %>
-              <% resolution = @scenario.results['_resolution'] %>
+            <% if @ending.results['_resolution'].present? %>
+              <% resolution = @ending.results['_resolution'] %>
               <div class="admin-info-box admin-info-box--info mb-4">
                 <div class="scenario-warning__inner">
                   <%= icon "check-circle", class: "icon icon--sm flex-shrink-0 mt-0.5" %>
@@ -293,17 +297,17 @@
             <% end %>
 
             <%# Display error info if present %>
-            <% if @scenario.results['_error'].present? %>
+            <% if @ending.results['_error'].present? %>
               <div class="flash flash--alert mb-4">
                 <div class="flash__body">
                   <p class="font-semibold mb-1">Error</p>
-                  <p class="text-sm"><%= @scenario.results['_error'] %></p>
+                  <p class="text-sm"><%= @ending.results['_error'] %></p>
                 </div>
               </div>
             <% end %>
 
             <%# Display categorized regular results %>
-            <% result_groups = categorize_scenario_results(@scenario) %>
+            <% result_groups = categorize_scenario_results(@ending) %>
             <% if result_groups.any? %>
               <% result_groups.each do |group| %>
                 <div class="mb-4">
@@ -325,7 +329,7 @@
                   </div>
                 </div>
               <% end %>
-            <% elsif @scenario.results.keys.all? { |k| k.to_s.start_with?('_') } %>
+            <% elsif @ending.results.keys.all? { |k| k.to_s.start_with?('_') } %>
               <%# All results are internal, don't show "No results" message %>
             <% end %>
           </div>

@@ -337,7 +337,15 @@ partials, not in a shell. Both shells are now branchless: neither contains an
   The gate is the session, not `shared_access`: a signed-in user does get Cancel
   on a shared run. And Cancel does not return anywhere in the nav — it POSTs to
   `stop`, which settles the whole scenario tree and redirects to the **results
-  screen** for the root scenario, the same place a completed run ends
+  screen** for the run's origin (`run_origin`), the same place a completed run ends.
+  It said "root scenario" until 2026-09-12, which was right until handoffs: a
+  handed-to frame is its own root, so Cancel after a handoff reported only the
+  last workflow. Both results pages redirect any other frame to the origin, and
+  read how the run ended — status, resolution, finish time — from
+  `Scenario#run_ending`, not from the origin, whose outcome after a handoff is
+  just `transferred`. `run_ending` is not `run_head`: `run_head` skips stopped
+  branches, so from the origin of a run cancelled after a handoff it stops on
+  the transferred frame before the one the agent stopped
 - **A share-link run belongs to the visitor, or to nobody — never to the owner.** `show_shared` stamped `user: @workflow.user`, so every anonymous run was recorded as the owner's, and `Admin::AnalyticsController#build_agent_stats` groups by `users.email` — an editor who shared one workflow widely appeared to be the busiest agent in the organisation. `scenarios.user_id` is now **nullable**: NULL says what is true, where naming the owner was a lie with a consumer. A signed-in visitor following a share link is a real agent and is recorded as one. Rejected: a sentinel "Anonymous" user, which keeps the constraint at the cost of a fake account in the admin user list and the agent filter, with every reader still having to know it is special. No reader needed changing — `build_agent_stats` uses `joins(:user)`, an INNER JOIN, so anonymous runs drop out of per-agent figures on their own; the CSV export already wrote `scenario.user&.email`; sub-flow children inherit the parent's user, so nil propagates; and the `current_user.scenarios` lookups are Scenario-mode, which always has a user
 - Both runners operate on AR Step objects with method access (`step.title`), not
   execution-path hashes. `step['field']` access was removed in the shared-partial

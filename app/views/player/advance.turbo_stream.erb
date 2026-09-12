@@ -4,7 +4,7 @@
       tail: @thread_tail || [],
       step: @open_step,
       parked: @scenario.parked?,
-      results_url: player_scenario_show_path(@scenario),
+      results_url: player_scenario_show_path(@scenario.run_origin),
       next_url: player_scenario_next_path(@scenario),
       stop_url: player_scenario_stop_path(@scenario),
       back_button: player_back_button(@scenario),

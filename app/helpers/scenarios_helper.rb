@@ -21,13 +21,17 @@ module ScenariosHelper
 
   # Generates a dynamic summary sentence for completed scenarios.
   # E.g. "Completed 8 steps in 2m 14s -- 4 questions answered, 2 routing decisions -- resolved as Success"
+  #
+  # Pass the run's origin. The steps are read from there forward, and how long
+  # the run took and how it ended from wherever it ended — after a handoff that
+  # is a different frame, whose `_resolution` the origin never carries.
   def scenario_summary_sentence(scenario)
     parts = []
     path = flattened_execution_path(scenario)
     step_count = path.length
 
     # Duration
-    duration_seconds = scenario.duration_seconds.to_i
+    duration_seconds = scenario.run_duration_seconds.to_i
     duration_text = if duration_seconds < 60
                       "#{duration_seconds}s"
                     elsif duration_seconds < 3600
@@ -46,7 +50,7 @@ module ScenariosHelper
     parts << type_parts.join(", ") if type_parts.any?
 
     # Resolution/escalation info
-    results = scenario.results || {}
+    results = scenario.run_ending.results || {}
     if results['_resolution'].present?
       resolution_type = results['_resolution']['type']&.titleize
       parts << "resolved as #{resolution_type}" if resolution_type.present?

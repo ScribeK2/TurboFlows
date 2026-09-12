@@ -2,12 +2,14 @@
 <% content_for(:title) { "#{@workflow.title} — Complete — TurboFlows Player" } %>
 
 <%
-  is_completed = @scenario.completed?
-  resolution = @scenario.results&.dig("_resolution")
-  escalation = @scenario.results&.dig("_escalation")
-  steps_completed = @scenario.execution_path&.size || 0
-  duration = if @scenario.started_at && @scenario.completed_at
-    distance_of_time_in_words(@scenario.started_at, @scenario.completed_at)
+  # @scenario is where the run started; @ending is where it ended. After a
+  # handoff they are different frames, and how the run ended lives on the last.
+  is_completed = @ending.completed?
+  resolution = @ending.results&.dig("_resolution")
+  escalation = @ending.results&.dig("_escalation")
+  steps_completed = flattened_execution_path(@scenario).size
+  duration = if @scenario.started_at && @ending.completed_at
+    distance_of_time_in_words(@scenario.started_at, @ending.completed_at)
   elsif @scenario.started_at
     distance_of_time_in_words(@scenario.started_at, Time.current)
   end

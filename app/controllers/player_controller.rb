@@ -78,13 +78,19 @@ class PlayerController < ApplicationController
 
   def stop
     # Stops the whole scenario tree, so report on the run the user actually
-    # started rather than the sub-flow frame they happened to be inside.
+    # started rather than the frame they happened to be inside. `run_origin`, not
+    # `root_scenario`: after a handoff the frame is its own root.
     @scenario.stop!(@scenario.current_step_index)
-    redirect_to runner_results_path(@scenario.root_scenario), notice: "Workflow stopped."
+    redirect_to runner_results_path(@scenario.run_origin), notice: "Workflow stopped."
   end
 
+  # See ScenariosController#show: a run's results live at its origin.
   def show
+    origin = @scenario.run_origin
+    return redirect_to(player_scenario_show_path(origin)) if origin != @scenario
+
     @workflow = @scenario.workflow
+    @ending = @scenario.run_ending
   end
 
   def show_shared

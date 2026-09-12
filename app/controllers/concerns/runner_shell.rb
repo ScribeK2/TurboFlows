@@ -46,8 +46,9 @@ module RunnerShell
   def runner_step_redirect(scenario)
     # A stopped frame is a stopped tree: Scenario#stop! cascades to the root and
     # every unfinished descendant. So the frame has no outcome of its own to
-    # show, and its results are the root's.
-    return runner_results_path(scenario.root_scenario) if scenario.stopped?
+    # show, and its results are the run's — at `run_origin`, which after a
+    # handoff is not this frame's root.
+    return runner_results_path(scenario.run_origin) if scenario.stopped?
 
     # Forward, when the run has been handed away from this frame (§T item 14).
     # Without this a refresh, a browser Back, or a bookmark on the handing-off
