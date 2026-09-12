@@ -6,6 +6,7 @@ module AnalyticsAccess
 
   included do
     before_action :ensure_analytics_access!
+    helper_method :analytics_links_workflow?
   end
 
   private
@@ -42,5 +43,31 @@ module AnalyticsAccess
     when "90d" then 90.days.ago..Time.current
     else 30.days.ago..Time.current
     end
+  end
+
+  # Whether this viewer may open a workflow from an Analytics page — one rule,
+  # computed once per request, never per row with a query. WorkflowsController
+  # bounces a Regular user to /play regardless of what they can see, so a
+  # manager (almost always Regular) never gets a link, even to a workflow
+  # filed in Global; an editor gets the same reach WorkflowAuthorization gives
+  # them (Workflow.visible_to is its query form); an admin opens everything.
+  def analytics_links_workflow?(workflow_id)
+    return false unless workflow_id
+    return true if analytics_viewable_workflow_ids.nil?
+
+    analytics_viewable_workflow_ids.include?(workflow_id)
+  end
+
+  def analytics_viewable_workflow_ids
+    return @analytics_viewable_workflow_ids if defined?(@analytics_viewable_workflow_ids)
+
+    @analytics_viewable_workflow_ids =
+      if analytics_scope.everyone?
+        nil
+      elsif current_user&.can_edit_workflows?
+        Workflow.visible_to(current_user).pluck(:id).to_set
+      else
+        Set.new
+      end
   end
 end

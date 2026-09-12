@@ -6,7 +6,7 @@
   <div class="page-header-section">
     <%= render "scenarios/status_header", scenario: @scenario, ending: @ending, workflow: @workflow,
           title: "Call by #{@agent_name}", back_label: @back_label, back_path: @back_path,
-          link_workflow: @workflow.can_be_viewed_by?(current_user) %>
+          link_workflow: analytics_links_workflow?(@workflow.id) %>
   </div>
 
   <div data-controller="tabs" data-tabs-active-value="0">

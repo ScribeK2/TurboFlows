@@ -22,7 +22,11 @@
               <tr>
                 <td class="font-medium"><%= point[:step_title] %></td>
                 <td>
-                  <%= link_to point[:workflow_title], workflow_path(point[:workflow_id]) %>
+                  <% if analytics_links_workflow?(point[:workflow_id]) %>
+                    <%= link_to point[:workflow_title], workflow_path(point[:workflow_id]) %>
+                  <% else %>
+                    <%= point[:workflow_title] %>
+                  <% end %>
                 </td>
                 <td><%= number_with_delimiter(point[:count]) %></td>
               </tr>

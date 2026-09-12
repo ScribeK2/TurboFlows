@@ -20,6 +20,14 @@ module Analytics
       @sibling_flow = Workflow.create!(title: "Mgr Sibling Flow #{@tag}", user: @admin)
       run_scenario(@team_flow, @csr)
       run_scenario(@sibling_flow, @outsider)
+      # A leak here would surface in either Operations tab (drop-off reads
+      # abandoned runs) or Step Performance (reads execution_path durations).
+      @leak_step_title = "Mgr Leak Step #{@tag}"
+      Scenario.create!(workflow: @sibling_flow, user: @outsider, purpose: "live", status: "completed",
+                       outcome: "abandoned", started_at: 1.day.ago, completed_at: 1.day.ago + 30.seconds,
+                       results: {}, inputs: {},
+                       execution_path: [{ "step_type" => "question", "step_title" => @leak_step_title,
+                                          "duration_seconds" => 45 }])
     end
 
     def person(label, role: "user", group: nil)
@@ -54,6 +62,11 @@ module Analytics
       assert_select "select[name=workflow_id] option", text: @sibling_flow.title, count: 0
       assert_select "#workflow-usage a", text: @sibling_flow.title, count: 0
       assert_no_match(/#{Regexp.escape(@outsider.email)}/, response.body)
+      # The manager (a Regular user) cannot open workflows from WorkflowsController
+      # (it bounces Regular users to /play), so its own title is text, not a link.
+      assert_select "#workflow-usage a[href^='/workflows/']", 0
+      assert_select "#workflow-usage", text: /#{Regexp.escape(@team_flow.title)}/
+      assert_no_match(/#{Regexp.escape(@leak_step_title)}/, response.body)
     end
 
     test "a manager gets no All time and no Group filter, and All time reads as 30 days" do
@@ -85,11 +98,12 @@ module Analytics
       get analytics_path
 
       assert_response :success
-      assert_equal "2", stat_value("Total Calls")
+      assert_equal "3", stat_value("Total Calls")
       assert_select "select[name=user_id] option", text: @outsider.email
-      assert_select "button[data-value=all]"
+      assert_select "[aria-label='Date range'] button[data-value=all]"
       assert_select "select[name=group_id]"
       assert_select ".page-header-section__subtitle", text: /Workflow usage/
+      assert_match(/#{Regexp.escape(@leak_step_title)}/, response.body)
     end
   end
 end

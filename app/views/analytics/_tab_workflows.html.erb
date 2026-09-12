@@ -23,7 +23,11 @@
             <% finished = row.finished_runs.to_i %>
             <tr>
               <td class="font-medium">
-                <%= link_to row.workflow_title, workflow_path(row.workflow_id) %>
+                <% if analytics_links_workflow?(row.workflow_id) %>
+                  <%= link_to row.workflow_title, workflow_path(row.workflow_id) %>
+                <% else %>
+                  <%= row.workflow_title %>
+                <% end %>
               </td>
               <td><%= number_with_delimiter(total) %></td>
               <td><%= finished.positive? ? "#{(row.completed_count.to_f / finished * 100).round(1)}%" : "—" %></td>

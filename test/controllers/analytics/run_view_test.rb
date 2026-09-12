@@ -97,6 +97,21 @@ module Analytics
       assert_select ".page-header-section__ident a[href=?]", workflow_path(@start)
     end
 
+    test "filing the workflow in Global still gives a Regular manager no link, only an Admin gets one" do
+      file_in_global(@start)
+      sign_in @manager
+
+      get analytics_run_path(@origin)
+
+      assert_select ".page-header-section__ident a", 0
+      assert_select ".page-header-section__ident", text: @start.title
+
+      sign_out :user
+      sign_in @admin
+      get analytics_run_path(@origin)
+      assert_select ".page-header-section__ident a[href=?]", workflow_path(@start)
+    end
+
     test "an administrator can open an anonymous share-link call" do
       anonymous = Scenario.create!(workflow: @start, user: nil, purpose: "live", status: "completed",
                                    outcome: "resolved", started_at: 1.day.ago, completed_at: 1.day.ago,
