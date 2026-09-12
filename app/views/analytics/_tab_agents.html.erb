@@ -21,7 +21,8 @@
           <% @agent_stats.each do |row| %>
             <tr>
               <td class="font-medium">
-                <%= row.user_display_name.presence || row.user_email %>
+                <%= link_to row.user_display_name.presence || row.user_email,
+                      analytics_agent_path(row.user_id, range: @current_range, purpose: params[:purpose]) %>
               </td>
               <td><%= number_with_delimiter(row.total_runs) %></td>
               <td><%= number_with_delimiter(row.completed_count) %></td>

@@ -101,6 +101,10 @@ Rails.application.routes.draw do
   # It left the admin area so a manager can use it without being an admin; the
   # old address stays as a redirect for bookmarks.
   get "analytics", to: "analytics#index", as: :analytics
+  namespace :analytics do
+    resources :agents, only: :show
+    resources :runs, only: :show
+  end
   get "admin/analytics", to: redirect(lambda { |_params, request|
     ["/analytics", request.query_string.presence].compact.join("?")
   })

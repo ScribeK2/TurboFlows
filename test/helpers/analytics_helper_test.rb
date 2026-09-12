@@ -25,4 +25,10 @@ class AnalyticsHelperTest < ActionView::TestCase
     assert_equal "3 days ago", analytics_last_seen(Date.current - 3)
     assert_equal "about 1 year ago", analytics_last_seen(Date.current - 400)
   end
+
+  test "a duration reads in minutes and seconds, or seconds under a minute" do
+    assert_equal "42s", analytics_duration(42)
+    assert_equal "1m 0s", analytics_duration(60)
+    assert_equal "4m 18s", analytics_duration(258)
+  end
 end

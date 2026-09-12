@@ -1,0 +1,63 @@
+<div class="page-content page-narrow">
+  <div class="page-header-section">
+    <%= link_to analytics_path(range: @range, purpose: @purpose, tab: 2), class: "page-back" do %>
+      <%= icon "chevron-left", class: "icon icon--xs" %>
+      Analytics
+    <% end %>
+    <h1 class="page-header-section__title"><%= @agent.display_label %></h1>
+    <% if @agent.display_name.present? %>
+      <p class="page-header-section__ident"><%= @agent.email %></p>
+    <% end %>
+    <p class="page-header-section__subtitle">
+      <%= pluralize(@total_calls, "call") %> <%= @range == "all" ? "on record" : "in the last #{@range.delete_suffix('d')} days" %>.
+      Runs are kept for <%= Scenario.live_retention_days %> days.
+    </p>
+  </div>
+
+  <section class="list-section">
+    <div class="list-section__body">
+      <% if @calls.any? %>
+        <% @calls.each do |call| %>
+          <% ending_workflow_id = @ending_workflows.fetch(call.ending_id, call.workflow_id) %>
+          <div class="list-row">
+            <div class="list-row__body">
+              <div class="list-row__title">
+                <%= link_to @workflow_titles[call.workflow_id], analytics_run_path(call.origin_id) %>
+                <% if ending_workflow_id != call.workflow_id %>
+                  <span class="list-row__sub">→ <%= @workflow_titles[ending_workflow_id] %></span>
+                <% end %>
+              </div>
+              <p class="list-row__sub">
+                <%= call.started_at&.strftime("%b %-d, %Y %H:%M") %> ·
+                <%= analytics_outcome_label(call.outcome) %><%= " · #{analytics_duration(call.duration_seconds)}" if call.duration_seconds %>
+              </p>
+            </div>
+          </div>
+        <% end %>
+      <% else %>
+        <p class="form-hint p-4">No calls in this range.</p>
+      <% end %>
+    </div>
+  </section>
+
+  <% if @total_pages > 1 %>
+    <div class="pagination-bar mt-4">
+      <span class="pagination-bar__summary">Page <%= @page %> of <%= @total_pages %></span>
+      <nav class="pagination" aria-label="Call pages">
+        <% if @page > 1 %>
+          <%= link_to "‹", analytics_agent_path(@agent, range: @range, purpose: @purpose, page: @page - 1),
+                class: "pagination__item", "aria-label": "Previous page" %>
+        <% end %>
+        <% (1..@total_pages).each do |n| %>
+          <%= link_to n, analytics_agent_path(@agent, range: @range, purpose: @purpose, page: n),
+                class: "pagination__item #{'is-active' if n == @page}",
+                "aria-current": ("page" if n == @page) %>
+        <% end %>
+        <% if @page < @total_pages %>
+          <%= link_to "›", analytics_agent_path(@agent, range: @range, purpose: @purpose, page: @page + 1),
+                class: "pagination__item", "aria-label": "Next page" %>
+        <% end %>
+      </nav>
+    </div>
+  <% end %>
+</div>

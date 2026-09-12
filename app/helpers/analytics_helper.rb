@@ -36,6 +36,12 @@ module AnalyticsHelper
     end
   end
 
+  # A duration as the Analytics tables write it: "4m 18s", or "42s" under a minute.
+  def analytics_duration(seconds)
+    seconds = seconds.to_i
+    seconds >= 60 ? "#{seconds / 60}m #{seconds % 60}s" : "#{seconds}s"
+  end
+
   private
 
   def analytics_in_progress?(outcome)
