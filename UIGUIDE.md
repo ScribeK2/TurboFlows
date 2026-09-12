@@ -402,6 +402,7 @@ password reset) and the bulk dialogs in `admin/users/index`. The old pattern —
 | `.badge--group` | Tag/token with a remove affordance | Pill, neutral fill + hairline |
 | `.badge` "Global" | A workflow everyone signed in can see | **Plain text**, no pill |
 | `.badge--warning` "No audience" | A published workflow in no group — only admins and its owner see it | Pill: an exceptional state |
+| `.badge--warning` "In no group" | A group's manager who is in no group — sees only Global workflows and is asked to choose groups | Pill: an exceptional state |
 | `.group-tree__managed` "Admins add people" | A group only administrators add people to | **Plain text**, no pill: a setting, not a problem |
 | `.admin-group__meta` "Joined themselves" | A membership its person made | **Plain text** after the role |
 

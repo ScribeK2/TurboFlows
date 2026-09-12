@@ -1,13 +1,16 @@
 <%# locals: (group:, query: "", candidates: User.none) %>
 <%# Managers see Analytics for this group's members and its sub-teams (spec
     2026-09-12). admin/group_managers/changed replaces this section whole. %>
-<% grants = group.managers_by_email %>
+<% grants = group.managers_by_email.to_a %>
+<%# The same scope the Overview and the sidebar badge count, so the card can
+    never call someone in no group whom the Overview doesn't. %>
+<% in_no_group = User.awaiting_groups.where(id: grants.map(&:user_id)).pluck(:id).to_set %>
 <section id="group-managers" class="card mb-4" aria-labelledby="group-managers-heading">
   <div class="card__body">
     <h2 id="group-managers-heading" class="admin-card__heading">Managers</h2>
     <p class="form-hint mb-3">
       Managers see Analytics for this group's members and its sub-teams, including each person's calls.
-      It doesn't change their role, and they don't need to be members.
+      It doesn't change their role or their groups.
       <% if Group.self_joinable_ids.include?(group.id) %>
         People can join this group themselves, and a manager sees whoever does.
       <% end %>
@@ -19,12 +22,21 @@
           <li class="admin-group__item">
             <%= link_to grant.user.email, admin_user_path(grant.user), class: "admin-group__name" %>
             <span class="admin-group__meta"><%= grant.user.role.capitalize %></span>
+            <% if in_no_group.include?(grant.user_id) %>
+              <span class="badge badge--warning">In no group</span>
+            <% end %>
             <%= button_to "Remove", admin_group_manager_path(group, grant), method: :delete,
                   params: { q: query }, class: "btn btn--plain btn--sm",
                   aria: { label: "Remove #{grant.user.email} as a manager of #{group.name}" } %>
           </li>
         <% end %>
       </ul>
+      <% if in_no_group.any? %>
+        <p class="form-hint mb-4">
+          A manager in no group sees only Global workflows in Play and is asked to choose groups.
+          Add them to their team under Members.
+        </p>
+      <% end %>
     <% else %>
       <p class="form-hint mb-4">No managers yet. Find people below to add one.</p>
     <% end %>

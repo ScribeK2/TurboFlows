@@ -63,14 +63,38 @@ class Admin::GroupManagersControllerTest < ActionDispatch::IntegrationTest
     assert_match "Global has no managers", stream_content("flash", action: "update").text
   end
 
-  test "only administrators set managers" do
+  test "only administrators search for, add or remove managers" do
+    grant = GroupManager.create!(user: @bob, group: @group)
     sign_out :user
     sign_in person("editor", role: "editor")
 
-    post admin_group_managers_path(@group), params: { user_id: @ada.id }
+    get admin_group_managers_path(@group, q: @tag)
+    assert_redirected_to root_path
 
+    post admin_group_managers_path(@group), params: { user_id: @ada.id }
     assert_redirected_to root_path
     assert_not GroupManager.exists?(user: @ada)
+
+    delete admin_group_manager_path(@group, grant)
+    assert_redirected_to root_path
+    assert GroupManager.exists?(grant.id)
+  end
+
+  # Such a manager is flagged as awaiting groups everywhere else too (the
+  # Overview, the sidebar badge, /welcome); the card says why they are.
+  test "the card marks a manager in no group, and nobody who is in one" do
+    GroupManager.create!(user: @ada, group: @group)
+    GroupManager.create!(user: @bob, group: @group)
+    GroupManager.create!(user: @admin, group: @group)
+    UserGroup.create!(user: @bob, group: Group.create!(name: "Managers Elsewhere #{@tag}"))
+
+    get admin_group_path(@group)
+
+    flagged = css_select("#group-managers .admin-group__item").select { it.at_css(".badge--warning") }
+    assert_equal([@ada.email], flagged.map { it.at_css(".admin-group__name").text.strip })
+    assert_select "#group-managers .badge--warning", text: "In no group"
+    assert_select "#group-managers", text: /sees only Global workflows/
+    assert_select "#group-managers", text: /don't need to be members/, count: 0
   end
 
   test "the card warns that a self-joinable group's manager sees whoever joins, and Global has none" do
