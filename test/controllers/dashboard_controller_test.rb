@@ -135,6 +135,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     get root_path
 
     assert_select "#csr-resume", count: 0
+    assert_select ".dashboard-layout .btn--primary", count: 1
   end
 
   test "the CSR home asks as many queries for four recent workflows as for one" do

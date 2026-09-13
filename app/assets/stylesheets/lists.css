@@ -171,8 +171,8 @@
 .list-row--prompt { color: var(--color-ink-muted); }
 .list-row--prompt .list-row__title { font-weight: 500; color: var(--color-ink-subtle); }
 
-/* A row that is itself a submit button (Rails button_to wraps it in a form,
-   so the divider has to hang off the form, not the button's :last-child). */
+/* A row that is itself a submit button (Rails button_to wraps it in a form).
+   Resets the native button chrome so it reads as an ordinary list row. */
 button.list-row {
   width: 100%;
   text-align: start;

@@ -26,7 +26,7 @@ class CsrHomeLinksTest < ActionDispatch::IntegrationTest
     get root_path
     assert_response :success
 
-    links = css_select(".dashboard-layout a[href]").map { it["href"] }.uniq # rubocop:disable Rails/Pluck -- Nokogiri nodes, not an AR relation
+    links = css_select(".dashboard-layout a[href]").pluck("href").uniq
     forms = css_select(".dashboard-layout form[action]").map do |form|
       [form["action"], (form.at_css("input[name='_method']")&.[]("value") || form["method"]).downcase.to_sym]
     end.uniq
@@ -40,9 +40,11 @@ class CsrHomeLinksTest < ActionDispatch::IntegrationTest
     end
     # Not submitted: POST /play/:id starts a live call and the pin forms write.
     forms.each do |action, method|
-      assert_nothing_raised do
+      route = assert_nothing_raised do
         Rails.application.routes.recognize_path(action, method:)
       end
+      assert_includes %w[player workflows/pins], route[:controller],
+                      "#{action} routes to #{route[:controller]}, which is not open to a Regular user"
     end
   end
 

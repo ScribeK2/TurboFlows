@@ -171,6 +171,18 @@ class PlayerControllerTest < ActionDispatch::IntegrationTest
 
     assert_select ".player-row", minimum: 1
     assert_select ".pin-button", count: 0
+
+    editor = User.create!(
+      email: "playereditor-#{SecureRandom.hex(4)}@test.com",
+      password: "password123!",
+      password_confirmation: "password123!",
+      role: "editor"
+    )
+    sign_in editor
+    get play_path
+
+    assert_select ".player-row", minimum: 1
+    assert_select ".pin-button", count: 0
   end
 
   # === Start ===

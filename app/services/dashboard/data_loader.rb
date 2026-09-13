@@ -37,7 +37,7 @@ module Dashboard
     end
 
     def csr?
-      !user.can_create_workflows?
+      user.regular?
     end
 
     def pinned_workflow_ids
@@ -93,7 +93,7 @@ module Dashboard
       return if activity.empty?
 
       unfinished = live_scenarios.where.not(status: Scenario::TERMINAL_STATUSES)
-                                 .where("COALESCE(run_origin_id, id) IN (?)", activity.keys)
+                                 .where("#{CALL} IN (?)", activity.keys)
                                  .to_a
       return if unfinished.empty?
 
