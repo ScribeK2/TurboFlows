@@ -329,6 +329,30 @@ Browsing and pinning are `/play`.
 - **Pins are personal, and only Regular users get a pin toggle** (on `/play` and on
   home), because only the CSR home reads pins. `workflows/pins/_toggle` is the
   only toggle, and `Workflows::PinsController` replaces every copy of it.
+- **"From your team" comes before pins.** It shows what the CSR's own groups (direct
+  membership, not sub-teams or parents) and Global feature for them. There's one
+  heading per team in name order, and Global comes last as "For everyone". A workflow
+  shows once, a pinned one isn't repeated, and when nothing is featured it renders
+  only an empty `#team-workflows-section` wrapper, which a pin change replaces. When it has rows and the CSR has no pins, "Your fast path" is one line.
+  Read from `Dashboard::DataLoader#team_sections`; pinned and featured rows share
+  `dashboard/_launcher_row` and `#run_stats`.
+
+**Featured workflows and the team page.** A group's standard kit
+(`GroupFeaturedWorkflow`), curated on its **team page** (`/teams/:id`). "Team page"
+means a group's page outside the admin area, and the data is still a group.
+- **Who curates:** `TeamCuration` answers for the top-bar "Teams" link, `/teams`, every
+  team page and every change. An administrator curates every group, Global included;
+  a manager curates their groups and sub-teams (`GroupManager.team_group_ids_for`, the
+  reach Analytics uses) and never Global.
+- **What it may feature:** only what its members can already see
+  (`Workflow.visible_to_members_of`: published, and filed in the group, a subgroup, or
+  Global). Featuring never changes who can see a workflow.
+- **The cap:** up to 8 per group, in the curator's order. Only rows members can still
+  see count; a row they can't see stays on the team page, marked, until it's removed
+  or visible again.
+- **The page:** changes answer with a Turbo Stream that replaces `#team-featured` and
+  updates `#flash`, and drag reordering uses `sortable-list`, the same controller as
+  the admin group page's folders.
 
 An Editor or Admin gets **home**:
 - a hero card for the workflow they were last in;
@@ -431,7 +455,7 @@ unexpected `answer_type` rendered radio cards with no way to submit.
   it and its route, views and Stimulus controller were deleted 2026-09-09
 - `nav_search_controller.js` — Cmd+K fuzzy search (Fuse.js) across workflows, respects user permissions
 - **Two-zone header: brand + destinations left, search + chrome right.** Every
-  destination is a labelled link — Workflows, Play, Analytics, Admin — not a menu. The
+  destination is a labelled link — Workflows, Play, Teams, Analytics, Admin — not a menu. The
   wordmark used to hold the centre column of a `1fr auto 1fr` grid, which is
   what created the spare slot beside it that a chevron menu filled, and which
   pinned the destinations to the right edge next to the theme toggle and avatar,
@@ -443,7 +467,7 @@ unexpected `answer_type` rendered radio cards with no way to submit.
   `nav_section`, `nav_current`). It is section-level: `scenarios`, `steps` and
   `workflow_versions` light Workflows, every `admin/*` page lights Admin, and
   `analytics` and every `analytics/*` page (the Agents and Runs drill-downs)
-  light Analytics. Those first three used to light nothing — you could be
+  light Analytics. Teams lights on `teams` and every `teams/*` page. Those first three used to light nothing — you could be
   mid-scenario in the builder with an entirely inert bar. **Add a controller to
   the map when you add a surface**; absence is the deliberate answer for pages
   reached from inside a section (profiles, tags, folders), never a default

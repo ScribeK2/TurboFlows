@@ -472,6 +472,11 @@ wordmark (which means "switch workspace" in every app that has one) was doing a
 plain link's job. Destinations also sat in the right zone against the theme
 toggle and avatar, where a place reads as a setting.
 
+**Teams** shows only to administrators and the managers of groups
+(`User#can_curate_teams?`), the same way Analytics shows only to those who can use
+it. A place a manager returns to belongs in the bar, not behind a link on another
+page.
+
 **Current state must be a different channel from hover, not a darker shade of
 it.** `.nav__link[aria-current="page"]` takes `--color-primary-text`, weight 600
 and a 2px `--color-primary` rule on the header's own hairline — the same
@@ -542,6 +547,8 @@ so `.tab-bar` drops into any existing tablist with no JS change.
 | Group tree | `.group-tree`, `__toolbar`, `__filter`, `__list`, `__row`, `__toggle`, `__spacer`, `__label`, `__name`, `__path`, `__count`, `__empty` | `admin.css` | The admin groups index. Flat depth-first rows with `--tree-depth` set inline and `data-ancestors`; `group-tree` hides a row unless every ancestor is expanded, and while filtering shows matches (with `__path`) plus the groups above them. Toggle state is `aria-expanded`, which also rotates the chevron. Counts are plain text, never pills |
 | Admin cards | `.admin-card__heading`, `__heading--danger`, `__action-row`, `.admin-card--danger` | `admin.css` | Shared by the user page and the group page: a card heading, a sentence beside its one action (wraps once the sentence would squeeze below 16rem), and the danger card's red hairline |
 | Group page | `.admin-group__header`, `__title`, `__list`, `__item`, `__name`, `__meta`, `__search`, `.admin-folders__handle`, `__rename` | `admin.css` | `admin/groups/show`: hairline-divided rows inside a card — subgroups, members, folders — each name, a muted meta line and at most one plain or secondary action. No filled button on the page; Delete Group is outlined `.btn--negative`. At `Group::MAX_DEPTH` Add Subgroup gives way to one `.form-hint` line saying the group is at the limit. The member search field sits outside `turbo-frame#group-member-search` and fills it as you type |
+| Team page | `.admin-group__list`, `__item`, `__name`, `__meta`, `__search`, `.admin-folders__handle`, `.badge--warning` | `admin.css`, `badges.css` | `teams/show` and `teams/index`, outside the admin area. They reuse the group page's hairline row anatomy rather than a second list style. One card, `#team-featured`: rows with a drag handle (`sortable-list`), Move up, Move down and Remove as `.btn--plain`, and a "Members can't see this" warning pill on a row members can no longer see. The add search follows the member search's rule: the field sits outside `turbo-frame#team-featured-search`. No filled button on either page |
+| From your team | `#team-workflows-section`, `.dashboard-team__heading`, `dashboard/_launcher_row` | `dashboard.css`, `lists.css` | The CSR home's section above pins: a small heading per team ("For everyone" for Global), rows from the launcher-row partial with Run only. When nothing is featured only the empty wrapper renders (no card), so a pin change always has a target to replace |
 | Data Health | `.admin-health`, `__hint`, `__hint-row`, `__after`, `__list`, `__grid--2`, `__grid--3`, `__server`, `__settings`, `__schedule`, `__steps` | `admin.css` | `admin/data_health`: each section is a `.list-section` head, one hint saying what the numbers mean, then a `.stat-panel`. Background Jobs leads with a Worker cell (Running or Not running, from the Solid Queue heartbeat); `__steps` is the server notes' numbered restart steps. The grid modifiers exist because `.stat-panel__grid`'s hairlines assume four cells. No filled button; a failed job's Discard is `.btn--plain` with a confirm, not a red outline repeated down the list |
 | Admin disclosure | `.admin-disclosure`, `__summary`, `__pre` | `admin.css` | A `<details>` for what most admins never open: a failed job's full error, Data Health's server notes. `.step-disclosure` is the builder's and lives in `steps.css` |
 | Email card | `.admin-email__section`, `__source`, `__switch`, `__subheading`, `__footer` | `admin.css` | `admin/smtp_settings`: one form card. The source line and its "Use these settings" switch come first, then Server / Credentials / Delivery under small uppercase subheadings with hairlines between; Save in `.card__footer` |
@@ -597,6 +604,7 @@ These are the most-used controllers. Wire them via `data-controller` on the appr
 | `tabs` | Tab switching | `click->tabs#select` |
 | `inline-rename` | Rename in place: Enter or blur saves once, Escape reverts | On the one-field form; `input` target with `keydown.enter->inline-rename#commit blur->inline-rename#commit keydown.esc->inline-rename#revert` |
 | `debounced-submit` | Submit a form once typing pauses (300ms) | On the form, with `input->debounced-submit#submit` on the field. Keep the field outside any frame the form targets, or each answer replaces the input being typed in |
+| `sortable-list` | Drag to reorder a list whose items carry `data-sortable-id`; on drop, PATCHes the ids in order | On the list, with `data-sortable-list-url-value` and `data-sortable-list-param-value` (e.g. `folder_ids`, `featured_ids`); drag handle `.cursor-move` |
 
 ---
 
