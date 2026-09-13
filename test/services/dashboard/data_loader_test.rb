@@ -131,6 +131,80 @@ class Dashboard::DataLoaderTest < ActiveSupport::TestCase
     assert_equal 2, stats[:runs]
   end
 
+  # -- Resume --
+
+  test "resume offers a call active 59 minutes ago" do
+    frame = live_frame(@workflow, status: "active", outcome: nil)
+    age!(frame, 59.minutes.ago)
+
+    resume = Dashboard::DataLoader.new(@regular).resume
+
+    assert_equal frame, resume.frame
+    assert_equal @workflow, resume.workflow
+  end
+
+  test "resume offers nothing once a call has been idle 61 minutes" do
+    frame = live_frame(@workflow, status: "active", outcome: nil)
+    age!(frame, 61.minutes.ago)
+
+    assert_nil Dashboard::DataLoader.new(@regular).resume
+  end
+
+  test "resume offers nothing for a call that finished" do
+    live_frame(@workflow, status: "completed", outcome: "resolved")
+
+    assert_nil Dashboard::DataLoader.new(@regular).resume
+  end
+
+  test "resume offers nothing for someone else's call" do
+    Scenario.create!(workflow: @workflow, user: @editor, purpose: "live", status: "active",
+                     execution_path: [], results: {}, inputs: {})
+
+    assert_nil Dashboard::DataLoader.new(@regular).resume
+  end
+
+  test "resume reads the whole call's clock, so a parent parked on a live sub-flow is not idle" do
+    sub_flow = global_workflow("Sub-flow")
+    parent = live_frame(@workflow, status: "awaiting_subflow", outcome: nil)
+    age!(parent, 3.hours.ago)
+    child = live_frame(sub_flow, status: "active", outcome: nil, parent:)
+
+    resume = Dashboard::DataLoader.new(@regular).resume
+
+    assert_equal child, resume.frame, "Resume opens the frame the CSR was last on"
+    assert_equal @workflow, resume.workflow, "and names the workflow the call started in"
+  end
+
+  test "resume follows a handoff to the frame the call moved to" do
+    next_wf = global_workflow("Next")
+    origin = live_frame(@workflow, status: "completed", outcome: "transferred")
+    handed_to = live_frame(next_wf, status: "active", outcome: nil, handed_off_from: origin)
+
+    resume = Dashboard::DataLoader.new(@regular).resume
+
+    assert_equal handed_to, resume.frame
+    assert_equal @workflow, resume.workflow
+  end
+
+  test "resume picks the call with the latest activity" do
+    other = global_workflow("Other")
+    older = live_frame(@workflow, status: "active", outcome: nil)
+    age!(older, 30.minutes.ago)
+    newer = live_frame(other, status: "active", outcome: nil)
+    age!(newer, 5.minutes.ago)
+
+    assert_equal newer, Dashboard::DataLoader.new(@regular).resume.frame
+  end
+
+  test "resume names the step open on its frame" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Verify account", position: 0,
+                                       question: "Is the account verified?", answer_type: "yes_no")
+    frame = live_frame(@workflow, status: "active", outcome: nil)
+    frame.update!(current_node_uuid: question.uuid)
+
+    assert_equal "Verify account", Dashboard::DataLoader.new(@regular).resume.step_title
+  end
+
   private
 
   # A live frame of @regular's. Terminal statuses get a completed_at, as
@@ -145,5 +219,9 @@ class Dashboard::DataLoaderTest < ActiveSupport::TestCase
 
   def global_workflow(title)
     file_in_global(Workflow.create!(title:, user: @editor))
+  end
+
+  def age!(scenario, ago)
+    Scenario.where(id: scenario.id).update_all(updated_at: ago)
   end
 end

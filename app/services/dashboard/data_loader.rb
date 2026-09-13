@@ -18,6 +18,20 @@ module Dashboard
       delegate :finished?, :outcome, to: :call
     end
 
+    # How recently a call must have been touched to be offered for resuming.
+    # Closing the tab is how calls usually end, so most unfinished runs are
+    # calls that are over; an hour covers a long hold without listing the day's
+    # finished calls (spec Q10).
+    RESUME_WINDOW = 60.minutes
+
+    # The call home offers to pick back up. `frame` is what Resume opens: the
+    # unfinished frame with the latest activity, which is the one the agent was
+    # last on. `workflow` is where the call started.
+    Resume = Data.define(:frame, :workflow, :step_title, :last_activity_at)
+
+    # A frame's call, as Scenario#run_origin_id records it.
+    CALL = Arel.sql("COALESCE(run_origin_id, id)")
+
     attr_reader :user
 
     def initialize(user)
@@ -84,7 +98,33 @@ module Dashboard
       end
     end
 
+    # At most one: the viewer's call with the latest activity inside
+    # RESUME_WINDOW that still has an unfinished frame. Activity is the whole
+    # call's (Scenario#run_last_activity), because a parent parked on a live
+    # sub-flow stopped its own clock when it parked. Every frame records its call
+    # in run_origin_id, so this is two grouped queries rather than a run_frames
+    # walk per call.
+    def resume
+      return @resume if defined?(@resume)
+
+      @resume = build_resume
+    end
+
     private
+
+    def build_resume
+      activity = live_scenarios.where(updated_at: RESUME_WINDOW.ago..).group(CALL).maximum(:updated_at)
+      return if activity.empty?
+
+      unfinished = live_scenarios.where.not(status: Scenario::TERMINAL_STATUSES)
+                                 .where("COALESCE(run_origin_id, id) IN (?)", activity.keys)
+                                 .to_a
+      return if unfinished.empty?
+
+      frame = unfinished.max_by { |f| [activity.fetch(f.run_origin_id || f.id), f.updated_at] }
+      Resume.new(frame:, workflow: frame.run_origin.workflow, step_title: frame.current_step&.title,
+                 last_activity_at: activity.fetch(frame.run_origin_id || frame.id))
+    end
 
     def user_scenarios
       @user_scenarios ||= Scenario.where(user: user)
