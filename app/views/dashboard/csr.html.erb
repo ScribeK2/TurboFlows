@@ -4,85 +4,22 @@
   <meta name="turbo-cache-control" content="no-preview">
 <% end %>
 
+<%# The CSR home is the viewer's own: a call to pick back up, their pins, the
+    workflows they recently started. Browsing and pinning are /play.
+
+    No workflow title here is a link. A Regular user has no page for a workflow
+    (WorkflowsController and ScenariosController are closed to them), and
+    POST /play/:id starts a live call, so the Run buttons are the only way in.
+    test/integration/csr_home_links_test.rb follows every link on this page as a
+    Regular user (spec 2026-09-13). %>
 <div class="dashboard-layout">
   <%= render "dashboard/header" %>
 
   <%= render "dashboard/group_notice" %>
 
-  <%# -- Quick Launcher (pinned workflows) -- %>
+  <%= render "dashboard/resume", resume: @dashboard.resume %>
+
   <%= render "dashboard/pinned_workflows", dashboard: @dashboard %>
 
-  <%# -- Two-Column Content -- %>
-  <div class="dashboard-grid">
-    <%# Left: Recently Run %>
-    <section class="list-section">
-      <div class="list-section__head">
-        <h2 class="list-section__title">Recently Run</h2>
-        <% if @dashboard.recently_run_workflows.any? %>
-          <span class="list-section__count"><%= @dashboard.recently_run_workflows.size %></span>
-        <% end %>
-        <%= link_to "View all", workflows_path, class: "list-section__link" %>
-      </div>
-
-      <div class="list-section__body">
-        <% if @dashboard.recently_run_workflows.any? %>
-          <% @dashboard.recently_run_workflows.each do |scenario| %>
-            <% workflow = scenario.workflow %>
-            <div class="list-row">
-              <span class="list-row__icon" aria-hidden="true">
-                <%= icon "play", class: "icon icon--sm" %>
-              </span>
-              <div class="list-row__body">
-                <div class="list-row__title">
-                  <%= link_to workflow.title, workflow_path(workflow), aria: { label: "View workflow: #{workflow.title}" } %>
-                </div>
-                <p class="list-row__sub">
-                  <%= scenario_status_label(scenario) %> &middot; last run <%= time_ago_in_words(scenario.created_at) %> ago
-                </p>
-                <% if workflow.tags.any? %>
-                  <div class="list-row__tags flex flex-wrap gap-1">
-                    <% workflow.tags.each do |tag| %>
-                      <span class="tag-pill"><%= tag.name %></span>
-                    <% end %>
-                  </div>
-                <% end %>
-              </div>
-              <div class="list-row__actions">
-                <%= render "workflows/pins/toggle", workflow: workflow,
-                      pinned: @dashboard.pinned_workflow_ids.include?(workflow.id), location: "recent" %>
-                <%= button_to play_workflow_path(workflow), method: :post,
-                      class: "btn btn--secondary btn--sm", aria: { label: "Re-run #{workflow.title}" } do %>
-                  <%= icon "play", class: "icon icon--xs" %>
-                  Re-run
-                <% end %>
-              </div>
-            </div>
-          <% end %>
-        <% else %>
-          <div class="dashboard-empty">
-            <div class="dashboard-empty__icon">
-              <%= icon "play", class: "icon icon--xl" %>
-            </div>
-            <h3 class="dashboard-empty__title">Nothing run yet</h3>
-            <p class="dashboard-empty__text">Workflows you run will be listed here so you can pick them back up fast.</p>
-          </div>
-        <% end %>
-      </div>
-    </section>
-
-    <%# Right: Recent Activity %>
-    <section class="list-section">
-      <div class="list-section__head">
-        <h2 class="list-section__title">Recent Activity</h2>
-        <% if @dashboard.recent_scenarios.any? %>
-          <span class="list-section__count"><%= @dashboard.recent_scenarios.size %></span>
-        <% end %>
-      </div>
-
-      <div class="list-section__body">
-        <%= render "dashboard/activity_feed", scenarios: @dashboard.recent_scenarios,
-              empty_text: "Scenarios you run will show up here as they happen." %>
-      </div>
-    </section>
-  </div>
+  <%= render "dashboard/recently_run", dashboard: @dashboard %>
 </div>

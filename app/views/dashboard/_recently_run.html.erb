@@ -1,0 +1,64 @@
+<%# locals: (dashboard:) %>
+<% recent = dashboard.recently_run %>
+
+<%# Workflows the CSR started, newest first, each with how its latest call ended
+    in Analytics' words (Dashboard::DataLoader#recently_run). A finished ending
+    links to that call's results; "In progress" doesn't, because the results
+    page reads an unfinished run as stopped. %>
+<section class="list-section" aria-label="Recently run">
+  <div class="list-section__head">
+    <h2 class="list-section__title">Recently Run</h2>
+    <% if recent.any? %>
+      <span class="list-section__count"><%= recent.size %></span>
+    <% end %>
+  </div>
+
+  <div class="list-section__body">
+    <% if recent.any? %>
+      <% recent.each do |run| %>
+        <% workflow = run.workflow %>
+        <div class="list-row">
+          <span class="list-row__icon" aria-hidden="true">
+            <%= icon "play", class: "icon icon--sm" %>
+          </span>
+          <div class="list-row__body">
+            <div class="list-row__title"><%= workflow.title %></div>
+            <p class="list-row__sub">
+              <% if run.finished? %>
+                <%= link_to analytics_outcome_label(run.outcome), player_scenario_show_path(run.origin),
+                      aria: { label: "Results of your last #{workflow.title} call" } %>
+              <% else %>
+                <%= analytics_outcome_label(run.outcome) %>
+              <% end %>
+              &middot; last run <%= time_ago_in_words(run.origin.created_at) %> ago
+            </p>
+            <% if workflow.tags.any? %>
+              <div class="list-row__tags flex flex-wrap gap-1">
+                <% workflow.tags.each do |tag| %>
+                  <span class="tag-pill"><%= tag.name %></span>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+          <div class="list-row__actions">
+            <%= render "workflows/pins/toggle", workflow:,
+                  pinned: dashboard.pinned_workflow_ids.include?(workflow.id), location: "recent" %>
+            <%= button_to play_workflow_path(workflow), method: :post,
+                  class: "btn btn--secondary btn--sm", aria: { label: "Re-run #{workflow.title}" } do %>
+              <%= icon "play", class: "icon icon--xs" %>
+              Re-run
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="dashboard-empty">
+        <div class="dashboard-empty__icon">
+          <%= icon "play", class: "icon icon--xl" %>
+        </div>
+        <h3 class="dashboard-empty__title">Nothing run yet</h3>
+        <p class="dashboard-empty__text">Workflows you run will be listed here so you can pick them back up fast.</p>
+      </div>
+    <% end %>
+  </div>
+</section>

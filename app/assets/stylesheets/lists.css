@@ -171,29 +171,6 @@
 .list-row--prompt { color: var(--color-ink-muted); }
 .list-row--prompt .list-row__title { font-weight: 500; color: var(--color-ink-subtle); }
 
-/* ============================================================================
-   List Row status dot (activity feed)
-   ============================================================================ */
-
-.list-row__dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: var(--radius-full);
-  flex-shrink: 0;
-  background: var(--color-ink-muted);
-}
-
-.list-row__dot--completed { background: var(--color-positive); }
-.list-row__dot--active    { background: var(--color-primary); }
-.list-row__dot--stopped   { background: var(--color-ink-muted); }
-.list-row__dot--error     { background: var(--color-negative); }
-
-.list-row__title--muted {
-  font-weight: 400;
-  font-style: italic;
-  color: var(--color-ink-muted);
-}
-
 /* A row that is itself a submit button (Rails button_to wraps it in a form,
    so the divider has to hang off the form, not the button's :last-child). */
 button.list-row {

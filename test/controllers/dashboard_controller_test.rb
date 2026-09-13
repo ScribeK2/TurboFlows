@@ -55,32 +55,33 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select ".list-row__title", text: /Pinned WF/
   end
 
-  test "CSR launcher offers a pin prompt row once pins exist" do
-    # No pins => empty state carries the call to action, not a prompt row
-    get root_path
-    assert_select ".list-row--prompt", count: 0
-    assert_select "h3", text: "No pinned workflows"
-
-    # With pins => one row per pin, plus a single trailing prompt row
+  test "CSR pinned rows unpin in place and send browsing to /play" do
     editor = User.create!(email: "editor-#{SecureRandom.hex(4)}@example.com", password: "password123!", password_confirmation: "password123!", role: "editor")
     2.times do |i|
       wf = file_in_global(Workflow.create!(title: "WF #{i}", user: editor))
       UserWorkflowPin.create!(user: @user, workflow: wf)
     end
+
     get root_path
-    assert_select "#pinned-workflows-section .list-row", count: 3
-    assert_select ".list-row--prompt", count: 1
+
+    assert_select "#pinned-workflows-section .list-row", count: 2
+    assert_select ".list-row--prompt", count: 0
+    assert_select "#pinned-workflows-section button[aria-label='Unpin WF 0']"
+    assert_select "#pinned-workflows-section a[href=?]", play_path, text: "Browse workflows"
+    assert_select "a", text: "Manage pins", count: 0
   end
 
-  test "CSR shows Recently Run section with re-run buttons" do
+  test "CSR shows Recently Run with how the last call ended, and Re-run" do
     editor = User.create!(email: "editor-#{SecureRandom.hex(4)}@example.com", password: "password123!", password_confirmation: "password123!", role: "editor")
     workflow = file_in_global(Workflow.create!(title: "Triage Flow", user: editor))
-    Scenario.create!(workflow: workflow, user: @user, purpose: "live", status: "completed")
+    call = Scenario.create!(workflow:, user: @user, purpose: "live", status: "completed", outcome: "resolved",
+                            started_at: 2.hours.ago, completed_at: 2.hours.ago)
 
     get root_path
-    assert_response :success
+
     assert_select "h2", text: "Recently Run"
     assert_select ".list-row__title", text: /Triage Flow/
+    assert_select "a[href=?]", player_scenario_show_path(call), text: "Resolved"
     assert_select "button[aria-label='Re-run Triage Flow']"
   end
 
@@ -90,6 +91,69 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select ".stat-panel", count: 0
     assert_select "[aria-label*='Total runs']", count: 0
     assert_select "[aria-label*='Most used flow']", count: 0
+  end
+
+  test "an unfinished call reads In progress and does not link to results" do
+    editor = User.create!(email: "editor-#{SecureRandom.hex(4)}@example.com", password: "password123!", password_confirmation: "password123!", role: "editor")
+    workflow = file_in_global(Workflow.create!(title: "Open Call", user: editor))
+    call = Scenario.create!(workflow:, user: @user, purpose: "live", status: "active", started_at: 5.minutes.ago)
+
+    get root_path
+
+    assert_select ".list-row__sub", text: /In progress/
+    assert_select "a[href=?]", player_scenario_show_path(call), count: 0
+  end
+
+  test "no workflow title on the CSR home is a link, and Recent Activity is gone" do
+    editor = User.create!(email: "editor-#{SecureRandom.hex(4)}@example.com", password: "password123!", password_confirmation: "password123!", role: "editor")
+    workflow = file_in_global(Workflow.create!(title: "Plain Title", user: editor))
+    UserWorkflowPin.create!(user: @user, workflow:)
+    Scenario.create!(workflow:, user: @user, purpose: "live", status: "completed", outcome: "resolved",
+                     started_at: 1.hour.ago, completed_at: 1.hour.ago)
+
+    get root_path
+
+    assert_select ".dashboard-layout .list-row__title a", count: 0
+    assert_select "h2", text: "Recent Activity", count: 0
+    assert_select "a[href^='/workflows'], a[href^='/scenarios']", count: 0
+  end
+
+  test "Run a Flow stays the one filled button when there is a call to resume" do
+    editor = User.create!(email: "editor-#{SecureRandom.hex(4)}@example.com", password: "password123!", password_confirmation: "password123!", role: "editor")
+    workflow = file_in_global(Workflow.create!(title: "Dropped Call", user: editor))
+    Scenario.create!(workflow:, user: @user, purpose: "live", status: "active", started_at: 5.minutes.ago)
+
+    get root_path
+
+    assert_select "#csr-resume .list-row__title", text: "Pick up where you left off"
+    assert_select "#csr-resume a.btn--secondary", text: "Resume"
+    assert_select ".dashboard-layout .btn--primary", count: 1
+    assert_select ".dashboard-layout a.btn--primary[aria-label='Run a flow']"
+  end
+
+  test "no resume line when nothing is unfinished" do
+    get root_path
+
+    assert_select "#csr-resume", count: 0
+  end
+
+  test "the CSR home asks as many queries for four recent workflows as for one" do
+    editor = User.create!(email: "editor-#{SecureRandom.hex(4)}@example.com", password: "password123!", password_confirmation: "password123!", role: "editor")
+    workflows = Array.new(4) { |i| file_in_global(Workflow.create!(title: "Count #{i}", user: editor)) }
+    start_call = lambda do |workflow|
+      Scenario.create!(workflow:, user: @user, purpose: "live", status: "completed", outcome: "resolved",
+                       started_at: 2.hours.ago, completed_at: 2.hours.ago)
+    end
+
+    start_call.call(workflows.first)
+    get root_path
+    one = count_queries { get root_path }
+
+    workflows.drop(1).each(&start_call)
+    get root_path
+    four = count_queries { get root_path }
+
+    assert_equal one, four
   end
 
   # -- Editor and Admin home --

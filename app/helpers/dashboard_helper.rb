@@ -1,7 +1,4 @@
 module DashboardHelper
-  # The enum's own labels read as code: "timed_out".capitalize was "Timed_out".
-  SCENARIO_STATUS_LABELS = { "awaiting_subflow" => "Awaiting sub-flow" }.freeze
-
   # Time-of-day greeting in the user's own time zone.
   # Falls back to the app default zone if the user's TZ is blank or unrecognized.
   def time_based_greeting(user)
@@ -44,9 +41,5 @@ module DashboardHelper
     kinds << pluralize(attention.failed_jobs_count, "failed job") if attention.failed_jobs_count.positive?
     kinds << "nightly jobs have stalled" if attention.stalled_task_keys.any?
     kinds.to_sentence.upcase_first
-  end
-
-  def scenario_status_label(scenario)
-    SCENARIO_STATUS_LABELS.fetch(scenario.status) { scenario.status.to_s.humanize }
   end
 end

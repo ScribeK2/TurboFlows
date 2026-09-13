@@ -56,18 +56,6 @@ class Dashboard::DataLoaderTest < ActiveSupport::TestCase
 
   # -- Runs --
 
-  test "recent_scenarios returns user scenarios" do
-    scenario = Scenario.create!(workflow: @workflow, user: @regular, purpose: "live", status: "completed")
-    assert_includes Dashboard::DataLoader.new(@regular).recent_scenarios, scenario
-  end
-
-  test "recent_scenarios stays personal, because the CSR dashboard means yours" do
-    Scenario.create!(workflow: @workflow, user: @editor, purpose: "live",
-                     started_at: Time.current, execution_path: [], results: {}, inputs: {})
-
-    assert_empty Dashboard::DataLoader.new(@regular).recent_scenarios
-  end
-
   test "recently_run lists each started workflow once, most recent first" do
     other = global_workflow("Other Flow")
     live_frame(@workflow, created_at: 2.hours.ago)

@@ -1,0 +1,28 @@
+<%# locals: (resume:) %>
+<%# The one call the CSR can pick back up (Dashboard::DataLoader#resume). Resume
+    is secondary, not filled: closing the tab is how calls usually end, so for an
+    hour after most calls this line names one that is over, and the greeting's
+    Run a Flow stays the page's one filled button (spec Q12). %>
+<% if resume %>
+  <section class="list-section" id="csr-resume" aria-label="Pick up where you left off">
+    <div class="list-section__body">
+      <div class="list-row">
+        <span class="list-row__icon" aria-hidden="true">
+          <%= icon "clock", class: "icon icon--sm" %>
+        </span>
+        <div class="list-row__body">
+          <div class="list-row__title">Pick up where you left off</div>
+          <p class="list-row__sub">
+            <%= resume.workflow.title %><% if resume.step_title.present? %> &middot; at <%= resume.step_title %><% end %>
+            &middot; <%= time_ago_in_words(resume.last_activity_at) %> ago
+          </p>
+        </div>
+        <div class="list-row__actions">
+          <%= link_to "Resume", player_scenario_step_path(resume.frame),
+                class: "btn btn--secondary btn--sm",
+                aria: { label: "Resume #{resume.workflow.title}" } %>
+        </div>
+      </div>
+    </div>
+  </section>
+<% end %>

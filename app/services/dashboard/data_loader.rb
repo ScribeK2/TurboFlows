@@ -3,10 +3,8 @@ module Dashboard
   # workflows they recently started (spec 2026-09-13). The Editor and Admin home
   # is Dashboard::Home.
   class DataLoader
-    # Distinct workflows the user has run, ordered by most-recent run. Returns up
-    # to 5 Scenarios (the most recent live Scenario per workflow), so views can
-    # show status and a re-run action without extra queries. Bounded scan keeps
-    # this portable across SQLite (test) and Postgres (prod).
+    # Recently Run: at most RECENTLY_RUN_LIMIT workflows, found in the newest
+    # RECENTLY_RUN_SCAN calls the viewer started.
     RECENTLY_RUN_LIMIT = 5
     RECENTLY_RUN_SCAN = 100
 
@@ -42,12 +40,6 @@ module Dashboard
       !user.can_create_workflows?
     end
 
-    def recent_scenarios
-      @recent_scenarios ||= user_scenarios.includes(:workflow)
-                                          .order(created_at: :desc)
-                                          .limit(5)
-    end
-
     def pinned_workflow_ids
       @pinned_workflow_ids ||= user.user_workflow_pins.pluck(:workflow_id).to_set
     end
@@ -70,22 +62,6 @@ module Dashboard
       counts = started_calls.where(workflow_id: ids).group(:workflow_id).count
       last_runs = started_calls.where(workflow_id: ids).group(:workflow_id).maximum(:created_at)
       @pinned_workflow_stats = ids.index_with { |id| { runs: counts[id].to_i, last_run_at: last_runs[id] } }
-    end
-
-    def recently_run_workflows
-      @recently_run_workflows ||= begin
-        seen = {}
-        live_scenarios.includes(workflow: :tags)
-                      .order(created_at: :desc)
-                      .limit(RECENTLY_RUN_SCAN)
-                      .each do |sc|
-          next if sc.workflow.nil? || seen.key?(sc.workflow_id)
-
-          seen[sc.workflow_id] = sc
-          break if seen.size >= RECENTLY_RUN_LIMIT
-        end
-        seen.values
-      end
     end
 
     # Workflows the viewer started, one row per workflow for its latest call,
@@ -126,16 +102,11 @@ module Dashboard
                  last_activity_at: activity.fetch(frame.run_origin_id || frame.id))
     end
 
-    def user_scenarios
-      @user_scenarios ||= Scenario.where(user: user)
-    end
-
     def live_scenarios
-      @live_scenarios ||= user_scenarios.where(purpose: "live")
+      @live_scenarios ||= Scenario.where(user: user, purpose: "live")
     end
 
-    # Bounded scan, as recently_run_workflows had: portable across SQLite and
-    # Postgres without DISTINCT ON.
+    # Bounded scan: portable across SQLite and Postgres without DISTINCT ON.
     def latest_call_per_workflow
       seen = {}
       started_calls.where(workflow_id: Workflow.visible_to(user).select(:id))
