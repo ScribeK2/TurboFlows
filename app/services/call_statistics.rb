@@ -100,10 +100,16 @@ class CallStatistics
     call = Arel::Nodes::NamedFunction.new("COALESCE", [table[:run_origin_id], table[:id]])
     still_going = Arel::Nodes::Case.new.when(table[:status].not_in(Scenario::TERMINAL_STATUSES)).then(table[:id])
     ending = Arel::Nodes::NamedFunction.new("COALESCE", [Arel::Nodes::Max.new([still_going]), table[:id].maximum])
+    origin_ids = origins.select(:id).arel
 
+    # Equivalent to call.in(origin_ids), but lets Postgres use the primary key
+    # and the run_origin_id index instead of evaluating COALESCE(...) per row:
+    # an origin always carries a NULL run_origin_id (record_run_origin sets it
+    # only from a parent or handoff link), so COALESCE(run_origin_id, id) lands
+    # in the origin set exactly when id IN origins or run_origin_id IN origins.
     Scenario.where(parent_scenario_id: nil)
             .where(table[:outcome].eq(nil).or(table[:outcome].not_eq("transferred")))
-            .where(call.in(origins.select(:id).arel))
+            .where(table[:id].in(origin_ids).or(table[:run_origin_id].in(origin_ids)))
             .group(call)
             .pluck(call, ending)
             .to_h
