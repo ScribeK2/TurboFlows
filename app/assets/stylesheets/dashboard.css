@@ -325,10 +325,14 @@
 }
 
 /* ============================================================================
-   Pin Toggle Button (used in Recently Run rows)
+   Pin Toggle Button (workflows/pins/_toggle: CSR home rows and /play rows)
+   A square target large enough not to be mistaken for the row beside it.
    ============================================================================ */
 
 .pin-button {
+  min-inline-size: 2.5rem;
+  min-block-size: 2.5rem;
+  justify-content: center;
   color: var(--color-ink-muted);
   transition: color var(--duration-fast) var(--ease-out),
               transform var(--duration-snap) var(--ease-spring);

@@ -98,6 +98,37 @@
     width: 100%;
   }
 
+  /* ─── Index Rows ───
+     Run button plus an optional pin toggle beside it. The wrapper carries the
+     divider, since the Run form is no longer the list's direct child. Hover
+     lights only the Run area, which tells it apart from the toggle. */
+  .player-row {
+    display: flex;
+    align-items: stretch;
+  }
+
+  .player-row:not(:last-child) {
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  /* The wrapper owns the divider. button_to puts the CSRF token after the
+     button, so outside tests the Run button is never its form's :last-child,
+     and lists.css's `.list-row:not(:last-child)` would draw a second line. */
+  .player-row .list-row {
+    border-bottom: none;
+  }
+
+  .player-row__run {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .player-row__pin {
+    display: flex;
+    align-items: center;
+    padding-inline: var(--space-2) var(--space-4);
+  }
+
   /* ─── Search Filter ─── */
   .player-search {
     position: relative;

@@ -21,6 +21,10 @@ class PlayerController < ApplicationController
                          .where.not(title: "Untitled Workflow")
                          .includes(:tags, :published_version, :start_step, :steps, :groups)
                          .order(updated_at: :desc)
+    # Pins show only on the CSR home, so only Regular users get a toggle
+    # (spec Q18). A toggle anyone else pressed would change nothing they see.
+    @pinnable = current_user.regular?
+    @pinned_ids = @pinnable ? current_user.user_workflow_pins.pluck(:workflow_id).to_set : Set.new
   end
 
   def start

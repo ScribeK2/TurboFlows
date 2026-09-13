@@ -23,50 +23,62 @@
              data-action="input->player-filter#filter">
     </div>
 
-    <%# ── Workflow list: hairline-divided rows, same pattern as the dashboards ── %>
+    <%# ── Workflow list ──
+        A row is its Run button and, for a Regular user, a pin toggle beside it.
+        The toggle is a sibling form, since a button_to cannot nest inside
+        another, so the row wrapper carries the filter target: a search hides
+        the toggle with the Run button it sits beside. %>
     <div class="list-section__body">
       <% @workflows.each do |workflow| %>
-        <%= button_to play_workflow_path(workflow), method: :post,
-              class: "list-row",
-              form: { data: { player_filter_target: "card",
-                              title: workflow.title,
-                              description: workflow.description_text.to_s } } do %>
-          <span class="list-row__icon" aria-hidden="true">
-            <%= icon "play", class: "icon icon--sm" %>
-          </span>
-          <span class="list-row__body">
-            <span class="list-row__title"><%= workflow.title %></span>
-            <span class="list-row__sub">
-              <%= workflow.groups.first&.name || "No groups" %>
-              &middot; <%= pluralize(workflow.steps.size, "step") %>
-              <%# published_version, not versions.last: `has_many :versions` carries no
-                  default order, so `.last` was whatever the database happened to return.
-                  It is also the value this page actually means — /play lists workflows
-                  you can RUN, and the version you would run is the published one. And it
-                  is one FK lookup instead of eager-loading every version of every listed
-                  workflow to render one integer, which matters now that a version's
-                  record is kept permanently. %>
-              <% if workflow.published_version %>
-                &middot; v<%= workflow.published_version.version_number %>
-              <% end %>
-              <% if workflow.description.present? %>
-                &middot; <%= truncate(strip_tags(workflow.description.to_s), length: 90) %>
-              <% end %>
+        <%= tag.div class: "player-row",
+              data: { player_filter_target: "card",
+                      title: workflow.title,
+                      description: workflow.description_text.to_s } do %>
+          <%= button_to play_workflow_path(workflow), method: :post,
+                class: "list-row", form_class: "player-row__run" do %>
+            <span class="list-row__icon" aria-hidden="true">
+              <%= icon "play", class: "icon icon--sm" %>
             </span>
-            <% if workflow.tags.any? %>
-              <span class="list-row__tags flex flex-wrap gap-1">
-                <% workflow.tags.first(3).each do |tag| %>
-                  <span class="tag-pill"><%= tag.name %></span>
+            <span class="list-row__body">
+              <span class="list-row__title"><%= workflow.title %></span>
+              <span class="list-row__sub">
+                <%= workflow.groups.first&.name || "No groups" %>
+                &middot; <%= pluralize(workflow.steps.size, "step") %>
+                <%# published_version, not versions.last: `has_many :versions` carries no
+                    default order, so `.last` was whatever the database happened to return.
+                    It is also the value this page actually means — /play lists workflows
+                    you can RUN, and the version you would run is the published one. And it
+                    is one FK lookup instead of eager-loading every version of every listed
+                    workflow to render one integer, which matters now that a version's
+                    record is kept permanently. %>
+                <% if workflow.published_version %>
+                  &middot; v<%= workflow.published_version.version_number %>
                 <% end %>
-                <% if workflow.tags.size > 3 %>
-                  <span class="list-row__sub">+<%= workflow.tags.size - 3 %> more</span>
+                <% if workflow.description.present? %>
+                  &middot; <%= truncate(strip_tags(workflow.description.to_s), length: 90) %>
                 <% end %>
               </span>
-            <% end %>
-          </span>
-          <span class="list-row__arrow" aria-hidden="true">
-            <%= icon "chevron-right", class: "icon icon--sm" %>
-          </span>
+              <% if workflow.tags.any? %>
+                <span class="list-row__tags flex flex-wrap gap-1">
+                  <% workflow.tags.first(3).each do |tag| %>
+                    <span class="tag-pill"><%= tag.name %></span>
+                  <% end %>
+                  <% if workflow.tags.size > 3 %>
+                    <span class="list-row__sub">+<%= workflow.tags.size - 3 %> more</span>
+                  <% end %>
+                </span>
+              <% end %>
+            </span>
+            <span class="list-row__arrow" aria-hidden="true">
+              <%= icon "chevron-right", class: "icon icon--sm" %>
+            </span>
+          <% end %>
+          <% if @pinnable %>
+            <div class="player-row__pin">
+              <%= render "workflows/pins/toggle", workflow:,
+                    pinned: @pinned_ids.include?(workflow.id), location: "play" %>
+            </div>
+          <% end %>
         <% end %>
       <% end %>
     </div>

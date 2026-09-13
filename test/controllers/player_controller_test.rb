@@ -147,6 +147,32 @@ class PlayerControllerTest < ActionDispatch::IntegrationTest
     assert_select "button", text: /Untitled Workflow/, count: 0
   end
 
+  test "a Regular user gets a pin toggle beside each workflow on /play" do
+    sign_in @regular
+    get play_path
+
+    assert_select ".player-row[data-player-filter-target='card'][data-title='Player Flow']" do
+      assert_select "form button.list-row", text: /Player Flow/
+      assert_select "button.pin-button[aria-label='Pin Player Flow']"
+    end
+  end
+
+  test "a pinned workflow's toggle on /play offers Unpin" do
+    UserWorkflowPin.create!(user: @regular, workflow: @workflow)
+    sign_in @regular
+    get play_path
+
+    assert_select "button.pin-button.is-pinned[aria-label='Unpin Player Flow']"
+  end
+
+  test "Editors and Admins get no pin toggle on /play, because their home shows no pins" do
+    sign_in @admin
+    get play_path
+
+    assert_select ".player-row", minimum: 1
+    assert_select ".pin-button", count: 0
+  end
+
   # === Start ===
 
   test "authenticated user can start a workflow" do

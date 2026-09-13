@@ -19,9 +19,8 @@ export default class extends Controller {
       const title = (card.dataset.title || "").toLowerCase()
       const desc = (card.dataset.description || "").toLowerCase()
       const match = query === "" || title.includes(query) || desc.includes(query)
-      // Hide the form wrapper (grid item), not just the button, so the grid reflows
-      const wrapper = card.closest(".button_to") || card
-      wrapper.style.display = match ? "" : "none"
+      // The target is the whole row — Run button and pin toggle together.
+      card.style.display = match ? "" : "none"
       if (match) visible++
     })
 

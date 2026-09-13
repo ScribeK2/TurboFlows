@@ -184,10 +184,6 @@ button.list-row {
   cursor: pointer;
 }
 
-.list-section__body > form:not(:last-child) > button.list-row {
-  border-bottom: 1px solid var(--color-border);
-}
-
 .list-row__arrow {
   display: inline-flex;
   align-items: center;
