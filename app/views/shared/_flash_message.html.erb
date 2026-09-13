@@ -1,0 +1,17 @@
+<%# locals: (type:, message:) %>
+<%# One flash. shared/flash_messages renders one for each message, and the
+    application layout keeps an empty alert in a template, which
+    services/flash.js copies to report a change the page made itself. %>
+<div class="flash flash--<%= %w[alert error].include?(type.to_s) ? "alert" : "notice" %>"
+     data-controller="alert"
+     data-alert-duration-value="5000"
+     data-action="click->alert#dismiss">
+  <div class="flash__body" role="alert">
+    <span class="flash__text"><%= message %></span>
+    <button type="button" class="flash__close" data-action="click->alert#dismiss"
+            aria-label="Dismiss message">
+      <%= icon "x-mark", class: "icon icon--xs" %>
+    </button>
+    <div class="flash__progress animate-shrink" data-alert-target="progress"></div>
+  </div>
+</div>

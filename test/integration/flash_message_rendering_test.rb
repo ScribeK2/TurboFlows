@@ -81,9 +81,11 @@ class FlashMessageRenderingTest < ActionDispatch::IntegrationTest
     assert_response :redirect
 
     partial = Rails.root.join("app/views/shared/_flash_messages.html.erb").read
+    # Each message's markup, variant included, lives in the one-message partial.
+    message = Rails.root.join("app/views/shared/_flash_message.html.erb").read
 
     assert_match(/flash\.each/, partial, "the partial must iterate flash, not name notice and alert")
-    assert_match(/alert.*error.*"alert".*"notice"/m, partial,
+    assert_match(/alert.*error.*"alert".*"notice"/m, message,
                  "unknown flash types must fall back to a real variant")
   end
 end

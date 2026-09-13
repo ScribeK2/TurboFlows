@@ -191,6 +191,9 @@
       <%# A stream target, so an in-page change (a member added on a group page)
           can report itself. .flash is position: fixed, so the wrapper takes no space. %>
       <div id="flash"><%= render "shared/flash_messages" %></div>
+      <%# An empty alert for services/flash.js to copy, so a change the page made
+          itself (a drag that didn't save) reports the way the server does. %>
+      <template id="flash-alert-template"><%= render "shared/flash_message", type: "alert", message: "" %></template>
 
       <main class="page-main">
         <%# A nested layout (layouts/admin) fills :content and renders this one;
