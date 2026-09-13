@@ -36,11 +36,30 @@ class Workflows::PinsControllerTest < ActionDispatch::IntegrationTest
     assert_response :redirect
   end
 
-  test "create prevents duplicate pins, and the HTML fallback returns to /play" do
+  test "create is idempotent for an already-pinned workflow, and the HTML fallback returns to /play" do
     UserWorkflowPin.create!(user: @user, workflow: @workflow)
-    post workflow_pin_path(@workflow)
+    assert_no_difference "UserWorkflowPin.count" do
+      post workflow_pin_path(@workflow)
+    end
     assert_redirected_to play_path
-    assert_equal "User has already been taken", flash[:alert]
+    assert_nil flash[:alert]
+  end
+
+  test "a duplicate POST over turbo_stream creates no second pin and streams the pinned toggle" do
+    UserWorkflowPin.create!(user: @user, workflow: @workflow)
+    assert_no_difference "UserWorkflowPin.count" do
+      post workflow_pin_path(@workflow), as: :turbo_stream
+    end
+    assert_response :success
+    assert_includes response.body, "Unpin #{@workflow.title}"
+  end
+
+  test "a DELETE with no pin succeeds and streams the unpinned toggle" do
+    assert_no_difference "UserWorkflowPin.count" do
+      delete workflow_pin_path(@workflow), as: :turbo_stream
+    end
+    assert_response :success
+    assert_includes response.body, "Pin #{@workflow.title}"
   end
 
   test "a pin replaces the workflow's toggle wherever it can appear, and the pinned section" do
@@ -50,6 +69,9 @@ class Workflows::PinsControllerTest < ActionDispatch::IntegrationTest
     assert_select "turbo-stream[action='replace'][target=?]", "pin_play_workflow_#{@workflow.id}"
     assert_select "turbo-stream[action='replace'][target='pinned-workflows-section']"
     assert_includes response.body, "Unpin #{@workflow.title}"
+    # A pinned toggle renders the solid bookmark; nothing else on the page uses
+    # the icon library's solid variant, so its fill-based SVG is a fingerprint.
+    assert_includes response.body, 'fill="currentColor"'
   end
 
   test "an unpin replaces the toggles with Pin" do
@@ -58,6 +80,7 @@ class Workflows::PinsControllerTest < ActionDispatch::IntegrationTest
 
     assert_select "turbo-stream[action='replace'][target=?]", "pin_play_workflow_#{@workflow.id}"
     assert_includes response.body, "Pin #{@workflow.title}"
+    assert_not_includes response.body, 'fill="currentColor"'
   end
 
   test "a refused pin says why in the flash, without leaving the page" do
@@ -114,8 +137,10 @@ class Workflows::PinsControllerTest < ActionDispatch::IntegrationTest
     assert_response :redirect
   end
 
-  test "destroy returns 404 when pin does not exist" do
-    delete workflow_pin_path(@workflow), as: :turbo_stream
+  test "destroy returns 404 for an invisible workflow" do
+    private_wf = Workflow.create!(title: "Private", user: @editor, status: "draft")
+
+    delete workflow_pin_path(private_wf), as: :turbo_stream
     assert_response :not_found
   end
 

@@ -45,14 +45,28 @@ class UserWorkflowPinTest < ActiveSupport::TestCase
 
   test "enforces pin limit of #{UserWorkflowPin::MAX_PINS}" do
     UserWorkflowPin::MAX_PINS.times do |i|
-      wf = Workflow.create!(title: "Flow #{i}", user: @user)
+      wf = file_in_global(Workflow.create!(title: "Flow #{i}", user: @user))
       UserWorkflowPin.create!(user: @user, workflow: wf)
     end
 
-    extra_wf = Workflow.create!(title: "One Too Many", user: @user)
+    extra_wf = file_in_global(Workflow.create!(title: "One Too Many", user: @user))
     pin = UserWorkflowPin.new(user: @user, workflow: extra_wf)
     assert_not pin.valid?
     assert_includes pin.errors[:base], "You can pin up to #{UserWorkflowPin::MAX_PINS} workflows"
+  end
+
+  test "does not count a pin on a workflow the viewer can no longer see toward the limit" do
+    pinned_workflows = Array.new(UserWorkflowPin::MAX_PINS) do |i|
+      file_in_global(Workflow.create!(title: "Flow #{i}", user: @user))
+    end
+    pinned_workflows.each { |wf| UserWorkflowPin.create!(user: @user, workflow: wf) }
+
+    # One of the pinned workflows is unpublished, so it drops out of visible_to.
+    pinned_workflows.first.update!(status: "draft")
+
+    still_visible = file_in_global(Workflow.create!(title: "Still Visible", user: @user))
+    pin = UserWorkflowPin.new(user: @user, workflow: still_visible)
+    assert_predicate pin, :valid?
   end
 
   test "cascade destroys when workflow is deleted" do

@@ -9,10 +9,14 @@ module Workflows
     before_action :set_workflow
 
     # POST /workflows/:workflow_id/pin
+    #
+    # Idempotent: a Back-button page can show a stale toggle (Turbo draws a
+    # cached snapshot rather than asking again), so a pin already in place is
+    # success, not a uniqueness error surfacing as raw model text.
     def create
-      pin = current_user.user_workflow_pins.new(workflow: @workflow)
+      pin = current_user.user_workflow_pins.find_or_initialize_by(workflow: @workflow)
 
-      if pin.save
+      if pin.persisted? || pin.save
         respond_to do |format|
           format.turbo_stream { render_pin_updates(pinned: true) }
           format.html { redirect_back_or_to play_path }
@@ -23,8 +27,11 @@ module Workflows
     end
 
     # DELETE /workflows/:workflow_id/pin
+    #
+    # Idempotent for the same reason as #create: a stale page's Unpin must not
+    # 404 when the pin is already gone.
     def destroy
-      current_user.user_workflow_pins.find_by!(workflow: @workflow).destroy
+      current_user.user_workflow_pins.find_by(workflow: @workflow)&.destroy
 
       respond_to do |format|
         format.turbo_stream { render_pin_updates(pinned: false) }
@@ -50,7 +57,7 @@ module Workflows
       render turbo_stream: streams
     end
 
-    # A refusal (the 8-pin limit, a duplicate) answers in place through #flash,
+    # A refusal (the 8-pin limit) answers in place through #flash,
     # the application layout's slot for in-page changes (UIGUIDE § Flash), so
     # the CSR stays on the list they were pinning from. The HTML fallback goes
     # to /play: /workflows is closed to a Regular user.

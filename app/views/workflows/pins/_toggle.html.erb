@@ -9,7 +9,7 @@
           class: "btn btn--plain btn--sm pin-button is-pinned",
           data: { turbo_stream: true },
           aria: { label: "Unpin #{workflow.title}" } do %>
-      <%= icon "bookmark", class: "icon icon--sm" %>
+      <%= icon "bookmark", variant: "solid", class: "icon icon--sm" %>
     <% end %>
   <% else %>
     <%= button_to workflow_pin_path(workflow), method: :post,
