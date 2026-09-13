@@ -305,8 +305,32 @@ All workflows are graphs. There is no separate "linear mode" — a sequential fl
 
 ## Home Page
 
-`/` is two pages. A Regular user gets the CSR dashboard (pins, recently run). An
-Editor or Admin gets **home**, which is about their own work and nothing else:
+`/` is two pages, and both are about the viewer's own work and nothing else.
+
+A Regular user gets the **CSR home** (`dashboard/csr`, `Dashboard::DataLoader`):
+a call to pick back up, their pins, and the workflows they recently started.
+Browsing and pinning are `/play`.
+- **No workflow title on it is a link.** A Regular user has no page for a
+  workflow, since `WorkflowsController` and `ScenariosController` are closed to
+  them, and `POST /play/:id` starts a live call, so Run buttons are the only way
+  in. From `263717c8` (2026-04-07) until 2026-09-13 every title, "Manage pins",
+  "View all" and Recent Activity row sent a CSR to `/play` with a permission
+  error. `test/integration/csr_home_links_test.rb` follows every link on the page
+  as a Regular user.
+- **Its lists count calls the CSR started** (`Scenario.origins`), because a
+  sub-flow or handoff frame carries the same user and purpose as its call. Each
+  Recently Run row says how the latest call ended, read from `CallStatistics`,
+  in Analytics' words.
+- **Resume is one line:** the call with the latest activity inside
+  `Dashboard::DataLoader::RESUME_WINDOW` (60 minutes) that still has an
+  unfinished frame. Closing the tab is how calls usually end, so most unfinished
+  runs are over. It opens the unfinished frame with the latest activity, and
+  "Run a Flow" stays the page's filled button.
+- **Pins are personal, and only Regular users get a pin toggle** (on `/play` and on
+  home), because only the CSR home reads pins. `workflows/pins/_toggle` is the
+  only toggle, and `Workflows::PinsController` replaces every copy of it.
+
+An Editor or Admin gets **home**:
 - a hero card for the workflow they were last in;
 - "Waiting on you", one row per kind of problem, naming the workflows;
 - their other recent workflows;
