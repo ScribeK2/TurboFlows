@@ -48,7 +48,7 @@
                 <% end %>
               </div>
               <div class="list-row__actions">
-                <%= render "workflows/pin_button", workflow: workflow,
+                <%= render "workflows/pins/toggle", workflow: workflow,
                       pinned: @dashboard.pinned_workflow_ids.include?(workflow.id), location: "recent" %>
                 <%= button_to play_workflow_path(workflow), method: :post,
                       class: "btn btn--secondary btn--sm", aria: { label: "Re-run #{workflow.title}" } do %>

@@ -1,5 +1,10 @@
 module Workflows
   class PinsController < ApplicationController
+    # Toggles replaced one by one after a pin change: Recently Run rows on the
+    # CSR home and the rows of /play. A location the page doesn't have is a
+    # no-op. The pinned section's own toggles come back with the section.
+    TOGGLE_LOCATIONS = %w[recent play].freeze
+
     before_action :authenticate_user!
     before_action :set_workflow
 
@@ -10,21 +15,20 @@ module Workflows
       if pin.save
         respond_to do |format|
           format.turbo_stream { render_pin_updates(pinned: true) }
-          format.html { redirect_back_or_to workflows_path }
+          format.html { redirect_back_or_to play_path }
         end
       else
-        redirect_back_or_to workflows_path, alert: pin.errors.full_messages.first
+        refuse(pin.errors.full_messages.first)
       end
     end
 
     # DELETE /workflows/:workflow_id/pin
     def destroy
-      pin = current_user.user_workflow_pins.find_by!(workflow: @workflow)
-      pin.destroy
+      current_user.user_workflow_pins.find_by!(workflow: @workflow).destroy
 
       respond_to do |format|
         format.turbo_stream { render_pin_updates(pinned: false) }
-        format.html { redirect_back_or_to workflows_path }
+        format.html { redirect_back_or_to play_path }
       end
     end
 
@@ -35,16 +39,30 @@ module Workflows
     end
 
     def render_pin_updates(pinned:)
-      dashboard = Dashboard::DataLoader.new(current_user)
+      streams = [turbo_stream.replace("pinned-workflows-section",
+                                      partial: "dashboard/pinned_workflows",
+                                      locals: { dashboard: Dashboard::DataLoader.new(current_user) })]
+      TOGGLE_LOCATIONS.each do |location|
+        streams << turbo_stream.replace(helpers.dom_id(@workflow, "pin_#{location}"),
+                                        partial: "workflows/pins/toggle",
+                                        locals: { workflow: @workflow, pinned:, location: })
+      end
+      render turbo_stream: streams
+    end
 
-      render turbo_stream: [
-        turbo_stream.replace("pinned-workflows-section",
-                             partial: "dashboard/pinned_workflows",
-                             locals: { dashboard: dashboard }),
-        turbo_stream.replace("pin-recent-#{@workflow.id}",
-                             partial: "workflows/pin_button",
-                             locals: { workflow: @workflow, pinned: pinned, location: "recent" })
-      ]
+    # A refusal (the 8-pin limit, a duplicate) answers in place through #flash,
+    # the application layout's slot for in-page changes (UIGUIDE § Flash), so
+    # the CSR stays on the list they were pinning from. The HTML fallback goes
+    # to /play: /workflows is closed to a Regular user.
+    def refuse(message)
+      respond_to do |format|
+        format.turbo_stream do
+          flash.now[:alert] = message
+          render turbo_stream: turbo_stream.update("flash", partial: "shared/flash_messages"),
+                 status: :unprocessable_content
+        end
+        format.html { redirect_back_or_to play_path, alert: message }
+      end
     end
   end
 end

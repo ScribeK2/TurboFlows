@@ -36,11 +36,41 @@ class Workflows::PinsControllerTest < ActionDispatch::IntegrationTest
     assert_response :redirect
   end
 
-  test "create prevents duplicate pins" do
+  test "create prevents duplicate pins, and the HTML fallback returns to /play" do
     UserWorkflowPin.create!(user: @user, workflow: @workflow)
     post workflow_pin_path(@workflow)
-    assert_redirected_to workflows_path
+    assert_redirected_to play_path
     assert_equal "User has already been taken", flash[:alert]
+  end
+
+  test "a pin replaces the workflow's toggle wherever it can appear, and the pinned section" do
+    post workflow_pin_path(@workflow), as: :turbo_stream
+
+    assert_select "turbo-stream[action='replace'][target=?]", "pin_recent_workflow_#{@workflow.id}"
+    assert_select "turbo-stream[action='replace'][target=?]", "pin_play_workflow_#{@workflow.id}"
+    assert_select "turbo-stream[action='replace'][target='pinned-workflows-section']"
+    assert_includes response.body, "Unpin #{@workflow.title}"
+  end
+
+  test "an unpin replaces the toggles with Pin" do
+    UserWorkflowPin.create!(user: @user, workflow: @workflow)
+    delete workflow_pin_path(@workflow), as: :turbo_stream
+
+    assert_select "turbo-stream[action='replace'][target=?]", "pin_play_workflow_#{@workflow.id}"
+    assert_includes response.body, "Pin #{@workflow.title}"
+  end
+
+  test "a refused pin says why in the flash, without leaving the page" do
+    UserWorkflowPin::MAX_PINS.times do |i|
+      UserWorkflowPin.create!(user: @user, workflow: file_in_global(Workflow.create!(title: "Flow #{i}", user: @editor)))
+    end
+    extra = file_in_global(Workflow.create!(title: "Over Limit", user: @editor))
+
+    post workflow_pin_path(extra), as: :turbo_stream
+
+    assert_response :unprocessable_content
+    assert_select "turbo-stream[action='update'][target='flash']"
+    assert_includes response.body, "You can pin up to #{UserWorkflowPin::MAX_PINS} workflows"
   end
 
   test "create respects pin limit" do

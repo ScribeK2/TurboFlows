@@ -1,5 +1,9 @@
-<% location ||= "default" %>
-<div id="pin-<%= location %>-<%= workflow.id %>">
+<%# locals: (workflow:, pinned:, location:) %>
+<%# The one pin toggle. `location` says where it sits — "pinned" and "recent" on
+    the CSR home, "play" on /play — so the id is unique on a page that shows a
+    workflow twice, and Workflows::PinsController can replace every copy after a
+    pin change. %>
+<div id="<%= dom_id(workflow, "pin_#{location}") %>">
   <% if pinned %>
     <%= button_to workflow_pin_path(workflow), method: :delete,
           class: "btn btn--plain btn--sm pin-button is-pinned",
