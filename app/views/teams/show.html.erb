@@ -1,0 +1,19 @@
+<% content_for(:title) { "#{@group.name} — Teams — TurboFlows" } %>
+
+<%# A team page (spec 2026-09-13-group-featured-workflows Q17): the group's
+    featured workflows and nothing else. Members, folders and subgroups stay on
+    the admin group page. %>
+<div class="page-content page-narrow">
+  <div class="page-header-section">
+    <%= link_to teams_path, class: "page-back" do %>
+      <%= icon "chevron-left", class: "icon icon--xs" %>
+      Teams
+    <% end %>
+    <h1 class="page-header-section__title"><%= @group.name %></h1>
+    <p class="page-header-section__ident">
+      <%= @path %> · <%= @group.global? ? "Everyone signed in" : pluralize(@member_count, "member") %>
+    </p>
+  </div>
+
+  <%= render "teams/featured", group: @group, featured: @featured, visible_ids: @visible_ids %>
+</div>

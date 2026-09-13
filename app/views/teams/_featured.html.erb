@@ -1,0 +1,27 @@
+<%# locals: (group:, featured:, visible_ids:) %>
+<%# A team's featured workflows, in the order members get them. A row members
+    can't see stays listed, marked, and holds no place (Q18). %>
+<section id="team-featured" class="card mb-4" aria-labelledby="team-featured-heading">
+  <div class="card__body">
+    <h2 id="team-featured-heading" class="admin-card__heading">Featured workflows</h2>
+
+    <% if featured.any? %>
+      <ul class="admin-group__list mb-4" role="list">
+        <% featured.each do |row| %>
+          <% hidden = row.hidden_reason(visible_ids) %>
+          <li class="admin-group__item">
+            <span class="admin-group__name"><%= row.workflow.title %></span>
+            <span class="admin-group__meta">
+              <% if hidden %>
+                <span class="badge badge--warning">Members can't see this</span> <%= hidden %> ·
+              <% end %>
+              Added by <%= row.added_by&.email || "a former user" %> <%= time_ago_in_words(row.created_at) %> ago
+            </span>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="form-hint mb-4">Nothing featured yet.</p>
+    <% end %>
+  </div>
+</section>

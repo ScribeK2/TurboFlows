@@ -1,0 +1,39 @@
+<% content_for(:title) { "Teams — TurboFlows" } %>
+
+<%# The groups you curate (spec 2026-09-13-group-featured-workflows Q16): a
+    manager's teams and sub-teams, or for an administrator every group and
+    Global. Rows reuse the admin group page's list anatomy. %>
+<div class="page-content page-narrow">
+  <div class="page-header-section">
+    <h1 class="page-header-section__title">Teams</h1>
+    <p class="page-header-section__subtitle">Choose the workflows each team sees first on its home page.</p>
+  </div>
+
+  <%= form_with url: teams_path, method: :get, class: "admin-group__search mb-4",
+        data: { controller: "debounced-submit", turbo_frame: "teams-list" } do |form| %>
+    <%= form.search_field :q, value: @query, class: "form-input form-input--sm",
+          placeholder: "Filter teams by name", autocomplete: "off",
+          aria: { label: "Filter teams" }, data: { action: "input->debounced-submit#submit" } %>
+    <%= form.submit "Filter", name: nil, class: "btn btn--secondary btn--sm" %>
+  <% end %>
+
+  <turbo-frame id="teams-list">
+    <% if @nodes.any? %>
+      <div class="card">
+        <div class="card__body">
+          <ul class="admin-group__list" role="list">
+            <% @nodes.each do |node| %>
+              <li class="admin-group__item">
+                <%= link_to node.path, team_path(node.id), class: "admin-group__name", data: { turbo_frame: "_top" } %>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+      </div>
+    <% elsif @query.present? %>
+      <p class="form-hint">No team matches “<%= @query %>”.</p>
+    <% else %>
+      <p class="form-hint">No teams yet.</p>
+    <% end %>
+  </turbo-frame>
+</div>

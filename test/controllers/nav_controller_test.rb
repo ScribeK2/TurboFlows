@@ -56,13 +56,14 @@ class NavControllerTest < ActionDispatch::IntegrationTest
 
   # Admin sits last so it can appear and disappear with the role without
   # reshuffling the positions above it — an editor and an admin see the same
-  # first two destinations. Analytics sits directly before Admin (spec
-  # 2026-09-12): an administrator is always allowed into Analytics too.
+  # first two destinations. Teams and Analytics sit directly before Admin
+  # (spec 2026-09-12, 2026-09-13-group-featured-workflows): an administrator
+  # is always allowed into both.
   test "Admin is the last destination" do
     sign_in @admin
     get root_path
     labels = css_select("nav .nav__links a.nav__link").map { |a| a.text.strip }
-    assert_equal %w[Workflows Play Analytics Admin], labels
+    assert_equal %w[Workflows Play Teams Analytics Admin], labels
   end
 
   # --- you are here ---

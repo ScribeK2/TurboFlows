@@ -70,6 +70,11 @@
                 <%= link_to "Play", play_path,
                       class: "nav__link",
                       aria: { current: nav_current(:play) } %>
+                <% if current_user.can_curate_teams? %>
+                  <%= link_to "Teams", teams_path,
+                        class: "nav__link",
+                        aria: { current: nav_current(:teams) } %>
+                <% end %>
                 <% if current_user.can_view_analytics? %>
                   <%= link_to "Analytics", analytics_path,
                         class: "nav__link",
