@@ -614,7 +614,7 @@ These are the most-used controllers. Wire them via `data-controller` on the appr
 | `tabs` | Tab switching | `click->tabs#select` |
 | `inline-rename` | Rename in place: Enter or blur saves once, Escape reverts | On the one-field form; `input` target with `keydown.enter->inline-rename#commit blur->inline-rename#commit keydown.esc->inline-rename#revert` |
 | `debounced-submit` | Submit a form once typing pauses (300ms) | On the form, with `input->debounced-submit#submit` on the field. Keep the field outside any frame the form targets, or each answer replaces the input being typed in |
-| `sortable-list` | Drag to reorder a list whose items carry `data-sortable-id`; on drop, PATCHes the ids in order and renders a Turbo Stream answer. A failed save (an error, no answer, or a redirect) puts the rows back and reports through `#flash` | On the list, with `data-sortable-list-url-value` and `data-sortable-list-param-value` (e.g. `folder_ids`, `featured_ids`); drag handle `.cursor-move` |
+| `sortable-list` | Drag to reorder a list whose items carry `data-sortable-id`; on drop, PATCHes the ids in order and renders a Turbo Stream answer. A failed save (an error such as the 401 a lost session answers with, no answer, or a redirect such as lost access, which it doesn't follow) puts the rows back and reports through `#flash` | On the list, with `data-sortable-list-url-value` and `data-sortable-list-param-value` (e.g. `folder_ids`, `featured_ids`); drag handle `.cursor-move` |
 
 ---
 
