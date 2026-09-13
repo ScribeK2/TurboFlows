@@ -16,7 +16,7 @@ module Workflows
     def create
       pin = current_user.user_workflow_pins.find_or_initialize_by(workflow: @workflow)
 
-      if pin.persisted? || pin.save
+      if pin.persisted? || save_pin(pin)
         respond_to do |format|
           format.turbo_stream { render_pin_updates(pinned: true) }
           format.html { redirect_back_or_to play_path }
@@ -43,6 +43,18 @@ module Workflows
 
     def set_workflow
       @workflow = Workflow.visible_to(current_user).find(params[:workflow_id])
+    end
+
+    # Two first pins of the same workflow at once. The losing request is refused
+    # either by the uniqueness validation (the other pin landed before it
+    # checked) or by the unique index (it landed between the check and the
+    # INSERT). Either way the workflow ended up pinned, which is what was asked,
+    # so it answers as a pin rather than the model's message or a 500. A refusal
+    # with no pin behind it, such as the 8-pin limit, is still a refusal.
+    def save_pin(pin)
+      pin.save || current_user.user_workflow_pins.exists?(workflow: @workflow)
+    rescue ActiveRecord::RecordNotUnique
+      true
     end
 
     def render_pin_updates(pinned:)

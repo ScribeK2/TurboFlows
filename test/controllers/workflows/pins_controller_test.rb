@@ -54,6 +54,35 @@ class Workflows::PinsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Unpin #{@workflow.title}"
   end
 
+  # Two first pins at the same instant both pass the uniqueness check, and the
+  # database's unique index refuses the second INSERT. Reproduced by writing the
+  # conflicting pin the moment the check has come back empty. That write lands
+  # inside the failed save's savepoint and rolls back with it, so this asserts
+  # the answer, not the row; in production the other request's pin is committed.
+  test "a pin that loses the race at the unique index still answers as pinned" do
+    raced = stage_a_racing_pin(after: 'SELECT 1 AS one FROM "user_workflow_pins"') do
+      post workflow_pin_path(@workflow), as: :turbo_stream
+    end
+
+    assert raced, "the uniqueness check never ran, so no race was staged"
+    assert_response :success
+    assert_includes response.body, "Unpin #{@workflow.title}"
+  end
+
+  # The other request's pin can also land between looking the pin up and
+  # validating it, and then the uniqueness validation refuses the save.
+  test "a pin that loses the race at the uniqueness check answers as pinned, not with the model's message" do
+    raced = stage_a_racing_pin(after: 'SELECT "user_workflow_pins".* FROM "user_workflow_pins"') do
+      post workflow_pin_path(@workflow), as: :turbo_stream
+    end
+
+    assert raced, "the pin lookup never ran, so no race was staged"
+    assert_response :success
+    assert_equal 1, UserWorkflowPin.where(user: @user, workflow: @workflow).count
+    assert_includes response.body, "Unpin #{@workflow.title}"
+    assert_not_includes response.body, "has already been taken"
+  end
+
   test "a DELETE with no pin succeeds and streams the unpinned toggle" do
     assert_no_difference "UserWorkflowPin.count" do
       delete workflow_pin_path(@workflow), as: :turbo_stream
@@ -148,5 +177,24 @@ class Workflows::PinsControllerTest < ActionDispatch::IntegrationTest
     sign_out @user
     post workflow_pin_path(@workflow)
     assert_redirected_to new_user_session_path
+  end
+
+  private
+
+  # Stands in for a second request pinning the same workflow: writes that pin
+  # the moment the first query starting with `after` has run. Returns whether
+  # it ran, so a test can tell a staged race from one that never happened.
+  def stage_a_racing_pin(after:, &)
+    raced = false
+    write_the_other_pin = lambda do |*, payload|
+      next if raced || !payload[:sql].start_with?(after)
+
+      raced = true
+      UserWorkflowPin.insert_all([{ user_id: @user.id, workflow_id: @workflow.id,
+                                    created_at: Time.current, updated_at: Time.current }])
+    end
+
+    ActiveSupport::Notifications.subscribed(write_the_other_pin, "sql.active_record", &)
+    raced
   end
 end
