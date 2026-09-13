@@ -161,6 +161,17 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_operator order.index("From your team"), :<, order.index("Your fast path")
   end
 
+  test "a featured workflow the CSR has never run says how many steps it has instead of how often it ran" do
+    editor = User.create!(email: "editor-#{SecureRandom.hex(4)}@example.com", password: "password123!", password_confirmation: "password123!", role: "editor")
+    fresh = file_in_global(Workflow.create!(title: "Fresh Kit", user: editor))
+    Steps::Resolve.create!(workflow: fresh, title: "Done", position: 0, resolution_type: "success")
+    GroupFeaturedWorkflow.create!(group: global_group, workflow: fresh, position: 0)
+
+    get root_path
+
+    assert_select "#team-workflows-section .list-row__sub", text: /\A\s*1 step\s*·\s*never run yet\s*\z/
+  end
+
   test "no From your team card when nothing is featured, only the empty wrapper a pin change replaces" do
     get root_path
 

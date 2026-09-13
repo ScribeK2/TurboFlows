@@ -62,7 +62,7 @@ class GroupFeaturedWorkflowTest < ActiveSupport::TestCase
     visible = Workflow.visible_to_members_of(@team).pluck(:id).to_set
 
     assert_equal "Unpublished", unpublished.reload.hidden_reason(visible)
-    assert_equal "Not filed in this team or Global", refiled.reload.hidden_reason(visible)
+    assert_equal "Not filed in this team, its sub-teams or Global", refiled.reload.hidden_reason(visible)
     assert_nil shown.hidden_reason(visible)
   end
 

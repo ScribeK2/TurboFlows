@@ -1,6 +1,8 @@
 # An administrator's grant (spec 2026-09-12): this person sees Analytics for the
-# group's members and its sub-teams. Not a membership. Nothing a person does
-# themselves adds or removes one, and it does not change their role.
+# group's members and its sub-teams, and on Teams chooses the workflows the group
+# and its sub-teams see first on home (spec 2026-09-13-group-featured-workflows).
+# Not a membership. Nothing a person does themselves adds or removes one, and it
+# does not change their role.
 class GroupManager < ApplicationRecord
   belongs_to :group
   belongs_to :user

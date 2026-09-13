@@ -308,7 +308,8 @@ All workflows are graphs. There is no separate "linear mode" — a sequential fl
 `/` is two pages, and both are about the viewer's own work and nothing else.
 
 A Regular user gets the **CSR home** (`dashboard/csr`, `Dashboard::DataLoader`):
-a call to pick back up, their pins, and the workflows they recently started.
+a call to pick back up, what their teams feature for them, their pins, and the
+workflows they recently started.
 Browsing and pinning are `/play`.
 - **No workflow title on it is a link.** A Regular user has no page for a
   workflow, since `WorkflowsController` and `ScenariosController` are closed to
@@ -350,9 +351,12 @@ means a group's page outside the admin area, and the data is still a group.
 - **The cap:** up to 8 per group, in the curator's order. Only rows members can still
   see count; a row they can't see stays on the team page, marked, until it's removed
   or visible again.
-- **The page:** changes answer with a Turbo Stream that replaces `#team-featured` and
-  updates `#flash`, and drag reordering uses `sortable-list`, the same controller as
-  the admin group page's folders.
+- **The page:** every change answers with a Turbo Stream that replaces
+  `#team-featured`. Feature and Remove also report through `#flash`; Move and a drag
+  re-render the card in place, so Move up and Move down follow the new order and Move
+  keeps focus on the row that moved. Drag reordering uses `sortable-list`, the same
+  controller as the admin group page's folders, which renders a stream only when the
+  endpoint sends one (the folders endpoint answers an empty 200).
 
 An Editor or Admin gets **home**:
 - a hero card for the workflow they were last in;

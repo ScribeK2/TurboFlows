@@ -11,8 +11,13 @@ class TeamCuration
     @user = user
   end
 
+  # Asked by the top bar on every page, so it doesn't walk sub-teams: with no
+  # managed group there are none to add.
   def allowed?
-    @user&.admin? || group_ids.any?
+    return false unless @user
+    return true if @user.admin?
+
+    GroupManager.exists?(user: @user)
   end
 
   def can_curate?(group)

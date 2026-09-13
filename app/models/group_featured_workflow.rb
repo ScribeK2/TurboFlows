@@ -23,7 +23,7 @@ class GroupFeaturedWorkflow < ApplicationRecord
   def hidden_reason(visible_ids)
     return nil if visible_ids.include?(workflow_id)
 
-    workflow.published? ? "Not filed in this team or Global" : "Unpublished"
+    workflow.published? ? "Not filed in this team, its sub-teams or Global" : "Unpublished"
   end
 
   private

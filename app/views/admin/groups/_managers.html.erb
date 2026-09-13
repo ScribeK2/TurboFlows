@@ -1,6 +1,8 @@
 <%# locals: (group:, query: "", candidates: User.none) %>
 <%# Managers see Analytics for this group's members and its sub-teams (spec
-    2026-09-12). admin/group_managers/changed replaces this section whole. %>
+    2026-09-12), and on Teams choose the workflows this group and its sub-teams
+    see first on home (spec 2026-09-13-group-featured-workflows).
+    admin/group_managers/changed replaces this section whole. %>
 <% grants = group.managers_by_email.to_a %>
 <%# The same scope the Overview and the sidebar badge count, so the card can
     never call someone in no group whom the Overview doesn't. %>
@@ -9,7 +11,7 @@
   <div class="card__body">
     <h2 id="group-managers-heading" class="admin-card__heading">Managers</h2>
     <p class="form-hint mb-3">
-      Managers see Analytics for this group's members and its sub-teams, including each person's calls.
+      Managers see Analytics for this group's members and its sub-teams, including each person's calls, and on Teams choose the workflows this group and its sub-teams see first on home.
       It doesn't change their role or their groups.
       <% if Group.self_joinable_ids.include?(group.id) %>
         People can join this group themselves, and a manager sees whoever does.

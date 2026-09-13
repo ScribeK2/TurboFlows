@@ -59,6 +59,19 @@ class TeamCurationTest < ActiveSupport::TestCase
     assert_equal [@team.id, @sub_team.id].sort, GroupManager.team_group_ids_for(manager).sort
   end
 
+  # The top bar asks on every page, so whether someone curates at all must not
+  # walk a manager's sub-teams.
+  test "allowed? asks one query, however many sub-teams a manager's team has" do
+    manager = person("deep", "user")
+    GroupManager.create!(group: @department, user: manager)
+    nobody = person("nobody", "user")
+
+    manager_queries = count_queries { assert_predicate TeamCuration.new(manager), :allowed? }
+    nobody_queries = count_queries { assert_not TeamCuration.new(nobody).allowed? }
+
+    assert_equal [1, 1], [manager_queries, nobody_queries]
+  end
+
   private
 
   def person(label, role)
