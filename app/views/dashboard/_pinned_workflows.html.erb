@@ -1,10 +1,11 @@
 <%# locals: (dashboard:) %>
 <% pinned = dashboard.pinned_workflows %>
 
-<%# The CSR's launcher. Workflows are pinned on /play and on Recently Run rows, and
-    unpinned here in place. There is no "Manage pins": it pointed at /workflows,
-    which a Regular user cannot open. Workflows::PinsController replaces this
-    whole section after every pin change. %>
+<%# The CSR's own launcher. Workflows are pinned on /play and on Recently Run rows,
+    and unpinned here in place. Workflows::PinsController replaces this whole
+    section after every pin change. When "From your team" already fills the page
+    and nothing is pinned, this shrinks to one line (spec
+    2026-09-13-group-featured-workflows Q20). %>
 <section class="list-section" id="pinned-workflows-section" aria-label="Your fast path">
   <div class="list-section__head">
     <h2 class="list-section__title">Your fast path</h2>
@@ -14,43 +15,17 @@
     <% end %>
   </div>
 
-  <div class="list-section__body">
-    <% if pinned.any? %>
+  <% if pinned.any? %>
+    <div class="list-section__body">
       <% pinned.each do |workflow| %>
-        <% stats = dashboard.pinned_workflow_stats[workflow.id] || { runs: 0, last_run_at: nil } %>
-        <div class="list-row">
-          <span class="list-row__icon" aria-hidden="true">
-            <%= icon "bookmark", class: "icon icon--sm" %>
-          </span>
-          <div class="list-row__body">
-            <div class="list-row__title"><%= workflow.title %></div>
-            <p class="list-row__sub">
-              <% if stats[:runs].positive? %>
-                <%= pluralize(stats[:runs], "run") %><% if stats[:last_run_at] %> &middot; last run <%= time_ago_in_words(stats[:last_run_at]) %> ago<% end %>
-              <% else %>
-                <%= pluralize(workflow.steps.size, "step") %> &middot; never run yet
-              <% end %>
-            </p>
-            <% if workflow.tags.any? %>
-              <div class="list-row__tags flex flex-wrap gap-1">
-                <% workflow.tags.each do |tag| %>
-                  <span class="tag-pill"><%= tag.name %></span>
-                <% end %>
-              </div>
-            <% end %>
-          </div>
-          <div class="list-row__actions">
-            <%= render "workflows/pins/toggle", workflow:, pinned: true, location: "pinned" %>
-            <%= button_to play_workflow_path(workflow), method: :post,
-                  class: "btn btn--secondary btn--sm",
-                  aria: { label: "Run #{workflow.title}" } do %>
-              <%= icon "play", class: "icon icon--xs" %>
-              Run
-            <% end %>
-          </div>
-        </div>
+        <%= render "dashboard/launcher_row", workflow:, stats: dashboard.run_stats[workflow.id],
+              icon_name: "bookmark", pinned_toggle: true %>
       <% end %>
-    <% else %>
+    </div>
+  <% elsif dashboard.team_sections.any? %>
+    <p class="form-hint">Pin workflows you use often from <%= link_to "/play", play_path %>.</p>
+  <% else %>
+    <div class="list-section__body">
       <div class="dashboard-empty">
         <div class="dashboard-empty__icon">
           <%= icon "bookmark", class: "icon icon--xl" %>
@@ -61,6 +36,6 @@
           <%= link_to "Browse workflows", play_path, class: "btn btn--secondary btn--sm" %>
         </div>
       </div>
-    <% end %>
-  </div>
+    </div>
+  <% end %>
 </section>

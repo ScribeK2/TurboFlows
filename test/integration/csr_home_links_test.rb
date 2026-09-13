@@ -20,6 +20,7 @@ class CsrHomeLinksTest < ActionDispatch::IntegrationTest
 
   test "every link on the CSR home opens for a Regular user, and every form has a route" do
     UserWorkflowPin.create!(user: @csr, workflow: @billing)
+    GroupFeaturedWorkflow.create!(group: global_group, workflow: @password, position: 0)
     live_frame(@billing, status: "completed", outcome: "resolved")
     live_frame(@password, status: "active")
 
@@ -33,6 +34,7 @@ class CsrHomeLinksTest < ActionDispatch::IntegrationTest
 
     assert_includes links, player_scenario_step_path(Scenario.find_by!(workflow: @password)), "the Resume link is followed too"
     assert_not_empty forms
+    assert_select ".dashboard-layout #team-workflows-section form[action=?]", play_workflow_path(@password)
 
     links.each do |href|
       get href

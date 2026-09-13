@@ -1,0 +1,39 @@
+<%# locals: (workflow:, stats:, icon_name:, pinned_toggle:) %>
+<%# A row that starts a run, shared by pinned and featured rows: a plain-text
+    title (a Regular user has no page for a workflow), how often the viewer has
+    run it, tags, and Run. Pinned rows add the unpin toggle; featured rows
+    don't, since the CSR doesn't manage that list. %>
+<% stats ||= { runs: 0, last_run_at: nil } %>
+<div class="list-row">
+  <span class="list-row__icon" aria-hidden="true">
+    <%= icon icon_name, class: "icon icon--sm" %>
+  </span>
+  <div class="list-row__body">
+    <div class="list-row__title"><%= workflow.title %></div>
+    <p class="list-row__sub">
+      <% if stats[:runs].positive? %>
+        <%= pluralize(stats[:runs], "run") %><% if stats[:last_run_at] %> &middot; last run <%= time_ago_in_words(stats[:last_run_at]) %> ago<% end %>
+      <% else %>
+        <%= pluralize(workflow.steps.size, "step") %> &middot; never run yet
+      <% end %>
+    </p>
+    <% if workflow.tags.any? %>
+      <div class="list-row__tags flex flex-wrap gap-1">
+        <% workflow.tags.each do |tag| %>
+          <span class="tag-pill"><%= tag.name %></span>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+  <div class="list-row__actions">
+    <% if pinned_toggle %>
+      <%= render "workflows/pins/toggle", workflow:, pinned: true, location: "pinned" %>
+    <% end %>
+    <%= button_to play_workflow_path(workflow), method: :post,
+          class: "btn btn--secondary btn--sm",
+          aria: { label: "Run #{workflow.title}" } do %>
+      <%= icon "play", class: "icon icon--xs" %>
+      Run
+    <% end %>
+  </div>
+</div>

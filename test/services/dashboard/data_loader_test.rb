@@ -108,13 +108,13 @@ class Dashboard::DataLoaderTest < ActiveSupport::TestCase
     assert_nil recent.outcome
   end
 
-  test "pinned_workflow_stats counts calls started, not the frames inside them" do
+  test "run_stats counts calls started, not the frames inside them" do
     UserWorkflowPin.create!(user: @regular, workflow: @workflow)
     origin = live_frame(@workflow, created_at: 1.hour.ago)
     live_frame(@workflow, parent: origin, created_at: 50.minutes.ago)
     live_frame(@workflow, created_at: 10.minutes.ago)
 
-    stats = Dashboard::DataLoader.new(@regular).pinned_workflow_stats.fetch(@workflow.id)
+    stats = Dashboard::DataLoader.new(@regular).run_stats.fetch(@workflow.id)
 
     assert_equal 2, stats[:runs]
   end
@@ -193,6 +193,71 @@ class Dashboard::DataLoaderTest < ActiveSupport::TestCase
     assert_equal "Verify account", Dashboard::DataLoader.new(@regular).resume.step_title
   end
 
+  # -- From your team --
+
+  test "team_sections lists the CSR's own groups by name, then Global last" do
+    zebra = team("Zebra")
+    alpha = team("alpha")
+    zebra_wf = featured(zebra, "Zebra kit")
+    alpha_wf = featured(alpha, "Alpha kit")
+    global_wf = featured(global_group, "Everyone's kit")
+
+    sections = Dashboard::DataLoader.new(@regular).team_sections
+
+    assert_equal [alpha, zebra, global_group], sections.map(&:group)
+    assert_equal [[alpha_wf], [zebra_wf], [global_wf]], sections.map(&:workflows)
+  end
+
+  test "a group the CSR isn't directly in features nothing for them, parent or sub-team" do
+    parent = Group.create!(name: "Parent #{SecureRandom.hex(3)}")
+    own = Group.create!(name: "Own #{SecureRandom.hex(3)}", parent:)
+    sub_team = Group.create!(name: "Sub #{SecureRandom.hex(3)}", parent: own)
+    UserGroup.create!(user: @regular, group: own)
+    featured(parent, "Parent kit")
+    featured(sub_team, "Sub-team kit")
+    own_wf = featured(own, "Own kit")
+
+    assert_equal [[own_wf]], Dashboard::DataLoader.new(@regular).team_sections.map(&:workflows)
+  end
+
+  test "team_sections keeps the curator's order" do
+    billing = team("Billing")
+    second = featured(billing, "Second", position: 1)
+    first = featured(billing, "First", position: 0)
+
+    assert_equal [first, second], Dashboard::DataLoader.new(@regular).team_sections.sole.workflows
+  end
+
+  test "a workflow featured by two teams shows once, under the first, and a pinned one isn't repeated" do
+    alpha = team("Alpha")
+    beta = team("Beta")
+    shared = featured(alpha, "Shared")
+    GroupWorkflow.create!(group: beta, workflow: shared)
+    GroupFeaturedWorkflow.create!(group: beta, workflow: shared, position: 0)
+    pinned = featured(beta, "Pinned", position: 1)
+    beta_only = featured(beta, "Beta only", position: 2)
+    UserWorkflowPin.create!(user: @regular, workflow: pinned)
+
+    sections = Dashboard::DataLoader.new(@regular).team_sections
+
+    assert_equal [[shared], [beta_only]], sections.map(&:workflows)
+  end
+
+  test "a featured workflow members can no longer see is left out, and a group left with nothing has no section" do
+    billing = team("Billing")
+    featured(billing, "Unpublished").update!(status: "draft")
+
+    assert_empty Dashboard::DataLoader.new(@regular).team_sections
+  end
+
+  test "run_stats covers featured rows as well as pinned ones" do
+    billing = team("Billing")
+    workflow = featured(billing, "Run me")
+    live_frame(workflow, created_at: 10.minutes.ago)
+
+    assert_equal 1, Dashboard::DataLoader.new(@regular).run_stats.fetch(workflow.id)[:runs]
+  end
+
   private
 
   # A live frame of @regular's. Terminal statuses get a completed_at, as
@@ -207,6 +272,20 @@ class Dashboard::DataLoaderTest < ActiveSupport::TestCase
 
   def global_workflow(title)
     file_in_global(Workflow.create!(title:, user: @editor))
+  end
+
+  def team(name)
+    group = Group.create!(name: "#{name} #{SecureRandom.hex(3)}")
+    UserGroup.create!(user: @regular, group:)
+    group
+  end
+
+  # A published workflow filed in `group` (Global included) and featured there.
+  def featured(group, title, position: 0)
+    workflow = Workflow.create!(title: "#{title} #{SecureRandom.hex(3)}", user: @editor)
+    GroupWorkflow.create!(group:, workflow:, is_primary: true)
+    GroupFeaturedWorkflow.create!(group:, workflow:, position:)
+    workflow
   end
 
   def age!(scenario, ago)

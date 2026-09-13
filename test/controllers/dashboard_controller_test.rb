@@ -138,6 +138,66 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select ".dashboard-layout .btn--primary", count: 1
   end
 
+  test "From your team shows a heading per team, For everyone last, and rows with Run but no pin toggle" do
+    editor = User.create!(email: "editor-#{SecureRandom.hex(4)}@example.com", password: "password123!", password_confirmation: "password123!", role: "editor")
+    group = Group.create!(name: "Billing #{SecureRandom.hex(3)}")
+    UserGroup.create!(user: @user, group:)
+    team_wf = Workflow.create!(title: "Team Kit", user: editor)
+    GroupWorkflow.create!(group:, workflow: team_wf, is_primary: true)
+    GroupFeaturedWorkflow.create!(group:, workflow: team_wf, position: 0)
+    global_wf = file_in_global(Workflow.create!(title: "Everyone Kit", user: editor))
+    GroupFeaturedWorkflow.create!(group: global_group, workflow: global_wf, position: 0)
+
+    get root_path
+
+    assert_select "#team-workflows-section h2", text: "From your team"
+    headings = css_select("#team-workflows-section .dashboard-team__heading").map { it.text.strip }
+    assert_equal [group.name, "For everyone"], headings
+    assert_select "#team-workflows-section button[aria-label='Run Team Kit']"
+    assert_select "#team-workflows-section .pin-button", count: 0
+    assert_select "#team-workflows-section .list-row__title a", count: 0
+    assert_select ".dashboard-layout .btn--primary", count: 1
+    order = css_select(".dashboard-layout h2").map { it.text.strip }
+    assert_operator order.index("From your team"), :<, order.index("Your fast path")
+  end
+
+  test "no From your team card when nothing is featured, only the empty wrapper a pin change replaces" do
+    get root_path
+
+    assert_select "#team-workflows-section", count: 1
+    assert_select "#team-workflows-section section", count: 0
+    assert_select "h2", text: "From your team", count: 0
+  end
+
+  test "with team rows and no pins, Your fast path is one line pointing to /play" do
+    editor = User.create!(email: "editor-#{SecureRandom.hex(4)}@example.com", password: "password123!", password_confirmation: "password123!", role: "editor")
+    global_wf = file_in_global(Workflow.create!(title: "Everyone Kit", user: editor))
+    GroupFeaturedWorkflow.create!(group: global_group, workflow: global_wf, position: 0)
+
+    get root_path
+
+    assert_select "#pinned-workflows-section p", text: "Pin workflows you use often from /play."
+    assert_select "#pinned-workflows-section a[href=?]", play_path, text: "/play"
+    assert_select "#pinned-workflows-section h3", text: "No pinned workflows", count: 0
+  end
+
+  test "the CSR home asks as many queries for four featured workflows as for one" do
+    editor = User.create!(email: "editor-#{SecureRandom.hex(4)}@example.com", password: "password123!", password_confirmation: "password123!", role: "editor")
+    workflows = Array.new(4) { |i| file_in_global(Workflow.create!(title: "Kit #{i}", user: editor)) }
+
+    GroupFeaturedWorkflow.create!(group: global_group, workflow: workflows.first, position: 0)
+    get root_path
+    one = count_queries { get root_path }
+
+    workflows.drop(1).each_with_index do |workflow, i|
+      GroupFeaturedWorkflow.create!(group: global_group, workflow:, position: i + 1)
+    end
+    get root_path
+    four = count_queries { get root_path }
+
+    assert_equal one, four
+  end
+
   test "the CSR home asks as many queries for four recent workflows as for one" do
     editor = User.create!(email: "editor-#{SecureRandom.hex(4)}@example.com", password: "password123!", password_confirmation: "password123!", role: "editor")
     workflows = Array.new(4) { |i| file_in_global(Workflow.create!(title: "Count #{i}", user: editor)) }

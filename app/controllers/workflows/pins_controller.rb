@@ -58,9 +58,11 @@ module Workflows
     end
 
     def render_pin_updates(pinned:)
+      dashboard = Dashboard::DataLoader.new(current_user)
       streams = [turbo_stream.replace("pinned-workflows-section",
-                                      partial: "dashboard/pinned_workflows",
-                                      locals: { dashboard: Dashboard::DataLoader.new(current_user) })]
+                                      partial: "dashboard/pinned_workflows", locals: { dashboard: }),
+                 turbo_stream.replace("team-workflows-section",
+                                      partial: "dashboard/team_workflows", locals: { dashboard: })]
       TOGGLE_LOCATIONS.each do |location|
         streams << turbo_stream.replace(helpers.dom_id(@workflow, "pin_#{location}"),
                                         partial: "workflows/pins/toggle",

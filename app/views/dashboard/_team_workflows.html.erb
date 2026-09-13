@@ -1,0 +1,26 @@
+<%# locals: (dashboard:) %>
+<% sections = dashboard.team_sections %>
+<%# "From your team" (spec 2026-09-13-group-featured-workflows): what the CSR's
+    teams feature for them, a heading per team with Global last as "For
+    everyone". With nothing featured only the empty wrapper renders (no card,
+    since a CSR can't act on one), and the wrapper is always there so a pin
+    change can replace it: this section leaves out what the CSR has pinned (Q11). %>
+<div id="team-workflows-section">
+<% if sections.any? %>
+  <section class="list-section" aria-labelledby="team-workflows-heading">
+    <div class="list-section__head">
+      <h2 class="list-section__title" id="team-workflows-heading">From your team</h2>
+    </div>
+
+    <% sections.each do |section| %>
+      <h3 class="dashboard-team__heading"><%= section.group.global? ? "For everyone" : section.group.name %></h3>
+      <div class="list-section__body">
+        <% section.workflows.each do |workflow| %>
+          <%= render "dashboard/launcher_row", workflow:, stats: dashboard.run_stats[workflow.id],
+                icon_name: "user-group", pinned_toggle: false %>
+        <% end %>
+      </div>
+    <% end %>
+  </section>
+<% end %>
+</div>

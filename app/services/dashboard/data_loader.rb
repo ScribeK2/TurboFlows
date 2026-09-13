@@ -30,6 +30,10 @@ module Dashboard
     # A frame's call, as Scenario#run_origin_id records it.
     CALL = Arel.sql("COALESCE(run_origin_id, id)")
 
+    # One team's part of "From your team": the group, and the workflows it
+    # features that its members can see, in the curator's order.
+    TeamSection = Data.define(:group, :workflows)
+
     attr_reader :user
 
     def initialize(user)
@@ -51,17 +55,24 @@ module Dashboard
                                 .limit(UserWorkflowPin::MAX_PINS)
     end
 
-    # Aggregate per-pinned-workflow run stats for the launcher rows.
-    # Returns { workflow_id => { runs:, last_run_at: } }, two queries total.
-    def pinned_workflow_stats
-      return @pinned_workflow_stats if defined?(@pinned_workflow_stats)
+    # Run stats for every launcher row on the page, pinned and featured:
+    # { workflow_id => { runs:, last_run_at: } }, counting calls the viewer
+    # started, from two queries.
+    def run_stats
+      return @run_stats if defined?(@run_stats)
 
-      ids = pinned_workflows.map(&:id)
-      return (@pinned_workflow_stats = {}) if ids.empty?
+      ids = (pinned_workflows.map(&:id) + team_sections.flat_map { |section| section.workflows.map(&:id) }).uniq
+      return (@run_stats = {}) if ids.empty?
 
       counts = started_calls.where(workflow_id: ids).group(:workflow_id).count
       last_runs = started_calls.where(workflow_id: ids).group(:workflow_id).maximum(:created_at)
-      @pinned_workflow_stats = ids.index_with { |id| { runs: counts[id].to_i, last_run_at: last_runs[id] } }
+      @run_stats = ids.index_with { |id| { runs: counts[id].to_i, last_run_at: last_runs[id] } }
+    end
+
+    # "From your team" (spec 2026-09-13-group-featured-workflows Q4, Q10, Q11):
+    # the viewer's own groups in name order, then Global.
+    def team_sections
+      @team_sections ||= build_team_sections
     end
 
     # Workflows the viewer started, one row per workflow for its latest call,
@@ -100,6 +111,27 @@ module Dashboard
       frame = unfinished.max_by { |f| [activity.fetch(f.run_origin_id || f.id), f.updated_at] }
       Resume.new(frame:, workflow: frame.run_origin.workflow, step_title: frame.current_step&.title,
                  last_activity_at: activity.fetch(frame.run_origin_id || frame.id))
+    end
+
+    # Each group's featured workflows its members can see, in the curator's
+    # order. A workflow shows once, under the first group that features it, and
+    # never if the viewer has pinned it. A group with nothing left gets no section.
+    # One visibility query per group, since the viewer's groups are few.
+    def build_team_sections
+      groups = Group.where(id: user.user_groups.select(:group_id)).to_a.sort_by { it.name.downcase }
+      global = Group.global.first
+      groups << global if global
+
+      rows = GroupFeaturedWorkflow.where(group_id: groups.map(&:id)).ordered
+                                  .includes(workflow: %i[tags steps]).group_by(&:group_id)
+      shown = pinned_workflow_ids.dup
+
+      groups.filter_map do |group|
+        group_rows = rows.fetch(group.id, [])
+        visible = Workflow.visible_to_members_of(group).where(id: group_rows.map(&:workflow_id)).pluck(:id).to_set
+        workflows = group_rows.map(&:workflow).select { visible.include?(it.id) && shown.add?(it.id) }
+        TeamSection.new(group:, workflows:) if workflows.any?
+      end
     end
 
     def live_scenarios

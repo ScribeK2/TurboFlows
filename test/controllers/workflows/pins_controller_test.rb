@@ -173,6 +173,21 @@ class Workflows::PinsControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  # "From your team" leaves out what the viewer has pinned (spec
+  # 2026-09-13-group-featured-workflows Q11), so a pin change must re-render it,
+  # or the workflow shows in both sections until a reload.
+  test "a pin re-renders From your team without the workflow just pinned, and an unpin brings it back" do
+    GroupFeaturedWorkflow.create!(group: global_group, workflow: @workflow, position: 0)
+
+    post workflow_pin_path(@workflow), as: :turbo_stream
+    assert_select "turbo-stream[action='replace'][target='team-workflows-section']"
+    assert_not_includes response.body, "From your team"
+
+    delete workflow_pin_path(@workflow), as: :turbo_stream
+    assert_select "turbo-stream[action='replace'][target='team-workflows-section']"
+    assert_includes response.body, "From your team"
+  end
+
   test "requires authentication" do
     sign_out @user
     post workflow_pin_path(@workflow)
