@@ -360,13 +360,16 @@ means a group's page outside the admin area, and the data is still a group.
 - **The cap:** members get at most 8 per group, the first 8 they can see, in the
   curator's order (`GroupFeaturedWorkflow.kit`). A row they can't see holds no place.
   It stays on the team page, marked, until it's removed or visible again, and then it
-  returns in its place. That can push a visible row past the 8th: the team page marks
-  it "Past the first 8" and members don't get it. Adding a ninth visible row is refused.
+  returns in its place. That can push a visible row past the 8th. Members don't get it
+  on home but can still run it from `/play`, so the team page says "Past the first 8 ·
+  not on members' home pages" in plain text rather than with the pill. Adding a ninth
+  visible row is refused.
 - **The page:** every change answers with a Turbo Stream that replaces
   `#team-featured`. Feature and Remove also report through `#flash`; Move and a drag
   re-render the card in place, so Move up and Move down follow the new order and Move
-  keeps focus on the row that moved. A drag that doesn't save (an error, no answer, or
-  a redirect from a lost session) puts the rows back and says so through `#flash`,
+  keeps focus on the row that moved. A drag that doesn't save (an error such as the
+  401 a lost session answers with, no answer, or a redirect such as lost access, which
+  the fetch doesn't follow) puts the rows back and says so through `#flash`,
   using `app/javascript/services/flash.js`. Drag reordering uses `sortable-list`, the same
   controller as the admin group page's folders, which renders a stream only when the
   endpoint sends one (the folders endpoint answers an empty 200).

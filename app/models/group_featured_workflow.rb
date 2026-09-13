@@ -24,14 +24,19 @@ class GroupFeaturedWorkflow < ApplicationRecord
     rows.select { visible_ids.include?(it.workflow_id) }.first(MAX_PER_GROUP)
   end
 
-  # Why the group's members don't get this workflow, or nil when they do.
-  # `visible_ids` is what Workflow.visible_to_members_of(group) holds and `kit`
-  # what .kit made of the whole list, both read once by the caller.
-  def hidden_reason(visible_ids, kit)
-    return nil if kit.include?(self)
-    return "Past the first #{MAX_PER_GROUP}" if visible_ids.include?(workflow_id)
+  # Why the group's members can't see this workflow, or nil when they can.
+  # `visible_ids` is what Workflow.visible_to_members_of(group) holds, read once
+  # for the whole list by the caller.
+  def hidden_reason(visible_ids)
+    return nil if visible_ids.include?(workflow_id)
 
     workflow.published? ? "Not filed in this team, its sub-teams or Global" : "Unpublished"
+  end
+
+  # A row members can see that the kit has no room for. They can still run it from
+  # /play; it just isn't on their home page. `kit` is what .kit made of the list.
+  def past_the_kit?(visible_ids, kit)
+    visible_ids.include?(workflow_id) && kit.exclude?(self)
   end
 
   private

@@ -60,11 +60,10 @@ class GroupFeaturedWorkflowTest < ActiveSupport::TestCase
     GroupWorkflow.where(workflow: refiled.workflow).update_all(group_id: @elsewhere.id)
 
     visible = Workflow.visible_to_members_of(@team).pluck(:id).to_set
-    kit = GroupFeaturedWorkflow.kit(@team.featured_workflows.ordered.to_a, visible)
 
-    assert_equal "Unpublished", unpublished.reload.hidden_reason(visible, kit)
-    assert_equal "Not filed in this team, its sub-teams or Global", refiled.reload.hidden_reason(visible, kit)
-    assert_nil shown.hidden_reason(visible, kit)
+    assert_equal "Unpublished", unpublished.reload.hidden_reason(visible)
+    assert_equal "Not filed in this team, its sub-teams or Global", refiled.reload.hidden_reason(visible)
+    assert_nil shown.hidden_reason(visible)
   end
 
   # A hidden row that comes back returns in its place (Q18), which can leave nine
@@ -80,8 +79,9 @@ class GroupFeaturedWorkflowTest < ActiveSupport::TestCase
     kit = GroupFeaturedWorkflow.kit(@team.featured_workflows.ordered.to_a, visible)
 
     assert_equal rows, kit
-    assert_nil rows.first.hidden_reason(visible, kit)
-    assert_equal "Past the first 8", ninth.hidden_reason(visible, kit)
+    assert_not rows.first.past_the_kit?(visible, kit)
+    assert ninth.past_the_kit?(visible, kit), "a visible row the kit has no room for"
+    assert_nil ninth.hidden_reason(visible), "members can still see it, so it isn't hidden"
 
     Workflow.where(id: rows.second.workflow_id).update_all(status: "draft")
     visible = Workflow.visible_to_members_of(@team).pluck(:id).to_set

@@ -111,7 +111,9 @@ class TeamsControllerTest < ActionDispatch::IntegrationTest
     assert_select "#team-featured li", text: /Members can't see this.*Unpublished/m, count: 1
   end
 
-  test "a visible row past the first 8 is marked for the curator" do
+  # Members can still see and run that workflow from /play; it just isn't on their
+  # home page. Nothing is wrong, so it gets plain text rather than the warning pill.
+  test "a visible row past the first 8 says so in plain text, with no pill" do
     editor = person("author", "editor")
     kit = Array.new(GroupFeaturedWorkflow::MAX_PER_GROUP) do |i|
       filed("Kit #{i}", @team, editor).tap { GroupFeaturedWorkflow.create!(group: @team, workflow: it, position: i) }
@@ -124,8 +126,9 @@ class TeamsControllerTest < ActionDispatch::IntegrationTest
 
     get team_path(@team)
 
-    assert_select "#team-featured .badge--warning", count: 1
-    assert_select "#team-featured li:last-child", text: /Ninth #{@tag}.*Members can't see this.*Past the first 8/m
+    assert_select "#team-featured .badge--warning", count: 0
+    assert_select "#team-featured li:last-child .admin-group__name", text: "Ninth #{@tag}"
+    assert_select "#team-featured li:last-child .admin-group__meta", text: /Past the first 8 · not on members' home pages/
   end
 
   test "Global's team page, for an administrator, says everyone signed in" do

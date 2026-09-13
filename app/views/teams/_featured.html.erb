@@ -1,8 +1,9 @@
 <%# locals: (group:, featured:, visible_ids:, query: "", candidates: Workflow.none, moved_id: nil, moved_direction: nil) %>
 <%# A team's featured workflows (spec 2026-09-13-group-featured-workflows), in
     the order members get them: drag, or Move up / Move down. A row members
-    can't see, or a visible one past the first 8, stays listed, marked, and holds
-    no place (Q18). teams/featured_workflows/changed replaces this section whole. %>
+    can't see stays listed with the warning pill and holds no place (Q18). A
+    visible row past the first 8 says so in plain text, since members can still
+    run it from /play. teams/featured_workflows/changed replaces this section whole. %>
 <% visible_count = featured.count { visible_ids.include?(it.workflow_id) } %>
 <% kit = GroupFeaturedWorkflow.kit(featured, visible_ids) %>
 <section id="team-featured" class="card mb-4" aria-labelledby="team-featured-heading">
@@ -19,7 +20,7 @@
           data-sortable-list-param-value="featured_ids"
           data-sortable-list-query-value="<%= query %>">
         <% featured.each_with_index do |row, index| %>
-          <% hidden = row.hidden_reason(visible_ids, kit) %>
+          <% hidden = row.hidden_reason(visible_ids) %>
           <% can_move_up = !index.zero? %>
           <% can_move_down = index != featured.size - 1 %>
           <%# Move replaces this card, so focus goes back to the row that moved:
@@ -37,6 +38,8 @@
             <span class="admin-group__meta">
               <% if hidden %>
                 <span class="badge badge--warning">Members can't see this</span> <%= hidden %> ·
+              <% elsif row.past_the_kit?(visible_ids, kit) %>
+                Past the first <%= GroupFeaturedWorkflow::MAX_PER_GROUP %> · not on members' home pages ·
               <% end %>
               Added by <%= row.added_by&.display_label || "a former user" %> <%= time_ago_in_words(row.created_at) %> ago
             </span>
