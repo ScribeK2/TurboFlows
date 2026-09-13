@@ -250,6 +250,35 @@ class Dashboard::DataLoaderTest < ActiveSupport::TestCase
     assert_empty Dashboard::DataLoader.new(@regular).team_sections
   end
 
+  test "a team's kit is its first 8 visible workflows, and a pinned one doesn't let a ninth in" do
+    billing = team("Billing")
+    kit = Array.new(GroupFeaturedWorkflow::MAX_PER_GROUP) { |i| featured(billing, "Kit #{i}", position: i) }
+    Workflow.where(id: kit.first.id).update_all(status: "draft")
+    ninth = featured(billing, "Ninth", position: GroupFeaturedWorkflow::MAX_PER_GROUP)
+    Workflow.where(id: kit.first.id).update_all(status: "published")
+    UserWorkflowPin.create!(user: @regular, workflow: kit.last)
+
+    shown = Dashboard::DataLoader.new(@regular).team_sections.sole.workflows
+
+    assert_equal kit.first(GroupFeaturedWorkflow::MAX_PER_GROUP - 1), shown
+    assert_not_includes shown, ninth
+  end
+
+  test "teams with the same name are headed by their paths, other teams by their names, Global as For everyone" do
+    tag = SecureRandom.hex(3)
+    support = Group.create!(name: "Support #{tag}")
+    sales = Group.create!(name: "Sales #{tag}")
+    support_phone = Group.create!(name: "Phone #{tag}", parent: support)
+    sales_phone = Group.create!(name: "Phone #{tag}", parent: sales)
+    [support_phone, sales_phone].each { UserGroup.create!(user: @regular, group: it) }
+    billing = team("Billing")
+    [support_phone, sales_phone, billing, global_group].each { featured(it, "Kit") }
+
+    headings = Dashboard::DataLoader.new(@regular).team_sections.map(&:heading)
+
+    assert_equal [billing.name, "Sales #{tag} / Phone #{tag}", "Support #{tag} / Phone #{tag}", "For everyone"], headings
+  end
+
   test "run_stats covers featured rows as well as pinned ones" do
     billing = team("Billing")
     workflow = featured(billing, "Run me")

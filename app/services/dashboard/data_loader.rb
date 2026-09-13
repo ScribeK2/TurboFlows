@@ -30,9 +30,9 @@ module Dashboard
     # A frame's call, as Scenario#run_origin_id records it.
     CALL = Arel.sql("COALESCE(run_origin_id, id)")
 
-    # One team's part of "From your team": the group, and the workflows it
-    # features that its members can see, in the curator's order.
-    TeamSection = Data.define(:group, :workflows)
+    # One team's part of "From your team": the group, the heading it shows under,
+    # and the workflows from its kit, in the curator's order.
+    TeamSection = Data.define(:group, :heading, :workflows)
 
     attr_reader :user
 
@@ -113,25 +113,43 @@ module Dashboard
                  last_activity_at: activity.fetch(frame.run_origin_id || frame.id))
     end
 
-    # Each group's featured workflows its members can see, in the curator's
-    # order. A workflow shows once, under the first group that features it, and
-    # never if the viewer has pinned it. A group with nothing left gets no section.
-    # One visibility query per group, since the viewer's groups are few.
+    # Each group's kit (GroupFeaturedWorkflow.kit): the first 8 featured
+    # workflows its members can see, in the curator's order. The kit is cut
+    # before anything is left out, so a pin never lets a ninth in. Then a
+    # workflow shows once, under the first group that features it, and never if
+    # the viewer has pinned it. A group with nothing left gets no section.
+    # Visibility comes from one batch, so the query count doesn't grow with the
+    # viewer's groups.
     def build_team_sections
-      groups = Group.where(id: user.user_groups.select(:group_id)).to_a.sort_by { it.name.downcase }
-      global = Group.global.first
-      groups << global if global
+      groups = Group.where(id: user.user_groups.select(:group_id)).to_a
+      headings = team_headings(groups)
+      groups.sort_by! { [it.name.downcase, headings.fetch(it.id).downcase] }
+      if (global = Group.global.first)
+        groups << global
+        headings[global.id] = "For everyone"
+      end
 
       rows = GroupFeaturedWorkflow.where(group_id: groups.map(&:id)).ordered
                                   .includes(workflow: %i[tags steps]).group_by(&:group_id)
+      return [] if rows.empty?
+
+      visible = Group.member_visible_workflow_ids(groups, rows.values.flatten.map(&:workflow_id))
       shown = pinned_workflow_ids.dup
 
       groups.filter_map do |group|
-        group_rows = rows.fetch(group.id, [])
-        visible = Workflow.visible_to_members_of(group).where(id: group_rows.map(&:workflow_id)).pluck(:id).to_set
-        workflows = group_rows.map(&:workflow).select { visible.include?(it.id) && shown.add?(it.id) }
-        TeamSection.new(group:, workflows:) if workflows.any?
+        kit = GroupFeaturedWorkflow.kit(rows.fetch(group.id, []), visible.fetch(group.id))
+        workflows = kit.map(&:workflow).select { shown.add?(it.id) }
+        TeamSection.new(group:, heading: headings.fetch(group.id), workflows:) if workflows.any?
       end
+    end
+
+    # A team's heading is its name, or its path when another of the viewer's
+    # teams has the same name. Names are unique only under one parent, so a CSR
+    # can be in both "Support / Phone" and "Sales / Phone".
+    def team_headings(groups)
+      colliding = groups.group_by { it.name.downcase }.values.select(&:many?).flatten
+      paths = colliding.any? ? Group.paths_by_id : {}
+      groups.to_h { [it.id, colliding.include?(it) ? paths.fetch(it.id) : it.name] }
     end
 
     def live_scenarios

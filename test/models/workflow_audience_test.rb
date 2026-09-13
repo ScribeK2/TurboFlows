@@ -99,6 +99,34 @@ class WorkflowAudienceTest < ActiveSupport::TestCase
     end
   end
 
+  # Dashboard::DataLoader asks this for all of a CSR's teams at once, so it must
+  # answer what Workflow.visible_to_members_of answers for each of them.
+  test "member_visible_workflow_ids agrees with visible_to_members_of, group by group" do
+    tag = SecureRandom.hex(3)
+    department = Group.create!(name: "Department #{tag}")
+    team = Group.create!(name: "Team #{tag}", parent: department)
+    sub_team = Group.create!(name: "Sub-team #{tag}", parent: team)
+    elsewhere = Group.create!(name: "Elsewhere #{tag}")
+    filed = lambda do |title, group, status: "published"|
+      Workflow.create!(title: "#{title} #{tag}", user: @owner, status:).tap do |workflow|
+        GroupWorkflow.create!(group:, workflow:, is_primary: true)
+      end
+    end
+    workflows = [filed.call("Department's", department), filed.call("Team's", team),
+                 filed.call("Sub-team's", sub_team), filed.call("Elsewhere's", elsewhere),
+                 filed.call("Team draft", team, status: "draft"),
+                 file_in_global(Workflow.create!(title: "Global's #{tag}", user: @owner))]
+    groups = [department, team, sub_team, elsewhere, global_group]
+    ids = workflows.map(&:id)
+
+    batched = Group.member_visible_workflow_ids(groups, ids)
+
+    groups.each do |group|
+      assert_equal Workflow.visible_to_members_of(group).where(id: ids).pluck(:id).to_set,
+                   batched.fetch(group.id), group.name
+    end
+  end
+
   test "in_global? reads preloaded groups without a query" do
     workflow = file_in_global(Workflow.create!(title: "Preloaded", user: @owner))
     loaded = Workflow.includes(group_workflows: :group).find(workflow.id)

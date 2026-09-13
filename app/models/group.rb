@@ -196,6 +196,38 @@ class Group < ApplicationRecord
     ([id] + descendant_ids + [self.class.global_id]).compact.uniq
   end
 
+  # { group_id => Set of the `workflow_ids` that group's members see }:
+  # Workflow.visible_to_members_of answered for many groups from three queries,
+  # however many groups there are. A workflow counts when it is published and
+  # filed in the group, a group below it, or Global.
+  # test/models/workflow_audience_test.rb holds the two to the same answer.
+  def self.member_visible_workflow_ids(groups, workflow_ids)
+    filings = GroupWorkflow.where(workflow_id: Workflow.published.where(id: workflow_ids).select(:id))
+                           .distinct.pluck(:group_id, :workflow_id)
+    parent_of = Group.pluck(:id, :parent_id).to_h
+    global = global_id
+    lineage = Hash.new { |known, id| known[id] = self_and_ancestor_ids(id, parent_of) }
+
+    groups.to_h do |group|
+      seen = filings.filter_map do |filed_in, workflow_id|
+        workflow_id if filed_in == global || lineage[filed_in].include?(group.id)
+      end
+      [group.id, seen.to_set]
+    end
+  end
+
+  # The group and every group above it. The `include?` only stops a corrupt
+  # cycle; no_circular_reference prevents real ones.
+  def self.self_and_ancestor_ids(id, parent_of)
+    ids = []
+    while id && ids.exclude?(id)
+      ids << id
+      id = parent_of[id]
+    end
+    ids
+  end
+  private_class_method :self_and_ancestor_ids
+
   # The groups a save may leave a workflow in. An admin's choice stands. Anyone
   # else may add or remove only groups they reach; a group they don't reach
   # stays exactly as it was, since the picker never showed it to them.

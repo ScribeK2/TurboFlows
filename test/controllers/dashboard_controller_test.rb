@@ -209,6 +209,29 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_equal one, four
   end
 
+  test "the CSR home asks as many queries for three teams as for one" do
+    editor = User.create!(email: "editor-#{SecureRandom.hex(4)}@example.com", password: "password123!", password_confirmation: "password123!", role: "editor")
+    first, *others = Array.new(3) { |i| Group.create!(name: "Counted team #{i} #{SecureRandom.hex(3)}") }
+    join_with_a_kit = lambda do |group|
+      UserGroup.create!(user: @user, group:)
+      workflow = Workflow.create!(title: "#{group.name} kit", user: editor)
+      GroupWorkflow.create!(group:, workflow:, is_primary: true)
+      GroupFeaturedWorkflow.create!(group:, workflow:, position: 0)
+    end
+    everyone = file_in_global(Workflow.create!(title: "Everyone's kit", user: editor))
+    GroupFeaturedWorkflow.create!(group: global_group, workflow: everyone, position: 0)
+
+    join_with_a_kit.call(first)
+    get root_path
+    one = count_queries { get root_path }
+
+    others.each(&join_with_a_kit)
+    get root_path
+    three = count_queries { get root_path }
+
+    assert_equal one, three, "From your team asks something per team"
+  end
+
   test "the CSR home asks as many queries for four recent workflows as for one" do
     editor = User.create!(email: "editor-#{SecureRandom.hex(4)}@example.com", password: "password123!", password_confirmation: "password123!", role: "editor")
     workflows = Array.new(4) { |i| file_in_global(Workflow.create!(title: "Count #{i}", user: editor)) }

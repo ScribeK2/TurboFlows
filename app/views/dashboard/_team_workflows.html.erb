@@ -13,7 +13,7 @@
     </div>
 
     <% sections.each do |section| %>
-      <h3 class="dashboard-team__heading"><%= section.group.global? ? "For everyone" : section.group.name %></h3>
+      <h3 class="dashboard-team__heading"><%= section.heading %></h3>
       <div class="list-section__body">
         <% section.workflows.each do |workflow| %>
           <%= render "dashboard/launcher_row", workflow:, stats: dashboard.run_stats[workflow.id],

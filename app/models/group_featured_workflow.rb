@@ -3,7 +3,8 @@
 # A group may feature only what its members can already see (Q6): featuring
 # never changes who can see a workflow, which filing alone decides. Whether
 # members can still see it is read at render, never stored, so a workflow
-# unpublished and republished comes back in its place (Q18).
+# unpublished and republished comes back in its place (Q18). Members get at most
+# the first 8 they can see, so a row that comes back can push the last one out.
 class GroupFeaturedWorkflow < ApplicationRecord
   MAX_PER_GROUP = 8
 
@@ -17,11 +18,18 @@ class GroupFeaturedWorkflow < ApplicationRecord
 
   scope :ordered, -> { order(:position, :id) }
 
-  # Why the group's members can't see this workflow, or nil when they can.
-  # `visible_ids` is what Workflow.visible_to_members_of(group) holds, read once
-  # for the whole list by the caller.
-  def hidden_reason(visible_ids)
-    return nil if visible_ids.include?(workflow_id)
+  # The rows members get: the first MAX_PER_GROUP of `rows` (in the curator's
+  # order) whose workflows they can see. `visible_ids` is as for hidden_reason.
+  def self.kit(rows, visible_ids)
+    rows.select { visible_ids.include?(it.workflow_id) }.first(MAX_PER_GROUP)
+  end
+
+  # Why the group's members don't get this workflow, or nil when they do.
+  # `visible_ids` is what Workflow.visible_to_members_of(group) holds and `kit`
+  # what .kit made of the whole list, both read once by the caller.
+  def hidden_reason(visible_ids, kit)
+    return nil if kit.include?(self)
+    return "Past the first #{MAX_PER_GROUP}" if visible_ids.include?(workflow_id)
 
     workflow.published? ? "Not filed in this team, its sub-teams or Global" : "Unpublished"
   end

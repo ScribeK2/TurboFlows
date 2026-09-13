@@ -60,10 +60,34 @@ class GroupFeaturedWorkflowTest < ActiveSupport::TestCase
     GroupWorkflow.where(workflow: refiled.workflow).update_all(group_id: @elsewhere.id)
 
     visible = Workflow.visible_to_members_of(@team).pluck(:id).to_set
+    kit = GroupFeaturedWorkflow.kit(@team.featured_workflows.ordered.to_a, visible)
 
-    assert_equal "Unpublished", unpublished.reload.hidden_reason(visible)
-    assert_equal "Not filed in this team, its sub-teams or Global", refiled.reload.hidden_reason(visible)
-    assert_nil shown.hidden_reason(visible)
+    assert_equal "Unpublished", unpublished.reload.hidden_reason(visible, kit)
+    assert_equal "Not filed in this team, its sub-teams or Global", refiled.reload.hidden_reason(visible, kit)
+    assert_nil shown.hidden_reason(visible, kit)
+  end
+
+  # A hidden row that comes back returns in its place (Q18), which can leave nine
+  # visible. Members get the first 8 in the curator's order, and a visible row
+  # past them says so on the team page.
+  test "the kit is the first 8 visible rows in order, and a visible row past it says so" do
+    rows = Array.new(GroupFeaturedWorkflow::MAX_PER_GROUP) { |i| feature(filed("Kit #{i}", @team)) }
+    Workflow.where(id: rows.first.workflow_id).update_all(status: "draft")
+    ninth = feature(filed("Ninth", @team))
+    Workflow.where(id: rows.first.workflow_id).update_all(status: "published")
+
+    visible = Workflow.visible_to_members_of(@team).pluck(:id).to_set
+    kit = GroupFeaturedWorkflow.kit(@team.featured_workflows.ordered.to_a, visible)
+
+    assert_equal rows, kit
+    assert_nil rows.first.hidden_reason(visible, kit)
+    assert_equal "Past the first 8", ninth.hidden_reason(visible, kit)
+
+    Workflow.where(id: rows.second.workflow_id).update_all(status: "draft")
+    visible = Workflow.visible_to_members_of(@team).pluck(:id).to_set
+    kit = GroupFeaturedWorkflow.kit(@team.featured_workflows.ordered.to_a, visible)
+
+    assert_equal rows - [rows.second] + [ninth], kit, "a row members can't see holds no place"
   end
 
   test "deleting the group or the workflow removes what it featured" do

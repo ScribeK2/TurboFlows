@@ -111,6 +111,23 @@ class TeamsControllerTest < ActionDispatch::IntegrationTest
     assert_select "#team-featured li", text: /Members can't see this.*Unpublished/m, count: 1
   end
 
+  test "a visible row past the first 8 is marked for the curator" do
+    editor = person("author", "editor")
+    kit = Array.new(GroupFeaturedWorkflow::MAX_PER_GROUP) do |i|
+      filed("Kit #{i}", @team, editor).tap { GroupFeaturedWorkflow.create!(group: @team, workflow: it, position: i) }
+    end
+    Workflow.where(id: kit.first.id).update_all(status: "draft")
+    ninth = filed("Ninth", @team, editor)
+    GroupFeaturedWorkflow.create!(group: @team, workflow: ninth, position: GroupFeaturedWorkflow::MAX_PER_GROUP)
+    Workflow.where(id: kit.first.id).update_all(status: "published")
+    sign_in @manager
+
+    get team_path(@team)
+
+    assert_select "#team-featured .badge--warning", count: 1
+    assert_select "#team-featured li:last-child", text: /Ninth #{@tag}.*Members can't see this.*Past the first 8/m
+  end
+
   test "Global's team page, for an administrator, says everyone signed in" do
     sign_in @admin
 
