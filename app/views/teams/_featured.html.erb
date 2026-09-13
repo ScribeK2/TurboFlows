@@ -1,15 +1,27 @@
-<%# locals: (group:, featured:, visible_ids:) %>
-<%# A team's featured workflows, in the order members get them. A row members
-    can't see stays listed, marked, and holds no place (Q18). %>
+<%# locals: (group:, featured:, visible_ids:, query: "", candidates: Workflow.none) %>
+<%# A team's featured workflows (spec 2026-09-13-group-featured-workflows), in
+    the order members get them: drag, or Move up / Move down. A row members
+    can't see stays listed, marked, and holds no place (Q18).
+    teams/featured_workflows/changed replaces this section whole. %>
+<% visible_count = featured.count { visible_ids.include?(it.workflow_id) } %>
 <section id="team-featured" class="card mb-4" aria-labelledby="team-featured-heading">
   <div class="card__body">
     <h2 id="team-featured-heading" class="admin-card__heading">Featured workflows</h2>
+    <p class="form-hint mb-3">
+      <%= group.global? ? "Everyone signed in" : "Members of #{group.name}" %> see these first on their home page, in this order.
+    </p>
 
     <% if featured.any? %>
-      <ul class="admin-group__list mb-4" role="list">
-        <% featured.each do |row| %>
+      <ul class="admin-group__list mb-4" role="list"
+          data-controller="sortable-list"
+          data-sortable-list-url-value="<%= reorder_team_featured_workflows_path(group) %>"
+          data-sortable-list-param-value="featured_ids">
+        <% featured.each_with_index do |row, index| %>
           <% hidden = row.hidden_reason(visible_ids) %>
-          <li class="admin-group__item">
+          <li class="admin-group__item" data-sortable-id="<%= row.id %>">
+            <span class="admin-folders__handle cursor-move" title="Drag to reorder" aria-hidden="true">
+              <%= icon "bars-2", class: "icon icon--sm" %>
+            </span>
             <span class="admin-group__name"><%= row.workflow.title %></span>
             <span class="admin-group__meta">
               <% if hidden %>
@@ -17,11 +29,40 @@
               <% end %>
               Added by <%= row.added_by&.email || "a former user" %> <%= time_ago_in_words(row.created_at) %> ago
             </span>
+            <% unless index.zero? %>
+              <%= button_to "Move up", move_team_featured_workflow_path(group, row), method: :patch,
+                    params: { direction: "up", q: query }, class: "btn btn--plain btn--sm",
+                    aria: { label: "Move #{row.workflow.title} up" } %>
+            <% end %>
+            <% unless index == featured.size - 1 %>
+              <%= button_to "Move down", move_team_featured_workflow_path(group, row), method: :patch,
+                    params: { direction: "down", q: query }, class: "btn btn--plain btn--sm",
+                    aria: { label: "Move #{row.workflow.title} down" } %>
+            <% end %>
+            <%= button_to "Remove", team_featured_workflow_path(group, row), method: :delete,
+                  params: { q: query }, class: "btn btn--plain btn--sm",
+                  aria: { label: "Remove #{row.workflow.title} from #{group.name}" } %>
           </li>
         <% end %>
       </ul>
     <% else %>
-      <p class="form-hint mb-4">Nothing featured yet.</p>
+      <p class="form-hint mb-4">Nothing featured yet. Find workflows below.</p>
     <% end %>
+
+    <% if visible_count >= GroupFeaturedWorkflow::MAX_PER_GROUP %>
+      <p class="form-hint mb-3">This team features the most it can. Remove one to add another.</p>
+    <% end %>
+
+    <%# The field sits outside the frame it fills, so answering as you type never
+        replaces the input being typed in. %>
+    <%= form_with url: team_featured_workflows_path(group), method: :get, class: "admin-group__search",
+          data: { controller: "debounced-submit", turbo_frame: "team-featured-search" } do |form| %>
+      <%= form.search_field :q, value: query, class: "form-input form-input--sm",
+            placeholder: "Find workflows this team can see", autocomplete: "off",
+            aria: { label: "Find workflows to feature for #{group.name}" },
+            data: { action: "input->debounced-submit#submit" } %>
+      <%= form.submit "Search", name: nil, class: "btn btn--secondary btn--sm" %>
+    <% end %>
+    <%= render "teams/featured_search", group:, query:, candidates: %>
   </div>
 </section>

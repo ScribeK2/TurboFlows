@@ -1,0 +1,21 @@
+<%# locals: (group:, query:, candidates:) %>
+<%# The results only: the field lives in teams/_featured, outside this frame, so
+    answering as you type never replaces it. Buttons inside a frame still get
+    their stream response applied. %>
+<turbo-frame id="team-featured-search">
+  <% if query.present? %>
+    <% if candidates.any? %>
+      <ul class="admin-group__list" role="list">
+        <% candidates.each do |workflow| %>
+          <li class="admin-group__item">
+            <span class="admin-group__name"><%= workflow.title %></span>
+            <%= button_to "Feature", team_featured_workflows_path(group), params: { workflow_id: workflow.id, q: query },
+                  class: "btn btn--secondary btn--sm", aria: { label: "Feature #{workflow.title} for #{group.name}" } %>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="form-hint">No workflow this team can see matches “<%= query %>”.</p>
+    <% end %>
+  <% end %>
+</turbo-frame>

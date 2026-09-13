@@ -1,0 +1,3 @@
+<%= turbo_stream.replace "team-featured", partial: "teams/featured",
+      locals: { group: @group, featured: @featured, visible_ids: @visible_ids, query: @query, candidates: @candidates } %>
+<%= turbo_stream.update "flash", partial: "shared/flash_messages" %>

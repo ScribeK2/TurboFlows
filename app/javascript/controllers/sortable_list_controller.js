@@ -1,9 +1,11 @@
 import { Controller } from "@hotwired/stimulus"
 import Sortable from "sortablejs"
 
-// Enables drag-and-drop reordering of folders in admin view
+// Drag to reorder a list whose items carry data-sortable-id. On drop it PATCHes
+// the ids in their new order to `url`, as `param`: folder_ids on the admin group
+// page, featured_ids on a team page.
 export default class extends Controller {
-  static values = { url: String }
+  static values = { url: String, param: String }
 
   connect() {
     this.sortable = Sortable.create(this.element, {
@@ -21,10 +23,7 @@ export default class extends Controller {
   }
 
   reorder() {
-    const folderIds = Array.from(this.element.children).map(
-      (li) => li.dataset.folderId
-    )
-
+    const ids = Array.from(this.element.children).map((item) => item.dataset.sortableId)
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
 
     fetch(this.urlValue, {
@@ -34,7 +33,7 @@ export default class extends Controller {
         "X-CSRF-Token": csrfToken,
         "Accept": "application/json"
       },
-      body: JSON.stringify({ folder_ids: folderIds })
+      body: JSON.stringify({ [this.paramValue]: ids })
     })
   }
 }

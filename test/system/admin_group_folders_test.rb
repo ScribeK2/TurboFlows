@@ -2,7 +2,7 @@ require "application_system_test_case"
 
 # Renaming happens in the browser: Enter saves, Escape puts the name back.
 class AdminGroupFoldersTest < ApplicationSystemTestCase
-  RENAME = "#group-folders li[data-folder-id] input[name='folder[name]']".freeze
+  RENAME = "#group-folders li[data-sortable-id] input[name='folder[name]']".freeze
 
   setup do
     @admin = User.create!(email: "wf-system-test-folders-#{SecureRandom.hex(4)}@example.com",
@@ -39,6 +39,6 @@ class AdminGroupFoldersTest < ApplicationSystemTestCase
     find("#group-folders input[placeholder='New folder name']").set("Added Last")
     click_on "Add Folder"
 
-    assert_selector "#group-folders li[data-folder-id]:last-child input[value='Added Last']"
+    assert_selector "#group-folders li[data-sortable-id]:last-child input[value='Added Last']"
   end
 end

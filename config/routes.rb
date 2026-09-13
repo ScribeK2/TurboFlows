@@ -113,7 +113,12 @@ Rails.application.routes.draw do
   # Team pages (spec 2026-09-13-group-featured-workflows): where administrators
   # and the managers of groups curate a group's featured workflows. A group's
   # page outside the admin area, which stays admin-only; the data is a group.
-  resources :teams, only: %i[index show]
+  resources :teams, only: %i[index show] do
+    resources :featured_workflows, only: %i[index create destroy], module: :teams do
+      patch :move, on: :member
+      patch :reorder, on: :collection
+    end
+  end
 
   # Admin namespace
   namespace :admin do

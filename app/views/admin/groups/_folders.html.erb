@@ -11,11 +11,12 @@
 
     <% if folders.any? %>
       <ul class="admin-group__list mb-4" role="list"
-          data-controller="sortable-folders"
-          data-sortable-folders-url-value="<%= admin_group_reorder_folders_path(group) %>">
+          data-controller="sortable-list"
+          data-sortable-list-url-value="<%= admin_group_reorder_folders_path(group) %>"
+          data-sortable-list-param-value="folder_ids">
         <% folders.each do |folder| %>
           <% count = counts.fetch(folder.id, 0) %>
-          <li class="admin-group__item" data-folder-id="<%= folder.id %>">
+          <li class="admin-group__item" data-sortable-id="<%= folder.id %>">
             <span class="admin-folders__handle cursor-move" title="Drag to reorder" aria-hidden="true">
               <%= icon "bars-2", class: "icon icon--sm" %>
             </span>

@@ -195,4 +195,13 @@ class Admin::GroupsControllerTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_content
     assert_equal Group::GLOBAL_NAME, global.reload.name
   end
+
+  test "a group's admin page links to its team page" do
+    sign_in @admin
+    group = Group.create!(name: "Linked Team #{SecureRandom.hex(3)}")
+
+    get admin_group_path(group)
+
+    assert_select "a[href=?]", team_path(group), text: "Featured workflows (team page)"
+  end
 end

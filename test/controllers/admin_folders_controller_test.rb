@@ -20,13 +20,13 @@ class Admin::FoldersControllerTest < ActionDispatch::IntegrationTest
 
     get admin_group_path(@group)
 
-    rows = css_select("#group-folders li[data-folder-id]")
-    assert_equal([first.id, second.id], rows.map { it["data-folder-id"].to_i })
+    rows = css_select("#group-folders li[data-sortable-id]")
+    assert_equal([first.id, second.id], rows.map { it["data-sortable-id"].to_i })
     assert_equal "First", rows.first.at_css("input[name='folder[name]']")["value"]
     assert_match "2 workflows", rows.last.text
     assert_equal "Delete the folder Second? Its 2 workflows become unfiled — still in this group, in no folder.",
                  rows.last.at_css("form[data-turbo-confirm]")["data-turbo-confirm"]
-    assert_select "#group-folders [data-controller=sortable-folders][data-sortable-folders-url-value=?]",
+    assert_select "#group-folders [data-controller=sortable-list][data-sortable-list-url-value=?]",
                   admin_group_reorder_folders_path(@group)
     assert_select "#group-folders [name='folder[description]']", 0
   end
