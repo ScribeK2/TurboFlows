@@ -97,10 +97,29 @@ module Teams
 
     test "a row from another team can't be removed or moved through this team's address" do
       foreign = GroupFeaturedWorkflow.create!(group: @other_team, workflow: @quotes, position: 0)
+      GroupFeaturedWorkflow.create!(group: @other_team, workflow: filed("Leads", @other_team), position: 1)
 
       delete team_featured_workflow_path(@team, foreign), as: :turbo_stream
       assert_response :not_found
       assert GroupFeaturedWorkflow.exists?(foreign.id)
+
+      # A 404 is rendered above the session middleware, so the sign-in cookie
+      # never reached the client; sign in again for the second attempt.
+      sign_in @manager
+      patch move_team_featured_workflow_path(@team, foreign), params: { direction: "down" }, as: :turbo_stream
+      assert_response :not_found
+      assert_equal 0, foreign.reload.position
+    end
+
+    test "a reorder naming another team's row leaves that row where it was" do
+      mine = feature(@invoices, position: 0)
+      foreign = GroupFeaturedWorkflow.create!(group: @other_team, workflow: @quotes, position: 3)
+
+      patch reorder_team_featured_workflows_path(@team), params: { featured_ids: [foreign.id, mine.id] }, as: :json
+
+      assert_response :ok
+      assert_equal 3, foreign.reload.position
+      assert_equal 1, mine.reload.position
     end
 
     test "someone who can't curate the team is turned away from every action, the same as a missing team" do
@@ -145,9 +164,105 @@ module Teams
       assert_select "#team-featured button[aria-label=?]", "Move Refunds #{@tag} down", count: 0
       assert_select "#team-featured button[aria-label=?]", "Remove Invoices #{@tag} from #{@team.name}"
       assert_select "#team-featured input[aria-label=?]", "Find workflows to feature for #{@team.name}"
+      assert_select "#team-featured [autofocus]", count: 0
+    end
+
+    test "a drag asked for as a stream answers with the card, its Move buttons following the new order" do
+      first = feature(@invoices, position: 0)
+      second = feature(@refunds, position: 1)
+
+      patch reorder_team_featured_workflows_path(@team), params: { featured_ids: [second.id, first.id], q: @tag },
+                                                         as: :turbo_stream
+
+      assert_response :ok
+      assert_equal [@refunds, @invoices], @team.featured_workflows.ordered.map(&:workflow)
+      assert_select "turbo-stream[action='replace'][target='team-featured'] template" do
+        assert_select "button[aria-label=?]", "Move Refunds #{@tag} up", count: 0
+        assert_select "button[aria-label=?]", "Move Refunds #{@tag} down"
+        assert_select "button[aria-label=?]", "Move Invoices #{@tag} up"
+        assert_select "button[aria-label=?]", "Move Invoices #{@tag} down", count: 0
+        assert_select "[data-sortable-list-query-value=?]", @tag
+        assert_select "[autofocus]", count: 0
+      end
+    end
+
+    test "a drag asked for as JSON still answers with an empty 200" do
+      first = feature(@invoices, position: 0)
+      second = feature(@refunds, position: 1)
+
+      patch reorder_team_featured_workflows_path(@team), params: { featured_ids: [second.id, first.id] }, as: :json
+
+      assert_response :ok
+      assert_empty response.body
+    end
+
+    # Move replaces the whole card, so without autofocus a keyboard user's focus
+    # falls to the page. It stays on the row that moved: its button the same way,
+    # or the other one once the row reaches an end.
+    test "after Move the moved row's button keeps focus, switching direction at an end" do
+      feature(@invoices, position: 0)
+      feature(@refunds, position: 1)
+      credits = feature(filed("Credits", @team), position: 2)
+
+      patch move_team_featured_workflow_path(@team, credits), params: { direction: "up" }, as: :turbo_stream
+      assert_select "turbo-stream[action='replace'][target='team-featured'] template" do
+        assert_select "[autofocus]", count: 1
+        assert_select "button[autofocus][aria-label=?]", "Move Credits #{@tag} up"
+      end
+
+      patch move_team_featured_workflow_path(@team, credits), params: { direction: "up" }, as: :turbo_stream
+      assert_select "turbo-stream[action='replace'][target='team-featured'] template" do
+        assert_select "[autofocus]", count: 1
+        assert_select "button[autofocus][aria-label=?]", "Move Credits #{@tag} down"
+      end
+    end
+
+    # Two Features of the same workflow at once. Here the other request's row
+    # lands inside the failed save's savepoint and rolls back with it, so this
+    # asserts the answer, not the row; in production that row is committed.
+    test "a Feature that loses the race at the unique index still answers as featured" do
+      raced = stage_a_racing_feature(@invoices, after: 'SELECT 1 AS one FROM "group_featured_workflows"') do
+        post team_featured_workflows_path(@team), params: { workflow_id: @invoices.id }, as: :turbo_stream
+      end
+
+      assert raced, "the uniqueness check never ran, so no race was staged"
+      assert_response :success
+      assert_includes response.body, "Featured Invoices #{@tag} for #{@team.name}."
+    end
+
+    # The other row can also land before the save starts, and then the uniqueness
+    # validation refuses it.
+    test "a Feature that loses the race at the uniqueness check answers as featured, not with the model's message" do
+      raced = stage_a_racing_feature(@invoices, after: 'SELECT MAX("group_featured_workflows"."position")') do
+        post team_featured_workflows_path(@team), params: { workflow_id: @invoices.id }, as: :turbo_stream
+      end
+
+      assert raced, "the position lookup never ran, so no race was staged"
+      assert_response :success
+      assert_equal 1, @team.featured_workflows.where(workflow: @invoices).count
+      assert_includes response.body, "Featured Invoices #{@tag} for #{@team.name}."
+      assert_includes response.body, "Remove Invoices #{@tag} from #{@team.name}"
+      assert_not_includes response.body, "has already been taken"
     end
 
     private
+
+    # Stands in for a second request featuring the same workflow: writes that row
+    # the moment the first query starting with `after` has run. Returns whether it
+    # ran, so a test can tell a staged race from one that never happened.
+    def stage_a_racing_feature(workflow, after:, &)
+      raced = false
+      write_the_other_row = lambda do |*, payload|
+        next if raced || !payload[:sql].start_with?(after)
+
+        raced = true
+        GroupFeaturedWorkflow.insert_all([{ group_id: @team.id, workflow_id: workflow.id, position: 0,
+                                            created_at: Time.current, updated_at: Time.current }])
+      end
+
+      ActiveSupport::Notifications.subscribed(write_the_other_row, "sql.active_record", &)
+      raced
+    end
 
     def person(label, role)
       User.create!(email: "curate-#{label}-#{@tag}@example.com", password: "password123!",

@@ -96,6 +96,7 @@ class TeamsControllerTest < ActionDispatch::IntegrationTest
     GroupFeaturedWorkflow.create!(group: @team, workflow: first, added_by: @manager, position: 0)
     GroupFeaturedWorkflow.create!(group: @team, workflow: gone, added_by: @manager, position: 2)
     gone.update!(status: "draft")
+    @manager.update!(display_name: "Morgan Manager")
     sign_in @manager
 
     get team_path(@team)
@@ -105,7 +106,8 @@ class TeamsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".page-header-section__ident", text: /1 member/
     titles = css_select("#team-featured .admin-group__name").map { it.text.strip }
     assert_equal ["First #{@tag}", "Second #{@tag}", "Gone #{@tag}"], titles
-    assert_select "#team-featured li", text: /Added by #{Regexp.escape(@manager.email)}/, count: 3
+    assert_select "#team-featured li", text: /Added by Morgan Manager/, count: 3
+    assert_select "#team-featured", text: /#{Regexp.escape(@manager.email)}/, count: 0
     assert_select "#team-featured li", text: /Members can't see this.*Unpublished/m, count: 1
   end
 

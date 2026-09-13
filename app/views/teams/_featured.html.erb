@@ -1,4 +1,4 @@
-<%# locals: (group:, featured:, visible_ids:, query: "", candidates: Workflow.none) %>
+<%# locals: (group:, featured:, visible_ids:, query: "", candidates: Workflow.none, moved_id: nil, moved_direction: nil) %>
 <%# A team's featured workflows (spec 2026-09-13-group-featured-workflows), in
     the order members get them: drag, or Move up / Move down. A row members
     can't see stays listed, marked, and holds no place (Q18).
@@ -15,9 +15,19 @@
       <ul class="admin-group__list mb-4" role="list"
           data-controller="sortable-list"
           data-sortable-list-url-value="<%= reorder_team_featured_workflows_path(group) %>"
-          data-sortable-list-param-value="featured_ids">
+          data-sortable-list-param-value="featured_ids"
+          data-sortable-list-query-value="<%= query %>">
         <% featured.each_with_index do |row, index| %>
           <% hidden = row.hidden_reason(visible_ids) %>
+          <% can_move_up = !index.zero? %>
+          <% can_move_down = index != featured.size - 1 %>
+          <%# Move replaces this card, so focus goes back to the row that moved:
+              its button the same way, or the other once it reaches an end. %>
+          <% if row.id == moved_id %>
+            <% focus = moved_direction %>
+            <% focus = "down" if focus == "up" && !can_move_up %>
+            <% focus = "up" if focus == "down" && !can_move_down %>
+          <% end %>
           <li class="admin-group__item" data-sortable-id="<%= row.id %>">
             <span class="admin-folders__handle cursor-move" title="Drag to reorder" aria-hidden="true">
               <%= icon "bars-2", class: "icon icon--sm" %>
@@ -27,17 +37,17 @@
               <% if hidden %>
                 <span class="badge badge--warning">Members can't see this</span> <%= hidden %> ·
               <% end %>
-              Added by <%= row.added_by&.email || "a former user" %> <%= time_ago_in_words(row.created_at) %> ago
+              Added by <%= row.added_by&.display_label || "a former user" %> <%= time_ago_in_words(row.created_at) %> ago
             </span>
-            <% unless index.zero? %>
+            <% if can_move_up %>
               <%= button_to "Move up", move_team_featured_workflow_path(group, row), method: :patch,
                     params: { direction: "up", q: query }, class: "btn btn--plain btn--sm",
-                    aria: { label: "Move #{row.workflow.title} up" } %>
+                    autofocus: focus == "up", aria: { label: "Move #{row.workflow.title} up" } %>
             <% end %>
-            <% unless index == featured.size - 1 %>
+            <% if can_move_down %>
               <%= button_to "Move down", move_team_featured_workflow_path(group, row), method: :patch,
                     params: { direction: "down", q: query }, class: "btn btn--plain btn--sm",
-                    aria: { label: "Move #{row.workflow.title} down" } %>
+                    autofocus: focus == "down", aria: { label: "Move #{row.workflow.title} down" } %>
             <% end %>
             <%= button_to "Remove", team_featured_workflow_path(group, row), method: :delete,
                   params: { q: query }, class: "btn btn--plain btn--sm",

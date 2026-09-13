@@ -1,3 +1,4 @@
 <%= turbo_stream.replace "team-featured", partial: "teams/featured",
-      locals: { group: @group, featured: @featured, visible_ids: @visible_ids, query: @query, candidates: @candidates } %>
+      locals: { group: @group, featured: @featured, visible_ids: @visible_ids, query: @query, candidates: @candidates,
+                moved_id: @moved_id, moved_direction: @moved_direction } %>
 <%= turbo_stream.update "flash", partial: "shared/flash_messages" %>
