@@ -120,6 +120,12 @@ class Scenario < ApplicationRecord
   # from a completion. Abandoned and error are finished but not completed.
   COMPLETED_OUTCOMES = %w[completed resolved escalated transferred].freeze
 
+  # Where calls start: neither a returning sub-flow's child nor the frame a
+  # handoff moved the run to. A sub-flow or handoff frame carries the same user
+  # and purpose as its call, so anything asking "what did this person start"
+  # reads from here, as CallStatistics does.
+  scope :origins, -> { where(parent_scenario_id: nil, handed_off_from_id: nil) }
+
   # Cleanup scopes
   scope :terminal, -> { where(status: TERMINAL_STATUSES) }
 

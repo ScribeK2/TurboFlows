@@ -1,7 +1,7 @@
 module Dashboard
-  # What the CSR dashboard reads: the viewer's pins and their own runs. The
-  # Editor and Admin home is Dashboard::Home; the org-wide stats this used to
-  # carry for it were removed with that page (spec 2026-09-12).
+  # What the CSR home reads: a call to pick back up, the viewer's pins, and the
+  # workflows they recently started (spec 2026-09-13). The Editor and Admin home
+  # is Dashboard::Home.
   class DataLoader
     # Distinct workflows the user has run, ordered by most-recent run. Returns up
     # to 5 Scenarios (the most recent live Scenario per workflow), so views can
@@ -9,6 +9,14 @@ module Dashboard
     # this portable across SQLite (test) and Postgres (prod).
     RECENTLY_RUN_LIMIT = 5
     RECENTLY_RUN_SCAN = 100
+
+    # A workflow the viewer recently started, and how that call ended. The
+    # ending comes from CallStatistics, which picks it in SQL the way
+    # Scenario#run_ending does, so five rows cost the same as one.
+    RecentRun = Data.define(:origin, :call) do
+      delegate :workflow, to: :origin
+      delegate :finished?, :outcome, to: :call
+    end
 
     attr_reader :user
 
@@ -45,8 +53,8 @@ module Dashboard
       ids = pinned_workflows.map(&:id)
       return (@pinned_workflow_stats = {}) if ids.empty?
 
-      counts = live_scenarios.where(workflow_id: ids).group(:workflow_id).count
-      last_runs = live_scenarios.where(workflow_id: ids).group(:workflow_id).maximum(:created_at)
+      counts = started_calls.where(workflow_id: ids).group(:workflow_id).count
+      last_runs = started_calls.where(workflow_id: ids).group(:workflow_id).maximum(:created_at)
       @pinned_workflow_stats = ids.index_with { |id| { runs: counts[id].to_i, last_run_at: last_runs[id] } }
     end
 
@@ -66,6 +74,16 @@ module Dashboard
       end
     end
 
+    # Workflows the viewer started, one row per workflow for its latest call,
+    # limited to workflows they can still run, so every Re-run works.
+    def recently_run
+      @recently_run ||= begin
+        latest = latest_call_per_workflow
+        calls = CallStatistics.new(Scenario.where(id: latest.map(&:id))).calls.index_by(&:origin_id)
+        latest.map { |origin| RecentRun.new(origin:, call: calls.fetch(origin.id)) }
+      end
+    end
+
     private
 
     def user_scenarios
@@ -74,6 +92,27 @@ module Dashboard
 
     def live_scenarios
       @live_scenarios ||= user_scenarios.where(purpose: "live")
+    end
+
+    # Bounded scan, as recently_run_workflows had: portable across SQLite and
+    # Postgres without DISTINCT ON.
+    def latest_call_per_workflow
+      seen = {}
+      started_calls.where(workflow_id: Workflow.visible_to(user).select(:id))
+                   .includes(workflow: :tags)
+                   .order(created_at: :desc)
+                   .limit(RECENTLY_RUN_SCAN)
+                   .each do |origin|
+        next if seen.key?(origin.workflow_id)
+
+        seen[origin.workflow_id] = origin
+        break if seen.size >= RECENTLY_RUN_LIMIT
+      end
+      seen.values
+    end
+
+    def started_calls
+      @started_calls ||= live_scenarios.origins
     end
   end
 end

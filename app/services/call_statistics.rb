@@ -74,7 +74,7 @@ class CallStatistics
   private
 
   def load_calls
-    origins = @scope.where(parent_scenario_id: nil, handed_off_from_id: nil)
+    origins = @scope.origins
     rows = origins.pluck(:id, :workflow_id, :purpose, :started_at, :outcome, :completed_at)
     return [] if rows.empty?
 
