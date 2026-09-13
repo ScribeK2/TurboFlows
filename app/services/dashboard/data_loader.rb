@@ -133,7 +133,8 @@ module Dashboard
                                   .includes(workflow: %i[tags steps]).group_by(&:group_id)
       return [] if rows.empty?
 
-      visible = Group.member_visible_workflow_ids(groups, rows.values.flatten.map(&:workflow_id))
+      visible = Group.member_visible_workflow_ids(groups, rows.values.flatten.map(&:workflow_id),
+                                                  global_id: global&.id)
       shown = pinned_workflow_ids.dup
 
       groups.filter_map do |group|

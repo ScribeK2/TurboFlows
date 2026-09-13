@@ -42,9 +42,12 @@ class FlashMessageRenderingTest < ActionDispatch::IntegrationTest
     patch update_role_admin_user_path(@admin), params: { role: "regular" }
     follow_redirect!
 
-    flash_el = css_select("div.flash").first
+    # Scoped to #flash: the layout also keeps an empty alert in a <template> for
+    # services/flash.js, and the HTML parser matches inside it.
+    flash_el = css_select("#flash div.flash").first
 
     assert flash_el, "expected a flash to render"
+    assert_not flash_el.css(".flash__text").text.strip.empty?, "expected the redirect's own message"
     assert_equal 1, flash_el.css(".flash__body").size,
                  "a .flash without a .flash__body has no fill, padding or radius"
     assert_equal 1, flash_el.css(".flash__text").size

@@ -8,9 +8,9 @@ import { flashAlert } from "services/flash"
 // it as `query`, sent as `q`. An endpoint that answers with a Turbo Stream gets
 // it rendered (the team page's card, whose Move buttons follow the order); the
 // empty 200 the folders endpoint sends renders nothing. A save that fails puts
-// the rows back in the order last saved and says so in #flash: an error, no
-// answer at all, or a redirect, which is how a lost session or lost access
-// answers once fetch has followed it to an ordinary page.
+// the rows back in the order last saved and says so in #flash: an error (a lost
+// session answers 401), no answer at all, or a redirect (lost access). Redirects
+// aren't followed, so the PATCH is never sent on to a page it wasn't meant for.
 export default class extends Controller {
   static values = { url: String, param: String, query: String }
 
@@ -28,6 +28,7 @@ export default class extends Controller {
   disconnect() {
     if (this.sortable) {
       this.sortable.destroy()
+      this.sortable = null
     }
   }
 
@@ -39,6 +40,7 @@ export default class extends Controller {
 
     fetch(this.urlValue, {
       method: "PATCH",
+      redirect: "manual",
       headers: {
         "Content-Type": "application/json",
         "X-CSRF-Token": csrfToken,
@@ -47,7 +49,8 @@ export default class extends Controller {
       body: JSON.stringify(body)
     })
     .then((response) => {
-      if (!response.ok || response.redirected) throw new Error(`Order not saved: ${response.status}`)
+      // A redirect not followed comes back opaque, with ok false.
+      if (!response.ok) throw new Error(`Order not saved: ${response.status}`)
       return response
     })
     .then((response) => {
@@ -65,8 +68,11 @@ export default class extends Controller {
     if (html.trim()) Turbo.renderStreamMessage(html)
   }
 
+  // The list may have been replaced while the save was out (a Move or Remove
+  // re-rendered the card), and then there are no rows to put back, but the
+  // message still says the drag didn't save.
   restore() {
-    this.sortable.sort(this.savedOrder, true)
+    this.sortable?.sort(this.savedOrder, true)
     flashAlert("Couldn't save the new order. Try again.")
   }
 }

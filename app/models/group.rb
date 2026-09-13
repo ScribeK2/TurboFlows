@@ -200,17 +200,17 @@ class Group < ApplicationRecord
   # Workflow.visible_to_members_of answered for many groups from three queries,
   # however many groups there are. A workflow counts when it is published and
   # filed in the group, a group below it, or Global.
-  # test/models/workflow_audience_test.rb holds the two to the same answer.
-  def self.member_visible_workflow_ids(groups, workflow_ids)
+  # test/models/workflow_audience_test.rb holds the two to the same answer. A
+  # caller that has Global in hand passes its id and saves looking it up again.
+  def self.member_visible_workflow_ids(groups, workflow_ids, global_id: self.global_id)
     filings = GroupWorkflow.where(workflow_id: Workflow.published.where(id: workflow_ids).select(:id))
                            .distinct.pluck(:group_id, :workflow_id)
     parent_of = Group.pluck(:id, :parent_id).to_h
-    global = global_id
     lineage = Hash.new { |known, id| known[id] = self_and_ancestor_ids(id, parent_of) }
 
     groups.to_h do |group|
       seen = filings.filter_map do |filed_in, workflow_id|
-        workflow_id if filed_in == global || lineage[filed_in].include?(group.id)
+        workflow_id if filed_in == global_id || lineage[filed_in].include?(group.id)
       end
       [group.id, seen.to_set]
     end
