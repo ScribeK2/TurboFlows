@@ -29,6 +29,14 @@ class RecurringScheduleOrderTest < ActiveSupport::TestCase
     assert_equal "CleanupScenariosJob",   SCHEDULE[:cleanup_scenarios][:class]
   end
 
+  # Nothing else removes an upload that was never saved into a rich text, so if
+  # this entry goes, those files quietly accumulate in storage.
+  test "unattached uploads are swept nightly" do
+    assert SCHEDULE.key?(:purge_unattached_blobs), "nothing else removes an upload that was never saved"
+    assert_equal "PurgeUnattachedBlobsJob", SCHEDULE[:purge_unattached_blobs][:class]
+    daily_minutes(SCHEDULE[:purge_unattached_blobs][:schedule])
+  end
+
   # The three-way order, and the first night is when it matters most: the sweep
   # settles a whole backlog of abandoned runs stamped with their real last
   # activity, the rollup captures that abandonment history, and cleanup then

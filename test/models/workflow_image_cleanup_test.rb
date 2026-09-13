@@ -27,6 +27,23 @@ class WorkflowImageCleanupTest < ActiveSupport::TestCase
     assert_not blob.service.exist?(blob.key), "the file is still in storage"
   end
 
+  # The Player shows embedded images through a resized copy, and Active Storage
+  # records each copy in active_storage_variant_records, whose foreign key points
+  # at the original. A blob that still has one can't be destroyed, and
+  # Blob#purge swallows that error, so an image anyone ever viewed would stay.
+  test "an image that was shown resized is purged with its resized copy" do
+    blob = image_blob
+    workflow = workflow_showing(blob)
+    resized = blob.representation(resize_to_limit: [1024, 768]).processed.image.blob
+
+    perform_enqueued_jobs { workflow.destroy! }
+
+    assert_not ActiveStorage::VariantRecord.exists?(blob_id: blob.id), "the resized copy's record outlived the image"
+    assert_not ActiveStorage::Blob.exists?(resized.id), "the resized copy outlived the image"
+    assert_not ActiveStorage::Blob.exists?(blob.id), "the blob outlived the workflow"
+    assert_not blob.service.exist?(blob.key), "the file is still in storage"
+  end
+
   test "an image another workflow still embeds survives deleting one of them, and goes with the last" do
     blob = image_blob
     first = workflow_showing(blob)

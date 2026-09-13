@@ -527,6 +527,19 @@ unexpected `answer_type` rendered radio cards with no way to submit.
 - **The changelog is written retroactively, from the versions list, by anyone who `can_be_edited_by?`.** Publishing a single workflow is one `button_to` click; a dialog there to capture an optional field is the one people dismiss, which buys the friction and the empty column both. `published_by` is never touched, so authorship of the publish survives someone else annotating it. A released version is still annotatable — the record is the durable artefact. The versions list paginates (`Workflows::VersionsController::PER_PAGE`) because that record now only grows, and the compare dropdowns offer only restorable versions: a diff reads `steps_snapshot` on both sides, and a menu should not list what it cannot do
 - **`scenarios.workflow_version_id` records which script the agent followed**, set by a `before_create` on `Scenario` rather than at the four `Scenario.create!` sites — a sub-flow child runs a *different* workflow and must record that workflow's version. It is nil for a simulation of an unpublished draft, which is correct. It does **not** hold a snapshot alive: the link answers *which* version, and that is kept permanently anyway. The column, its index and its FK existed for a long time with nothing writing them (0 of 120 rows), and there was no `belongs_to` either
 - Data lifecycle: tiered scenario retention (7-day simulation, 90-day live), batched cleanup via `CleanupScenariosJob` + `CleanupDraftsJob` (daily at 3 AM), admin visibility at `/admin/data_health`, whose "For whoever runs the server" disclosure lists the env vars with their current values, the rake commands, and the schedule read from `config/recurring.yml`. **A draft with steps is never auto-deleted** — both draft-cleanup scopes require the workflow to have none. `orphaned_drafts` also requires the title `"Untitled Workflow"` and 24 hours; `expired_drafts` requires a `draft_expires_at` in the past. Imports carry a nil TTL, so they match neither
+- **Uploaded files have two cleanups, and both are needed.**
+  - **Deleting a workflow purges the images its steps embed.** Each step's rich text
+    is destroyed with callbacks, which purge its `embeds`.
+    `Workflow#nullify_start_step` used to `delete_all` them for a foreign key that
+    rich text doesn't have, and every image outlived its workflow (fixed 2026-09-13).
+  - **Unattached uploads are swept.** Lexxy uploads an image the moment it's
+    chosen, so one removed before its step saves, or chosen in an editor closed
+    without saving, attaches to nothing. `PurgeUnattachedBlobsJob` (03:30) purges
+    those once they are older than `GRACE` (2 days).
+  - **Shared images are safe in both:** Active Storage won't destroy a blob that
+    still has attachments, and destroying one clears its resized copies
+    (`variant_records`). Guarded by `test/models/workflow_image_cleanup_test.rb` and
+    `test/jobs/purge_unattached_blobs_job_test.rb`.
 - Security: Rack::Attack, Bullet (N+1), Brakeman
 
 ## UI Guide
@@ -543,7 +556,7 @@ Playwright MCP (for UI/system testing). Point agent to running app at `http://lo
 - Branch: `main`
 - Tool: Kamal + Puma + PostgreSQL + Solid Queue (in-process)
 - Solid Queue runs inside Puma via `plugin :solid_queue` (no separate container)
-- Recurring jobs configured in `config/recurring.yml` (cleanup scenarios + drafts daily at 3 AM)
+- Recurring jobs configured in `config/recurring.yml`: cleanup scenarios + drafts daily at 3 AM, and unattached uploads swept at 3:30
 - Retention configurable via ENV: `SCENARIO_RETENTION_SIMULATION_DAYS` (default 7), `SCENARIO_RETENTION_LIVE_DAYS` (default 90), `SCENARIO_IDLE_TIMEOUT_HOURS` (default 24 — the sweep runs nightly, so the real window is this plus up to a day)
 - Pre-deploy: RuboCop + full test suite (run locally before deploy)
 - The `20260911120000_add_self_join_to_groups` migration makes every existing group self-joinable (`admins_add_members` defaults to `false`), and sign-up is open — right after deploying, an administrator should mark sensitive groups "Only administrators add people" before the feature is announced

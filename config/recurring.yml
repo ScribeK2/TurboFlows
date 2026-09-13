@@ -16,6 +16,12 @@ production:
   cleanup_drafts:
     class: CleanupDraftsJob
     schedule: "0 3 * * *"
+  # Uploads nothing attaches (an image removed before its step saved, or chosen
+  # in an editor closed without saving) would otherwise stay in storage forever.
+  # After the 03:00 cleanups so the two never compete; order doesn't matter.
+  purge_unattached_blobs:
+    class: PurgeUnattachedBlobsJob
+    schedule: "30 3 * * *"
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
     schedule: every hour at minute 12
