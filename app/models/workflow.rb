@@ -513,13 +513,12 @@ class Workflow < ApplicationRecord
 
   def nullify_start_step
     update_columns(start_step_id: nil) if start_step_id.present?
-    # Delete all transitions and Action Text records referencing this workflow's steps
-    # to avoid FK constraint violations during cascading step deletion
+    # Transitions reference steps in both directions, so they go first or the
+    # cascading step deletion trips their foreign keys. Rich text has no foreign
+    # key: each step's own `dependent: :destroy` removes it, and that callback is
+    # what purges the images it embeds (a delete_all here leaked them).
     step_ids = steps.pluck(:id)
-    if step_ids.any?
-      Transition.where(step_id: step_ids).or(Transition.where(target_step_id: step_ids)).delete_all
-      ActionText::RichText.where(record_type: "Step", record_id: step_ids).delete_all
-    end
+    Transition.where(step_id: step_ids).or(Transition.where(target_step_id: step_ids)).delete_all if step_ids.any?
   end
 
   # Validate graph structure (only in graph mode)
