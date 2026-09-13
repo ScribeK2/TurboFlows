@@ -13,6 +13,10 @@ pin "@rails/actioncable", to: "actioncable.esm.js"
 
 # Action Text (rich text editing with Lexxy)
 pin "lexxy", to: "lexxy.js"
+# Lexxy uploads images with `await import("@rails/activestorage")`. Without this
+# pin that import fails silently: the editor previews the image, nothing uploads,
+# and the step saves without it. Guarded by test/integration/importmap_pins_test.rb.
+pin "@rails/activestorage", to: "activestorage.esm.js"
 
 # Third-party libraries (vendored locally for reliability)
 pin "sortablejs", to: "sortablejs.js"
