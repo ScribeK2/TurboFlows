@@ -331,12 +331,21 @@ Browsing and pinning are `/play`.
   home), because only the CSR home reads pins. `workflows/pins/_toggle` is the
   only toggle, and `Workflows::PinsController` replaces every copy of it.
 - **"From your team" comes before pins.** It shows what the CSR's own groups (direct
-  membership, not sub-teams or parents) and Global feature for them. There's one
-  heading per team in name order, and Global comes last as "For everyone". A workflow
-  shows once, a pinned one isn't repeated, and when nothing is featured it renders
-  only an empty `#team-workflows-section` wrapper, which a pin change replaces. When it has rows and the CSR has no pins, "Your fast path" is one line.
-  Read from `Dashboard::DataLoader#team_sections`; pinned and featured rows share
-  `dashboard/_launcher_row` and `#run_stats`.
+  membership, not sub-teams or parents) and Global feature for them.
+  - **Headings:** one per team in name order, with Global last as "For everyone". A
+    team whose name another of the CSR's teams shares is headed by its path instead
+    ("Support / Phone"), since names are unique only under one parent.
+  - **What each team shows:** its kit, the first 8 its members can see. The kit is
+    cut before anything is left out, so a pin never lets a ninth in. After that, a
+    workflow shows once and a pinned one isn't repeated.
+  - **Empty and day-one states:** with nothing featured it renders only an empty
+    `#team-workflows-section` wrapper, which a pin change replaces. When it has rows
+    and the CSR has no pins, "Your fast path" is one line.
+  - **Where it's read:** `Dashboard::DataLoader#team_sections`. Every team's
+    visibility comes from one batch (`Group.member_visible_workflow_ids`, held to
+    `Workflow.visible_to_members_of` by `test/models/workflow_audience_test.rb`), so
+    the queries don't grow with the CSR's teams. Pinned and featured rows share
+    `dashboard/_launcher_row` and `#run_stats`.
 
 **Featured workflows and the team page.** A group's standard kit
 (`GroupFeaturedWorkflow`), curated on its **team page** (`/teams/:id`). "Team page"
@@ -348,13 +357,17 @@ means a group's page outside the admin area, and the data is still a group.
 - **What it may feature:** only what its members can already see
   (`Workflow.visible_to_members_of`: published, and filed in the group, a subgroup, or
   Global). Featuring never changes who can see a workflow.
-- **The cap:** up to 8 per group, in the curator's order. Only rows members can still
-  see count; a row they can't see stays on the team page, marked, until it's removed
-  or visible again.
+- **The cap:** members get at most 8 per group, the first 8 they can see, in the
+  curator's order (`GroupFeaturedWorkflow.kit`). A row they can't see holds no place.
+  It stays on the team page, marked, until it's removed or visible again, and then it
+  returns in its place. That can push a visible row past the 8th: the team page marks
+  it "Past the first 8" and members don't get it. Adding a ninth visible row is refused.
 - **The page:** every change answers with a Turbo Stream that replaces
   `#team-featured`. Feature and Remove also report through `#flash`; Move and a drag
   re-render the card in place, so Move up and Move down follow the new order and Move
-  keeps focus on the row that moved. Drag reordering uses `sortable-list`, the same
+  keeps focus on the row that moved. A drag that doesn't save (an error, no answer, or
+  a redirect from a lost session) puts the rows back and says so through `#flash`,
+  using `app/javascript/services/flash.js`. Drag reordering uses `sortable-list`, the same
   controller as the admin group page's folders, which renders a stream only when the
   endpoint sends one (the folders endpoint answers an empty 200).
 
