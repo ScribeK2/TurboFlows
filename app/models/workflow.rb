@@ -23,6 +23,7 @@ class Workflow < ApplicationRecord
   # Scenario associations
   has_many :scenarios, dependent: :destroy
   has_many :user_workflow_pins, dependent: :destroy
+  has_many :group_featured_workflows, dependent: :destroy
 
   # Set draft expiration before save (7 days from creation or update).
   # A nil draft_expires_at means "never expires" and must stay nil: an import
@@ -144,6 +145,13 @@ class Workflow < ApplicationRecord
     filed_ids = GroupWorkflow.where(group_id: Group.reachable_ids_for(user)).select(:workflow_id)
     filed = published.where(id: filed_ids)
     user.editor? ? filed.or(published.where(user: user)) : filed
+  }
+
+  # What a group's members can see (spec 2026-09-13-group-featured-workflows Q6):
+  # published and filed in the group, one of its subgroups, or Global. A group
+  # may feature only these.
+  scope :visible_to_members_of, lambda { |group|
+    published.where(id: GroupWorkflow.where(group_id: group.member_reach_ids).select(:workflow_id))
   }
 
   # Published and filed in no group: only admins and the owner can see these

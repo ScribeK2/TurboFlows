@@ -22,6 +22,7 @@ class Group < ApplicationRecord
   has_many :group_managers, dependent: :destroy
   has_many :managers, through: :group_managers, source: :user
   has_many :folders, dependent: :destroy
+  has_many :featured_workflows, class_name: "GroupFeaturedWorkflow", dependent: :destroy
 
   # Validations
   validates :name, presence: true, uniqueness: { scope: :parent_id }
@@ -187,6 +188,12 @@ class Group < ApplicationRecord
     return [] unless user
 
     (accessible_group_ids_for(user) + [global_id]).compact.uniq
+  end
+
+  # Groups whose filed workflows this group's members see: the group, its
+  # subgroups and Global — reachable_ids_for, read from the group's side.
+  def member_reach_ids
+    ([id] + descendant_ids + [self.class.global_id]).compact.uniq
   end
 
   # The groups a save may leave a workflow in. An admin's choice stands. Anyone

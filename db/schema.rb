@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_12_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_13_120000) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -61,6 +61,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_12_130000) do
     t.index ["group_id", "position"], name: "index_folders_on_group_id_and_position"
     t.index ["group_id"], name: "index_folders_on_group_id"
     t.index ["parent_id"], name: "index_folders_on_parent_id"
+  end
+
+  create_table "group_featured_workflows", force: :cascade do |t|
+    t.integer "added_by_id"
+    t.datetime "created_at", null: false
+    t.integer "group_id", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.integer "workflow_id", null: false
+    t.index ["added_by_id"], name: "index_group_featured_workflows_on_added_by_id"
+    t.index ["group_id", "position"], name: "index_group_featured_workflows_on_group_id_and_position"
+    t.index ["group_id", "workflow_id"], name: "index_group_featured_workflows_on_group_id_and_workflow_id", unique: true
+    t.index ["workflow_id"], name: "index_group_featured_workflows_on_workflow_id"
   end
 
   create_table "group_managers", force: :cascade do |t|
@@ -352,6 +365,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_12_130000) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "folders", "groups"
+  add_foreign_key "group_featured_workflows", "groups", on_delete: :cascade
+  add_foreign_key "group_featured_workflows", "users", column: "added_by_id", on_delete: :nullify
+  add_foreign_key "group_featured_workflows", "workflows", on_delete: :cascade
   add_foreign_key "group_managers", "groups", on_delete: :cascade
   add_foreign_key "group_managers", "users", on_delete: :cascade
   add_foreign_key "group_workflows", "folders"
