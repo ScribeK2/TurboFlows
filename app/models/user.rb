@@ -215,6 +215,10 @@ class User < ApplicationRecord
     AnalyticsScope.new(self).allowed?
   end
 
+  def can_curate_teams?
+    TeamCuration.new(self).allowed?
+  end
+
   # Get groups accessible to this user (admins see all, others see assigned groups)
   def accessible_groups
     admin? ? Group.all : groups

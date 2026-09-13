@@ -59,7 +59,7 @@ class AnalyticsScope
   end
 
   def team_group_ids
-    @team_group_ids ||= managed_group_ids + Group.descendant_ids_for(managed_group_ids)
+    @team_group_ids ||= GroupManager.team_group_ids_for(@user)
   end
 
   def team_member_ids

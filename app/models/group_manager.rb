@@ -8,6 +8,15 @@ class GroupManager < ApplicationRecord
   validates :user_id, uniqueness: { scope: :group_id }
   validate :group_is_not_global
 
+  # The groups a manager's grants reach: each managed group and its sub-teams.
+  # Analytics reads a manager's team from here, and so does who may curate one.
+  def self.team_group_ids_for(user)
+    return [] unless user
+
+    managed = where(user:).pluck(:group_id)
+    (managed + Group.descendant_ids_for(managed)).uniq
+  end
+
   private
 
   # A manager of Global would see everyone's runs, which is what Admin is for.
