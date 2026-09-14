@@ -45,7 +45,14 @@ export default class extends Controller {
           "Accept": "text/vnd.turbo-stream.html"
         },
         body: this.lastFormData
-      }).then(() => {
+      }).then(async (response) => {
+        // A refused save answers with a Turbo Stream saying why (a save that
+        // lost a race to another tab updates #flash). requestSubmit renders
+        // that for free; this path has to, or the refusal is silent.
+        if (!response.ok && response.headers.get("Content-Type")?.includes("turbo-stream")) {
+          const html = await response.text()
+          if (html.trim()) Turbo.renderStreamMessage(html)
+        }
         document.dispatchEvent(new CustomEvent("health:check-needed"))
       })
     }

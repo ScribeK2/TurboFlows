@@ -19,6 +19,9 @@ class StepsController < ApplicationController
 
   PERMITTED_STEP_PARAM_SHAPES = StepFieldMap::NESTED_SHAPES.merge(media_attachments: []).freeze
 
+  SAVE_CONFLICT_MESSAGE = "Someone else saved this step at the same moment, so your change wasn't saved. " \
+                          "Reload to see the latest version, then make your change again.".freeze
+
   include ActionView::RecordIdentifier
 
   before_action :set_workflow
@@ -166,6 +169,8 @@ class StepsController < ApplicationController
         format.json { render json: { errors: @step.errors.full_messages }, status: :unprocessable_content }
       end
     end
+  rescue ActiveRecord::StaleObjectError
+    respond_to_save_conflict
   end
 
   # DELETE /workflows/:workflow_id/steps/:id
@@ -262,6 +267,22 @@ class StepsController < ApplicationController
   def ensure_can_edit!
     unless @workflow.can_be_edited_by?(current_user)
       redirect_to workflows_path, alert: "You don't have permission to edit this workflow."
+    end
+  end
+
+  # Two saves of one step in the same instant, and this one lost the
+  # optimistic-locking race. Left unhandled, Rails answered with an empty 409 the
+  # builder ignored, and the edit vanished without a word. The step panel never
+  # sends lock_version, so this only fires when both saves overlap in the
+  # database; saves seconds apart still go through, the later one winning.
+  def respond_to_save_conflict
+    respond_to do |format|
+      format.turbo_stream do
+        flash.now[:alert] = SAVE_CONFLICT_MESSAGE
+        render turbo_stream: turbo_stream.update("flash", partial: "shared/flash_messages"), status: :conflict
+      end
+      format.html { redirect_to workflow_path(@workflow, edit: true), alert: SAVE_CONFLICT_MESSAGE }
+      format.json { render json: { errors: [SAVE_CONFLICT_MESSAGE] }, status: :conflict }
     end
   end
 
