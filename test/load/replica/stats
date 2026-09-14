@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Samples the replica VM's whole-VM resource use from its cgroup — the same
+# budget every service in it shares — plus each service's share, as CSV.
+#
+#   test/load/replica/stats [INTERVAL_SECONDS=5] > tmp/replica-stats.csv
+#
+# Columns: time, memory in use (MiB), of which process memory (anon) and page
+# cache (file), swap in use (MiB), peak memory (MiB), memory events that
+# throttled or killed (high, max, oom_kill), CPU seconds used so far, then
+# "name=MiB" for each container inside.
+#
+# Read anon, not mem: page cache counts against the limit but the kernel gives
+# it back under pressure. A VM "at its limit" with mostly file pages is fine;
+# one whose anon grows toward the limit is about to swap.
+set -euo pipefail
+
+INTERVAL="${1:-5}"
+VM=turboflows-vm
+id="$(docker inspect --format '{{.Id}}' "$VM")"
+cg="$(find /sys/fs/cgroup -maxdepth 3 -type d -name "docker-$id.scope" 2>/dev/null | head -1)"
+[[ -n "$cg" ]] || { echo "cgroup for $VM not found" >&2; exit 1; }
+
+mib() { echo $(( $(cat "$1") / 1048576 )); }
+event() { awk -v k="$1" '$1 == k { print $2 }' "$cg/memory.events"; }
+
+stat_mib() { awk -v k="$1" '$1 == k { print int($2 / 1048576) }' "$cg/memory.stat"; }
+
+echo "time,mem_mib,anon_mib,file_mib,swap_mib,peak_mib,high_events,max_events,oom_kills,cpu_seconds,containers"
+while docker inspect "$VM" >/dev/null 2>&1; do
+  cpu_usec="$(awk '$1 == "usage_usec" { print $2 }' "$cg/cpu.stat")"
+  inner="$(docker exec "$VM" docker stats --no-stream --format '{{.Name}}={{.MemUsage}}' 2>/dev/null \
+    | sed -E 's# / .*##' | tr '\n' ' ')"
+  printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' "$(date +%H:%M:%S)" "$(mib "$cg/memory.current")" \
+    "$(stat_mib anon)" "$(stat_mib file)" "$(mib "$cg/memory.swap.current")" "$(mib "$cg/memory.peak")" \
+    "$(event high)" "$(event max)" "$(event oom_kill)" "$(( cpu_usec / 1000000 ))" "$inner"
+  sleep "$INTERVAL"
+done

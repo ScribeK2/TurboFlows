@@ -1,0 +1,24 @@
+#!/bin/bash
+# The replica's web entrypoint: migrate on boot, as production does, then start.
+#
+# Not the repo's bin/docker-entrypoint, which calls `bin/rails db:prepare:queue`
+# — a command Rails 8.1 doesn't have, so an image built from this repo exits
+# before Puma starts. Production boots, so its (GitLab) entrypoint differs, and
+# this one does what production's evidently does.
+set -e
+
+# .dockerignore leaves tmp/ out of the image, and Puma exits if it can't write
+# tmp/pids/server.pid — a second thing the repo's entrypoint doesn't handle.
+mkdir -p /rails/storage /rails/tmp/pids
+
+# Migrates every database in config/database.yml. In production the queue shares
+# the primary's DATABASE_URL, so by the time its turn comes the database already
+# looks initialised and queue_schema.rb is never loaded; load it if its tables
+# are missing. Rails refuses any schema load against a production database
+# unless told otherwise; this one only runs when those tables don't exist.
+bin/rails db:prepare
+if ! bin/rails runner 'exit(ActiveRecord::Base.connection.table_exists?("solid_queue_jobs") ? 0 : 1)'; then
+  DISABLE_DATABASE_ENVIRONMENT_CHECK=1 bin/rails db:schema:load:queue
+fi
+
+exec "$@"

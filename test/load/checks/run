@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Everything that decides a load test apart from k6's own latency thresholds:
+# the data checks (integrity.rb), server errors in the web log, and whether any
+# process in the replica restarted or was killed for memory.
+#
+#   test/load/checks/run tmp/load-results/<run> 2026-09-15T09:00:00Z
+#
+# The second argument is when the test started (UTC). Exits 1 if anything failed.
+set -uo pipefail
+
+RESULTS="${1:?usage: checks/run <results dir> <test start, ISO 8601 UTC>}"
+SINCE="${2:?usage: checks/run <results dir> <test start, ISO 8601 UTC>}"
+VM=turboflows-vm
+failed=0
+
+echo "== Data checks"
+docker exec -i "$VM" docker exec -i -e CHECK_SINCE="$SINCE" turboflows-web \
+  bin/rails runner /load/checks/integrity.rb < "$RESULTS/console.log" 2>&1 | grep -v "Sentry"
+[[ "${PIPESTATUS[0]}" -eq 0 ]] || failed=1
+
+echo
+echo "== Server errors in the web log since $SINCE"
+errors="$(docker exec "$VM" docker logs --since "$SINCE" turboflows-web 2>&1 | grep -E "Completed 5[0-9]{2}" || true)"
+if [[ -z "$errors" ]]; then
+  echo "PASS  no 5xx responses"
+else
+  failed=1
+  echo "FAIL  $(wc -l <<<"$errors") 5xx response(s). Most frequent request lines before them:"
+  docker exec "$VM" docker logs --since "$SINCE" turboflows-web 2>&1 \
+    | grep -B20 -E "Completed 5[0-9]{2}" | grep -oE 'Started [A-Z]+ "[^"?]+' | sed -E 's#/[0-9]+#/:id#g' \
+    | sort | uniq -c | sort -rn | head -8 | sed 's/^/        /'
+fi
+
+echo
+echo "== Restarts and memory kills inside the replica"
+restarts="$(docker exec "$VM" docker ps -a --format '{{.Names}}' | while read -r name; do
+  docker exec "$VM" docker inspect --format "{{.Name}} restarts={{.RestartCount}} oom_killed={{.State.OOMKilled}}" "$name"
+done)"
+echo "$restarts" | sed 's/^/        /'
+if grep -qE "restarts=[1-9]|oom_killed=true" <<<"$restarts"; then
+  failed=1
+  echo "FAIL  a service restarted or was killed for memory"
+fi
+
+id="$(docker inspect --format '{{.Id}}' "$VM")"
+cg="$(find /sys/fs/cgroup -maxdepth 3 -type d -name "docker-$id.scope" | head -1)"
+oom="$(awk '$1 == "oom_kill" { print $2 }' "$cg/memory.events")"
+echo "        VM: peak $(( $(cat "$cg/memory.peak") / 1048576 )) MiB, swap now $(( $(cat "$cg/memory.swap.current") / 1048576 )) MiB, oom_kill events $oom"
+if [[ "$oom" != "0" ]]; then
+  failed=1
+  echo "FAIL  the kernel killed a process for memory inside the VM"
+fi
+
+echo
+[[ "$failed" -eq 0 ]] && echo "LOAD TEST CHECKS PASSED" || echo "LOAD TEST CHECKS FAILED"
+exit "$failed"

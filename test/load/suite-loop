@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Runs the whole suite — system tests included — several times against
+# PostgreSQL, each with its own random seed, and reports which tests failed on
+# which seeds. A test that fails on one seed in ten is a race somewhere, in the
+# test or in the app.
+#
+#   test/load/suite-loop          # 10 runs
+#   test/load/suite-loop 3        # 3 runs
+#
+# PostgreSQL rather than SQLite because production runs it, and the races this
+# is looking for (locking, transaction isolation) behave differently on SQLite.
+# Never run it while a load test is running: both would measure the contention.
+set -uo pipefail
+
+RUNS="${1:-10}"
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+OUT="$ROOT/tmp/suite-loop/$(date +%Y%m%d-%H%M)"
+PG_CONTAINER=loadtest-suite-postgres
+PG_PORT="${PG_PORT:-55432}"
+export RAILS_ENV=test
+export DATABASE_URL="postgres://turboflows:turboflows@127.0.0.1:$PG_PORT/turboflows_test"
+
+mkdir -p "$OUT"
+cd "$ROOT" || exit 1
+
+if ! docker ps --format '{{.Names}}' | grep -qx "$PG_CONTAINER"; then
+  docker rm -f "$PG_CONTAINER" >/dev/null 2>&1
+  docker run -d --name "$PG_CONTAINER" -p "127.0.0.1:$PG_PORT:5432" \
+    -e POSTGRES_USER=turboflows -e POSTGRES_PASSWORD=turboflows postgres:16 >/dev/null
+fi
+until docker exec "$PG_CONTAINER" pg_isready -U turboflows >/dev/null 2>&1; do sleep 1; done
+
+for run in $(seq 1 "$RUNS"); do
+  seed=$(( (RANDOM << 15) | RANDOM ))
+  log="$OUT/run-$run-seed-$seed.log"
+
+  # A fresh schema every run: a run killed mid-way leaves rows behind that make
+  # the next one fail with foreign-key errors that look like a regression.
+  bin/rails db:drop db:create db:schema:load >"$OUT/run-$run-schema.log" 2>&1
+
+  echo "[$(date +%H:%M)] run $run/$RUNS, seed $seed"
+  # Two invocations, not `bin/rails test:all`: test/models and test/system both
+  # define ScenarioExecutionTest with different superclasses, so loading them in
+  # one process raises "superclass mismatch" before any test runs.
+  {
+    SEED="$seed" bin/rails test
+    SEED="$seed" bin/rails test:system
+  } >"$log" 2>&1
+  grep -E "^[0-9]+ runs, " "$log" | sed "s/^/    /"
+done
+
+# Every test that failed or errored, with the seeds it failed on.
+{
+  echo "Suite loop: $RUNS runs against PostgreSQL, $(date)"
+  echo
+  for log in "$OUT"/run-*-seed-*.log; do
+    printf '%s: %s\n' "$(basename "$log" .log)" "$(grep -E '^[0-9]+ runs, ' "$log" | paste -sd '|' | sed 's/|/  +  system: /')"
+  done
+  echo
+  echo "Failing tests (count, test, seeds):"
+  for log in "$OUT"/run-*-seed-*.log; do
+    seed="${log##*-seed-}"; seed="${seed%.log}"
+    awk -v seed="$seed" '/^(Failure|Error):$/ { getline; sub(/ \[.*$/, ""); sub(/:$/, ""); print $0 "\t" seed }' "$log"
+  done | sort | awk -F'\t' '{ seeds[$1] = seeds[$1] " " $2; count[$1]++ } END { for (t in count) printf "%3d  %s  seeds:%s\n", count[t], t, seeds[t] }' | sort -rn
+} >"$OUT/summary.txt"
+
+cat "$OUT/summary.txt"

@@ -1,0 +1,100 @@
+# The production VM, reproduced for load testing. See test/load/replica/README.md.
+#
+# Runs INSIDE the turboflows-vm Docker-in-Docker container, which carries the
+# VM's CPU and memory limits, so every service below shares one budget the way
+# they share one 4 CPU / 1.9 GiB VM in production. Paths under /replica are that
+# container's mount of test/load.
+#
+# Request path, as in production: nginx stream (TLS, raw TCP) → kamal-proxy →
+# web. Nothing on the way can add X-Forwarded-For, so Rails sees one client
+# address for everyone.
+name: turboflows-replica
+
+services:
+  web:
+    image: ${TURBOFLOWS_IMAGE:?set TURBOFLOWS_IMAGE}
+    container_name: turboflows-web
+    restart: unless-stopped
+    # See test/load/replica/entrypoint for why not the image's own. Overriding
+    # the entrypoint clears the image's command, so it is restated.
+    entrypoint: ["/load/replica/entrypoint"]
+    command: ["bundle", "exec", "puma", "-C", "config/puma.rb"]
+    environment:
+      RAILS_MASTER_KEY: ${RAILS_MASTER_KEY:?set RAILS_MASTER_KEY}
+      DATABASE_URL: postgres://turboflows:turboflows@loadtest-postgres:5432/turboflows_production
+      REDIS_URL: redis://turboflows-redis-primary:6379/1
+      APP_HOST: localhost
+      ASSUME_SSL: "true"
+      RAILS_LOG_TO_STDOUT: "1"
+      # Unset in production, so these are Puma's defaults: 2 workers x 5 threads.
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
+      RAILS_MAX_THREADS: ${RAILS_MAX_THREADS:-5}
+      # Guard for the seeding scripts in test/load/seeds.
+      LOAD_TEST: "1"
+    volumes:
+      - storage:/rails/storage
+      - /replica:/load:ro
+    # kamal-proxy's health check sends the target's name as the Host header, and
+    # Rails only answers hosts in config.hosts: APP_HOST, and "healthz". So the
+    # proxy reaches web by that name, which is evidently what production does.
+    networks:
+      default:
+        aliases:
+          - healthz
+    depends_on:
+      - postgres
+      - redis
+
+  # The name is deliberately not a production name: test/load/seeds refuse any
+  # database host that isn't this one or localhost.
+  postgres:
+    image: postgres:16
+    container_name: loadtest-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: turboflows
+      POSTGRES_PASSWORD: turboflows
+      POSTGRES_DB: turboflows_production
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  # Production runs a second Postgres on the VM whose purpose isn't known here.
+  # It sits idle so its memory still counts against the budget.
+  postgres-secondary:
+    image: postgres:16
+    container_name: loadtest-postgres-secondary
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: turboflows
+    volumes:
+      - pgdata-secondary:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: turboflows-redis-primary
+    restart: unless-stopped
+
+  kamal-proxy:
+    image: basecamp/kamal-proxy:latest
+    container_name: kamal-proxy
+    restart: unless-stopped
+    volumes:
+      - kamal-proxy-config:/home/kamal-proxy/.config/kamal-proxy
+
+  nginx:
+    image: nginx:stable
+    container_name: loadtest-nginx
+    restart: unless-stopped
+    ports:
+      - "443:443"
+    volumes:
+      - /replica/replica/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /replica-certs:/etc/nginx/certs:ro
+    depends_on:
+      - kamal-proxy
+
+volumes:
+  storage:
+  pgdata:
+  pgdata-secondary:
+  kamal-proxy-config:

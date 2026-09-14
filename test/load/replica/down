@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Stops the production replica. Its data survives in the turboflows-vm-docker
+# volume unless --wipe is given.
+set -euo pipefail
+
+docker rm -f turboflows-vm >/dev/null 2>&1 || true
+
+if [[ "${1:-}" == "--wipe" ]]; then
+  docker volume rm turboflows-vm-docker >/dev/null 2>&1 || true
+  echo "Replica removed, data wiped."
+else
+  echo "Replica stopped. Data kept; pass --wipe to delete it."
+fi

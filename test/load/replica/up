@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# Starts the production replica: one Docker-in-Docker container standing in for
+# the VM, with the VM's CPU and memory, running production's stack inside it.
+# Every service shares that one budget, and Docker's own overhead counts
+# against it, as on the real VM. See test/load/replica/README.md.
+#
+#   TURBOFLOWS_IMAGE=turboflows:main-fix test/load/replica/up
+#
+# Environment (defaults match production on 2026-09-14):
+#   VM_CPUS=4  VM_MEMORY=1800m  VM_MEMORY_SWAP=3800m (memory + swap)
+#   WEB_CONCURRENCY=2  RAILS_MAX_THREADS=5  HTTPS_PORT=8443
+#
+# Running it again with a different TURBOFLOWS_IMAGE replaces the web container,
+# which migrates on boot — that is the deploy rehearsal. Changing VM_* on a
+# running replica applies live (docker update).
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+LOAD_DIR="$ROOT/test/load"
+CERT_DIR="$ROOT/tmp/replica-certs"
+VM=turboflows-vm
+
+: "${TURBOFLOWS_IMAGE:?set TURBOFLOWS_IMAGE, e.g. turboflows:main-fix}"
+VM_CPUS="${VM_CPUS:-4}"
+VM_MEMORY="${VM_MEMORY:-1800m}"
+VM_MEMORY_SWAP="${VM_MEMORY_SWAP:-3800m}"
+HTTPS_PORT="${HTTPS_PORT:-8443}"
+export TURBOFLOWS_IMAGE WEB_CONCURRENCY="${WEB_CONCURRENCY:-2}" RAILS_MAX_THREADS="${RAILS_MAX_THREADS:-5}"
+RAILS_MASTER_KEY="$(cat "$ROOT/config/master.key")"
+export RAILS_MASTER_KEY
+
+inner() { docker exec "$VM" docker "$@"; }
+
+if [[ ! -f "$CERT_DIR/replica.crt" ]]; then
+  mkdir -p "$CERT_DIR"
+  openssl req -x509 -newkey rsa:2048 -nodes -days 30 -subj "/CN=localhost" \
+    -keyout "$CERT_DIR/replica.key" -out "$CERT_DIR/replica.crt" 2>/dev/null
+  chmod 644 "$CERT_DIR/replica.key"
+fi
+
+if ! docker ps -a --format '{{.Names}}' | grep -qx "$VM"; then
+  docker run -d --name "$VM" --privileged \
+    --cpus "$VM_CPUS" --memory "$VM_MEMORY" --memory-swap "$VM_MEMORY_SWAP" \
+    -p "$HTTPS_PORT:443" \
+    -v turboflows-vm-docker:/var/lib/docker \
+    -v "$LOAD_DIR":/replica:ro \
+    -v "$CERT_DIR":/replica-certs:ro \
+    docker:dind >/dev/null
+else
+  docker start "$VM" >/dev/null
+  docker update --cpus "$VM_CPUS" --memory "$VM_MEMORY" --memory-swap "$VM_MEMORY_SWAP" "$VM" >/dev/null
+fi
+
+echo "Waiting for the VM's Docker daemon..."
+until inner info >/dev/null 2>&1; do sleep 1; done
+
+# Compared by creation time, not ID: the VM's image store can report a different
+# ID for the very same image after `docker load`, which reloaded everything.
+for image in postgres:16 redis:7 basecamp/kamal-proxy:latest nginx:stable "$TURBOFLOWS_IMAGE"; do
+  host_created="$(docker image inspect --format '{{.Created}}' "$image")"
+  inner_created="$(inner image inspect --format '{{.Created}}' "$image" 2>/dev/null || true)"
+  if [[ "$host_created" != "$inner_created" ]]; then
+    echo "Loading $image into the VM..."
+    docker save "$image" | docker exec -i "$VM" docker load >/dev/null
+  fi
+done
+
+docker exec -e TURBOFLOWS_IMAGE -e RAILS_MASTER_KEY -e WEB_CONCURRENCY -e RAILS_MAX_THREADS "$VM" \
+  docker compose -f /replica/replica/compose.yml up -d
+
+echo "Registering web with kamal-proxy (waits for boot, including migrations)..."
+inner exec kamal-proxy kamal-proxy deploy turboflows \
+  --target healthz:3000 --health-check-path /healthz --deploy-timeout 300s
+
+echo "Replica is up: https://localhost:$HTTPS_PORT (self-signed certificate)"
