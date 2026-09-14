@@ -67,11 +67,14 @@ take their groups away before the next one:
 
 ## Traps already paid for
 
-- **`bin/docker-entrypoint` in this repo cannot boot an image.** It calls
-  `db:prepare:queue`, which Rails 8.1 doesn't have, and never creates `tmp/pids`.
-  Production's GitLab entrypoint differs. `db:prepare` also never loads
-  `queue_schema.rb` when the queue shares the primary's `DATABASE_URL`, so
-  `entrypoint` loads it when its tables are missing.
+- **A fresh database never gets the Solid Queue tables from `db:prepare`** when the
+  queue shares the primary's `DATABASE_URL`, as it does here and in production. By
+  the time `db:prepare` reaches the queue, the database looks initialised. That is
+  why the replica uses its own `entrypoint`, which loads `queue_schema.rb` when the
+  tables are missing. Until 2026-09-14, `bin/docker-entrypoint` also called
+  `db:prepare:queue`, which Rails 8.1 doesn't have, and never created `tmp/pids`, so
+  no image built from this repo could boot. Production's GitLab copy had the queue
+  line commented out.
 - **kamal-proxy's health check sends the target's name as `Host`,** and Rails
   answers only `config.hosts`, which is why web is reached as `healthz`.
 - **Rack::Attack counts in fixed one-minute buckets.** A manual burst that

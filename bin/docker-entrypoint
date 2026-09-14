@@ -1,12 +1,15 @@
 #!/bin/bash
 set -e
 
-# Create storage directory for Active Storage uploads
-mkdir -p /rails/storage
+# Active Storage uploads, and Puma's pidfile: .dockerignore leaves tmp/ out of
+# the image, and Puma exits if it can't write tmp/pids/server.pid.
+mkdir -p /rails/storage /rails/tmp/pids
 
-# Run database migrations for both primary and queue databases.
-# db:prepare creates the database on first boot, migrates on subsequent boots.
+# db:prepare creates the database on first boot and migrates on every boot after,
+# for every database in config/database.yml — the queue included, so there is no
+# separate queue step. `bin/rails db:prepare:queue` used to follow this line; Rails
+# 8.1 has no such task, so with `set -e` the container exited before Puma started.
+# Production's copy (on the internal GitLab) already had it commented out.
 bin/rails db:prepare
-bin/rails db:prepare:queue
 
 exec "$@"
