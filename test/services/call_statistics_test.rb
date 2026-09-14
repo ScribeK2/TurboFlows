@@ -143,6 +143,10 @@ class CallStatisticsTest < ActiveSupport::TestCase
     durations = calls.filter_map(&:duration_seconds)
     headline = stats
 
+    # A SUM of counts arrives from PostgreSQL as a BigDecimal, and assert_equal
+    # would pass it: 3 == BigDecimal("3").
+    assert_instance_of Integer, headline.total
+    assert_instance_of Integer, headline.average_duration_seconds
     assert_equal calls.size, headline.total
     assert_equal calls.count(&:finished?), headline.finished
     assert_equal calls.count { |call| Scenario::COMPLETED_OUTCOMES.include?(call.outcome) }, headline.completed

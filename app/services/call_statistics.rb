@@ -138,23 +138,51 @@ class CallStatistics
     @tallies ||= load_tallies
   end
 
-  # Each origin, joined to its handed-to frames (few calls have any) and then to
-  # its ending, counted by the ending's outcome and the origin's day.
+  # Counted in two parts, then added together. Most calls end where they
+  # started, so they are grouped by the origin's own outcome and day, which
+  # PostgreSQL can estimate (statistics scenarios_started_day) and so groups in
+  # memory. The few handed on are joined to their endings through `handed_to`
+  # first. Joining every origin to its ending in one query hashed the whole
+  # table and spilled to temp files: on the load-test replica one 90-day page in
+  # four took 2.5 s instead of 0.8.
   def load_tallies
     origins = @scope.origins
-    handed_to = handed_to_frames(origins)
-                .select(table[:run_origin_id].as("origin_id"), Arel::Nodes::Max.new([still_going_id]).as("still_going_id"),
-                        table[:id].maximum.as("newest_id"))
+    ended_where_started = origins.where("NOT EXISTS (SELECT 1 FROM handed_to WHERE handed_to.origin_id = scenarios.id)")
+                                 .group(Arel.sql("scenarios.outcome"), Arel.sql(started_day))
+                                 .select(*tally_columns("scenarios.outcome", "scenarios.completed_at"))
+    handed_on = origins.joins("INNER JOIN handed_to ON handed_to.origin_id = scenarios.id")
+                       .group(Arel.sql(ending("outcome")), Arel.sql(started_day))
+                       .select(*tally_columns(ending("outcome"), ending("completed_at")))
 
-    origins.joins("LEFT JOIN (#{handed_to.to_sql}) handed_to ON handed_to.origin_id = scenarios.id")
-           .joins("INNER JOIN scenarios endings ON endings.id = #{ending_id}")
-           .group(Arel.sql("endings.outcome"), Arel.sql(started_day))
-           .pluck(Arel.sql("endings.outcome"), Arel.sql(started_day), Arel.sql("COUNT(*)"),
-                  Arel.sql("SUM(#{duration})"), Arel.sql("COUNT(#{duration})"))
-           .map do |outcome, day, count, duration_sum, duration_count|
-             Tally.new(outcome: outcome, day: day&.to_date, calls: count, duration_sum: duration_sum.to_i,
-                       duration_count: duration_count)
-           end
+    Scenario.unscoped
+            .with(handed_to: handed_to(origins), tallies: [ended_where_started, handed_on])
+            .from("tallies")
+            .group(Arel.sql("tallies.outcome"), Arel.sql("tallies.day"))
+            .pluck(Arel.sql("tallies.outcome"), Arel.sql("tallies.day"), Arel.sql("SUM(tallies.calls)"),
+                   Arel.sql("SUM(tallies.duration_sum)"), Arel.sql("SUM(tallies.duration_count)"))
+            .map do |outcome, day, calls, duration_sum, duration_count|
+              # A SUM of counts arrives from PostgreSQL as a BigDecimal.
+              Tally.new(outcome: outcome, day: day&.to_date, calls: calls.to_i, duration_sum: duration_sum.to_i,
+                        duration_count: duration_count.to_i)
+            end
+  end
+
+  def tally_columns(outcome, completed_at)
+    duration = Arel.sql(duration_between(completed_at))
+    [Arel.sql(outcome).as("outcome"), Arel.sql(started_day).as("day"), Arel.star.count.as("calls"),
+     Arel::Nodes::Sum.new([duration]).as("duration_sum"), Arel::Nodes::Count.new([duration]).as("duration_count")]
+  end
+
+  # One row per call handed on: whether one of its frames is still going, and
+  # the outcome and finish of its newest frame still going, else its newest.
+  def handed_to(origins)
+    frames = handed_to_frames(origins)
+             .select(table[:run_origin_id].as("origin_id"), Arel::Nodes::Max.new([still_going_id]).as("still_going_id"),
+                     table[:id].maximum.as("newest_id"))
+    Scenario.unscoped
+            .from(frames, :frames)
+            .joins("INNER JOIN scenarios ON scenarios.id = COALESCE(frames.still_going_id, frames.newest_id)")
+            .select("frames.origin_id", "frames.still_going_id", "scenarios.outcome", "scenarios.completed_at")
   end
 
   # Every frame past the origin that could be where a call ended, one group per
@@ -166,23 +194,23 @@ class CallStatistics
             .group(:run_origin_id)
   end
 
-  # Scenario#run_ending's order: the newest handed-to frame still going, else the
-  # origin if it is, else the newest handed-to frame, else the origin. A frame is
-  # created after the origin it records, so a handed-to frame's id is always the
-  # larger one and the two never need comparing.
-  def ending_id
-    origin_still_going = Arel::Nodes::Case.new.when(going.and(not_handed_on)).then(table[:id])
-    "COALESCE(handed_to.still_going_id, #{origin_still_going.to_sql}, handed_to.newest_id, scenarios.id)"
+  # A handed-on call's ending, in Scenario#run_ending's order: its frame still
+  # going, else the origin if the origin is still going, else its newest frame.
+  # A frame is created after the origin it records, so its id is always the
+  # larger and the two never need comparing.
+  def ending(column)
+    "CASE WHEN handed_to.still_going_id IS NOT NULL OR NOT (#{going.and(not_handed_on).to_sql}) " \
+      "THEN handed_to.#{column} ELSE scenarios.#{column} END"
   end
 
-  # Whole seconds from the origin's start to the ending's finish, cut as
+  # Whole seconds from the origin's start to `completed_at`, cut as
   # Call#duration_seconds cuts them. SQLite has no interval type, so it subtracts
   # Julian days, rounded to the millisecond to shed the floating-point error.
-  def duration
+  def duration_between(completed_at)
     if sqlite?
-      "CAST(ROUND((julianday(endings.completed_at) - julianday(scenarios.started_at)) * 86400000) AS INTEGER) / 1000"
+      "CAST(ROUND((julianday(#{completed_at}) - julianday(scenarios.started_at)) * 86400000) AS INTEGER) / 1000"
     else
-      "TRUNC(EXTRACT(EPOCH FROM (endings.completed_at - scenarios.started_at)))"
+      "TRUNC(EXTRACT(EPOCH FROM (#{completed_at} - scenarios.started_at)))"
     end
   end
 
