@@ -114,4 +114,25 @@ class CallStatisticsTest < ActiveSupport::TestCase
                    "the call that started at S#{call.origin_id}"
     end
   end
+
+  # The ending query used to filter on `id IN (origins) OR run_origin_id IN
+  # (origins)`. PostgreSQL can't hash an OR of two subqueries once the origin list
+  # outgrows work_mem, so it rescanned the list for every row: on the load-test
+  # replica (500k runs) /analytics?range=90d timed out while the query ran on, and
+  # the rollup over that backlog was cancelled after 45 minutes. SQLite runs the
+  # same SQL happily at test sizes, which is why this test checks the shape.
+  test "no query ORs a subquery, which PostgreSQL can't hash at scale" do
+    three_calls
+
+    statements = []
+    subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
+      statements << payload[:sql] unless payload[:name] == "SCHEMA"
+    end
+    stats.calls
+    ActiveSupport::Notifications.unsubscribe(subscriber)
+
+    ored = statements.grep(/\bOR\b[^()]*\bIN\s*\(\s*SELECT/i)
+
+    assert_empty ored, "an OR of IN (SELECT ...) rescans the subquery per row on PostgreSQL:\n#{ored.join("\n")}"
+  end
 end
