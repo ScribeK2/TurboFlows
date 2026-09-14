@@ -33,6 +33,7 @@ R="docker exec turboflows-vm docker exec turboflows-web bin/rails runner"
 $R /load/seeds/prod_shape.rb      # production's shape: 24 workflows, 8 users, ...
 $R /load/seeds/department.rb      # 250 CSRs in five teams, 50 first-sign-in accounts, 12 managers, 5 editors
 $R /load/seeds/editor_sandbox.rb  # prints SANDBOX_WORKFLOW_ID / SANDBOX_STEP_IDS for k6
+test/load/seeds/history           # 500k finished runs over 91 days via COPY (~90 s), then the backlog roll-up
 
 test/load/replica/down          # stop, keep data
 test/load/replica/down --wipe   # stop and delete data
@@ -60,6 +61,10 @@ answers):
 ```bash
 IDLE_CHECK=1 SANDBOX_WORKFLOW_ID=... OUT=$OUT/browsers bundle exec ruby test/load/browsers.rb
 ```
+
+Managers open 7- and 30-day Analytics during the department test. With a quarter's
+history, a 90-day view takes ~20 s and pushes the VM into swap, so measure it on its own
+afterwards: `ONLY=managers ANALYTICS_RANGES=90d`.
 
 The rush accounts (`rush001`–`rush050`) are first-time users only once. After a run,
 take their groups away before the next one:

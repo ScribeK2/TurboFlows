@@ -24,7 +24,13 @@
  * "UNEXPECTED" with its status.
  *
  * Environment: BASE_URL, PASSWORD, CSRS (150), RAMP (5m), STEADY (30m),
- * RUSH_AT (2m), ONLY (comma-separated scenario names to run).
+ * RUSH_AT (2m), ONLY (comma-separated scenario names to run),
+ * ANALYTICS_RANGES (7d,30d — the ranges managers open).
+ *
+ * Managers stay on 7 and 30 days by default. With a quarter's history loaded, a
+ * 90-day Analytics view takes ~20s and pushes the 1.9 GiB VM into swap
+ * (load-test report, finding 12), which would swamp every CSR measurement in the
+ * launch gate. Measure 90 days on its own: ONLY=managers ANALYTICS_RANGES=90d.
  */
 
 import http from 'k6/http';
@@ -39,6 +45,7 @@ const RAMP = __ENV.RAMP || '5m';
 const STEADY = __ENV.STEADY || '30m';
 const RUSH_AT = __ENV.RUSH_AT || '2m';
 const ONLY = (__ENV.ONLY || '').split(',').filter(Boolean);
+const ANALYTICS_RANGES = (__ENV.ANALYTICS_RANGES || '7d,30d').split(',').filter(Boolean);
 const SANDBOX_WORKFLOW_ID = __ENV.SANDBOX_WORKFLOW_ID;
 const SANDBOX_STEP_IDS = (__ENV.SANDBOX_STEP_IDS || '').split(',').filter(Boolean);
 
@@ -335,7 +342,7 @@ export function managerDay() {
     return;
   }
 
-  const analytics = http.get(`${BASE}/analytics?range=${pick(['7d', '30d', '90d'])}`, { tags: { name: 'analytics' } });
+  const analytics = http.get(`${BASE}/analytics?range=${pick(ANALYTICS_RANGES)}`, { tags: { name: 'analytics' } });
   record(analytics, 'analytics', [200]);
   sleep(between(20, 60));
 

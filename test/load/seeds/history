@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Seeds a backlog of finished runs into the replica, so Analytics, the CSR home,
+# the nightly roll-up and cleanup all run against a realistic table (grill Q20:
+# about 500k runs for the department test). Run after prod_shape.rb and
+# department.rb, on the replica only:
+#
+#   test/load/seeds/history              # 500,000 runs over the last 91 days
+#   test/load/seeds/history 8000000 91   # company scale
+#
+# Rows are generated on the host by plain Ruby and loaded with Postgres COPY:
+# generating half a million ActiveRecord objects inside the 1.9 GiB VM would
+# measure the seed. The last day or two fall just past the 90-day retention
+# horizon on purpose, so the nightly cleanup has real work during the test.
+#
+# Then it builds the rollups once, which is what the first night after a large
+# backlog costs, and prints how long it took.
+set -euo pipefail
+
+RUNS="${1:-500000}"
+DAYS="${2:-91}"
+ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+VM=turboflows-vm
+
+pg() { docker exec -i "$VM" docker exec -i loadtest-postgres psql -U turboflows -d turboflows_production -v ON_ERROR_STOP=1 "$@"; }
+
+existing="$(pg -Atc "select count(*) from scenarios")"
+if (( existing >= 10000 )); then
+  echo "history: the replica already holds $existing runs; refusing to add a second backlog." >&2
+  exit 1
+fi
+
+meta="$(pg -Atc "
+  select json_build_object(
+    'workflows', (select json_agg(w) from (
+      select wf.id, wf.published_version_id as version_id,
+             (select json_agg(json_build_object('uuid', s.uuid, 'title', s.title, 'type', s.type) order by s.position)
+                from steps s where s.workflow_id = wf.id) as steps
+        from workflows wf
+       where wf.status = 'published' and wf.title like 'Troubleshooting flow %') w),
+    'users', (select json_agg(id) from users where email like 'csr___@loadtest.local'))")"
+
+cols="user_id,workflow_id,workflow_version_id,purpose,status,outcome,started_at,completed_at,duration_seconds,execution_path,inputs,results,current_step_index,lock_version,shared_access,created_at,updated_at"
+
+echo "Loading $RUNS runs over $DAYS days..."
+started=$(date +%s)
+ruby "$ROOT/test/load/seeds/history_rows.rb" "$RUNS" "$DAYS" <<<"$meta" \
+  | pg -c "\\copy scenarios($cols) FROM STDIN WITH (FORMAT csv)"
+pg -c "ANALYZE scenarios" >/dev/null
+echo "Loaded in $(( $(date +%s) - started ))s; the table now holds $(pg -Atc "select count(*) from scenarios") runs, $(pg -Atc "select pg_size_pretty(pg_total_relation_size('scenarios'))") with indexes."
+
+echo "Building rollups for the backlog (what the first night costs)..."
+docker exec "$VM" docker exec turboflows-web bash -c 'time bin/rails runner "p ScenarioRollupBuilder.rebuild!"' 2>&1 | grep -v Sentry
