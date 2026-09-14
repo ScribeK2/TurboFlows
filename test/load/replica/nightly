@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Runs production's nightly jobs NOW, while a load test is going: enqueued into
+# the replica's own Solid Queue worker inside the web container, in
+# config/recurring.yml's order (sweep 02:00 → roll-up 02:30 → cleanup 03:00 →
+# blob purge 03:30), a minute apart instead of half an hour.
+set -euo pipefail
+
+docker exec turboflows-vm docker exec turboflows-web bin/rails runner '
+  SweepIdleScenariosJob.perform_later
+  RollUpScenariosJob.set(wait: 1.minute).perform_later
+  CleanupScenariosJob.set(wait: 2.minutes).perform_later
+  CleanupDraftsJob.set(wait: 2.minutes).perform_later
+  PurgeUnattachedBlobsJob.set(wait: 3.minutes).perform_later
+  puts "Nightly jobs enqueued at #{Time.current.utc.iso8601}: sweep now, roll-up +1m, cleanups +2m, blob purge +3m"
+' 2>&1 | grep -v Sentry

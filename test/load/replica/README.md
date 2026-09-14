@@ -53,6 +53,14 @@ test/load/replica/nightly        # mid-test: runs the nightly jobs against live 
 test/load/checks/run $OUT $START # data checks, 5xx, restarts, memory kills
 ```
 
+Alongside k6, in another terminal, real browsers (3 CSRs running calls, 1 editor
+confirming autosaves persist, and one session left idle for 31 minutes before it
+answers):
+
+```bash
+IDLE_CHECK=1 SANDBOX_WORKFLOW_ID=... OUT=$OUT/browsers bundle exec ruby test/load/browsers.rb
+```
+
 The rush accounts (`rush001`–`rush050`) are first-time users only once. After a run,
 take their groups away before the next one:
 `$R 'UserGroup.joins(:user).where("users.email LIKE ?", "rush%").delete_all'`.
