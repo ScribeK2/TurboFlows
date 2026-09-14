@@ -60,6 +60,7 @@ const runsCompleted = new Counter('runs_completed');
 const runsAbandoned = new Counter('runs_abandoned');
 const backs = new Counter('backs');
 const editorRaceErrors = new Counter('editor_race_errors');
+const editorConflictsReported = new Counter('editor_conflicts_reported');
 
 const allScenarios = {
   csr_runs: {
@@ -293,6 +294,9 @@ export function csrShift() {
         { Accept: 'text/vnd.turbo-stream.html' });
       backs.add(1);
       if (back.status === 200) {
+        // Back rewinds the step just answered out of execution_path. The data
+        // checks read this so that answer isn't reported as lost.
+        console.log(`BACK ${scenarioId}`);
         body = back.body;
         scenarioId = nextScenarioId(body) || scenarioId;
       }
@@ -393,7 +397,14 @@ export function editorDay() {
         editorRaceErrors.add(1);
         console.log(`UNEXPECTED autosave_race ${res.status} step ${stepId}`);
       }
-      record(res, 'autosave_race', [200]);
+      // One of two simultaneous saves loses the race. Since ccd18340 it answers
+      // 409 with a flash telling the editor; that is the right outcome, counted
+      // on its own. Before, it was an empty 409 nothing showed.
+      if (res.status === 409) {
+        editorConflictsReported.add(1);
+        if (!res.body.includes('target="flash"')) console.log(`UNEXPECTED autosave_race_silent_409 step ${stepId}`);
+      }
+      record(res, 'autosave_race', [200, 409]);
     }
   } else {
     record(http.post(stepUrl, title, { headers: stream, redirects: 0, tags: { name: 'autosave' } }), 'autosave', [200]);

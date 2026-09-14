@@ -42,7 +42,12 @@ report = IntegrityReport.new
 # --- What k6 said happened -----------------------------------------------------
 acks = Hash.new(0)
 halts = 0
+rewound = Set.new
 $stdin.each_line do |line|
+  if (back = line.match(/BACK (\d+)/))
+    rewound << back[1].to_i
+    next
+  end
   next unless (match = line.match(/(ACK|HALT) (\d+) ([0-9a-f-]{36}|null)/))
 
   if match[1] == "ACK"
@@ -55,17 +60,27 @@ end
 frames = Scenario.where(created_at: since..).to_a
 by_id = frames.index_by(&:id)
 
-# 1. Every answer the server acknowledged is in that run's execution path.
+# 1. Every answer the server acknowledged is in that run's execution path —
+# unless the agent then pressed Back on that run, which rewinds answered steps
+# out of the path on purpose (ScenarioNavigator#go_back).
+rewound_answers = 0
 missing = acks.keys.filter_map do |scenario_id, step_uuid|
   scenario = by_id[scenario_id] || Scenario.find_by(id: scenario_id)
   next "scenario #{scenario_id}: gone (acknowledged answer on step #{step_uuid})" if scenario.nil?
   next if step_uuid == "null"
 
-  recorded = Array(scenario.execution_path).any? { |entry| entry["step_uuid"] == step_uuid }
-  "scenario #{scenario_id}: acknowledged answer on step #{step_uuid} is not in execution_path" unless recorded
+  next if Array(scenario.execution_path).any? { |entry| entry["step_uuid"] == step_uuid }
+
+  if rewound.include?(scenario_id)
+    rewound_answers += 1
+    next
+  end
+
+  "scenario #{scenario_id}: acknowledged answer on step #{step_uuid} is not in execution_path"
 end
 report.check("acknowledged answers are recorded", missing,
-             "#{acks.values.sum} acknowledged, #{halts} halted and told to the agent")
+             "#{acks.values.sum} acknowledged, #{halts} halted and told to the agent, " \
+             "#{rewound_answers} rewound by Back")
 
 # 2. No run is stuck: something the agent can still act on exists.
 stuck = frames.reject(&:terminal?).filter_map do |frame|
@@ -84,11 +99,14 @@ stuck = frames.reject(&:terminal?).filter_map do |frame|
 end
 report.check("no run is left unfinishable", stuck, "#{frames.count { |f| !f.terminal? }} unfinished frames examined")
 
-# 3. completed_at agrees with whether the frame has ended.
+# 3. completed_at agrees with whether the frame has ended. One live state carries
+# it by design: answering an Escalate step records the call's ending
+# (record_completion("escalated")) and then carries on to the Resolve step after
+# it, so a run between the two is active with outcome "escalated" and a stamp.
 stamps = frames.filter_map do |frame|
   if frame.terminal? && frame.completed_at.nil?
     "scenario #{frame.id}: #{frame.status} with no completed_at"
-  elsif !frame.terminal? && frame.completed_at.present?
+  elsif !frame.terminal? && frame.completed_at.present? && frame.outcome != "escalated"
     "scenario #{frame.id}: #{frame.status} but completed_at #{frame.completed_at.iso8601}"
   end
 end
