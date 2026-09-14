@@ -54,6 +54,14 @@ class CallStatisticsTest < ActiveSupport::TestCase
     assert_equal 1, stats.escalated
   end
 
+  test "the outcome breakdown lists the commonest outcome first" do
+    frame(status: "completed", outcome: "escalated", finished: 10)
+    3.times { |n| frame(status: "completed", outcome: "resolved", started: n, finished: n + 10) }
+    2.times { |n| frame(started: n) }
+
+    assert_equal [["resolved", 3], [nil, 2], ["escalated", 1]], stats.outcome_breakdown.to_a
+  end
+
   test "a call lasts from where it started to where it ended" do
     three_calls
 
@@ -77,10 +85,8 @@ class CallStatisticsTest < ActiveSupport::TestCase
     assert_equal({ @t0.to_date.beginning_of_week => 3 }, stats.over_time(weekly: true))
   end
 
-  # The results page reads Scenario#run_ending and the headline reads this SQL.
-  # If they disagreed, one call would end one way on its results page and another
-  # in analytics, and nothing else would notice.
-  test "the ending chosen in SQL is Scenario#run_ending, shape by shape" do
+  # Every shape a call can take, spread over two days and two weeks.
+  def every_shape
     # completed after two handoffs
     a = frame(status: "completed", outcome: "transferred", finished: 10)
     b = frame(handed_off_from: a, status: "completed", outcome: "transferred", started: 10, finished: 20)
@@ -105,14 +111,84 @@ class CallStatisticsTest < ActiveSupport::TestCase
     # a run parked on a returning sub-flow
     h = frame(status: "awaiting_subflow")
     frame(parent: h, started: 5)
+    # a live origin beside a finished handed-to frame: still going beats finished
+    i = frame(started: 30)
+    frame(handed_off_from: i, status: "completed", outcome: "resolved", started: 31, finished: 40)
+    # ended where it started, the next day
+    frame(status: "completed", outcome: "resolved", started: 1.day.to_i, finished: 1.day.to_i + 45)
+    # the next week, finishing mid-second
+    frame(status: "completed", outcome: "completed", started: 7.days.to_i + 0.25, finished: 7.days.to_i + 10.75)
+  end
+
+  # The results page reads Scenario#run_ending and the headline reads this SQL.
+  # If they disagreed, one call would end one way on its results page and another
+  # in analytics, and nothing else would notice.
+  test "the ending chosen in SQL is Scenario#run_ending, shape by shape" do
+    every_shape
 
     calls = stats.calls
 
-    assert_equal 7, calls.size
+    assert_equal 10, calls.size
     calls.each do |call|
       assert_equal Scenario.find(call.origin_id).run_ending.id, call.ending_id,
                    "the call that started at S#{call.origin_id}"
     end
+  end
+
+  # The headline adds up in one SQL query what `calls` lists one by one, so the
+  # two have to agree on every shape a call can take.
+  test "the headline's figures are the calls' figures, shape by shape" do
+    every_shape
+    calls = stats.calls
+    durations = calls.filter_map(&:duration_seconds)
+    headline = stats
+
+    assert_equal calls.size, headline.total
+    assert_equal calls.count(&:finished?), headline.finished
+    assert_equal calls.count { |call| Scenario::COMPLETED_OUTCOMES.include?(call.outcome) }, headline.completed
+    assert_equal calls.count { |call| call.outcome == "escalated" }, headline.escalated
+    assert_equal calls.group_by(&:outcome).transform_values(&:size), headline.outcome_breakdown
+    assert_equal (durations.sum.to_f / durations.size).round, headline.average_duration_seconds
+    assert_equal calls.group_by { |call| call.started_at.utc.to_date }.transform_values(&:size),
+                 headline.over_time(weekly: false)
+    assert_equal calls.group_by { |call| call.started_at.utc.to_date.beginning_of_week }.transform_values(&:size),
+                 headline.over_time(weekly: true)
+  end
+
+  test "a duration counts whole seconds, as a call's own duration does" do
+    frame(status: "completed", outcome: "resolved", started: 0.25, finished: 10.75)
+
+    assert_equal 10, stats.calls.first.duration_seconds
+    assert_equal 10, stats.average_duration_seconds, "10.5 seconds is 10, not 11"
+  end
+
+  test "a scope with no calls reads as zeros" do
+    headline = stats(Scenario.none)
+
+    assert_equal [0, 0, 0, 0, 0], [headline.total, headline.finished, headline.completed, headline.escalated,
+                                   headline.average_duration_seconds]
+    assert_equal({}, headline.outcome_breakdown)
+    assert_equal({}, headline.over_time(weekly: true))
+  end
+
+  # Regression: the headline loaded every call into Ruby to count them. On the
+  # load-test replica a 90-day /analytics plucked 496k rows and looked up each
+  # call's ending by a 496k-id IN list: 6 seconds and 430 MiB a request, and ten
+  # managers opening it at once held every Puma thread and pushed the VM into swap.
+  test "the headline reads one row per day and outcome, not one per call" do
+    30.times { |n| frame(status: "completed", outcome: "resolved", started: n, finished: n + 60) }
+
+    statements = []
+    subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
+      statements << payload unless payload[:name] == "SCHEMA"
+    end
+    headline = stats
+    [headline.total, headline.finished, headline.completed, headline.escalated, headline.outcome_breakdown,
+     headline.average_duration_seconds, headline.over_time(weekly: true), headline.over_time(weekly: false)]
+    ActiveSupport::Notifications.unsubscribe(subscriber)
+
+    assert_equal 1, statements.size, statements.pluck(:sql).join("\n")
+    assert_equal 1, statements.first[:row_count], "30 calls on one day with one outcome"
   end
 
   # The ending query used to filter on `id IN (origins) OR run_origin_id IN
@@ -129,6 +205,7 @@ class CallStatisticsTest < ActiveSupport::TestCase
       statements << payload[:sql] unless payload[:name] == "SCHEMA"
     end
     stats.calls
+    stats.over_time(weekly: true)
     ActiveSupport::Notifications.unsubscribe(subscriber)
 
     ored = statements.grep(/\bOR\b[^()]*\bIN\s*\(\s*SELECT/i)
