@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_13_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_14_120000) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -169,6 +169,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_13_120000) do
     t.index ["parent_scenario_id"], name: "index_scenarios_on_parent_scenario_id"
     t.index ["purpose", "started_at"], name: "index_scenarios_on_purpose_and_started_at"
     t.index ["run_origin_id"], name: "index_scenarios_on_run_origin_id"
+    t.index ["started_at"], name: "index_scenarios_for_analytics"
     t.index ["status", "purpose", "completed_at"], name: "index_scenarios_on_cleanup_scope"
     t.index ["status"], name: "index_scenarios_on_status"
     t.index ["user_id", "purpose", "created_at"], name: "index_scenarios_on_user_id_and_purpose_and_created_at"

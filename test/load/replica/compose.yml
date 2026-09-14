@@ -51,6 +51,9 @@ services:
     image: postgres:16
     container_name: loadtest-postgres
     restart: unless-stopped
+    # Docker's default /dev/shm is 64 MB, and parallel query workers allocate
+    # there: a VACUUM failed with "could not resize shared memory segment".
+    shm_size: 256m
     environment:
       POSTGRES_USER: turboflows
       POSTGRES_PASSWORD: turboflows

@@ -30,11 +30,16 @@ test:
     adapter: postgresql
     url: <%= ENV["DATABASE_URL"] %>
     pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 4 } %>
+    # As in production (see below), so the PostgreSQL suite plans as it does.
+    variables:
+      plan_cache_mode: force_custom_plan
   queue:
     adapter: postgresql
     url: <%= ENV["DATABASE_URL"] %>
     pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 4 } %>
     migrations_paths: db/queue_migrate
+    variables:
+      plan_cache_mode: force_custom_plan
   <% else %>
   primary:
     <<: *default
@@ -60,6 +65,13 @@ test:
 # - 10 connections per worker minimum
 # - With 2 workers that's 20 total connections needed
 # - Database should have at least 25-30 max_connections
+#
+# plan_cache_mode: a prepared statement goes generic on its sixth run on a
+# connection, and a generic plan can't see how wide `started_at BETWEEN $1 AND
+# $2` is. With index_scenarios_for_analytics it then fetched and sorted a whole
+# 90-day range for an `ORDER BY id LIMIT` sample: 5 ms became 7-14 s, and a CSV
+# export would do that per batch. Planning each run with its own values costs
+# a fraction of a millisecond and keeps the statement cache.
 production:
   primary:
     adapter: postgresql
@@ -69,6 +81,8 @@ production:
     prepared_statements: true
     advisory_locks: true
     reaping_frequency: 10
+    variables:
+      plan_cache_mode: force_custom_plan
   queue:
     adapter: postgresql
     url: <%= ENV["DATABASE_URL"] %>
@@ -76,3 +90,5 @@ production:
     connect_timeout: 5
     prepared_statements: true
     migrations_paths: db/queue_migrate
+    variables:
+      plan_cache_mode: force_custom_plan

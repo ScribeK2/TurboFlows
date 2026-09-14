@@ -240,7 +240,9 @@ class AnalyticsController < ApplicationController
   end
 
   # Performance note: This iterates matching scenarios in Ruby to parse
-  # JSON execution_path data. Capped at 5,000 to prevent memory/time issues.
+  # JSON execution_path data. Capped at the most recent 5,000 to prevent
+  # memory/time issues. Whether there are more is asked with an offset, not a
+  # count: counting read every run in range to compare the total with 5,000.
   #
   # Future optimization: denormalize step timing data into a dedicated
   # step_executions table (step_id, scenario_id, duration_seconds, started_at)
@@ -249,9 +251,9 @@ class AnalyticsController < ApplicationController
     step_times = Hash.new { |h, k| h[k] = [] }
 
     scope = scenarios.where.not(execution_path: nil)
-    @step_performance_capped = scope.count > 5000
+    @step_performance_capped = scope.offset(5000).exists?
 
-    scope.order(:id).limit(5000).each do |scenario|
+    scope.order(id: :desc).limit(5000).each do |scenario|
       Array(scenario.execution_path).each do |entry|
         next if entry["duration_seconds"].blank?
 
@@ -285,10 +287,10 @@ class AnalyticsController < ApplicationController
     # still wins; this only supplies the default.
     abandoned = @base_scope.where(outcome: "abandoned")
     abandoned = abandoned.where(purpose: "live") if params[:purpose].blank?
-    @dropoff_capped = abandoned.count > 5000
+    @dropoff_capped = abandoned.offset(5000).exists?
     dropoffs = Hash.new { |h, k| h[k] = { count: 0, workflow_title: "" } }
 
-    abandoned.includes(:workflow).order(:id).limit(5000).each do |scenario|
+    abandoned.includes(:workflow).order(id: :desc).limit(5000).each do |scenario|
       next if scenario.execution_path.blank?
 
       last_step = scenario.execution_path.last
