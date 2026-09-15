@@ -67,8 +67,17 @@ export default class extends Controller {
         flashAlert(`${file.name} didn't upload. Check the connection and choose it again.`)
         return
       }
-      this.attach(blob.signed_id, row)
+      this.queueAttach(blob.signed_id, row)
     })
+  }
+
+  // Direct uploads may run in parallel, but the attach POSTs must not: the
+  // server's `attach` reassigns the step's whole attachment list, so two
+  // overlapping POSTs can both read the same starting list and the second's
+  // save deletes what the first just added. Chaining onto one promise makes
+  // each attach wait for the previous one to finish.
+  queueAttach(signedId, row) {
+    this.attachQueue = (this.attachQueue || Promise.resolve()).then(() => this.attach(signedId, row))
   }
 
   async attach(signedId, row) {
@@ -92,13 +101,22 @@ export default class extends Controller {
     }
 
     row.remove()
+
+    // fetch follows a redirect itself, so a lost session or lost access (the
+    // controller's ensure_can_edit!, or Devise's own redirect to sign in)
+    // arrives here as a 200 with no turbo-stream to render — response.ok
+    // alone would read that as success. response.redirected catches it.
+    if (response.redirected) {
+      flashAlert("The file could not be attached. Reload and try again.")
+      return
+    }
+
     const html = await response.text()
     // Success streams the list; a refusal streams the flash that says why.
-    // A redirect (lost session, lost access) carries no stream to render.
     if (response.ok || response.status === 422) {
       if (html.trim()) Turbo.renderStreamMessage(html)
     } else {
-      flashAlert("The file couldn't be attached. Reload and try again.")
+      flashAlert("The file could not be attached. Reload and try again.")
     }
   }
 

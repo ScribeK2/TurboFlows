@@ -13,7 +13,8 @@ class BuilderMediaAttachmentsTest < ApplicationSystemTestCase
   end
 
   teardown do
-    ActiveStorage::Blob.where(filename: "media-system-test.png").find_each(&:purge)
+    ActiveStorage::Blob.where(filename: %w[media-system-test.png media-system-test-a.png
+                                           media-system-test-b.png]).find_each(&:purge)
   end
 
   test "choosing a file attaches it and lists it, and Remove takes it away" do
@@ -33,6 +34,26 @@ class BuilderMediaAttachmentsTest < ApplicationSystemTestCase
     click_on "Remove"
     assert_no_text "media-system-test.png", wait: 10
     assert_eventually(timeout: 10) { @step.reload.media_attachments.none? }
+  end
+
+  # Regression: two DirectUploads can finish out of order, and each attach POST
+  # used to fire the instant its upload finished. Active Storage's `attach`
+  # reassigns the step's whole attachment list, so two overlapping POSTs could
+  # each read the list as it stood before either landed, and the second one's
+  # save would drop the first. The attaches now queue per controller instance.
+  test "choosing two files at once attaches both" do
+    sign_in_as @editor
+    visit workflow_path(@workflow, edit: true)
+    find("[data-action~='click->builder#openStep']", text: "Check the router").click
+    assert_selector "[data-controller~='media-attachments']", wait: 10
+
+    choose_files([[@png, "media-system-test-a.png"], [@png, "media-system-test-b.png"]])
+
+    assert_eventually(timeout: 15) { @step.reload.media_attachments.count == 2 }
+    within ".media-list:not(.media-list--pending)" do
+      assert_text "media-system-test-a.png", wait: 15
+      assert_text "media-system-test-b.png", wait: 15
+    end
   end
 
   test "a file of the wrong type is refused before it uploads" do
@@ -61,6 +82,27 @@ class BuilderMediaAttachmentsTest < ApplicationSystemTestCase
       if (!input) return "no file input";
       const transfer = new DataTransfer();
       transfer.items.add(new File([data], name, { type }));
+      input.files = transfer.files;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      return "chosen";
+    JS
+    assert_equal "chosen", result
+  end
+
+  # Same idea as choose_file, but puts several File objects into one
+  # DataTransfer so they fire from a single change event, the way a person
+  # selecting several files in the OS picker at once would.
+  def choose_files(files)
+    encoded = files.map { |bytes, filename| [[bytes].pack("m0"), filename] }
+    result = page.execute_script(<<~JS, encoded)
+      const [files] = arguments;
+      const input = document.querySelector("[data-media-attachments-target='input']");
+      if (!input) return "no file input";
+      const transfer = new DataTransfer();
+      for (const [base64, name] of files) {
+        const data = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+        transfer.items.add(new File([data], name, { type: "image/png" }));
+      }
       input.files = transfer.files;
       input.dispatchEvent(new Event("change", { bubbles: true }));
       return "chosen";
