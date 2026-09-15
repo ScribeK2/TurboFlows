@@ -5,6 +5,11 @@ module Steps
 
     has_rich_text :notes
 
+    # Never blank, and "medium" rather than the select's first option: the
+    # runner only calls out priorities above medium, so this is the quiet value.
+    attribute :priority, :string, default: "medium"
+    normalizes :priority, with: ->(priority) { priority.presence || "medium" }, apply_to_nil: true
+
     validates :target_type, inclusion: { in: VALID_TARGET_TYPES }, allow_blank: true
     validates :priority, inclusion: { in: VALID_PRIORITIES }, allow_blank: true
 

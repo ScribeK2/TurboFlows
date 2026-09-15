@@ -14,7 +14,7 @@
             <%= step.try(:target_type)&.titleize %><%= " - #{step.target_value}" if step.try(:target_value).present? %>
           </p>
         <% end %>
-        <% if step.try(:priority).present? && %w[normal medium].exclude?(step.priority) %>
+        <% if step.try(:priority).present? && step.priority != "medium" %>
           <p class="text-sm mb-2">
             <strong>Priority:</strong>
             <span class="badge <%= runner_priority_badge_class(step.priority) %>"><%= step.priority.titleize %></span>

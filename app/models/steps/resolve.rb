@@ -2,6 +2,12 @@ module Steps
   class Resolve < Step
     has_rich_text :description
 
+    # Never blank: the panel shows Success as chosen from the start, so the
+    # column has to say so too, or the first save writes whatever the control
+    # happened to send. Blank assignments (an old form, an import) fall back.
+    attribute :resolution_type, :string, default: "success"
+    normalizes :resolution_type, with: ->(type) { type.presence || "success" }, apply_to_nil: true
+
     # "escalated" = workflow ended via escalation (outcome recording).
     # Use Escalate step type for the act of escalating; use Resolve with
     # resolution_type "escalated" to record that the workflow ended because
