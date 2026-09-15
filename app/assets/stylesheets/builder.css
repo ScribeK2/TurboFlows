@@ -955,5 +955,34 @@
       width: 100%;
       min-width: 0;
     }
+
+    /* One column at a phone's width: the open panel is the page, and Close
+       brings the list back. Side by side, the list squeezed to a letter a line. */
+    .builder:has(#builder-panel > *) .builder__list {
+      display: none;
+    }
+
+    /* No slide: the desktop transform/transition would carry the panel past the
+       right edge while it animates open (or closed), scrolling the page sideways. */
+    .builder__panel {
+      transform: none;
+      transition: none;
+    }
+
+    .builder:has(#builder-panel > *) .builder__panel {
+      flex: 1 1 100%;
+      max-width: 100%;
+      min-width: 0;
+      border-left: 0;
+    }
+
+    .builder__toolbar {
+      flex-wrap: wrap;
+      gap: var(--space-2);
+    }
+
+    .builder__toolbar-issues {
+      white-space: nowrap;
+    }
   }
 }

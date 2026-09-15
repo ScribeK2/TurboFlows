@@ -46,6 +46,25 @@ class NarrowViewportTest < ApplicationSystemTestCase
     assert_selector ".wf-page-header__actions", text: "New Workflow"
   end
 
+  test "an open step panel takes the whole width on a phone" do
+    step = Steps::Resolve.create!(workflow: @workflow, title: "wf-system-test-All done", position: 0)
+    @workflow.update!(start_step: step)
+
+    visit workflow_path(@workflow, edit: true)
+    find("[role='listitem'][data-step-uuid='#{step.uuid}']").click
+    assert_selector "turbo-frame#builder-panel form", wait: 5
+
+    assert_phone_width
+    assert_no_horizontal_scroll "builder with a panel open"
+    assert_no_selector ".builder__list", visible: true
+    main_width = page.evaluate_script("document.querySelector('.builder__main').getBoundingClientRect().width")
+    panel_width = page.evaluate_script("document.querySelector('.builder__panel').getBoundingClientRect().width")
+    assert_operator panel_width, :>=, main_width - 1
+
+    find(".builder__panel-close").click
+    assert_selector ".builder__list", visible: true
+  end
+
   private
 
   def assert_phone_width
