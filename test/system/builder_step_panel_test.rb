@@ -120,6 +120,17 @@ class BuilderStepPanelTest < ApplicationSystemTestCase
     end
   end
 
+  test "a guidance note typed in the panel is saved" do
+    visit_builder_in_edit_mode
+    open_step @resolve
+
+    within "turbo-frame#builder-panel" do
+      find("summary", text: "Guidance").click
+      fill_in "step[help_text]", with: "Confirm the ticket number back to the caller"
+    end
+    assert_eventually(timeout: 10) { @resolve.reload.help_text == "Confirm the ticket number back to the caller" }
+  end
+
   private
 
   def visit_builder_in_edit_mode

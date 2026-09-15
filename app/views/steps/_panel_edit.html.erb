@@ -49,6 +49,8 @@
         <%# Type-specific fields %>
         <%= render "steps/fields/#{step.step_type}", form: f, step: step, workflow: workflow %>
 
+        <%= render "steps/fields/guidance", form: f, step: step %>
+
         <%# Connections section %>
         <% unless step.is_a?(Steps::Resolve) %>
           <div id="<%= dom_id(step, :connections) %>">

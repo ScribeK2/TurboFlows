@@ -1,0 +1,29 @@
+<%# locals: (form:, step:) %>
+<%#
+  Guidance the runner shows with the step: a coaching note and a "More info"
+  link. Both columns have been carried by every step type (StepFieldMap::COMMON)
+  and rendered by the runner; only an unreachable form could write them.
+%>
+<% filled = [("note" if step.help_text.present?), ("link" if step.reference_url.present?)].compact %>
+<details class="step-disclosure"<%= " open" if filled.any? %>>
+  <summary class="step-disclosure__summary">
+    <span class="step-disclosure__label">Guidance</span>
+    <span class="step-disclosure__sep" aria-hidden="true">&middot;</span>
+    <span class="step-disclosure__value step-disclosure__value--auto"><%= filled.any? ? filled.join(" + ") : "none" %></span>
+  </summary>
+  <div class="step-disclosure__body">
+    <div class="form-group">
+      <%= form.label :help_text, "Guidance note", class: "form-label" %>
+      <%= form.text_field :help_text, class: "form-input", maxlength: 500,
+          placeholder: "A coaching note the agent sees with this step, e.g. \"Ask this verbatim\"",
+          data: { action: "input->inline-autosave#schedule" } %>
+    </div>
+    <div class="form-group">
+      <%= form.label :reference_url, "Reference link", class: "form-label" %>
+      <%= form.text_field :reference_url, class: "form-input",
+          placeholder: "https://kb.example.com/article",
+          data: { action: "input->inline-autosave#schedule" } %>
+      <p class="form-hint">Shown to the agent as "More info".</p>
+    </div>
+  </div>
+</details>

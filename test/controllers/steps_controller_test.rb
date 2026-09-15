@@ -263,4 +263,15 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :not_found
   end
+
+  test "the panel offers a guidance note and a reference link on every step type" do
+    %w[question action message escalate resolve sub_flow form].each do |type|
+      step = Step.class_for_type(type).create!(workflow: @workflow, position: 9, title: "A #{type}")
+
+      get panel_edit_workflow_step_path(@workflow, step)
+
+      assert_select "input[name='step[help_text]']", { count: 1 }, "no guidance note on #{type}"
+      assert_select "input[name='step[reference_url]']", { count: 1 }, "no reference link on #{type}"
+    end
+  end
 end
