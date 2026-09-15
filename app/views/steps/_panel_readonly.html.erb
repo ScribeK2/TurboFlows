@@ -1,0 +1,164 @@
+<%# locals: (step:, workflow:) %>
+<%#
+  The safe preview of a step: what edit mode's form holds, as text. Rendered
+  by _panel_edit when the builder is in view mode or the viewer may not edit.
+  Nothing here autosaves because nothing here is a control.
+%>
+<dl class="panel-readonly">
+  <div class="form-group">
+    <dt class="form-label">Title</dt>
+    <dd><%= step.title.presence || "Untitled #{step.step_type.titleize}" %></dd>
+  </div>
+
+  <% case step %>
+  <% when Steps::Question %>
+    <div class="form-group">
+      <dt class="form-label">Question text</dt>
+      <dd><%= step.question.presence || "—" %></dd>
+    </div>
+    <div class="form-group">
+      <dt class="form-label">Answer type</dt>
+      <dd><%= answer_type_label(step.answer_type) %></dd>
+    </div>
+    <% if step.options.is_a?(Array) && step.options.any? %>
+      <div class="form-group">
+        <dt class="form-label">Options</dt>
+        <dd>
+          <ul class="panel-readonly__list">
+            <% step.options.each do |option| %>
+              <li><%= option.is_a?(Hash) ? option["label"] : option %></li>
+            <% end %>
+          </ul>
+        </dd>
+      </div>
+    <% end %>
+    <div class="form-group">
+      <dt class="form-label">Variable name</dt>
+      <dd><code><%= step.variable_name.presence || "auto from title" %></code></dd>
+    </div>
+  <% when Steps::Action %>
+    <div class="form-group">
+      <dt class="form-label">Instructions</dt>
+      <dd><%= step.instructions.presence || "—" %></dd>
+    </div>
+    <div class="form-group">
+      <dt class="form-label">May resolve the issue</dt>
+      <dd><%= step.can_resolve ? "Yes" : "No" %></dd>
+    </div>
+  <% when Steps::Message %>
+    <div class="form-group">
+      <dt class="form-label">Message content</dt>
+      <dd><%= step.content.presence || "—" %></dd>
+    </div>
+    <div class="form-group">
+      <dt class="form-label">May resolve the issue</dt>
+      <dd><%= step.can_resolve ? "Yes" : "No" %></dd>
+    </div>
+  <% when Steps::Escalate %>
+    <div class="form-group">
+      <dt class="form-label">Escalate to</dt>
+      <dd><%= [step.target_type&.titleize, step.target_value.presence].compact.join(": ").presence || "—" %></dd>
+    </div>
+    <div class="form-group">
+      <dt class="form-label">Priority</dt>
+      <dd><%= step.priority.titleize %></dd>
+    </div>
+    <div class="form-group">
+      <dt class="form-label">Reason required</dt>
+      <dd><%= step.reason_required ? "Yes" : "No" %></dd>
+    </div>
+    <% if step.notes.present? %>
+      <div class="form-group">
+        <dt class="form-label">Notes</dt>
+        <dd><%= step.notes %></dd>
+      </div>
+    <% end %>
+  <% when Steps::Resolve %>
+    <div class="form-group">
+      <dt class="form-label">Resolution type</dt>
+      <dd><%= step.resolution_type.titleize %></dd>
+    </div>
+    <div class="form-group">
+      <dt class="form-label">Resolution description</dt>
+      <dd><%= step.resolution_description %></dd>
+    </div>
+    <div class="form-group">
+      <dt class="form-label">Notes required</dt>
+      <dd><%= step.notes_required ? "Yes" : "No" %></dd>
+    </div>
+    <div class="form-group">
+      <dt class="form-label">Satisfaction survey</dt>
+      <dd><%= step.survey_trigger ? "Triggered" : "Not triggered" %></dd>
+    </div>
+  <% when Steps::SubFlow %>
+    <div class="form-group">
+      <dt class="form-label">Target workflow</dt>
+      <dd>
+        <% if step.target_workflow %>
+          <%= link_to step.target_workflow.title, workflow_path(step.target_workflow) %>
+        <% else %>
+          —
+        <% end %>
+      </dd>
+    </div>
+    <div class="form-group">
+      <dt class="form-label">When it finishes</dt>
+      <dd><%= step.sub_flow_returns ? "Comes back to this workflow" : "Hands the run over and ends this workflow" %></dd>
+    </div>
+  <% when Steps::Form %>
+    <div class="form-group">
+      <dt class="form-label">Instructions</dt>
+      <dd><%= step.instructions.presence || "—" %></dd>
+    </div>
+    <div class="form-group">
+      <dt class="form-label">Form fields</dt>
+      <dd>
+        <ul class="panel-readonly__list">
+          <% Array(step.options).each do |field| %>
+            <li>
+              <%= field["label"].presence || field["name"] %>
+              <span class="text-xs" style="color: var(--color-ink-muted);">
+                <%= field["field_type"] %><%= " · required" if field["required"] %>
+                <% if field["field_type"] == "select" && step.select_options_text(field).present? %>
+                  · <%= step.select_options_text(field) %>
+                <% end %>
+              </span>
+            </li>
+          <% end %>
+        </ul>
+      </dd>
+    </div>
+  <% end %>
+
+  <% if step.help_text.present? || step.reference_url.present? %>
+    <div class="form-group">
+      <dt class="form-label">Guidance</dt>
+      <dd>
+        <% if step.help_text.present? %><p class="mb-1"><%= step.help_text %></p><% end %>
+        <% if step.reference_url.present? %><%= link_to step.reference_url, step.reference_url, target: "_blank", rel: "noopener" %><% end %>
+      </dd>
+    </div>
+  <% end %>
+
+  <% if step.media_attachments.any? %>
+    <div class="form-group">
+      <dt class="form-label">Media attachments</dt>
+      <dd><%= render "steps/media_attachments", step: step %></dd>
+    </div>
+  <% end %>
+
+  <% if step.transitions.any? %>
+    <div class="form-group">
+      <dt class="form-label">Connections</dt>
+      <dd>
+        <% step.transitions.includes(:target_step).each do |t| %>
+          <div class="flex items-center gap-2 py-1">
+            <span class="text-sm"><%= t.condition.presence || "Default" %></span>
+            <span aria-hidden="true">&rarr;</span>
+            <span class="text-sm"><%= t.target_step&.title %></span>
+          </div>
+        <% end %>
+      </dd>
+    </div>
+  <% end %>
+</dl>

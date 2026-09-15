@@ -131,10 +131,19 @@ export default class extends Controller {
     })
   }
 
+  // In view mode every panel is a preview, whatever the person may do: the
+  // server decides readonly from this flag or from permission, so a row
+  // rendered by a broadcast (which knows no mode) still opens as a preview.
   loadPanel(url) {
-    if (this.hasPanelTarget) {
-      this.panelTarget.src = url
-    }
+    if (!this.hasPanelTarget) return
+
+    this.panelTarget.src = this.modeValue === "edit" ? url : this.readonlyUrl(url)
+  }
+
+  readonlyUrl(url) {
+    const resolved = new URL(url, window.location.origin)
+    resolved.searchParams.set("readonly", "1")
+    return resolved.pathname + resolved.search
   }
 
   clearSelectedRow() {

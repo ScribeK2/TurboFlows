@@ -47,7 +47,9 @@
         <%= workflow.status.titleize %>
       </span>
 
-      <%= render "workflows/autosave_status", status: :saved %>
+      <% if mode == "edit" %>
+        <%= render "workflows/autosave_status", status: :saved %>
+      <% end %>
     </div>
 
     <div class="builder__header-actions">

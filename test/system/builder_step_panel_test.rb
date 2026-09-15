@@ -79,6 +79,28 @@ class BuilderStepPanelTest < ApplicationSystemTestCase
     assert_equal "multiple_choice", question.answer_type
   end
 
+  test "view mode opens a step as a preview that cannot save" do
+    escalate = Steps::Escalate.create!(workflow: @workflow, title: "Escalate to network", position: 1,
+                                       target_type: "department", target_value: "Network Ops")
+    visit workflow_path(@workflow)
+    assert_selector "[data-builder-mode-value='view']", wait: 5
+    assert_no_selector "#autosave-status"
+
+    find("#{STEP_ROW}[data-step-uuid='#{escalate.uuid}']").click
+    within "turbo-frame#builder-panel" do
+      assert_text "Network Ops", wait: 5
+      assert_text "Department"
+      assert_no_selector "form"
+      assert_no_selector "input", visible: :all
+    end
+
+    click_on "Details"
+    within "turbo-frame#builder-panel" do
+      assert_text "Who Can See This", wait: 5
+      assert_no_selector "form"
+    end
+  end
+
   private
 
   def visit_builder_in_edit_mode

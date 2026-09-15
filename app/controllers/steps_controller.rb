@@ -63,8 +63,12 @@ class StepsController < ApplicationController
   end
 
   # GET /workflows/:workflow_id/steps/:id/panel_edit
+  #
+  # readonly=1 is what the builder sends in view mode. Permission alone used to
+  # decide this, so an editor looking at a workflow in view mode got a live,
+  # autosaving form behind a header that said otherwise.
   def panel_edit
-    readonly = !@workflow.can_be_edited_by?(current_user)
+    readonly = params[:readonly].present? || !@workflow.can_be_edited_by?(current_user)
     render partial: "steps/panel_edit",
            locals: { step: @step, workflow: @workflow, readonly: readonly },
            layout: false

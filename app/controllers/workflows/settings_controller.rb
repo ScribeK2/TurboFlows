@@ -5,7 +5,7 @@ module Workflows
 
     # GET /workflows/:workflow_id/settings
     def show
-      readonly = !@workflow.can_be_edited_by?(current_user)
+      readonly = params[:readonly].present? || !@workflow.can_be_edited_by?(current_user)
       render partial: "workflows/settings_panel",
              locals: { workflow: @workflow, readonly: readonly, group_nodes: group_nodes },
              layout: false

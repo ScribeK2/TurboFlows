@@ -231,4 +231,23 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
                    "#{klass}##{field} must round-trip through step_params"
     end
   end
+
+  test "the panel is a preview when the builder is in view mode" do
+    escalate = Steps::Escalate.create!(workflow: @workflow, position: 1, title: "Escalate to network",
+                                       target_type: "department", target_value: "Network Ops")
+
+    get panel_edit_workflow_step_path(@workflow, escalate, readonly: 1)
+
+    assert_response :success
+    assert_select "form", count: 0
+    assert_select "turbo-frame#builder-panel", text: /Network Ops/
+    assert_select "turbo-frame#builder-panel", text: /Department/
+  end
+
+  test "the panel is editable in edit mode for someone who may edit" do
+    get panel_edit_workflow_step_path(@workflow, @step)
+
+    assert_response :success
+    assert_select "form[data-controller='inline-autosave']", count: 1
+  end
 end

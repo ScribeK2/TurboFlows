@@ -40,5 +40,13 @@ module Workflows
 
       assert_redirected_to play_path
     end
+
+    test "Details is a preview when the builder is in view mode" do
+      get workflow_settings_path(@workflow, readonly: 1)
+
+      assert_response :success
+      assert_select "form", count: 0
+      assert_select "turbo-frame#builder-panel", text: /Who Can See This/
+    end
   end
 end
