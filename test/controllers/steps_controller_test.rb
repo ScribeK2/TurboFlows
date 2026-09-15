@@ -274,4 +274,25 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
       assert_select "input[name='step[reference_url]']", { count: 1 }, "no reference link on #{type}"
     end
   end
+
+  test "the panel explains a step through its fields, not a banner" do
+    # Published by column, not by WorkflowPublisher: the target only has to
+    # resolve, and publishing would need a Resolve step and an audience.
+    published = Workflow.create!(title: "Target", user: @editor).tap { |w| w.update_columns(status: "published") }
+    {
+      Steps::Escalate => "Escalate Step:",
+      Steps::Resolve => "Resolve Step:",
+      Steps::Message => "Message Step:",
+      Steps::SubFlow => "Variable Mapping"
+    }.each do |klass, banner|
+      attrs = { workflow: @workflow, position: 9, title: "A step" }
+      attrs[:sub_flow_workflow_id] = published.id if klass == Steps::SubFlow
+      step = klass.create!(**attrs)
+
+      get panel_edit_workflow_step_path(@workflow, step)
+
+      assert_no_match banner, response.body
+      assert_no_match ">Graph<", response.body
+    end
+  end
 end

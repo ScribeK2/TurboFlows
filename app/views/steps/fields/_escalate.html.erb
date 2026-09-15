@@ -2,13 +2,6 @@
   Escalate step fields.
   Local variables: form (FormBuilder), step (Steps::Escalate), workflow
 %>
-<div class="alert alert--warning flex items-start gap-3 mb-4">
-  <%= icon "arrow-up", class: "icon icon--sm flex-shrink-0 mt-0.5" %>
-  <p class="text-sm">
-    <strong>Escalate Step:</strong> Transfer the interaction to another department, supervisor, channel, or ticket.
-  </p>
-</div>
-
 <div class="form-group">
   <span class="form-label" id="<%= dom_id(step, :target_type_label) %>">Escalate to</span>
   <%= render "steps/fields/choice_cards",

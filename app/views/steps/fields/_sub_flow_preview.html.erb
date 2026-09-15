@@ -13,9 +13,6 @@
           <h4 class="text-sm font-medium"><%= target_workflow.title %></h4>
           <p class="form-hint mt-0.5 mb-0">
             <%= target_workflow.steps.size %> steps
-            <% if target_workflow.graph_mode? %>
-              <span class="ml-1 badge">Graph</span>
-            <% end %>
           </p>
         </div>
         <%= link_to workflow_path(target_workflow), target: "_blank", class: "btn btn--plain btn--sm" do %>

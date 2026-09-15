@@ -2,13 +2,6 @@
   Resolve step fields.
   Local variables: form (FormBuilder), step (Steps::Resolve), workflow
 %>
-<div class="alert alert--success flex items-start gap-3 mb-4">
-  <%= icon "check-circle", class: "icon icon--sm flex-shrink-0 mt-0.5" %>
-  <p class="text-sm">
-    <strong>Resolve Step:</strong> Terminal step that completes the workflow with resolution metadata.
-  </p>
-</div>
-
 <div class="form-group">
   <span class="form-label" id="<%= dom_id(step, :resolution_type_label) %>">Resolution type</span>
   <%= render "steps/fields/choice_cards",

@@ -2,16 +2,10 @@
   Message step fields.
   Local variables: form (FormBuilder), step (Steps::Message), workflow
 %>
-<div class="alert alert--info flex items-start gap-3 mb-4">
-  <%= icon "information-circle", class: "icon icon--sm flex-shrink-0 mt-0.5" %>
-  <p class="text-sm">
-    <strong>Message Step:</strong> Display information or guidance to the CSR. Use <code>{{variable_name}}</code> for dynamic content.
-  </p>
-</div>
-
 <div class="form-group">
   <%= form.label :content, "Message Content", class: "form-label" %>
   <%= form.rich_text_area :content %>
+  <p class="form-hint">Use <code>{{variable_name}}</code> to show an earlier answer.</p>
 </div>
 
 <div class="form-group">
