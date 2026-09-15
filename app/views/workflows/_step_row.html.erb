@@ -24,6 +24,7 @@
      data-step-id="<%= step.id %>"
      data-step-uuid="<%= step.uuid %>"
      data-step-type="<%= step.step_type %>"
+     data-step-title="<%= step.title.presence || "Untitled #{step.step_type.titleize}" %>"
      data-action="click->builder#openStep"
      data-builder-url-param="<%= panel_edit_workflow_step_path(workflow, step) %>"
      role="listitem">

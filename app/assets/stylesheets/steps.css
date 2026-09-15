@@ -265,17 +265,11 @@
 
 /* ─── Transition Item ─── */
 .transition-item__delete {
-  opacity: 0;
-  transition: opacity var(--duration-fast) var(--ease-out);
-  color: var(--color-ink-muted) !important;
+  color: var(--color-ink-muted);
 }
 
 .transition-item__delete:hover {
-  color: var(--color-negative) !important;
-}
-
-.transition-item:hover .transition-item__delete {
-  opacity: 1;
+  color: var(--color-negative);
 }
 
 /* ─── Sync Highlight ─── */

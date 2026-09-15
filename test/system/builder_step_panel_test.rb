@@ -101,6 +101,25 @@ class BuilderStepPanelTest < ApplicationSystemTestCase
     end
   end
 
+  test "a new connection lists step titles without their badges and shows Remove" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Is the site down?", position: 1,
+                                       question: "Is the site down?", answer_type: "yes_no")
+    Steps::Escalate.create!(workflow: @workflow, title: "Escalate to network", position: 2)
+    visit_builder_in_edit_mode
+    assert_selector ".badge", text: "No connections"
+    open_step question
+
+    within "turbo-frame#builder-panel" do
+      click_on "Add Connection"
+      within all(".transition-item", minimum: 1, wait: 5).last do
+        options = all("select[data-transition-field='target_uuid'] option").map { |option| option.text.strip }
+        assert_includes options, "Escalate to network"
+        assert_includes options, "All done"
+        assert_selector "button[title='Remove connection']", visible: true
+      end
+    end
+  end
+
   private
 
   def visit_builder_in_edit_mode
@@ -111,5 +130,32 @@ class BuilderStepPanelTest < ApplicationSystemTestCase
   def open_step(step)
     find("#{STEP_ROW}[data-step-uuid='#{step.uuid}']").click
     assert_selector "turbo-frame#builder-panel form", wait: 5
+    assert_panel_settled
+  end
+
+  # The panel animates open over 250ms and the fields in it re-wrap as it
+  # widens, so a button found mid-animation moves before the click lands and
+  # the click hits whatever slid under the old spot. See the identical helper
+  # (and its comment) in workflow_builder_test.rb, where this was diagnosed.
+  def assert_panel_settled(timeout: 5)
+    deadline = Time.current + timeout
+    previous = nil
+    loop do
+      width = panel_body_width
+      return if width > 200 && width == previous
+
+      flunk "the panel never settled open (#{width}px wide)" if Time.current > deadline
+      previous = width
+      sleep 0.1
+    end
+  end
+
+  def panel_body_width
+    page.evaluate_script(<<~JS)
+      (() => {
+        const b = document.querySelector('#builder-panel .builder__panel-body');
+        return b ? Math.round(b.getBoundingClientRect().width) : 0;
+      })()
+    JS
   end
 end

@@ -7,7 +7,7 @@ import { Controller } from "@hotwired/stimulus"
  * Each step can have multiple transitions to other steps, with optional conditions.
  */
 export default class extends Controller {
-  static targets = ["transitionsList", "hiddenInput"]
+  static targets = ["transitionsList", "hiddenInput", "rowTemplate", "emptyTemplate"]
   static values = {
     stepId: String,
     stepIndex: Number,
@@ -132,149 +132,52 @@ export default class extends Controller {
     }
   }
 
-  /**
-   * Render the transitions list
-   */
   renderTransitions() {
     if (!this.hasTransitionsListTarget) return
 
-    // Get other steps from the workflow
     const otherSteps = this.getOtherSteps()
+    this.transitionsListTarget.replaceChildren()
 
     if (this.transitions.length === 0) {
-      this.transitionsListTarget.innerHTML = `
-        <p class="transitions-empty">
-          No connections yet. Add a connection to link this step to another.
-        </p>
-      `
+      this.transitionsListTarget.appendChild(this.emptyTemplateTarget.content.cloneNode(true))
       return
     }
 
-    // Trust boundary: all user-derived values (step IDs, titles, conditions, labels)
-    // are escaped via escapeHtml before interpolation.
-    const html = this.transitions.map((transition, index) => {
-      const optionsHtml = otherSteps.map(step => {
-        const selected = transition.target_uuid === step.id ? 'selected' : ''
-        const title = step.title || `Step ${step.index + 1}`
-        return `<option value="${this.escapeHtml(step.id)}" ${selected}>${this.escapeHtml(title)}</option>`
-      }).join('')
+    this.transitions.forEach((transition, index) => {
+      const row = this.rowTemplateTarget.content.firstElementChild.cloneNode(true)
+      row.dataset.transitionIndex = index
 
-      return `
-        <div class="transition-item"
-             data-transition-index="${index}">
-          <svg class="transition-item__arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
-          </svg>
-          <select data-action="change->step-transitions#updateTransition"
-                  data-transition-field="target_uuid"
-                  class="form-select transition-item__target">
-            <option value="">-- Select target step --</option>
-            ${optionsHtml}
-          </select>
-          <div class="transition-item__condition"
-               data-controller="condition-preset"
-               data-condition-preset-condition-value="${this.escapeHtml(transition.condition || '')}"
-               data-condition-preset-label-value="${this.escapeHtml(transition.label || '')}"
-               data-condition-preset-variables-value="${this.escapeHtml(JSON.stringify(this.variablesValue || []))}">
-            <select data-condition-preset-target="presetDropdown"
-                    data-action="change->condition-preset#handlePresetChange"
-                    class="form-select"
-                    title="Select a condition preset or choose Custom">
-            </select>
-            <div data-condition-preset-target="numericContainer" class="is-hidden condition-preset__numeric">
-              <input type="number"
-                     data-condition-preset-target="numericValueInput"
-                     data-action="input->condition-preset#handleNumericChange"
-                     placeholder="Value"
-                     class="form-input form-input--sm">
-            </div>
-            <div data-condition-preset-target="sentenceContainer" class="is-hidden condition-sentence">
-              <select data-condition-preset-target="sentenceVariable"
-                      data-action="change->condition-preset#handleSentenceChange"
-                      class="form-select condition-sentence__variable"
-                      aria-label="Condition variable"
-                      title="Which answer this connection checks">
-              </select>
-              <select data-condition-preset-target="sentenceOperator"
-                      data-action="change->condition-preset#handleSentenceChange"
-                      class="form-select condition-sentence__operator"
-                      aria-label="Condition operator"
-                      title="How to compare">
-              </select>
-              <span data-condition-preset-target="sentenceValue" class="condition-sentence__value"></span>
-              <p data-condition-preset-target="keepAsWritten" class="condition-sentence__kept is-hidden" hidden></p>
-            </div>
-            <input type="hidden"
-                   data-condition-preset-target="conditionHidden"
-                   data-transition-field="condition"
-                   data-action="input->step-transitions#updateTransition"
-                   value="${this.escapeHtml(transition.condition || '')}">
-          </div>
-          <input type="text"
-                 data-action="input->step-transitions#updateTransition input->condition-preset#handleLabelInput"
-                 data-transition-field="label"
-                 data-condition-preset-target="labelInput"
-                 value="${this.escapeHtml(transition.label || '')}"
-                 placeholder="Label"
-                 title="Display label for this connection"
-                 class="form-input transition-item__label">
-          <button type="button"
-                  data-action="click->step-transitions#removeTransition"
-                  class="btn btn--plain btn--sm transition-item__delete"
-                  title="Remove connection">
-            <svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-            </svg>
-          </button>
-        </div>
-      `
-    }).join('')
+      const targetSelect = row.querySelector('[data-transition-field="target_uuid"]')
+      otherSteps.forEach(step => {
+        const option = document.createElement("option")
+        option.value = step.id
+        option.textContent = step.title || `Step ${step.index + 1}`
+        option.selected = step.id === transition.target_uuid
+        targetSelect.appendChild(option)
+      })
 
-    this.transitionsListTarget.innerHTML = html
+      // condition-preset connects when the row is inserted and reads its
+      // values from these attributes, so set them before appending.
+      const condition = row.querySelector('[data-controller~="condition-preset"]')
+      condition.dataset.conditionPresetConditionValue = transition.condition || ""
+      condition.dataset.conditionPresetLabelValue = transition.label || ""
+      row.querySelector('[data-transition-field="condition"]').value = transition.condition || ""
+      row.querySelector('[data-transition-field="label"]').value = transition.label || ""
+
+      this.transitionsListTarget.appendChild(row)
+    })
   }
 
-  /**
-   * Get other steps in the workflow (excluding current step)
-   */
+  // Every builder row carries its own title in data-step-title; reading the
+  // row's text picked up the "No connections" badge next to it.
   getOtherSteps() {
     const steps = []
-    // Support both builder step rows (data-step-uuid) and legacy step cards (.step-item)
-    const stepRows = document.querySelectorAll('.builder__step[data-step-uuid], .step-item')
-
-    stepRows.forEach((item, index) => {
-      let id, title
-
-      if (item.dataset.stepUuid) {
-        // Builder step row: data attributes on the row element
-        id = item.dataset.stepUuid
-        title = item.querySelector('.list-row__title')?.textContent?.trim() || ''
-      } else {
-        // Legacy step card: hidden inputs
-        const idInput = item.querySelector('input[data-step-field="id"]') || item.querySelector('input[name*="[id]"]')
-        const titleInput = item.querySelector('input[data-step-field="title"]') || item.querySelector('input[name*="[title]"]')
-        id = idInput?.value
-        title = titleInput?.value || ''
-      }
-
+    document.querySelectorAll('.builder__step[data-step-uuid]').forEach((row, index) => {
+      const id = row.dataset.stepUuid
       if (id && id !== this.stepIdValue) {
-        steps.push({ id, title, index })
+        steps.push({ id, title: row.dataset.stepTitle || '', index })
       }
     })
-
     return steps
-  }
-
-  /**
-   * Escape HTML to prevent XSS
-   * Note: textContent->innerHTML only escapes <, >, &
-   * We also need to escape quotes for use in HTML attributes
-   */
-  escapeHtml(text) {
-    if (!text) return ''
-    const div = document.createElement('div')
-    div.textContent = text
-    // innerHTML escapes <, >, & but NOT quotes
-    // Escape quotes for safe use in HTML attribute values
-    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;')
   }
 }

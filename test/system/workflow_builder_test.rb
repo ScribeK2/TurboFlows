@@ -276,7 +276,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
     within "turbo-frame#builder-panel" do
       click_on "Add Connection"
       assert_selector "[data-condition-preset-target='sentenceContainer']", visible: :all, wait: 5
-      within all(".transition-item").last do
+      within all(".transition-item", minimum: 1).last do
         find("select[data-condition-preset-target='presetDropdown'] option[value='__custom__']").select_option
         assert_selector "[data-condition-preset-target='sentenceVariable']"
         assert_no_selector "[data-condition-preset-target='customInput']"
