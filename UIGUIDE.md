@@ -237,13 +237,21 @@ stops the next person re-litigating it. One live exclusion remains.
   around 25 answered steps on current numbers, which only the largest workflows
   can reach. That is the length-management question, still parked.
 
-- **Builder editing internals** — `_panel_edit` and its form surface in
-  `steps.css`, `_preview_pane`, and the flow diagram panel with
-  `flow_diagram.css`. These are graph rendering and a large bespoke form
-  surface, where the design system has little to say and restyling means
-  inventing.
-  *Reopen when:* reference material exists, and then as a design consultation
-  rather than a refactor.
+- **Builder editing internals** — *no longer excluded for the step panel.* This
+  entry parked `_panel_edit` and its form surface in `steps.css` with the reopen
+  condition "reference material exists, and then as a design consultation rather
+  than a refactor." On 2026-09-15 a browser audit met it the way the chrome
+  migration had: the rest of TurboFlows is its own reference. What the audit
+  found is worth keeping. Several "styling" problems were controls that did not
+  work — a pick-one control whose chosen state no rule styled, a file input on a
+  form that was never multipart, radio cards that restyled and saved nothing — so
+  the pass was fixes first and style second, and every control now goes through
+  a catalog component (choice cards, the file dropzone, one attachment list). The
+  guard `test/integration/step_panel_autosave_coverage_test.rb` refuses a panel
+  control with no autosave action, the failure that had shipped three times.
+  Still excluded: `_preview_pane`, and the flow diagram panel with
+  `flow_diagram.css`, which are graph rendering.
+  *Reopen those when:* reference material for a diagram exists.
 
   > **`_visual_editor` and `_visual_condition` are no longer on this list —
   > they were deleted 2026-08-29.** Not restyled: *deleted*. Nothing rendered
@@ -251,8 +259,10 @@ stops the next person re-litigating it. One live exclusion remains.
   > controllers removed back in `f8240c05`. An exclusion protects a surface from
   > being restyled on a whim; it was never a reason to keep unreachable code.
   > Check reachability before assuming an excluded surface is load-bearing.
-  > `transitions.css` also leaves this entry — its rules belong to the
-  > transition editor in `_panel_edit`, which is still excluded above.
+  > `transitions.css` also leaves this entry — its rules style the flow
+  > diagram's SVG edges, grouped with `flow_diagram.css` above, not the step
+  > panel's own connection editor (`.transition-item`, in `steps.css`, no
+  > longer excluded).
 
   > **Note what is no longer excluded.** The builder's *chrome* — header,
   > toolbar, step list, step rows, empty state, health panel and the shared
@@ -321,7 +331,7 @@ the noise this system removes.
 | `.form-select--sm` | Compact select inside a dense row (admin table, pagination) | Tighter padding, `width: auto`. Sized like `.btn--sm` is to `.btn` |
 | `.form-input--sm` | Compact text input inside a dense row (a table cell) | Tighter padding, `text-sm`. The text-input counterpart of `.form-select--sm` |
 | `.form-hint` | Help text below input | text-xs, muted color |
-| `.file-dropzone` | File upload drop target | Centred column, dashed hairline, canvas-alt fill; `.is-dragover` turns it solid + primary-soft |
+| `.file-dropzone` | File upload drop target (import upload, the step panel's media) | Centred column, dashed hairline, canvas-alt fill; `.is-dragover` turns it solid + primary-soft |
 | `.file-dropzone__empty` / `__selected` | The two states inside it | Stacked, centred; toggle with `.is-hidden` |
 | `.file-dropzone__icon` / `__hint` | Icon and sub-label | Muted ink |
 
@@ -543,6 +553,8 @@ so `.tab-bar` drops into any existing tablist with no JS change.
 | Component | Classes | File | Notes |
 |-----------|---------|------|-------|
 | Answer cards | `.radio-card`, `.radio-grid`, `.radio-list` | `runner.css` | The runner's answer choices. Deliberately **neutral** — no icons, no radio dot, no semantic colour. A question's polarity is arbitrary ("Is the site down?" makes Yes the bad news), so green/red miscommunicates while spending the scarce semantic budget. Label is the content, border is the state |
+| Choice cards | `.choice-cards`, `.choice-card` | `forms.css` | `render "steps/fields/choice_cards", form:, attribute:, choices:, selected:, labelled_by:` — pick one of N as real radios in labelled cards. The chosen card is `.choice-card:has(> input:checked)`, so no controller keeps a class in step with a hidden field (that is what `selection-group` did wrong; deleted 2026-09-15). Each radio autosaves on change; a caller's own `input_data[:action]` runs first and may `stopImmediatePropagation()` to veto the save |
+| Attachment list | `.media-list`, `__row`, `__row--pending`, `__thumb`, `__icon`, `__name`, `__size`, `__progress`, `__remove` | `_media.css` | `render "steps/media_list", step:, removable:` — the one list of a step's media, replaced whole by `Steps::MediaAttachmentsController` after an attach or a Remove. Files attach on choose via direct upload (`media-attachments` controller), with a `<progress>` row while they go. The runner keeps `steps/_media_attachments`, which shows images inline |
 | Runner thread | `.runner-thread`, `__card`, `__check`, `__kind`, `__current`, `__complete` | `runner.css` | The run as one growing list: answered steps as compact cards (completion dot, type label, `title → answer`), then the open card. The dot is the one place step colour appears outside a badge. Answered steps were one-line rows first — see §Surfaces Deliberately Excluded for why that lost |
 | List rows | `.list-section`, `.list-row`, `.list-row--compact` | `lists.css` | Section + hairline-divided rows. `--compact` is the dense size (builder step list); same anatomy, tighter box — sized like `.btn--sm` is to `.btn` |
 | Player index row | `.player-row`, `__run`, `__pin` | `_player.css` | A `/play` row: the Run button (a `button_to` whose form is `__run`) and, for a Regular user, a pin toggle in `__pin` beside it. The wrapper carries the divider and `data-player-filter-target="card"`, so a search hides the toggle with its row. Hover lights only the Run area, telling it apart from the toggle |
@@ -605,6 +617,7 @@ These are the most-used controllers. Wire them via `data-controller` on the appr
 | Controller | Purpose | Common data-actions |
 |-----------|---------|-------------------|
 | `inline-autosave` | Debounced form autosave (2s) | Listens for `input`, `change`, `lexxy:change` |
+| `media-attachments` | Direct-upload a chosen or dropped file, show progress, attach it to the step | On the panel's media block, with `url`, `direct-upload-url`, `max-bytes`, `allowed-types` values; `change->media-attachments#fileSelected` on the file input |
 | `dropdown` | Toggle dropdown menus | `click->dropdown#toggle` |
 | `clipboard` | Copy text to clipboard | `click->clipboard#copy` |
 | `tooltip` | Show/hide tooltips | `mouseenter->tooltip#show`, `mouseleave->tooltip#hide` |
@@ -911,7 +924,7 @@ For page types not covered by a recipe, read these exemplary views. They demonst
 | `_tags.css` | components | Tag pills, autocomplete |
 | `_player.css` | components | Player-specific styles |
 | `_form_step.css` | components | FormStep builder UI |
-| `_media.css` | components | Media attachments |
+| `_media.css` | components | The step panel's attachment list and the runner's inline media display |
 | `_version_diff.css` | components | Version comparison |
 | `flow_diagram.css` | components | Flow diagram layout |
 | `session_timeout.css` | components | Session timeout UI |

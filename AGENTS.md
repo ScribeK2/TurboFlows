@@ -96,7 +96,13 @@ The unified builder lives at `workflows/:id` — one URL for both viewing and ed
 
 **Autosave pattern:** Every field change triggers `inline-autosave#schedule` (via `data-action` on inputs or `lexxy:change` listener on the form). On disconnect (e.g., switching steps), pending saves are flushed by snapshotting `FormData` and sending via `fetch()` POST with `_method=patch`. The step panel form carries `novalidate`: `requestSubmit()` runs the browser's required-field check, and while any `required` field was empty (a new Question's text, a Form row just added) every save was refused and the edit dropped. The health check says what still needs filling in.
 
-**Mode:** `data-builder-mode-value="view|edit"` on the builder container. CSS hides drag handles, add/delete buttons, and edit-only elements in view mode.
+Media is the exception: the panel form is not multipart and never carries file
+bytes. A chosen file is direct-uploaded and attached by
+`Steps::MediaAttachmentsController`, which answers with `steps/_media_list`.
+Every other control must autosave — `test/integration/step_panel_autosave_coverage_test.rb`
+renders each step type's panel and refuses one that does not.
+
+**Mode:** `data-builder-mode-value="view|edit"` on the builder container. CSS hides drag handles, add/delete buttons, and edit-only elements in view mode. View mode is a preview: `builder_controller#loadPanel` asks for `readonly=1`, and `StepsController#panel_edit` and `Workflows::SettingsController#show` render the readonly branch for that or for a viewer who may not edit. Nothing in view mode saves.
 
 **Inline Validation + Health Panel:**
 - `step_warnings_controller.js` fetches `/workflows/:id/health.json` asynchronously (debounced 500ms) after every autosave or Turbo Stream update
