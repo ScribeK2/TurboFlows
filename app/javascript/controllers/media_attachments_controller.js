@@ -77,46 +77,61 @@ export default class extends Controller {
   // save deletes what the first just added. Chaining onto one promise makes
   // each attach wait for the previous one to finish.
   queueAttach(signedId, row) {
-    this.attachQueue = (this.attachQueue || Promise.resolve()).then(() => this.attach(signedId, row))
+    this.attachQueue = (this.attachQueue || Promise.resolve())
+      .then(() => this.attach(signedId, row))
+      // attach() reports its own failures (see its catch/finally below); a
+      // rejected link here must not leave this.attachQueue permanently
+      // rejected, or every file queued after it would upload, sit in its
+      // pending row forever, and never be reported.
+      .catch(() => {})
   }
 
   async attach(signedId, row) {
     const body = new FormData()
     body.append("signed_id", signedId)
 
-    let response
+    // Everything below must settle (never throw past this method): it runs
+    // inside queueAttach's chain, and an unhandled rejection here would stall
+    // every attach queued after it. finally always clears the pending row;
+    // the outer catch reports whatever went wrong, whether that's the fetch
+    // itself, reading the body, or rendering the returned stream.
     try {
-      response = await fetch(this.urlValue, {
-        method: "POST",
-        headers: {
-          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content,
-          "Accept": "text/vnd.turbo-stream.html"
-        },
-        body
-      })
+      let response
+      try {
+        response = await fetch(this.urlValue, {
+          method: "POST",
+          headers: {
+            "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content,
+            "Accept": "text/vnd.turbo-stream.html"
+          },
+          body
+        })
+      } catch {
+        flashAlert("The file uploaded but couldn't be attached. Choose it again.")
+        return
+      }
+
+      // fetch follows a redirect itself, so a lost session or lost access
+      // (the controller's ensure_can_edit!, or Devise's own redirect to sign
+      // in) arrives here as a 200 with no turbo-stream to render —
+      // response.ok alone would read that as success. response.redirected
+      // catches it.
+      if (response.redirected) {
+        flashAlert("The file could not be attached. Reload and try again.")
+        return
+      }
+
+      const html = await response.text()
+      // Success streams the list; a refusal streams the flash that says why.
+      if (response.ok || response.status === 422) {
+        if (html.trim()) Turbo.renderStreamMessage(html)
+      } else {
+        flashAlert("The file could not be attached. Reload and try again.")
+      }
     } catch {
+      flashAlert("The file could not be attached. Reload and try again.")
+    } finally {
       row.remove()
-      flashAlert("The file uploaded but couldn't be attached. Choose it again.")
-      return
-    }
-
-    row.remove()
-
-    // fetch follows a redirect itself, so a lost session or lost access (the
-    // controller's ensure_can_edit!, or Devise's own redirect to sign in)
-    // arrives here as a 200 with no turbo-stream to render — response.ok
-    // alone would read that as success. response.redirected catches it.
-    if (response.redirected) {
-      flashAlert("The file could not be attached. Reload and try again.")
-      return
-    }
-
-    const html = await response.text()
-    // Success streams the list; a refusal streams the flash that says why.
-    if (response.ok || response.status === 422) {
-      if (html.trim()) Turbo.renderStreamMessage(html)
-    } else {
-      flashAlert("The file could not be attached. Reload and try again.")
     }
   }
 
