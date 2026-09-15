@@ -295,4 +295,16 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
       assert_no_match ">Graph<", response.body
     end
   end
+
+  test "form field rows have column headers and a plain remove" do
+    form = Steps::Form.create!(workflow: @workflow, position: 9, title: "Details",
+                               options: [{ "name" => "account_no", "label" => "Account number", "field_type" => "text",
+                                           "required" => true, "position" => 0 }])
+
+    get panel_edit_workflow_step_path(@workflow, form)
+
+    assert_select ".form-field-list__head", text: /Name.*Label.*Type.*Required/m
+    assert_select ".form-field-row button.btn--negative", count: 0
+    assert_select ".form-field-row button[title='Remove field'].btn--plain", count: 1
+  end
 end

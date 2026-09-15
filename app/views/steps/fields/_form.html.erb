@@ -21,15 +21,19 @@
 <div data-controller="form-field-builder"
      data-action="input->inline-autosave#schedule change->inline-autosave#schedule"
      data-form-field-builder-field-types-value="<%= Steps::Form::VALID_FIELD_TYPES.to_json %>">
-  <label class="form-label">Form Fields</label>
+  <span class="form-label">Form fields</span>
+
+  <div class="form-field-list__head" aria-hidden="true">
+    <span>Name</span><span>Label</span><span>Type</span><span>Required</span><span>Choices</span><span></span>
+  </div>
 
   <div data-form-field-builder-target="fieldList" class="form-field-list">
     <% Array(step.options).each_with_index do |field, i| %>
       <div class="form-field-row" data-position="<%= i %>">
         <div class="form-field-row__inputs">
-          <input type="text" name="step[options][][name]" value="<%= field['name'] %>" placeholder="field_name" class="form-input form-input--sm" required>
-          <input type="text" name="step[options][][label]" value="<%= field['label'] %>" placeholder="Label" class="form-input form-input--sm" required>
-          <select name="step[options][][field_type]" class="form-select form-select--sm"
+          <input type="text" name="step[options][][name]" value="<%= field['name'] %>" placeholder="field_name" class="form-input form-input--sm" aria-label="Field name">
+          <input type="text" name="step[options][][label]" value="<%= field['label'] %>" placeholder="Label" class="form-input form-input--sm" aria-label="Field label">
+          <select name="step[options][][field_type]" class="form-select form-select--sm" aria-label="Field type"
                   data-action="change->form-field-builder#toggleChoices">
             <% Steps::Form::VALID_FIELD_TYPES.each do |ft| %>
               <option value="<%= ft %>" <%= "selected" if field["field_type"] == ft %>><%= ft.capitalize %></option>
@@ -37,7 +41,7 @@
           </select>
           <label class="form-checkbox-label">
             <input type="checkbox" name="step[options][][required]" value="true" class="form-checkbox" <%= "checked" if field["required"] %>>
-            Required
+            <span class="sr-only">Required</span>
           </label>
           <%# Rendered on every row, hidden unless the type is select: `options`
               posts unindexed, and a key that appears on some rows and not
@@ -46,10 +50,14 @@
                  value="<%= step.select_options_text(field) %>"
                  placeholder="Choices, comma separated"
                  class="form-input form-input--sm"
+                 aria-label="Choices, comma separated"
                  data-form-field-builder-target="choices"
                  <%= "hidden" unless field["field_type"] == "select" %>>
           <input type="hidden" name="step[options][][position]" value="<%= i %>">
-          <button type="button" class="btn btn--negative btn--sm" data-action="form-field-builder#removeField">Remove</button>
+          <button type="button" class="btn btn--plain btn--sm form-field-row__remove" title="Remove field"
+                  data-action="form-field-builder#removeField">
+            <%= icon "trash", class: "icon icon--sm" %>
+          </button>
         </div>
       </div>
     <% end %>
