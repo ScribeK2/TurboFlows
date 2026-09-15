@@ -131,6 +131,26 @@ class BuilderStepPanelTest < ApplicationSystemTestCase
     assert_eventually(timeout: 10) { @resolve.reload.help_text == "Confirm the ticket number back to the caller" }
   end
 
+  test "Escape closes the type picker without closing the panel" do
+    visit_builder_in_edit_mode
+    open_step @resolve
+
+    click_on "Add a step"
+    assert_selector "[data-step-list-target='typePicker']:not([hidden])"
+
+    page.send_keys :escape
+    assert_no_selector "[data-step-list-target='typePicker']:not([hidden])"
+    assert_selector "turbo-frame#builder-panel form"
+  end
+
+  test "the Publish button carries no count badge" do
+    Steps::Action.create!(workflow: @workflow, title: "Dangling action", position: 1)
+    visit_builder_in_edit_mode
+
+    assert_no_selector ".builder__publish-badge", visible: :all
+    assert_selector ".builder__toolbar-issues", text: /error/
+  end
+
   private
 
   def visit_builder_in_edit_mode

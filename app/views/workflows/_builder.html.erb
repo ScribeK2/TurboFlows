@@ -67,14 +67,11 @@
       <% end %>
 
       <% if mode == "edit" %>
-        <span class="builder__publish-wrapper">
-          <%= button_to workflow_publishing_path(workflow), method: :post,
-              class: "btn btn--primary btn--sm builder__edit-only",
-              data: { turbo_stream: true } do %>
-            Publish
-          <% end %>
-          <span class="builder__publish-badge" data-step-warnings-target="publishBadge" hidden></span>
-        </span>
+        <%= button_to workflow_publishing_path(workflow), method: :post,
+            class: "btn btn--primary btn--sm builder__edit-only",
+            data: { turbo_stream: true } do %>
+          Publish
+        <% end %>
       <% end %>
 
       <% if workflow.can_be_viewed_by?(current_user) %>

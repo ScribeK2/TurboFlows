@@ -12,7 +12,6 @@ import { Controller } from "@hotwired/stimulus"
  *   mode       — "view" or "edit" (fix buttons hidden in view mode)
  *
  * Targets:
- *   publishBadge   — error count badge on Publish button
  *   toolbarIssues  — issue count in the toolbar
  *   icon           — warning icon spans on step rows (one per row)
  */
@@ -23,7 +22,7 @@ export default class extends Controller {
     mode: { type: String, default: "view" }
   }
 
-  static targets = ["publishBadge", "toolbarIssues", "icon"]
+  static targets = ["toolbarIssues", "icon"]
 
   connect() {
     this.debounceTimer = null
@@ -105,12 +104,8 @@ export default class extends Controller {
     // Update step row icons and tints
     this.renderStepIcons(issues)
 
-    // Update publish badge
-    this.renderPublishBadge(summary.errors)
-
-    // Update toolbar issues. The whole summary, not just the total: the badge
-    // beside Publish counts errors and this counted everything, so the same
-    // screen showed "4 issues" and "2" with nothing saying why they differed.
+    // Update toolbar issues. The whole summary, not just the total, so errors
+    // and warnings can be reported separately in the one place this shows.
     this.renderToolbarIssues(summary)
   }
 
@@ -169,23 +164,6 @@ export default class extends Controller {
     })
   }
 
-  renderPublishBadge(errorCount) {
-    if (!this.hasPublishBadgeTarget) return
-
-    if (errorCount > 0) {
-      this.publishBadgeTarget.hidden = false
-      this.publishBadgeTarget.textContent = errorCount > 9 ? "9+" : errorCount
-
-      // Update Publish button aria-label
-      const btn = this.publishBadgeTarget.closest(".builder__publish-wrapper")?.querySelector("button")
-      if (btn) btn.setAttribute("aria-label", `Publish (${errorCount} error${errorCount === 1 ? "" : "s"})`)
-    } else {
-      this.publishBadgeTarget.hidden = true
-      const btn = this.publishBadgeTarget.closest(".builder__publish-wrapper")?.querySelector("button")
-      if (btn) btn.removeAttribute("aria-label")
-    }
-  }
-
   renderToolbarIssues({ errors, warnings, total }) {
     if (!this.hasToolbarIssuesTarget) return
 
@@ -221,7 +199,6 @@ export default class extends Controller {
       icon.hidden = true
       this.clearElement(icon)
     })
-    if (this.hasPublishBadgeTarget) this.publishBadgeTarget.hidden = true
     if (this.hasToolbarIssuesTarget) {
       this.toolbarIssuesTarget.hidden = true
       this.clearElement(this.toolbarIssuesTarget)

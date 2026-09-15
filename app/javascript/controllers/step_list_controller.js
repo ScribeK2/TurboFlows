@@ -21,11 +21,18 @@ export default class extends Controller {
 
     this.boundCloseOnOutsideClick = this.closeOnOutsideClick.bind(this)
     document.addEventListener("click", this.boundCloseOnOutsideClick)
+
+    // Capture phase, so this runs before the builder's own document keydown
+    // handler and can stop it: Escape with the picker open closes the picker,
+    // not the panel behind it.
+    this.boundCloseOnEscape = this.closeOnEscape.bind(this)
+    document.addEventListener("keydown", this.boundCloseOnEscape, true)
   }
 
   disconnect() {
     this.sortable?.destroy()
     document.removeEventListener("click", this.boundCloseOnOutsideClick)
+    document.removeEventListener("keydown", this.boundCloseOnEscape, true)
   }
 
   toggleTypePicker(event) {
@@ -72,6 +79,14 @@ export default class extends Controller {
   // The picker lives inside .builder__list-add-wrapper, so a click on one of
   // its options counts as "inside" and must not be treated as an outside click.
   // Choosing a type closes it explicitly, via closeTypePicker.
+  closeOnEscape(event) {
+    if (event.key !== "Escape") return
+    if (!this.hasTypePickerTarget || this.typePickerTarget.hidden) return
+
+    this.setTypePickerHidden(true)
+    event.stopPropagation()
+  }
+
   closeOnOutsideClick(event) {
     if (this.hasTypePickerTarget && !this.typePickerTarget.hidden) {
       if (!event.target.closest(".builder__list-add-wrapper")) {
