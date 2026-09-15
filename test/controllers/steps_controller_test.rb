@@ -307,4 +307,28 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".form-field-row button.btn--negative", count: 0
     assert_select ".form-field-row button[title='Remove field'].btn--plain", count: 1
   end
+
+  test "an editor who may only view the workflow gets the panel as a preview" do
+    viewer = User.create!(email: "viewer-#{SecureRandom.hex(4)}@example.com", password: "password123!",
+                          password_confirmation: "password123!", role: "editor")
+    # can_be_edited_by? lets any editor edit a Global workflow owned by another
+    # editor, so Global would grant view AND edit. A non-Global group the
+    # viewer reaches, owned by someone else, is the only shape that is
+    # view-only: WorkflowAuthorization#can_be_edited_by? still requires
+    # `user == self.user` off of Global.
+    group = Group.create!(name: "Viewer Group #{SecureRandom.hex(4)}")
+    UserGroup.create!(user: viewer, group: group)
+    GroupWorkflow.create!(group: group, workflow: @workflow, is_primary: true)
+    sign_in viewer
+
+    get panel_edit_workflow_step_path(@workflow, @step)
+
+    assert_response :success
+    assert_select "form", count: 0
+    assert_select "turbo-frame#builder-panel", text: /Existing Step/
+
+    patch workflow_step_path(@workflow, @step), params: { step: { title: "Changed" } }
+    assert_redirected_to workflows_path
+    assert_equal "Existing Step", @step.reload.title
+  end
 end

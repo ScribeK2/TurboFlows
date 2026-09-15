@@ -25,7 +25,8 @@ class StepsController < ApplicationController
   include ActionView::RecordIdentifier
 
   before_action :set_workflow
-  before_action :ensure_can_edit!
+  before_action :ensure_can_edit!, except: :panel_edit
+  before_action :ensure_can_view!, only: :panel_edit
   before_action :set_step, only: %i[show update destroy reorder panel_edit]
 
   # GET /workflows/:workflow_id/steps/:id
@@ -274,6 +275,12 @@ class StepsController < ApplicationController
     unless @workflow.can_be_edited_by?(current_user)
       redirect_to workflows_path, alert: "You don't have permission to edit this workflow."
     end
+  end
+
+  def ensure_can_view!
+    return if @workflow.can_be_viewed_by?(current_user)
+
+    redirect_to workflows_path, alert: "You don't have permission to view this workflow."
   end
 
   # Two saves of one step in the same instant, and this one lost the
