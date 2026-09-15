@@ -98,13 +98,24 @@ class StepsPanelEditStimulusValuesTest < ActionDispatch::IntegrationTest
     assert_includes response.body, %(data-condition-preset-variables-value="#{json}")
   end
 
-  test "the JS-injected connection row uses the same sentence markup as the ERB" do
+  test "the connection row markup lives in the ERB template, not in JavaScript" do
     source = Rails.root.join("app/javascript/controllers/step_transitions_controller.js").read
-    %w[sentenceContainer sentenceVariable sentenceOperator sentenceValue keepAsWritten].each do |target|
-      assert_includes source, %(data-condition-preset-target="#{target}"),
-                      "step_transitions_controller.js is missing #{target} — Add Connection would ship the old Custom field"
-    end
+    assert_not_includes source, "data-condition-preset-target=",
+                        "step_transitions_controller.js carries its own row markup again — rows are cloned from the ERB template"
     assert_not_includes source, "customInput"
     assert_not_includes source, "e.g., answer =="
+
+    later = Steps::Question.create!(
+      workflow: @workflow, position: 1, title: "Did it work?",
+      question: "Work?", answer_type: "yes_no", variable_name: "verified"
+    )
+
+    get panel_edit_workflow_step_path(@workflow, later)
+
+    assert_response :success
+    %w[sentenceContainer sentenceVariable sentenceOperator sentenceValue keepAsWritten].each do |target|
+      assert_select "template[data-step-transitions-target='rowTemplate'] [data-condition-preset-target='#{target}']",
+                    { minimum: 1 }, "the row template is missing #{target}"
+    end
   end
 end
