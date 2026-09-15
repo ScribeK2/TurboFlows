@@ -8,11 +8,16 @@
     that happens, and the Player is the surface agents live in.
 
     Iterating flash rather than naming notice and alert means a flash type
-    nobody anticipated still renders as a message instead of vanishing.
+    nobody anticipated still renders as a message instead of vanishing. Only
+    text is a message, though. Devise sets flash[:timedout] = true beside its
+    timeout alert and keeps both across the redirect to sign-in; its README says
+    that key is not meant for display. Rendered, it became a second toast
+    reading "true", pinned to the same corner as the real message and covering
+    it.
 
     Careful with ERB comments here: an example containing a closing tag ends the
     comment early and dumps the remainder of it into the page as literal text. %>
 <% flash.each do |type, message| %>
-  <% next if message.blank? %>
+  <% next unless message.is_a?(String) && message.present? %>
   <%= render "shared/flash_message", type:, message: %>
 <% end %>

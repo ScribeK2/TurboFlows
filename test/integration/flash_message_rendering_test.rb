@@ -76,19 +76,27 @@ class FlashMessageRenderingTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "an unexpected flash type still renders as a message" do
-    # The Player's old loop used `flash--#{type}` directly, so a type with no
-    # matching modifier rendered with no variant styling at all.
-    get root_path
+  # Devise's FailureApp sets flash[:timedout] = true next to the timeout alert,
+  # and keeps both across the redirect to sign-in. The partial iterates every
+  # flash key, so the flag rendered as a second toast reading "true", pinned to
+  # the same corner as the real message and covering it. Devise's README says
+  # the key is not meant for display.
+  test "a timed-out session reaches sign-in with one message, not the timedout flag" do
+    post user_session_path, params: { user: { email: @admin.email, password: "password123!" } }
+    get workflows_path
 
-    assert_response :redirect
+    travel 31.minutes do
+      get workflows_path
+      follow_redirect! while response.redirect?
+    end
 
-    partial = Rails.root.join("app/views/shared/_flash_messages.html.erb").read
-    # Each message's markup, variant included, lives in the one-message partial.
-    message = Rails.root.join("app/views/shared/_flash_message.html.erb").read
+    assert_equal new_user_session_path, request.path
+    # Unscoped, because the devise layout keeps no <template> copy of a toast.
+    # If it ever gains one, scope this the way the test above scopes to #flash.
+    flashes = css_select("div.flash")
 
-    assert_match(/flash\.each/, partial, "the partial must iterate flash, not name notice and alert")
-    assert_match(/alert.*error.*"alert".*"notice"/m, message,
-                 "unknown flash types must fall back to a real variant")
+    assert_equal 1, flashes.size, "expected only the timeout message, got: #{flashes.map { |f| f.css('.flash__text').text.strip }.inspect}"
+    assert_includes flashes.first["class"], "flash--alert"
+    assert_equal I18n.t("devise.failure.timeout"), flashes.first.css(".flash__text").text.strip
   end
 end
