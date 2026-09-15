@@ -143,7 +143,7 @@
   <% if step.media_attachments.any? %>
     <div class="form-group">
       <dt class="form-label">Media attachments</dt>
-      <dd><%= render "steps/media_attachments", step: step %></dd>
+      <dd><%= render "steps/media_list", step: step, removable: false %></dd>
     </div>
   <% end %>
 

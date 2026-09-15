@@ -54,6 +54,9 @@ Rails.application.routes.draw do
         patch :reorder
         get :panel_edit
       end
+      # A file chosen in the step panel is direct-uploaded to Active Storage and
+      # then attached here; Remove detaches. Both answer with the one list.
+      resources :media_attachments, only: %i[create destroy], controller: "steps/media_attachments"
     end
   end
 

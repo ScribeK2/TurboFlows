@@ -49,10 +49,6 @@
         <%# Type-specific fields %>
         <%= render "steps/fields/#{step.step_type}", form: f, step: step, workflow: workflow %>
 
-        <%# Media attachments %>
-        <%= render "steps/media_upload" %>
-        <%= render "steps/media_attachments", step: step %>
-
         <%# Connections section %>
         <% unless step.is_a?(Steps::Resolve) %>
           <div id="<%= dom_id(step, :connections) %>">
@@ -60,6 +56,37 @@
           </div>
         <% end %>
       <% end %>
+
+      <%# Media attaches on choose (direct upload + Steps::MediaAttachmentsController).
+          It sits outside the autosave form on purpose: the form is not
+          multipart and never carries file bytes. %>
+      <div class="form-group"
+           data-controller="media-attachments"
+           data-media-attachments-url-value="<%= workflow_step_media_attachments_path(workflow, step) %>"
+           data-media-attachments-direct-upload-url-value="<%= rails_direct_uploads_path %>"
+           data-media-attachments-max-bytes-value="<%= Step::MAX_MEDIA_SIZE %>"
+           data-media-attachments-allowed-types-value="<%= Step::ALLOWED_MEDIA_TYPES.to_json %>">
+        <span class="form-label" id="<%= dom_id(step, :media_label) %>">Media attachments</span>
+        <div class="file-dropzone"
+             data-media-attachments-target="dropzone"
+             data-action="dragover->media-attachments#dragOver dragleave->media-attachments#dragLeave drop->media-attachments#drop">
+          <%= icon "cloud-arrow-up", class: "icon icon--xl file-dropzone__icon" %>
+          <div class="text-sm">
+            <label for="<%= dom_id(step, :media_input) %>" class="cursor-pointer font-medium">
+              <span>Upload a file</span>
+              <input type="file" multiple id="<%= dom_id(step, :media_input) %>" class="sr-only"
+                     accept="<%= Step::ALLOWED_MEDIA_TYPES.join(",") %>"
+                     aria-describedby="<%= dom_id(step, :media_label) %>"
+                     data-media-attachments-target="input"
+                     data-action="change->media-attachments#fileSelected">
+            </label>
+            <span> or drag and drop</span>
+          </div>
+          <p class="text-xs file-dropzone__hint">Images, videos or PDFs, up to 10 MB each</p>
+        </div>
+        <div data-media-attachments-target="pending" class="media-list media-list--pending"></div>
+        <%= render "steps/media_list", step: step, removable: true %>
+      </div>
     <% end %>
   </div>
 </turbo-frame>

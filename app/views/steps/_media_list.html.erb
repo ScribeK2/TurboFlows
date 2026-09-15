@@ -1,0 +1,28 @@
+<%# locals: (step:, removable:) %>
+<%#
+  The one list of a step's attachments the builder shows: replaced whole by
+  Steps::MediaAttachmentsController after an attach or a remove. The runner
+  keeps rendering steps/_media_attachments, which shows images inline.
+%>
+<div id="<%= dom_id(step, :media) %>" class="media-list">
+  <% step.media_attachments.each do |attachment| %>
+    <div class="media-list__row">
+      <% if step.media_image?(attachment.content_type) %>
+        <%= image_tag rails_blob_path(attachment, disposition: "inline"), class: "media-list__thumb", alt: "" %>
+      <% else %>
+        <span class="media-list__icon" aria-hidden="true">
+          <%= icon(step.media_video?(attachment.content_type) ? "film" : "document", class: "icon icon--sm") %>
+        </span>
+      <% end %>
+      <a href="<%= rails_blob_path(attachment, disposition: "inline") %>" target="_blank" rel="noopener" class="media-list__name">
+        <%= attachment.filename %>
+      </a>
+      <span class="media-list__size"><%= number_to_human_size(attachment.byte_size) %></span>
+      <% if removable %>
+        <%= button_to "Remove", workflow_step_media_attachment_path(step.workflow, step, attachment),
+              method: :delete, form: { data: { turbo_stream: true } },
+              class: "btn btn--plain btn--sm media-list__remove" %>
+      <% end %>
+    </div>
+  <% end %>
+</div>
