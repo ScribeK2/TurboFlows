@@ -106,15 +106,6 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "append"
   end
 
-  # 8. edit action returns edit form partial
-  test "edit action returns edit form for step" do
-    get edit_workflow_step_path(@workflow, @step),
-        headers: { "Accept" => "text/html" }
-
-    assert_response :ok
-    assert_includes response.body, "step-edit-form"
-  end
-
   # 9. requires authentication — unauthenticated POST redirects
   test "requires authentication to create step" do
     sign_out @editor
@@ -249,5 +240,27 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "form[data-controller='inline-autosave']", count: 1
+  end
+
+  test "a refused save reports through the flash rather than a frame nothing renders" do
+    escalate = Steps::Escalate.create!(workflow: @workflow, position: 1, title: "Escalate")
+
+    patch workflow_step_path(@workflow, escalate),
+          params: { step: { priority: "bogus" } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :unprocessable_content
+    assert_match(/<turbo-stream action="update" target="flash"/, response.body)
+    assert_match "was not saved", response.body
+    assert_match "Priority is not included in the list", response.body
+    assert_equal "medium", escalate.reload.priority
+  end
+
+  # test.rb sets show_exceptions to :rescuable, so a missing route renders 404
+  # rather than raising.
+  test "the old edit route is gone" do
+    get "/workflows/#{@workflow.id}/steps/#{@step.id}/edit"
+
+    assert_response :not_found
   end
 end

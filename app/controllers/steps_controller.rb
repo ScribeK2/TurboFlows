@@ -26,7 +26,7 @@ class StepsController < ApplicationController
 
   before_action :set_workflow
   before_action :ensure_can_edit!
-  before_action :set_step, only: %i[show edit update destroy reorder panel_edit]
+  before_action :set_step, only: %i[show update destroy reorder panel_edit]
 
   # GET /workflows/:workflow_id/steps/:id
   def show
@@ -54,12 +54,6 @@ class StepsController < ApplicationController
       end
       format.html { render partial: "workflows/step_row", locals: { step: @step, workflow: @workflow } }
     end
-  end
-
-  # GET /workflows/:workflow_id/steps/:id/edit
-  def edit
-    render partial: "steps/edit_form", locals: { step: @step, workflow: @workflow },
-           layout: false
   end
 
   # GET /workflows/:workflow_id/steps/:id/panel_edit
@@ -172,15 +166,12 @@ class StepsController < ApplicationController
 
       broadcast_step_row(@step)
     else
+      # The panel is not re-rendered on save, and the frame this used to stream
+      # into does not exist there, so a refused save was silent.
+      message = "This step was not saved: #{@step.errors.full_messages.to_sentence}."
       respond_to do |format|
-        format.turbo_stream do
-          render turbo_stream: turbo_stream.replace(
-            dom_id(@step, :form),
-            partial: "steps/edit_form",
-            locals: { step: @step, workflow: @workflow }
-          ), status: :unprocessable_content
-        end
-        format.html { redirect_to workflow_path(@workflow, edit: true), alert: @step.errors.full_messages.join(", ") }
+        format.turbo_stream { render_refusal(message, status: :unprocessable_content) }
+        format.html { redirect_to workflow_path(@workflow, edit: true), alert: message }
         format.json { render json: { errors: @step.errors.full_messages }, status: :unprocessable_content }
       end
     end
@@ -292,13 +283,15 @@ class StepsController < ApplicationController
   # database; saves seconds apart still go through, the later one winning.
   def respond_to_save_conflict
     respond_to do |format|
-      format.turbo_stream do
-        flash.now[:alert] = SAVE_CONFLICT_MESSAGE
-        render turbo_stream: turbo_stream.update("flash", partial: "shared/flash_messages"), status: :conflict
-      end
+      format.turbo_stream { render_refusal(SAVE_CONFLICT_MESSAGE, status: :conflict) }
       format.html { redirect_to workflow_path(@workflow, edit: true), alert: SAVE_CONFLICT_MESSAGE }
       format.json { render json: { errors: [SAVE_CONFLICT_MESSAGE] }, status: :conflict }
     end
+  end
+
+  def render_refusal(message, status:)
+    flash.now[:alert] = message
+    render turbo_stream: turbo_stream.update("flash", partial: "shared/flash_messages"), status: status
   end
 
   def step_params

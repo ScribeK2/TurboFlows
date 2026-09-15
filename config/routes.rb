@@ -46,7 +46,7 @@ Rails.application.routes.draw do
     # workflow is one click, and a modal there to capture an optional field is the
     # one people dismiss — which buys the friction and the empty column both.
     patch "versions/:id", to: "workflow_versions#update", as: :update_version
-    resources :steps, except: [:index] do
+    resources :steps, except: %i[index edit] do
       collection do
         post :apply_template
       end
