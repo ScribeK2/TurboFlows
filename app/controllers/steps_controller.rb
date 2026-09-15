@@ -149,6 +149,17 @@ class StepsController < ApplicationController
             )
           end
 
+          # The "Default for X" card describes the chosen type; the panel is
+          # not re-rendered on save, so the card is streamed like the sub-flow
+          # preview is.
+          if @step.is_a?(Steps::Resolve) && step_params.key?(:resolution_type)
+            streams << turbo_stream.replace(
+              dom_id(@step, :resolution_default),
+              partial: "steps/fields/resolve_default",
+              locals: { step: @step }
+            )
+          end
+
           render turbo_stream: streams
         end
         format.html { redirect_to workflow_path(@workflow, edit: true), notice: "Step updated." }

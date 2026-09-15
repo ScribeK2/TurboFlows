@@ -1,0 +1,9 @@
+<%# locals: (step:) %>
+<%# Streamed back by StepsController#update when the resolution type changes,
+    so the card always describes the type that is chosen. %>
+<div id="<%= dom_id(step, :resolution_default) %>" class="card card--muted" style="padding: var(--space-3);">
+  <p class="text-xs font-semibold mb-1" style="color: var(--color-ink-muted); text-transform: uppercase; letter-spacing: 0.04em;">
+    Default for <%= step.resolution_type.titleize %>
+  </p>
+  <p class="text-sm" style="color: var(--color-ink-subtle);"><%= Steps::Resolve.default_description_for(step.resolution_type) %></p>
+</div>

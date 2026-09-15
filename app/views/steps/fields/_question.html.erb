@@ -10,23 +10,12 @@
 </div>
 
 <div class="form-group" data-controller="question-form">
-  <%= form.label :answer_type, class: "form-label" %>
-  <div class="answer-type-grid" data-question-form-target="answerTypeContainer">
-    <% Steps::Question::VALID_ANSWER_TYPES.each do |value| %>
-      <% at = { value: value, label: value == "yes_no" ? "Yes/No" : value.tr("_", " ").titleize } %>
-      <label class="answer-type-option <%= 'is-selected' if step.answer_type == at[:value] %>">
-        <input type="radio"
-               name="answer_type_radio_<%= step.id %>"
-               value="<%= at[:value] %>"
-               <%= 'checked' if step.answer_type == at[:value] %>
-               data-question-form-target="answerType"
-               data-action="change->question-form#handleAnswerTypeChange"
-               class="sr-only">
-        <span class="text-sm"><%= at[:label] %></span>
-      </label>
-    <% end %>
-  </div>
-  <%= form.hidden_field :answer_type, data: { question_form_target: "hiddenAnswerType" } %>
+  <span class="form-label" id="<%= dom_id(step, :answer_type_label) %>">Answer type</span>
+  <%= render "steps/fields/choice_cards",
+        form: form, attribute: :answer_type,
+        choices: Steps::Question::VALID_ANSWER_TYPES.map { |type| [answer_type_label(type), type] },
+        selected: step.answer_type, labelled_by: dom_id(step, :answer_type_label),
+        input_data: { question_form_target: "answerType", action: "change->question-form#handleAnswerTypeChange" } %>
 
   <%# Options container for multiple_choice/dropdown. The autosave action sits on
       the wrapper so it covers the rows "+ Add Option" builds in JavaScript too;

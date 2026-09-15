@@ -10,45 +10,22 @@
 </div>
 
 <div class="form-group">
-  <%= form.label :resolution_type, class: "form-label" %>
-  <div class="flex flex-wrap gap-2 mb-2"
-       data-controller="selection-group"
-       data-selection-group-active-class="is-active">
-    <% [
-      { value: 'success', label: 'Success' },
-      { value: 'failure', label: 'Failure' },
-      { value: 'cancelled', label: 'Cancelled' },
-      { value: 'escalated', label: 'Escalated' },
-      { value: 'transfer', label: 'Transfer' },
-      { value: 'ticket', label: 'Ticket' },
-      { value: 'manager_escalation', label: 'Manager Escalation' }
-    ].each do |resolution| %>
-      <% is_selected = step.resolution_type == resolution[:value] || (step.resolution_type.blank? && resolution[:value] == 'success') %>
-      <button type="button"
-              data-selection-group-target="button"
-              data-action="click->selection-group#select"
-              data-selection-group-value-param="<%= resolution[:value] %>"
-              class="btn btn--sm <%= is_selected ? 'btn--primary' : 'btn--plain' %>">
-        <%= resolution[:label] %>
-      </button>
-    <% end %>
-    <%= form.hidden_field :resolution_type, data: { selection_group_target: "input", action: "change->inline-autosave#schedule" } %>
-  </div>
+  <span class="form-label" id="<%= dom_id(step, :resolution_type_label) %>">Resolution type</span>
+  <%= render "steps/fields/choice_cards",
+        form: form, attribute: :resolution_type,
+        choices: Steps::Resolve::VALID_RESOLUTION_TYPES.map { |type| [type.titleize, type] },
+        selected: step.resolution_type, labelled_by: dom_id(step, :resolution_type_label) %>
 </div>
 
 <div class="form-group">
-  <label class="form-label">Resolution Description</label>
-  <% default_desc = Steps::Resolve.default_description_for(step.resolution_type.presence || "success") %>
-  <div class="card card--muted" style="padding: var(--space-3);">
-    <p class="text-xs font-semibold mb-1" style="color: var(--color-ink-muted); text-transform: uppercase; letter-spacing: 0.04em;">Default for <%= (step.resolution_type.presence || "success").titleize %></p>
-    <p class="text-sm" style="color: var(--color-ink-subtle);"><%= default_desc %></p>
-  </div>
+  <span class="form-label">Resolution description</span>
+  <%= render "steps/fields/resolve_default", step: step %>
   <details class="step-disclosure mt-2">
     <summary class="step-disclosure__summary">
       <span class="step-disclosure__label">Custom description</span>
       <% if step.description.present? %>
         <span class="step-disclosure__sep" aria-hidden="true">&middot;</span>
-        <span class="badge badge--info" style="font-size: var(--text-xs);">customized</span>
+        <span class="step-disclosure__value step-disclosure__value--auto">customized</span>
       <% end %>
     </summary>
     <div class="step-disclosure__body">

@@ -324,16 +324,16 @@
 }
 
 /* ============================================================================
-   Answer Type Grid (radio button pill selector for question steps)
+   Choice cards (steps/fields/_choice_cards) — pick one of N as labelled radios
    ============================================================================ */
 
-.answer-type-grid {
+.choice-cards {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
 }
 
-.answer-type-option {
+.choice-card {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -349,25 +349,25 @@
     background var(--duration-fast) var(--ease-out),
     border-color var(--duration-fast) var(--ease-out),
     color var(--duration-fast) var(--ease-out);
-  user-select: none;
 }
 
-.answer-type-option:hover {
+.choice-card:hover {
   border-color: var(--color-border-strong);
   background: var(--color-canvas-alt);
   color: var(--color-ink);
 }
 
-.answer-type-option.is-selected {
+/* The chosen card is the input's own state, so nothing has to keep a class in
+   step with it. Tokens swap per theme; no dark block. */
+.choice-card:has(> input:checked) {
   background: var(--color-primary-soft);
   border-color: var(--color-primary);
   color: var(--color-primary-text);
 }
 
-[data-theme="dark"] .answer-type-option.is-selected {
-  background: var(--color-primary-soft);
-  border-color: var(--color-primary);
-  color: var(--color-primary-text);
+.choice-card:has(> input:focus-visible) {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
 }
 
 /* ============================================================================

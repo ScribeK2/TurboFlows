@@ -1,0 +1,17 @@
+<%# locals: (form:, attribute:, choices:, selected:, labelled_by:, input_data: {}) %>
+<%#
+  "Pick one of N" as real radios in labelled cards. The chosen card is styled
+  from the input's own state (.choice-card:has(> input:checked)), so there is no
+  controller keeping a hidden field and a class in step. Each radio posts as
+  step[<attribute>] and autosaves on change; a caller's own action runs first,
+  so it can stopImmediatePropagation() to veto the save (question-form does).
+%>
+<% data = input_data.merge(action: [input_data[:action], "change->inline-autosave#schedule"].compact.join(" ")) %>
+<div class="choice-cards" role="radiogroup" aria-labelledby="<%= labelled_by %>">
+  <% choices.each do |label, value| %>
+    <label class="choice-card">
+      <%= form.radio_button attribute, value, checked: selected == value, class: "sr-only", data: data %>
+      <span><%= label %></span>
+    </label>
+  <% end %>
+</div>

@@ -10,21 +10,11 @@
 </div>
 
 <div class="form-group">
-  <%= form.label :target_type, "Escalation Target Type", class: "form-label" %>
-  <div class="flex flex-wrap gap-2 mb-2"
-       data-controller="selection-group"
-       data-selection-group-active-class="is-active">
-    <% %w[team queue department supervisor channel ticket].each do |target_type| %>
-      <button type="button"
-              data-selection-group-target="button"
-              data-action="click->selection-group#select"
-              data-selection-group-value-param="<%= target_type %>"
-              class="btn btn--sm <%= step.target_type == target_type ? 'btn--secondary' : 'btn--plain' %>">
-        <%= target_type.titleize %>
-      </button>
-    <% end %>
-    <%= form.hidden_field :target_type, data: { selection_group_target: "input", action: "change->inline-autosave#schedule" } %>
-  </div>
+  <span class="form-label" id="<%= dom_id(step, :target_type_label) %>">Escalate to</span>
+  <%= render "steps/fields/choice_cards",
+        form: form, attribute: :target_type,
+        choices: Steps::Escalate::VALID_TARGET_TYPES.map { |type| [type.titleize, type] },
+        selected: step.target_type, labelled_by: dom_id(step, :target_type_label) %>
 </div>
 
 <div class="form-group">

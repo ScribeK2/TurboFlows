@@ -4,7 +4,6 @@ import Sortable from "sortablejs"
 export default class extends Controller {
   static targets = [
     "answerType",
-    "hiddenAnswerType",
     "optionsContainer",
     "optionsList"
   ]
@@ -59,42 +58,23 @@ export default class extends Controller {
     const answerType = event.target.value
     const typesWithOptions = ['multiple_choice', 'dropdown']
 
-    // Check if switching away from a type with options and options exist
+    // Switching away from a type with options throws the options away, so ask.
+    // A refused change puts the previous radio back and stops the autosave
+    // action queued after this one on the same radio: nothing is written.
     if (!isInitial &&
         typesWithOptions.includes(this.previousAnswerType) &&
         !typesWithOptions.includes(answerType) &&
         this.hasExistingOptions()) {
       if (!confirm('Changing answer type will remove existing options. Continue?')) {
-        // Revert to previous answer type
         event.target.checked = false
-        const previousRadio = this.answerTypeTargets.find(
-          radio => radio.value === this.previousAnswerType
-        )
-        if (previousRadio) {
-          previousRadio.checked = true
-        }
+        const previousRadio = this.answerTypeTargets.find(radio => radio.value === this.previousAnswerType)
+        if (previousRadio) previousRadio.checked = true
+        event.stopImmediatePropagation()
         return
       }
     }
 
-    // Update previous answer type for next comparison
     this.previousAnswerType = answerType
-
-    // Update hidden input
-    if (this.hasHiddenAnswerTypeTarget) {
-      this.hiddenAnswerTypeTarget.value = answerType
-    }
-
-    // Update visual highlight on radio labels
-    this.answerTypeTargets.forEach(radio => {
-      const label = radio.closest('label')
-      if (!label) return
-      if (radio.value === answerType) {
-        label.classList.add('is-selected')
-      } else {
-        label.classList.remove('is-selected')
-      }
-    })
 
     // Show/hide options container based on answer type
     if (this.hasOptionsContainerTarget) {
