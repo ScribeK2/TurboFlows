@@ -17,7 +17,7 @@ class StepsController < ApplicationController
     %i[type lock_version transitions_json]
   ).uniq.freeze
 
-  PERMITTED_STEP_PARAM_SHAPES = StepFieldMap::NESTED_SHAPES.merge(media_attachments: []).freeze
+  PERMITTED_STEP_PARAM_SHAPES = StepFieldMap::NESTED_SHAPES
 
   SAVE_CONFLICT_MESSAGE = "Someone else saved this step at the same moment, so your change wasn't saved. " \
                           "Reload to see the latest version, then make your change again.".freeze

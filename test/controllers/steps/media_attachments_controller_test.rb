@@ -74,6 +74,17 @@ module Steps
       assert_no_match "audit.png", response.body
     end
 
+    test "removing an attachment that is already gone still answers with the list" do
+      @step.media_attachments.attach(upload_blob("audit.png", "image/png"))
+      attachment = @step.media_attachments.attachments.first
+      attachment.purge
+
+      delete workflow_step_media_attachment_path(@workflow, @step, attachment), headers: TURBO
+
+      assert_response :success
+      assert_match(/<turbo-stream action="replace" target="#{ActionView::RecordIdentifier.dom_id(@step, :media)}"/, response.body)
+    end
+
     test "someone who may not edit the workflow is turned away" do
       other = User.create!(email: "media-other-#{SecureRandom.hex(4)}@example.com", password: "password123!",
                            password_confirmation: "password123!", role: "regular")

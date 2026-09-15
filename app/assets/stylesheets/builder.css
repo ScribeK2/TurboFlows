@@ -962,8 +962,9 @@
       display: none;
     }
 
-    /* No slide: the desktop transform/transition would carry the panel past the
-       right edge while it animates open (or closed), scrolling the page sideways. */
+    /* No slide at this width: transition: none stops the desktop animation,
+       which carried the panel past the right edge and scrolled the page
+       sideways while it ran. */
     .builder__panel {
       transform: none;
       transition: none;

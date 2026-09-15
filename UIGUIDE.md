@@ -259,16 +259,15 @@ stops the next person re-litigating it. One live exclusion remains.
   > controllers removed back in `f8240c05`. An exclusion protects a surface from
   > being restyled on a whim; it was never a reason to keep unreachable code.
   > Check reachability before assuming an excluded surface is load-bearing.
-  > `transitions.css` also leaves this entry, but not for the reason a
-  > previous version of this note gave. **No rule in it is rendered by
-  > anything** — its edge and flowchart selectors (`.edge-group`,
-  > `.edge-path`, `.flowchart-svg`, `.edge-label`, `.edge-marker`,
-  > `.temp-connection`) belonged to the visual editor deleted 2026-08-29
-  > (`fac414d5` added them alongside it; the `cca393f9` cleanup deleted the
-  > editor's partials and 31 rule blocks in `editor.css` but missed this whole
-  > file). It is a deletion candidate, not an excluded surface. The transition
-  > editor's own rules (`.transition-item`, `.condition-sentence`) live in
-  > `steps.css` and `workflows.css`, no longer excluded.
+  > **`transitions.css` was deleted 2026-09-15.** It never belonged on this
+  > list — no rule in it was rendered by anything. Its edge and flowchart
+  > selectors (`.edge-group`, `.edge-path`, `.flowchart-svg`, `.edge-label`,
+  > `.edge-marker`, `.temp-connection`) belonged to the visual editor deleted
+  > 2026-08-29 (`fac414d5` added them alongside it; the `cca393f9` cleanup
+  > deleted the editor's partials and 31 rule blocks in `editor.css` but missed
+  > this whole file). The transition editor's own rules (`.transition-item`,
+  > `.condition-sentence`) live in `steps.css` and `workflows.css`, no longer
+  > excluded.
 
   > **Note what is no longer excluded.** The builder's *chrome* — header,
   > toolbar, step list, step rows, empty state, health panel and the shared
@@ -942,7 +941,6 @@ For page types not covered by a recipe, read these exemplary views. They demonst
 | `scenarios.css` | modules | Scenario **results** page only — the runner half lives in `runner.css` |
 | `steps.css` | modules | Step editor styles |
 | `editor.css` | modules | Grab bag, and mis-described here for a long time: it is not the Lexxy editor. It holds the button spinner, collaboration presence styles, empty-state text, the inline step creator, the step outline wrapper, the step editor's two-column layout and a flow preview section. The visual-editor chrome it also carried was deleted 2026-08-29, and the CSS of the unmounted Stimulus controllers (template cards, condition tokens, branch and step pickers, variable autocomplete) on 2026-09-10 |
-| `transitions.css` | modules | Dead: visual-editor SVG edge/flowchart rules nothing renders, missed by the `cca393f9` cleanup. The transition editor's live rules are in `steps.css` and `workflows.css`. Deletion candidate |
 | `dashboard.css` | modules | Dashboard shell: `.dashboard-*`, `.home-resume`, `.stat-panel`/`.stat-cell` |
 | `auth.css` | modules | Login/signup pages |
 | `admin.css` | modules | Admin shell (section sidebar), needs-attention list, breadcrumb spacing, users filter/bulk bar, group tree, user and group pages, Data Health, the admin disclosure, the Email card, analytics bars and card subtitles. Tokens only — `test/stylesheets/admin_css_audit_test.rb` refuses literal colours and theme blocks |

@@ -147,7 +147,7 @@ class BuilderStepPanelTest < ApplicationSystemTestCase
     Steps::Action.create!(workflow: @workflow, title: "Dangling action", position: 1)
     visit_builder_in_edit_mode
 
-    assert_no_selector ".builder__publish-badge", visible: :all
+    assert_no_selector ".builder__header-actions .badge, .builder__header-actions [class*='badge']", visible: :all
     assert_selector ".builder__toolbar-issues", text: /error/
   end
 

@@ -175,8 +175,9 @@ export default class extends Controller {
 
       const pill = document.createElement("span")
       // Errors lead, because they are what stops a publish, and the pill is
-      // amber when there is nothing blocking. Naming both is what reconciles
-      // this with the badge on Publish, which counts errors alone.
+      // amber when there is nothing blocking. Both counts are named because
+      // errors block a publish and warnings do not — the label says which is
+      // which rather than leaving a bare number to guess at.
       pill.className = errors > 0 ? "badge badge--alert" : "badge badge--warning"
       pill.textContent = errors > 0 ? errors : warnings
       this.toolbarIssuesTarget.appendChild(pill)

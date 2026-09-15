@@ -566,3 +566,4 @@ Playwright MCP (for UI/system testing). Point agent to running app at `http://lo
 - Retention configurable via ENV: `SCENARIO_RETENTION_SIMULATION_DAYS` (default 7), `SCENARIO_RETENTION_LIVE_DAYS` (default 90), `SCENARIO_IDLE_TIMEOUT_HOURS` (default 24 — the sweep runs nightly, so the real window is this plus up to a day)
 - Pre-deploy: RuboCop + full test suite (run locally before deploy)
 - The `20260911120000_add_self_join_to_groups` migration makes every existing group self-joinable (`admins_add_members` defaults to `false`), and sign-up is open — right after deploying, an administrator should mark sensitive groups "Only administrators add people" before the feature is announced
+- The `20260915120000_backfill_step_defaults` migration writes `resolution_type = 'success'` on Resolve steps and `priority = 'medium'` on Escalate steps that had a blank; it runs unattended and needs no operator step

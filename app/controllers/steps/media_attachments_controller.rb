@@ -1,8 +1,9 @@
 module Steps
   # Attach and detach a step's media, one file at a time, answering with the
   # panel's attachment list. Attach takes a blob the browser already
-  # direct-uploaded, so the step's autosave never carries file bytes and the
-  # step's optimistic lock is not involved in adding a file.
+  # direct-uploaded, so the step's autosave never carries file bytes.
+  # Attaching touches the step and so bumps its lock_version, but the panel
+  # never sends lock_version, so this cannot conflict with an autosave.
   class MediaAttachmentsController < ApplicationController
     include ActionView::RecordIdentifier
 
@@ -29,6 +30,9 @@ module Steps
     # DELETE /workflows/:workflow_id/steps/:step_id/media_attachments/:id
     def destroy
       @step.media_attachments.attachments.find(params[:id]).purge_later
+      render_list
+    rescue ActiveRecord::RecordNotFound
+      # Already gone (another tab, a double submit): the list is the answer either way.
       render_list
     end
 
