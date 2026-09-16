@@ -115,6 +115,16 @@ module WorkflowsHelper
     workflow.steps.ordered.each_with_index.to_h { |step, index| [step.uuid, index + 1] }
   end
 
+  # The publish confirmation stops for a set, for a workflow that is not ready,
+  # or both. The button has to name whichever reason applies — "Publish all 4"
+  # on a thin single workflow would be wrong twice over.
+  def publish_button_label(publishing_set, not_ready, member_count)
+    return "Publish all #{member_count} anyway" if publishing_set && not_ready
+    return "Publish all #{member_count}" if publishing_set
+
+    "Publish anyway"
+  end
+
   def step_type_options
     STEP_TYPE_OPTIONS
   end

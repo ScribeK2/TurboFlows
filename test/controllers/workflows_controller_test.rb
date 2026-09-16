@@ -26,7 +26,8 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
       description: "A test workflow",
       user: @editor
     )
-    q1 = Steps::Question.create!(workflow: @workflow, position: 0, title: "Question 1", question: "What is your name?")
+    # answer_type: a Question without one is a READINESS_CODES finding, and publish asks.
+    q1 = Steps::Question.create!(workflow: @workflow, position: 0, title: "Question 1", question: "What is your name?", answer_type: "text")
     r1 = Steps::Resolve.create!(workflow: @workflow, position: 1, title: "Done", resolution_type: "success")
     Transition.create!(step: q1, target_step: r1, position: 0)
     @workflow.update_column(:start_step_id, q1.id)
@@ -35,7 +36,7 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
       description: "A Global workflow",
       user: @editor
     )
-    q2 = Steps::Question.create!(workflow: @public_workflow, position: 0, title: "Question 1", question: "What is your name?")
+    q2 = Steps::Question.create!(workflow: @public_workflow, position: 0, title: "Question 1", question: "What is your name?", answer_type: "text")
     r2 = Steps::Resolve.create!(workflow: @public_workflow, position: 1, title: "Done", resolution_type: "success")
     Transition.create!(step: q2, target_step: r2, position: 0)
     @public_workflow.update_column(:start_step_id, q2.id)

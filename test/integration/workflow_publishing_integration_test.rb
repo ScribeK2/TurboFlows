@@ -12,7 +12,11 @@ class WorkflowPublishingIntegrationTest < ActionDispatch::IntegrationTest
       title: "Integration Workflow",
       user: @editor
     )
-    @q1_step = Steps::Question.create!(workflow: @workflow, position: 0, title: "Q1", question: "What?")
+    # answer_type matters now: WorkflowHealthCheck::READINESS_CODES flags a Question
+    # that gives the agent no way to answer, and publish stops to ask about it.
+    # A fixture without one was building the very shape that check exists to catch.
+    @q1_step = Steps::Question.create!(workflow: @workflow, position: 0, title: "Q1",
+                                       question: "What?", answer_type: "text")
     @resolve_step = Steps::Resolve.create!(workflow: @workflow, position: 1, title: "Done", resolution_type: "success")
     Transition.create!(step: @q1_step, target_step: @resolve_step, position: 0)
     @workflow.update_column(:start_step_id, @q1_step.id)
@@ -32,6 +36,10 @@ class WorkflowPublishingIntegrationTest < ActionDispatch::IntegrationTest
     @workflow.update_column(:start_step_id, nil)
     @workflow.steps.destroy_all
     new_action = Steps::Action.create!(workflow: @workflow, position: 0, title: "New Action")
+    # Instructions, for the same reason answer_type appears above: an Action with
+    # an empty body is a READINESS_CODES finding, and publish stops to ask.
+    new_action.instructions = "<p>Do the thing.</p>"
+    new_action.save!
     new_resolve = Steps::Resolve.create!(workflow: @workflow, position: 1, title: "End", resolution_type: "success")
     Transition.create!(step: new_action, target_step: new_resolve, position: 0)
     @workflow.update_column(:start_step_id, new_action.id)

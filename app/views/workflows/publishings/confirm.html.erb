@@ -1,48 +1,100 @@
 <% content_for(:title) { "Publish #{@workflow.title} — TurboFlows" } %>
+<%#
+  One page, two reasons to stop here, either or both:
+
+  - the workflow references drafts, so a set has to go live together;
+  - the workflow runs but does not yet say anything useful to an agent.
+
+  Readiness does not refuse the publish and the button says so. A hard block
+  would be worked around by typing a space into the empty field; the point is
+  that shipping a thin workflow becomes a decision instead of something the
+  product quietly congratulates you for.
+%>
+<% publishing_set = @members.size > 1 %>
+<% not_ready = @readiness_issues.present? %>
 
 <div class="page-content">
   <div class="page-main">
     <div class="page-header-section">
       <div>
-        <%= link_to workflow_path(@workflow), class: "page-back" do %>
+        <%= link_to workflow_path(@workflow, edit: true), class: "page-back" do %>
           Back to <%= @workflow.title %>
         <% end %>
-        <h1 class="page-header-section__title">Publish <%= @members.size %> workflows together</h1>
-        <p class="page-header-section__ident">
-          These workflows reference each other, so they have to go live at the same time.
-          Publishing them one at a time is not possible — each would point at a draft.
-        </p>
+        <h1 class="page-header-section__title">
+          <%= publishing_set ? "Publish #{@members.size} workflows together" : "Publish #{@workflow.title}?" %>
+        </h1>
+        <% if publishing_set %>
+          <p class="page-header-section__ident">
+            These workflows reference each other, so they have to go live at the same time.
+            Publishing them one at a time is not possible — each would point at a draft.
+          </p>
+        <% end %>
       </div>
     </div>
 
-    <section class="list-section">
-      <div class="list-section__head">
-        <h2 class="list-section__title">Will be published</h2>
-        <span class="list-section__count"><%= @members.size %></span>
-      </div>
+    <% if not_ready %>
+      <section class="list-section">
+        <div class="list-section__head">
+          <h2 class="list-section__title">Not ready for an agent</h2>
+          <span class="list-section__count"><%= @readiness_issues.size %></span>
+        </div>
 
-      <div class="list-section__body">
-        <% @members.each do |member| %>
-          <div class="list-row">
-            <div class="list-row__body">
-              <div class="list-row__title">
-                <%= link_to member.title, workflow_path(member) %>
-                <% if member.id == @workflow.id %>
-                  <span class="badge badge--info">the one you clicked</span>
-                <% end %>
+        <p class="form-hint" style="margin-bottom: var(--space-3);">
+          This workflow will run, and every check that decides whether it <em>can</em> run
+          has passed. These are the places it doesn&rsquo;t yet say anything useful to
+          whoever follows it on a live call. You can publish anyway.
+        </p>
+
+        <div class="list-section__body">
+          <% @readiness_issues.each do |issue| %>
+            <div class="list-row">
+              <span class="list-row__icon" aria-hidden="true">
+                <%= icon "exclamation-triangle", class: "icon icon--sm" %>
+              </span>
+              <div class="list-row__body">
+                <div class="list-row__title"><%= issue[:message] %></div>
               </div>
-              <p class="list-row__sub"><%= pluralize(member.steps.size, "step") %></p>
             </div>
-          </div>
-        <% end %>
-      </div>
-    </section>
+          <% end %>
+        </div>
+      </section>
+    <% end %>
+
+    <% if publishing_set %>
+      <section class="list-section">
+        <div class="list-section__head">
+          <h2 class="list-section__title">Will be published</h2>
+          <span class="list-section__count"><%= @members.size %></span>
+        </div>
+
+        <div class="list-section__body">
+          <% @members.each do |member| %>
+            <div class="list-row">
+              <div class="list-row__body">
+                <div class="list-row__title">
+                  <%= link_to member.title, workflow_path(member) %>
+                  <% if member.id == @workflow.id %>
+                    <span class="badge badge--info">the one you clicked</span>
+                  <% end %>
+                </div>
+                <p class="list-row__sub"><%= pluralize(member.steps.size, "step") %></p>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </section>
+    <% end %>
 
     <div class="flex items-center justify-end gap-3"
          style="padding-top: var(--space-4); border-top: 1px solid var(--color-border);">
-      <%= link_to "Cancel", workflow_path(@workflow, edit: true), class: "btn btn--plain" %>
-      <%= button_to "Publish all #{@members.size}", workflow_publishing_path(@workflow),
-            method: :post, params: { publish_set: "1" }, class: "btn btn--primary" %>
+      <%= link_to "Keep editing", workflow_path(@workflow, edit: true), class: "btn btn--plain" %>
+      <%# Both tokens, always: whichever reason brought the reader here, they
+          have now seen every reason on this page. %>
+      <%= button_to publish_button_label(publishing_set, not_ready, @members.size),
+            workflow_publishing_path(@workflow),
+            method: :post,
+            params: { publish_set: "1", acknowledge_readiness: "1" },
+            class: "btn btn--primary" %>
     </div>
   </div>
 </div>

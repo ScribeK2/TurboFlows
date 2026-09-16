@@ -18,7 +18,11 @@ class WorkflowPublishingTest < ActionDispatch::IntegrationTest
       title: "Publishable Workflow",
       user: @editor
     )
-    @q1_step = Steps::Question.create!(workflow: @workflow, position: 0, title: "Q1", question: "What?")
+    # answer_type matters now: WorkflowHealthCheck::READINESS_CODES flags a Question
+    # that gives the agent no way to answer, and publish stops to ask about it.
+    # A fixture without one was building the very shape that check exists to catch.
+    @q1_step = Steps::Question.create!(workflow: @workflow, position: 0, title: "Q1",
+                                       question: "What?", answer_type: "text")
     @resolve_step = Steps::Resolve.create!(workflow: @workflow, position: 1, title: "Done", resolution_type: "success")
     Transition.create!(step: @q1_step, target_step: @resolve_step, position: 0)
     @workflow.update_column(:start_step_id, @q1_step.id)
