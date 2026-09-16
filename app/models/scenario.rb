@@ -693,6 +693,12 @@ class Scenario < ApplicationRecord
     resolver = StepResolver.new(workflow)
     resume_step = workflow.steps.find_by(uuid: resume_node_uuid)
     next_step = resolver.resolve_next_after_subflow(resume_step, results) if resume_step
+    # The second of the two places a run can fall through a hole, and the one
+    # that is easy to miss: the sub_flow step's own branches are usually written
+    # against a variable the CHILD sets, so renaming it there strands the parent
+    # here. Without this the gap went unstamped and the parent recorded a
+    # completion, which is the whole bug on a path nobody was looking at.
+    stamp_no_matching_transition(next_step) if next_step.is_a?(StepResolver::NoMatch)
     next_uuid = next_step.is_a?(Step) ? next_step.uuid : nil
 
     # Guard against self-loop: if the resolved next step is the same sub_flow step
@@ -770,24 +776,6 @@ class Scenario < ApplicationRecord
     end
   end
 
-  # Record, on the execution path, that the run left this step with nowhere to
-  # go. Written even when the agent recovers, because recovery is the common
-  # case: an agent who goes back and answers differently leaves no other sign
-  # that the workflow has a hole, and a gap nobody can see is a gap nobody fixes.
-  #
-  # Every processor appends its entry before calling advance_to_next_step, so
-  # the entry to stamp is the last one. It is matched on step_uuid anyway, so a
-  # path that did not end where this thinks it did is left alone rather than
-  # mislabelled.
-  def stamp_no_matching_transition(no_match)
-    entry = execution_path&.last
-    return unless entry.is_a?(Hash) && entry["step_uuid"] == no_match.step_uuid
-
-    entry["no_matching_transition"] = true
-    entry["transition_count"] = no_match.transition_count
-    execution_path_will_change!
-  end
-
   # Append an entry to the execution path, recording what this step changed.
   #
   # The entry carries an undo log — the keys this step touched, each with the
@@ -847,6 +835,27 @@ class Scenario < ApplicationRecord
   # Merged onto the existing delta rather than replacing it, and existing keys
   # win: the entry may already record what the sub_flow step itself changed, and
   # that prior value is the older, more correct one to restore.
+  # Record, on the execution path, that the run left this step with nowhere to
+  # go. Written even when the agent recovers, because recovery is the common
+  # case: an agent who goes back and answers differently leaves no other sign
+  # that the workflow has a hole, and a gap nobody can see is a gap nobody fixes.
+  #
+  # Found by rfind rather than taken as `.last`, for the same reason
+  # stamp_subflow_merge does it: on the sub-flow return path the entry being
+  # stamped was appended before the child ran, and is not necessarily the tail.
+  # Matching on step_uuid means a path that does not hold the step at all is
+  # left alone rather than mislabelled.
+  def stamp_no_matching_transition(no_match)
+    entry = (execution_path || []).rfind do |candidate|
+      candidate.is_a?(Hash) && candidate["step_uuid"] == no_match.step_uuid
+    end
+    return unless entry
+
+    entry["no_matching_transition"] = true
+    entry["transition_count"] = no_match.transition_count
+    execution_path_will_change!
+  end
+
   def stamp_subflow_merge(results_before_merge)
     entry = execution_path.rfind do |candidate|
       candidate["subflow_started"] && candidate["step_uuid"] == resume_node_uuid

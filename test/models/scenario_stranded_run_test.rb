@@ -104,6 +104,51 @@ class ScenarioStrandedRunTest < ActiveSupport::TestCase
     assert_not_predicate scenario, :stranded?
   end
 
+  # The second place a run can fall through a hole, and the easier one to miss.
+  # A sub_flow step's own branches are usually written against a variable the
+  # CHILD sets, so a rename inside the child strands the PARENT when the child
+  # returns. That path resolves through resolve_next_after_subflow, a different
+  # call site from the one an ordinary step uses.
+  test "a sub-flow that returns to branches which all miss strands the parent" do
+    child = Workflow.create!(title: "Ask The Customer", user: @user, graph_mode: true, status: "published")
+    child_q = Steps::Question.create!(workflow: child, position: 0, title: "Did it work?",
+                                      question: "Did it work?", answer_type: "yes_no",
+                                      variable_name: "fix_worked")
+    child_r = Steps::Resolve.create!(workflow: child, position: 1, title: "Asked",
+                                     resolution_type: "success")
+    Transition.create!(step: child_q, target_step: child_r, position: 0)
+    child.update!(start_step: child_q)
+
+    parent = Workflow.create!(title: "Run The Fix", user: @user, graph_mode: true, status: "published")
+    sub = Steps::SubFlow.create!(workflow: parent, position: 0, title: "Ask the customer",
+                                 sub_flow_workflow_id: child.id, sub_flow_returns: true)
+    worked = Steps::Resolve.create!(workflow: parent, position: 1, title: "Done", resolution_type: "success")
+    failed = Steps::Resolve.create!(workflow: parent, position: 2, title: "Escalating", resolution_type: "failure")
+    # Both branches ask about a variable nothing sets any more: the child now
+    # writes `fix_worked`, and these were written before it was renamed.
+    Transition.create!(step: sub, target_step: worked, condition: "repair_ok == 'yes'", position: 0)
+    Transition.create!(step: sub, target_step: failed, condition: "repair_ok == 'no'", position: 1)
+    parent.update!(start_step: sub)
+
+    run = Scenario.create!(workflow: parent, user: @user, current_node_uuid: sub.uuid,
+                           inputs: {}, purpose: "live")
+    run.process_step
+    run.reload
+
+    child_run = run.child_scenarios.sole
+    child_run.process_step("yes")
+    child_run.reload
+    child_run.process_step
+    run.reload.process_subflow_completion
+    run.reload
+
+    assert_equal "stranded", run.outcome,
+                 "the parent came back from the sub-flow with nowhere to go"
+    entry = run.execution_path.rfind { |e| e["step_uuid"] == sub.uuid }
+    assert entry["no_matching_transition"], "the gap is traced on the sub-flow step's own entry"
+    assert_equal 2, entry["transition_count"]
+  end
+
   private
 
   def branching_workflow_with_no_matching_answer
