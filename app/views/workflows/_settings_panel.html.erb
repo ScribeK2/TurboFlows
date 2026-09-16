@@ -42,7 +42,24 @@
 
         <div class="form-group">
           <span class="form-label">Who Can See This</span>
-          <p class="form-hint">People in a ticked group, and its subgroups, can see this once it is published. Tick Global for everyone signed in.</p>
+          <%# An editor in no group is offered exactly one row — Global — so copy
+              describing "a ticked group, and its subgroups" was describing a
+              choice that was not on screen. Say what this person can actually
+              do, and in both cases say the publish consequence: this is the
+              warning the health panel and the publish refusal both name. %>
+          <% only_global = group_nodes.length <= 1 %>
+          <p class="form-hint">
+            <% if only_global %>
+              Tick Global so everyone signed in can see this. A published workflow in
+              no group is visible only to you and to administrators &mdash; and publishing
+              is refused until you pick one. Ask an administrator to add you to a group
+              if this should go to one team rather than everyone.
+            <% else %>
+              People in a ticked group, and its subgroups, can see this once it is
+              published. Tick Global for everyone signed in. Publishing is refused
+              until at least one is ticked.
+            <% end %>
+          </p>
           <%# Sentinel: the key is always sent, so an empty choice reads as "no groups". %>
           <input type="hidden" name="workflow[group_ids][]" value="">
           <%= render "shared/group_picker",

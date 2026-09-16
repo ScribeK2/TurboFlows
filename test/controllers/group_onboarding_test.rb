@@ -206,7 +206,13 @@ class GroupOnboardingTest < ActionDispatch::IntegrationTest
 
     get root_path
 
-    assert_select "section[aria-label='Your groups'] .list-row__sub", text: /the workflows everyone can see and the ones you made\./
+    # Two distinct claims: the Editor branch names the workflows they made (the
+    # Regular branch does not), and it warns that building is gated on having an
+    # audience — the thing skipping /welcome quietly costs an editor.
+    assert_select "section[aria-label='Your groups'] .list-row__sub",
+                  text: /the workflows everyone can see and the ones you made/
+    assert_select "section[aria-label='Your groups'] .list-row__sub",
+                  text: /can't be published until it has an audience/
   end
 
   test "the dashboard asks whether someone is in a group once" do
