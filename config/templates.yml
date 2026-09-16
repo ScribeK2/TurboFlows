@@ -1,35 +1,88 @@
+# Workflow templates — the builder's worked examples.
+#
+# These lead the empty state, so an applied template is the first workflow most
+# authors ever see. They are therefore written as COMPLETE, RUNNABLE examples in
+# real call-centre language, not as skeletons: every question has its text and
+# its options, every message and action has a body, every escalate has a
+# destination. A template that shipped empty bodies demonstrated the exact defect
+# we want authors to avoid, and landed with three "question text is required"
+# warnings on arrival.
+#
+# **Every branch needs a `condition`, not just a `label`.** StepResolver treats a
+# transition with a blank condition as the unconditional default and takes the
+# first one it finds, so a question whose branches carried labels alone routed
+# every answer down the same path — "Guided Decision" always went to Path A
+# whatever the agent clicked. A branch's `condition` must equal the `value` of
+# the option it belongs to. `test/services/workflow_template_content_test.rb`
+# holds all of this: it applies every template, and asserts each answer of each
+# branching question resolves to a *different* step.
+#
+# The last transition out of a question may omit `condition` deliberately — that
+# is the fallback, and StepResolver evaluates in position order, so it must be
+# last.
+
 guided_decision:
   name: Guided Decision
-  description: "Questions → branches → outcomes"
+  description: "Ask, branch on the answer, and finish each path"
   hue: 250
   steps:
     - uuid: gd-q1
       type: question
-      title: "Initial question"
+      title: "What is the customer calling about?"
+      question: "Ask the customer to describe the problem in their own words, then pick the closest match."
+      answer_type: multiple_choice
+      variable_name: call_reason
+      options:
+        - label: "Billing or payment"
+          value: billing
+        - label: "Something isn't working"
+          value: technical
       position: 1
     - uuid: gd-q2a
       type: question
-      title: "Follow-up (Path A)"
+      title: "Which billing question is it?"
+      question: "Confirm the account is in front of you before answering."
+      answer_type: multiple_choice
+      variable_name: billing_topic
+      options:
+        - label: "A charge they don't recognise"
+          value: unknown_charge
+        - label: "They want to change the plan"
+          value: plan_change
       position: 2
     - uuid: gd-q2b
       type: question
-      title: "Follow-up (Path B)"
+      title: "Has the customer restarted the app?"
+      question: "Most issues clear on a restart. Ask them to fully close and reopen the app, then confirm."
+      answer_type: yes_no
+      variable_name: restarted
+      options:
+        - label: "Yes, and it still fails"
+          value: still_failing
+        - label: "No, not yet"
+          value: not_yet
       position: 3
     - uuid: gd-r1
       type: resolve
-      title: "Outcome A"
+      title: "Billing question answered"
+      resolution_type: success
+      description: "Confirm the customer is happy with the answer and note the account. Read back any change you made to their plan or their next bill."
       position: 4
     - uuid: gd-r2
       type: resolve
-      title: "Outcome B"
+      title: "Issue cleared"
+      resolution_type: success
+      description: "Confirm the app is working before ending the call. If it is still failing after a restart, raise a ticket with the exact error text."
       position: 5
   transitions:
     - from: gd-q1
       to: gd-q2a
-      label: "Path A"
+      condition: billing
+      label: "Billing or payment"
     - from: gd-q1
       to: gd-q2b
-      label: "Path B"
+      condition: technical
+      label: "Something isn't working"
     - from: gd-q2a
       to: gd-r1
     - from: gd-q2b
@@ -37,29 +90,52 @@ guided_decision:
 
 verification_checklist:
   name: Verification Checklist
-  description: "Actions → gate → resolve or escalate"
+  description: "Work through checks, then pass or escalate"
   hue: 145
   steps:
     - uuid: vc-a1
       type: action
-      title: "Verify step 1"
+      title: "Verify the caller's identity"
+      instructions: "<p>Confirm two of: the name on the account, the billing postcode, and the last four digits of the payment card. Do not continue until two match.</p>"
       position: 1
     - uuid: vc-a2
       type: action
-      title: "Verify step 2"
+      title: "Check the account status"
+      instructions: "<p>Open the account and check it is active and not suspended for non-payment. Note the plan and the renewal date — you will need both if this escalates.</p>"
       position: 2
     - uuid: vc-q1
       type: question
-      title: "All checks passed?"
+      title: "Did every check pass?"
+      question: "Both identity and account status must be clear before you continue."
+      answer_type: yes_no
+      variable_name: checks_passed
+      options:
+        - label: "Yes, everything checks out"
+          value: passed
+        - label: "No, something didn't match"
+          value: failed
       position: 3
     - uuid: vc-r1
       type: resolve
-      title: "Verified — proceed"
+      title: "Verified — safe to proceed"
+      resolution_type: success
+      description: "Record that verification passed, then continue with the customer's original request."
       position: 4
     - uuid: vc-e1
       type: escalate
-      title: "Escalate for review"
+      title: "Send to the fraud team"
+      target_type: team
+      target_value: "Fraud Review"
+      priority: high
+      reason_required: true
+      notes: "<p>Say which check failed and what the customer gave instead. Do not tell the customer which detail did not match.</p>"
       position: 5
+    - uuid: vc-r2
+      type: resolve
+      title: "Sent to fraud review"
+      resolution_type: escalated
+      description: "The call ends here for you. Tell the customer their account is under review and that someone will contact them; do not say which check failed."
+      position: 6
   transitions:
     - from: vc-a1
       to: vc-a2
@@ -67,134 +143,253 @@ verification_checklist:
       to: vc-q1
     - from: vc-q1
       to: vc-r1
-      label: "Yes"
+      condition: passed
+      label: "Passed"
     - from: vc-q1
       to: vc-e1
-      label: "No"
+      condition: failed
+      label: "Failed"
+    - from: vc-e1
+      to: vc-r2
 
 triage_and_escalate:
   name: Triage & Escalate
-  description: "Sort → branch → resolve or escalate"
+  description: "Sort the issue, handle it or pass it on"
   hue: 25
   steps:
     - uuid: te-q1
       type: question
-      title: "What type of issue?"
+      title: "What kind of issue is this?"
+      question: "Listen to the whole description before choosing — changing route later means repeating questions."
+      answer_type: multiple_choice
+      variable_name: issue_type
+      options:
+        - label: "Account access"
+          value: access
+        - label: "Damaged or missing order"
+          value: order
       position: 1
     - uuid: te-a1
       type: action
-      title: "Handle category A"
+      title: "Reset account access"
+      instructions: "<p>Send the password reset from the admin tool and stay on the line until the customer confirms the email arrived. If it does not arrive in two minutes, check the address on file for typos.</p>"
       position: 2
     - uuid: te-a2
       type: action
-      title: "Handle category B"
+      title: "Record the order problem"
+      instructions: "<p>Get the order number, what arrived, and what should have arrived. Ask whether they still want the item or a refund — the answer decides who picks this up next.</p>"
       position: 3
     - uuid: te-r1
       type: resolve
-      title: "Issue resolved"
+      title: "Access restored"
+      resolution_type: success
+      description: "Confirm the customer is signed in before ending the call."
       position: 4
     - uuid: te-e1
       type: escalate
-      title: "Escalate to specialist"
+      title: "Send to the orders team"
+      target_type: queue
+      target_value: "Orders — Damaged & Missing"
+      priority: medium
+      reason_required: true
+      notes: "<p>Include the order number, what arrived, and whether the customer wants a replacement or a refund.</p>"
       position: 5
+    - uuid: te-r2
+      type: resolve
+      title: "Passed to the orders team"
+      resolution_type: escalated
+      description: "Give the customer the order reference and say when to expect contact. Your part of the call is done."
+      position: 6
   transitions:
     - from: te-q1
       to: te-a1
-      label: "Category A"
+      condition: access
+      label: "Account access"
     - from: te-q1
       to: te-a2
-      label: "Category B"
+      condition: order
+      label: "Damaged or missing order"
     - from: te-a1
       to: te-r1
     - from: te-a2
       to: te-e1
+    - from: te-e1
+      to: te-r2
 
 diagnosis_flow:
   name: Diagnosis Flow
-  description: "Narrow down iteratively → resolve"
+  description: "Narrow it down one check at a time"
   hue: 290
   steps:
     - uuid: df-q1
       type: question
-      title: "Describe the symptom"
+      title: "Where does it go wrong?"
+      question: "Ask the customer to walk through what they do, and stop them at the first thing that does not work."
+      answer_type: multiple_choice
+      variable_name: failure_point
+      options:
+        - label: "It won't load at all"
+          value: wont_load
+        - label: "It loads but errors partway"
+          value: errors_partway
       position: 1
     - uuid: df-a1
       type: action
-      title: "Initial diagnostic check"
+      title: "Run the connection check"
+      instructions: "<p>Ask the customer to open any other website. If nothing loads, this is their connection, not our service — say so plainly and offer the connection troubleshooting guide.</p>"
       position: 2
     - uuid: df-q2
       type: question
-      title: "Did that help?"
+      title: "Did the connection check clear it?"
+      question: "Have them retry the original action before answering."
+      answer_type: yes_no
+      variable_name: connection_fixed
+      options:
+        - label: "Yes, it works now"
+          value: fixed
+        - label: "No, same problem"
+          value: still_broken
       position: 3
     - uuid: df-a2
       type: action
-      title: "Try advanced fix"
+      title: "Clear the app cache"
+      instructions: "<p>Walk them through Settings → Storage → Clear cache. Warn them they will need to sign in again, and stay on the line while they do.</p>"
       position: 4
     - uuid: df-q3
       type: question
-      title: "Issue resolved now?"
+      title: "Is it working after the cache clear?"
+      question: "Have them repeat the exact action that failed at the start of the call."
+      answer_type: yes_no
+      variable_name: cache_fixed
+      options:
+        - label: "Yes, resolved"
+          value: resolved
+        - label: "No, still failing"
+          value: still_failing
       position: 5
     - uuid: df-r1
       type: resolve
-      title: "Resolved"
+      title: "Fixed on the call"
+      resolution_type: success
+      description: "Confirm the customer can complete what they called about, and note which step fixed it — that pattern is what improves this flow."
       position: 6
     - uuid: df-e1
       type: escalate
-      title: "Escalate — needs deeper investigation"
+      title: "Send to technical support"
+      target_type: team
+      target_value: "Tier 2 Technical"
+      priority: medium
+      reason_required: true
+      notes: "<p>List every check you ran and its result, plus the exact error text the customer sees. Tier 2 will start from where you stopped.</p>"
       position: 7
+    - uuid: df-r2
+      type: resolve
+      title: "Passed to technical support"
+      resolution_type: escalated
+      description: "Tell the customer a specialist has everything you gathered and will pick it up. Confirm the best number to reach them on."
+      position: 8
   transitions:
     - from: df-q1
       to: df-a1
+      condition: wont_load
+      label: "Won't load"
+    - from: df-q1
+      to: df-a2
+      condition: errors_partway
+      label: "Errors partway"
     - from: df-a1
       to: df-q2
     - from: df-q2
       to: df-r1
-      label: "Yes"
+      condition: fixed
+      label: "Fixed"
     - from: df-q2
       to: df-a2
-      label: "No"
+      condition: still_broken
+      label: "Still broken"
     - from: df-a2
       to: df-q3
     - from: df-q3
       to: df-r1
-      label: "Yes"
+      condition: resolved
+      label: "Resolved"
     - from: df-q3
       to: df-e1
-      label: "No"
+      condition: still_failing
+      label: "Still failing"
+    - from: df-e1
+      to: df-r2
 
 simple_handoff:
   name: Simple Handoff
-  description: "Gather info → escalate or resolve"
+  description: "Gather what's needed, then hand it over"
   hue: 160
   steps:
     - uuid: sh-q1
       type: question
-      title: "Gather initial details"
+      title: "What does the customer need?"
+      question: "Take the request in their own words before you categorise it."
+      answer_type: multiple_choice
+      variable_name: request_type
+      options:
+        - label: "A question you can answer now"
+          value: answerable
+        - label: "Something needing a specialist"
+          value: specialist
       position: 1
     - uuid: sh-a1
       type: action
-      title: "Document the request"
+      title: "Write up the request"
+      instructions: "<p>Record the account, what the customer asked for, and anything already tried. Whoever picks this up next should not have to ask the customer to repeat themselves.</p>"
       position: 2
     - uuid: sh-q2
       type: question
-      title: "Can you handle this directly?"
+      title: "Can you complete this yourself?"
+      question: "Check your own permissions before promising the customer an outcome."
+      answer_type: yes_no
+      variable_name: can_handle
+      options:
+        - label: "Yes, I can do this"
+          value: can_handle
+        - label: "No, it needs someone else"
+          value: needs_handoff
       position: 3
     - uuid: sh-r1
       type: resolve
-      title: "Handled — resolved"
+      title: "Handled on the call"
+      resolution_type: success
+      description: "Confirm the customer has what they asked for, and tell them what happens next if anything is still pending."
       position: 4
     - uuid: sh-e1
       type: escalate
-      title: "Hand off to specialist"
+      title: "Hand off to a specialist"
+      target_type: team
+      target_value: "Specialist Support"
+      priority: medium
+      reason_required: true
+      notes: "<p>Attach your write-up and say what you already tried. Tell the customer who will contact them and roughly when.</p>"
       position: 5
+    - uuid: sh-r2
+      type: resolve
+      title: "Handed over"
+      resolution_type: escalated
+      description: "Confirm the customer knows who will contact them and roughly when, then close the call."
+      position: 6
   transitions:
+    # Captured, not branched on: both answers need the write-up, and the real
+    # decision is sh-q2. A question whose options all route to the same step is
+    # a branch that does not branch.
     - from: sh-q1
       to: sh-a1
     - from: sh-a1
       to: sh-q2
     - from: sh-q2
       to: sh-r1
+      condition: can_handle
       label: "Yes"
     - from: sh-q2
       to: sh-e1
+      condition: needs_handoff
       label: "No"
+    - from: sh-e1
+      to: sh-r2

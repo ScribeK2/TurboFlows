@@ -19,7 +19,7 @@ class WorkflowTemplateTest < ActiveSupport::TestCase
   test ".find returns a template by key" do
     template = WorkflowTemplate.find("guided_decision")
     assert_equal "Guided Decision", template["name"]
-    assert_equal "Questions → branches → outcomes", template["description"]
+    assert_equal "Ask, branch on the answer, and finish each path", template["description"]
     assert_equal 250, template["hue"]
     assert_kind_of Array, template["steps"]
     assert_operator template["steps"].size, :>=, 4

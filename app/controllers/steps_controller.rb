@@ -375,6 +375,12 @@ class StepsController < ApplicationController
     }
   end
 
+  # Templates lead the builder's empty state, so an applied template is the first
+  # workflow most authors ever see. This used to copy type, title and position
+  # and nothing else, which made every template a skeleton of empty bodies —
+  # a demonstration of the exact defect authors should avoid. The content fields
+  # come from StepFieldMap so a field added there reaches templates too, rather
+  # than being dropped at the one reader nobody remembered to edit.
   def build_steps_data_from_template(template)
     uuid_map = {}
     template["steps"].each { |s| uuid_map[s["uuid"]] = SecureRandom.uuid }
@@ -387,10 +393,20 @@ class StepsController < ApplicationController
         "position" => s["position"]
       }
 
+      template_content_keys(s["type"]).each do |key|
+        value = s[key.to_s]
+        step_hash[key.to_s] = value unless value.nil?
+      end
+
       step_transitions = template["transitions"].select { |t| t["from"] == s["uuid"] }
       if step_transitions.any?
         step_hash["transitions"] = step_transitions.map.with_index do |t, i|
-          { "target_uuid" => uuid_map[t["to"]], "label" => t["label"], "position" => i }.compact
+          {
+            "target_uuid" => uuid_map[t["to"]],
+            "condition" => t["condition"],
+            "label" => t["label"],
+            "position" => i
+          }.compact
         end
       end
 
@@ -399,5 +415,12 @@ class StepsController < ApplicationController
 
     first_uuid = uuid_map[template["steps"].first["uuid"]]
     [steps_data, first_uuid]
+  end
+
+  def template_content_keys(step_type)
+    StepFieldMap::COMMON -
+      %i[title position] +
+      StepFieldMap::BY_TYPE.fetch(step_type, []) +
+      StepFieldMap::RICH_TEXT.fetch(step_type, [])
   end
 end
