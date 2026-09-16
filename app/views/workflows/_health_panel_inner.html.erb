@@ -63,17 +63,19 @@
       <% end %>
     </div>
 
-    <%# === Errors Section === %>
-    <% errors = health.issues.select { |_uuid, issues| issues.any? { |i| i[:severity] == :error } } %>
-    <% if errors.any? %>
+    <%# === Errors Section ===
+        Ordered by what the reader can do about it, not by the order steps were
+        created in — see WorkflowsHelper#health_panel_rows. Five steps added by
+        hand produce eight errors, of which three carry a Fix; interleaving them
+        made the list read as eight separate things wrong. %>
+    <% steps_by_uuid = workflow.steps.index_by(&:uuid) %>
+    <% error_rows = health_panel_rows(health) { |i| i[:severity] == :error } %>
+    <% if error_rows.any? %>
       <div class="health-panel__section">
         <h4 class="health-panel__section-title">Errors</h4>
         <div class="health-panel__issues">
-        <% errors.each do |uuid, issues| %>
-          <% step = workflow.steps.find { |s| s.uuid == uuid } %>
-          <% issues.select { |i| i[:severity] == :error }.each do |issue| %>
-            <%= render "workflows/health_issue", issue: issue, uuid: uuid, step: step, workflow: workflow, ordinals: ordinals %>
-          <% end %>
+        <% error_rows.each do |uuid, issue| %>
+          <%= render "workflows/health_issue", issue: issue, uuid: uuid, step: steps_by_uuid[uuid], workflow: workflow, ordinals: ordinals %>
         <% end %>
         </div>
       </div>
@@ -84,16 +86,13 @@
         and get their own section below — see READINESS_CODES. Mixing them here
         is what let "0 warnings" mean "valid" when an author read it as "ready". %>
     <% readiness = ->(issue) { WorkflowHealthCheck::READINESS_CODES.include?(issue[:code]) } %>
-    <% warnings = health.issues.select { |_uuid, issues| issues.any? { |i| i[:severity] == :warning && !readiness.call(i) } } %>
-    <% if warnings.any? %>
+    <% warning_rows = health_panel_rows(health) { |i| i[:severity] == :warning && !readiness.call(i) } %>
+    <% if warning_rows.any? %>
       <div class="health-panel__section">
         <h4 class="health-panel__section-title">Warnings</h4>
         <div class="health-panel__issues">
-        <% warnings.each do |uuid, issues| %>
-          <% step = workflow.steps.find { |s| s.uuid == uuid } %>
-          <% issues.select { |i| i[:severity] == :warning && !readiness.call(i) }.each do |issue| %>
-            <%= render "workflows/health_issue", issue: issue, uuid: uuid, step: step, workflow: workflow, ordinals: ordinals %>
-          <% end %>
+        <% warning_rows.each do |uuid, issue| %>
+          <%= render "workflows/health_issue", issue: issue, uuid: uuid, step: steps_by_uuid[uuid], workflow: workflow, ordinals: ordinals %>
         <% end %>
         </div>
       </div>
@@ -103,8 +102,8 @@
         The second signal. "Can this run?" is answered above; this answers "is
         this worth giving to somebody on a call?". Nothing here refuses a
         publish — publishing asks instead. %>
-    <% not_ready = health.issues.select { |_uuid, issues| issues.any?(&readiness) } %>
-    <% if not_ready.any? %>
+    <% not_ready_rows = health_panel_rows(health, &readiness) %>
+    <% if not_ready_rows.any? %>
       <div class="health-panel__section">
         <h4 class="health-panel__section-title">Not ready for an agent</h4>
         <p class="health-panel__section-note">
@@ -112,11 +111,8 @@
           useful to whoever follows it on a call. You can still publish.
         </p>
         <div class="health-panel__issues">
-        <% not_ready.each do |uuid, issues| %>
-          <% step = workflow.steps.find { |s| s.uuid == uuid } %>
-          <% issues.select(&readiness).each do |issue| %>
-            <%= render "workflows/health_issue", issue: issue, uuid: uuid, step: step, workflow: workflow, ordinals: ordinals %>
-          <% end %>
+        <% not_ready_rows.each do |uuid, issue| %>
+          <%= render "workflows/health_issue", issue: issue, uuid: uuid, step: steps_by_uuid[uuid], workflow: workflow, ordinals: ordinals %>
         <% end %>
         </div>
       </div>

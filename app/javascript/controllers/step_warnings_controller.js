@@ -248,6 +248,16 @@ export default class extends Controller {
       const text = document.createElement("span")
       text.className = "step-warning-popover__item-text"
       text.textContent = issue.message
+      // A finding whose cause is another step carries what will clear it. The
+      // wording comes from WorkflowHealthCheck::CONSEQUENCE_NOTES over the JSON,
+      // never from a copy here: the panel and this popover render the same
+      // findings, and a rule spelled in two languages drifts.
+      if (issue.note) {
+        const note = document.createElement("span")
+        note.className = "step-warning-popover__item-note"
+        note.textContent = issue.note
+        text.appendChild(note)
+      }
       item.appendChild(text)
 
       if (issue.fixable && issue.fix_type && this.modeValue === "edit") {

@@ -242,6 +242,21 @@
     letter-spacing: var(--letter-spacing-tight);
   }
 
+  /* A line under the heading, for an ending the agent needs explaining rather
+     than just naming. The heading says what happened; this says what to do
+     about it. The column already centres its children, so max-width alone
+     keeps a readable measure on a wide screen — no margin trick, and the
+     spacing above is the heading's own margin. Keep the copy to two sentences:
+     this surface centres its text, and centred prose stops being readable
+     past that. */
+  .player-completion__note {
+    max-width: 30rem;
+    margin: 0 0 var(--space-6);
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+    line-height: var(--line-height-normal);
+  }
+
   .player-completion__details {
     width: 100%;
     max-width: 24rem;

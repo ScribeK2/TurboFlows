@@ -8,11 +8,24 @@ module AnalyticsHelper
     "escalated" => "analytics-bar--escalated",
     "error" => "analytics-bar--error",
     "transferred" => "analytics-bar--transferred",
-    "abandoned" => "analytics-bar--muted"
+    "abandoned" => "analytics-bar--muted",
+    # Stranded sits with abandoned rather than with error: nothing broke, the
+    # workflow simply had no route for the answer it was given.
+    "stranded" => "analytics-bar--muted"
+  }.freeze
+
+  # Outcomes whose column value does not read as English. Everything else is
+  # capitalised, which is right for resolved/escalated/transferred and wrong for
+  # "stranded" — that is a word about the run's shape, and the person reading
+  # the table wants to know what the agent hit.
+  OUTCOME_LABELS = {
+    "stranded" => "No matching answer"
   }.freeze
 
   def analytics_outcome_label(outcome)
-    analytics_in_progress?(outcome) ? "In progress" : outcome.capitalize
+    return "In progress" if analytics_in_progress?(outcome)
+
+    OUTCOME_LABELS.fetch(outcome) { outcome.capitalize }
   end
 
   def analytics_outcome_bar_class(outcome)

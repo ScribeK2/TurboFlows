@@ -9,10 +9,17 @@ class AnalyticsHelperTest < ActionView::TestCase
     assert_equal "Transferred", analytics_outcome_label("transferred")
   end
 
+  # "Stranded" is a word about the run's shape. The person reading the table
+  # wants to know what the agent hit, which is an answer with nowhere to go.
+  test "a stranded run says what the agent hit, not what the column holds" do
+    assert_equal "No matching answer", analytics_outcome_label("stranded")
+  end
+
   test "each ending has its bar colour" do
     assert_equal "analytics-bar--resolved", analytics_outcome_bar_class("resolved")
     assert_equal "analytics-bar--transferred", analytics_outcome_bar_class("transferred")
     assert_equal "analytics-bar--muted", analytics_outcome_bar_class("abandoned")
+    assert_equal "analytics-bar--muted", analytics_outcome_bar_class("stranded")
     assert_equal "analytics-bar--muted", analytics_outcome_bar_class(nil)
     assert_equal "analytics-bar--muted", analytics_outcome_bar_class(ScenarioRollup::PENDING)
   end

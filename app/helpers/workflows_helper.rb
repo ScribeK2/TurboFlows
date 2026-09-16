@@ -115,6 +115,27 @@ module WorkflowsHelper
     workflow.steps.ordered.each_with_index.to_h { |step, index| [step.uuid, index + 1] }
   end
 
+  # One section of the health panel, as a flat list of [step uuid, issue], with
+  # the rows a person can act on first.
+  #
+  # The panel used to iterate the issue hash, which is keyed by step uuid, so
+  # the order on screen was the order steps happened to be created in. A
+  # first-timer therefore read "8 errors" as eight separate problems, with the
+  # three that carry a Fix button scattered among five that are downstream of
+  # them. Ordering is the whole change: nothing is hidden, nothing is
+  # downgraded, and the counts are untouched.
+  #
+  # sort_by with the original index keeps it stable, so within each group the
+  # rows stay in the order the check produced them.
+  def health_panel_rows(health, &)
+    rows = health.issues.flat_map do |uuid, issues|
+      issues.select(&).map { |issue| [uuid, issue] }
+    end
+
+    rows.each_with_index.sort_by { |(_uuid, issue), index| [issue[:fixable] && issue[:fix_type] ? 0 : 1, index] }
+        .map(&:first)
+  end
+
   # The publish confirmation stops for a set, for a workflow that is not ready,
   # or both. The button has to name whichever reason applies — "Publish all 4"
   # on a thin single workflow would be wrong twice over.

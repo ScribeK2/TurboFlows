@@ -15,6 +15,11 @@
     step.position: it is 0-based in service-built workflows and 1-based in
     UI-built ones, so the panel called the first step "Step 0" in some
     workflows and "Step 1" in others.
+
+  A row with no Fix button and a note is one whose answer is somewhere else in
+  the graph. It is still an error and still blocks the publish; the note says
+  what will make it go away, so a list of eight reads as the three things to do
+  rather than as eight things broken. See WorkflowHealthCheck::CONSEQUENCE_NOTES.
 %>
 <% severity = issue[:severity] == :error ? "error" : "warning" %>
 
@@ -25,6 +30,9 @@
 
   <div class="list-row__body">
     <div class="list-row__title"><%= issue[:message] %></div>
+    <% if issue[:note].present? %>
+      <p class="health-panel__issue-note"><%= issue[:note] %></p>
+    <% end %>
     <% if step %>
       <button type="button"
               class="list-row__sub health-panel__issue-step"

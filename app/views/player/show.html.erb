@@ -4,7 +4,13 @@
 <%
   # @scenario is where the run started; @ending is where it ended. After a
   # handoff they are different frames, and how the run ended lives on the last.
-  is_completed = @ending.completed?
+  # `completed?` is the STATUS, and a stranded run's status is "completed" —
+  # the frame really is finished. Reading it alone put a green check and
+  # "Workflow Complete" on a call that stopped because no branch matched the
+  # agent's answer. How it ended is on `outcome`, and this is the one ending
+  # where the two columns disagree about whether it went well.
+  is_stranded = @ending.stranded?
+  is_completed = @ending.completed? && !is_stranded
   resolution = @ending.results&.dig("_resolution")
   escalation = @ending.results&.dig("_escalation")
   steps_completed = flattened_execution_path(@scenario).size
@@ -18,7 +24,7 @@
 <div class="player-completion">
   <%# ── Status Icon ── %>
   <div class="player-completion__icon-wrap player-completion__icon-wrap--<%= is_completed ? 'success' : 'stopped' %>">
-    <% if escalation %>
+    <% if escalation || is_stranded %>
       <%= icon "exclamation-triangle", class: "player-completion__icon" %>
     <% elsif is_completed %>
       <%= icon "check-circle", class: "player-completion__icon" %>
@@ -31,12 +37,24 @@
   <h1 class="player-completion__title">
     <% if escalation %>
       Escalation Required
+    <% elsif is_stranded %>
+      No matching answer
     <% elsif is_completed %>
       Workflow Complete
     <% else %>
       Workflow Stopped
     <% end %>
   </h1>
+
+  <%# The agent did nothing wrong and the call is not over, so say both. Naming
+      the workflow rather than the agent is the whole point of the wording. %>
+  <% if is_stranded %>
+    <p class="player-completion__note">
+      This workflow doesn&rsquo;t have a step for the answer you gave, so it stopped here.
+      Nothing you did caused it &mdash; run it again to take a different path, or carry on
+      and tell whoever owns this workflow.
+    </p>
+  <% end %>
 
   <%# ── Resolution/Escalation Details ── %>
   <% if resolution || escalation %>

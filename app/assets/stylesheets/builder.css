@@ -904,6 +904,14 @@
     color: var(--color-ink-subtle);
   }
 
+  /* What clears a finding whose cause is another step. A block inside the text
+     span so it takes its own line under the message, and quieter than it. */
+  .step-warning-popover__item-note {
+    display: block;
+    margin-top: var(--space-1);
+    color: var(--color-ink-muted);
+  }
+
   .step-warning-popover__item-fix {
     flex-shrink: 0;
   }
@@ -1007,6 +1015,16 @@
 
 .health-panel__issue-icon--error { color: var(--color-negative); }
 .health-panel__issue-icon--warning { color: var(--color-warning); }
+
+/* What clears a finding whose cause is another step. Sits between the message
+   and the step link, quieter than both: it is the reason the row is there, not
+   an instruction to follow. */
+.health-panel__issue-note {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+  line-height: var(--line-height-normal);
+}
 
 /* A button that reads as the row's subtitle, so it needs the UA button
    chrome stripped explicitly. */

@@ -8,10 +8,25 @@
 # Returns:
 #   - Step instance of the next step
 #   - SubflowMarker if a sub-flow step is hit
-#   - nil if no valid transition or terminal node
+#   - NoMatch if the step has outgoing transitions but none of them fired
+#   - nil if the step is terminal by design (a Resolve, or no outgoing edges)
 class StepResolver
   # Marker returned when a sub-flow step is encountered
   SubflowMarker = Data.define(:target_workflow_id, :variable_mapping, :step_uuid)
+
+  # Marker returned when a step HAS somewhere to go and none of the routes
+  # matched: every condition evaluated false, or every edge points at nothing,
+  # and there is no unconditional default to fall back on.
+  #
+  # This is deliberately not nil. Both used to be nil, and the run treated them
+  # the same way — it stopped and was recorded as "completed". But they are
+  # opposite facts about a workflow. A Resolve with no outgoing edges is a
+  # workflow doing what it was built to do; a Question with three branches and
+  # an answer matching none of them is a hole in the graph that a person on a
+  # live call has just fallen through. Renaming a Question's variable_name
+  # leaves its conditions pointing at the old name and turns every branch into
+  # exactly this, with the health check still reporting zero errors.
+  NoMatch = Data.define(:step_uuid, :transition_count)
 
   attr_reader :workflow
 
@@ -97,9 +112,11 @@ class StepResolver
       end
     end
 
-    # Fallback to default (unconditional) transition
+    # Fallback to default (unconditional) transition. Nothing matched and there
+    # is no default, so the run has nowhere to go from a step that was supposed
+    # to take it somewhere: a gap, not an ending.
     default = transitions.find_by(condition: [nil, ""])
-    default&.target_step
+    default&.target_step || NoMatch.new(step_uuid: step.uuid, transition_count: transitions.size)
   end
 
   def check_jumps(step, results)

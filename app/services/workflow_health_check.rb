@@ -44,6 +44,27 @@ class WorkflowHealthCheck
   # *because* the step has no transitions, which is what the survivor says.
   RESTATED_BY_NO_TRANSITIONS = %i[no_path_to_resolve terminal_not_resolve].freeze
 
+  # Findings that are true because of something wrong somewhere ELSE in the
+  # graph, and that clear on their own once that is fixed.
+  #
+  # The collapse above only handles the case where cause and consequence land on
+  # the same step. Across steps they cannot be collapsed — they are about
+  # different steps — so the panel listed them as peers of the findings that
+  # carry a Fix button. Measured on five Questions added by hand and not yet
+  # wired: nine errors, of which five carry a Fix and four are the same missing
+  # wiring restated about the neighbours it left stranded. That number is what
+  # makes a first-time editor think they have broken something badly rather
+  # than that they have not finished connecting it up.
+  #
+  # Nothing is hidden or downgraded: these stay errors, stay publish-blocking,
+  # and stay on screen. They are ordered after the actionable ones and say what
+  # will make them go away.
+  CONSEQUENCE_NOTES = {
+    no_path_to_resolve: "Clears once the steps after this one lead to a Resolve.",
+    unreachable_step: "Clears once another step connects to this one.",
+    no_resolve_across_workflows: "Clears once a Resolve is reachable from this workflow or one it hands off to."
+  }.freeze
+
   # What WorkflowPublisher and Workflow#while_publishing refuse. An allowlist, like
   # SubflowValidator::SAVE_BLOCKING_CODES, and not a severity: no_audience and the
   # sub-flow codes are warnings, and each of them blocks a publish. Every code this
@@ -88,6 +109,24 @@ class WorkflowHealthCheck
   PLACEHOLDER_TITLES = (
     Step::STEP_TYPE_MAP.keys.map { |type| "Untitled #{type.titleize}" } + %w[Resolve Untitled]
   ).freeze
+
+  # Within one step, put the findings carrying a Fix above the ones whose answer
+  # is elsewhere.
+  #
+  # Done here rather than in each reader because there are two of them in two
+  # languages: the health panel (ERB) and the inline step popover (JavaScript,
+  # over the JSON this Result is serialised into). Sorting in the panel alone
+  # left the popover showing "Not reachable from the start step / clears once
+  # another step connects" ABOVE the row with the button, which is the same
+  # thing the panel was fixed for.
+  #
+  # The panel additionally sorts ACROSS steps, which cannot be done from here —
+  # that sort is stable, so this ordering survives it.
+  def order_actionable_first(issues)
+    issues.each_value do |step_issues|
+      step_issues.sort_by!.with_index { |issue, index| [issue[:fixable] && issue[:fix_type] ? 0 : 1, index] }
+    end
+  end
 
   def collapse_no_transition_restatements(issues)
     issues.each_value do |step_issues|
@@ -173,6 +212,7 @@ class WorkflowHealthCheck
     run_subflow_validation(issues) if subflow_steps?
     run_step_validations(issues)
     collapse_no_transition_restatements(issues)
+    order_actionable_first(issues)
 
     summary = { errors: 0, warnings: 0, total: 0 }
     issues.each_value do |step_issues|
@@ -433,6 +473,12 @@ class WorkflowHealthCheck
     entry = { severity:, message:, fixable: }
     entry[:fix_type] = fix_type if fix_type
     entry[:code] = code if code
+    # Carried on the issue rather than looked up by each reader. The panel and
+    # the inline popover are rendered by different languages from the same
+    # findings, and a rule that lives in both is a rule that will disagree with
+    # itself — which is the reason StepFieldMap exists.
+    note = CONSEQUENCE_NOTES[code]
+    entry[:note] = note if note
     issues[uuid.to_s] << entry
   end
 end

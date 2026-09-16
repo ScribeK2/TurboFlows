@@ -60,12 +60,30 @@ class StepResolverTest < ActiveSupport::TestCase
     assert_equal a, resolver.resolve_next(q, { "status" => "active" })
   end
 
-  test "no conditions match and no default returns nil" do
+  # The shape a renamed variable produces: branches exist, the answer routes to
+  # none of them. This returned nil, which is also what a Resolve returns, so
+  # the run stopped and was recorded as a completion.
+  test "no conditions match and no default returns NoMatch, not nil" do
     q = create_step(Steps::Question, "Q1", 0, variable_name: "answer")
     a = create_step(Steps::Action, "A1", 1)
     link(q, a, condition: "yes", position: 0)
     resolver = StepResolver.new(@workflow)
-    assert_nil resolver.resolve_next(q, { "answer" => "no" })
+
+    result = resolver.resolve_next(q, { "answer" => "no" })
+
+    assert_instance_of StepResolver::NoMatch, result
+    assert_equal q.uuid, result.step_uuid
+    assert_equal 1, result.transition_count
+  end
+
+  # The other reason a run has nowhere to go, and the one that is not a defect.
+  test "a step with no outgoing transitions still returns nil" do
+    r = create_step(Steps::Resolve, "Done", 0)
+    a = create_step(Steps::Action, "Dead end", 1)
+    resolver = StepResolver.new(@workflow)
+
+    assert_nil resolver.resolve_next(r, {})
+    assert_nil resolver.resolve_next(a, {}), "no edges at all is terminal by shape, not a gap"
   end
 
   test "expression condition evaluation" do
