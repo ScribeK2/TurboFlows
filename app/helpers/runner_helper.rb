@@ -44,7 +44,10 @@ module RunnerHelper
   # a blank beats an invented summary.
   def runner_row_summary(entry)
     case entry["step_type"]
-    when "question" then entry["answer"].presence
+    # answer_label is what the agent clicked; answer is the routing value it maps
+    # to. Older entries, recorded before the label was captured, have only the
+    # value — so this reads as a fallback, not a replacement.
+    when "question" then entry["answer_label"].presence || entry["answer"].presence
     when "form"     then entry["response_summary"].presence
     when "action"   then "Done"
     when "message"  then "Read"

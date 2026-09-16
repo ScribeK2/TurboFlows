@@ -96,10 +96,33 @@ class ScenarioStepProcessor
     @scenario.results[step.variable_name] = answer if step.variable_name.present? && answer.present?
 
     path_entry["answer"] = answer
+    # What the agent actually clicked. `answer` is the option's *value* — a
+    # routing token a Transition matches on — and the transcript was showing it
+    # raw ("account_locked" under a button reading "Account locked"). Captured
+    # here rather than looked up at render time because steps are edited and
+    # deleted after runs, and runner/_thread_row reads the snapshot only.
+    label = option_label_for(step, answer)
+    path_entry["answer_label"] = label if label.present?
     @scenario.append_path_entry(path_entry)
 
     @scenario.advance_to_next_step(step)
     Outcome.advanced
+  end
+
+  # The label of the option whose value the agent chose, or nil when the answer
+  # was typed rather than picked (free text, date, number) or matches nothing.
+  def option_label_for(step, answer)
+    return nil if answer.blank?
+    return nil unless step.try(:options).is_a?(Array)
+
+    match = step.options.find do |option|
+      next false unless option.is_a?(Hash)
+
+      (option["value"] || option[:value]).to_s == answer.to_s
+    end
+    return nil unless match
+
+    (match["label"] || match[:label]).presence
   end
 
   # Process a form step — validates field responses, persists a StepResponse, and merges values into results
