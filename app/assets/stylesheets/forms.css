@@ -370,6 +370,20 @@
   outline-offset: 2px;
 }
 
+/* An optional marker inside a choice card ("Most common"). Plain muted text,
+   never a pill: a steer is not an exceptional state. See the badge tiering rule
+   in UIGUIDE § Badges. */
+.choice-card__hint {
+  margin-left: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--color-ink-muted);
+}
+
+.choice-card:has(> input:checked) .choice-card__hint {
+  color: var(--color-primary-text);
+}
+
 /* ============================================================================
    Option Item (multiple choice / dropdown option rows)
    ============================================================================ */

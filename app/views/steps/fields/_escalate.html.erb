@@ -7,7 +7,10 @@
   <%= render "steps/fields/choice_cards",
         form: form, attribute: :target_type,
         choices: Steps::Escalate::VALID_TARGET_TYPES.map { |type| [type.titleize, type] },
-        selected: step.target_type, labelled_by: dom_id(step, :target_type_label) %>
+        selected: step.target_type, labelled_by: dom_id(step, :target_type_label),
+        hints: { "team" => "Most common" } %>
+  <p class="form-hint">Pick one, then name the destination below — an escalation with
+    neither tells the agent to hand the call somewhere without saying where.</p>
 </div>
 
 <div class="form-group">

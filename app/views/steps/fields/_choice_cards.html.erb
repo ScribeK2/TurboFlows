@@ -1,17 +1,28 @@
-<%# locals: (form:, attribute:, choices:, selected:, labelled_by:, input_data: {}) %>
+<%# locals: (form:, attribute:, choices:, selected:, labelled_by:, input_data: {}, hints: {}) %>
 <%#
   "Pick one of N" as real radios in labelled cards. The chosen card is styled
   from the input's own state (.choice-card:has(> input:checked)), so there is no
   controller keeping a hidden field and a class in step. Each radio posts as
   step[<attribute>] and autosaves on change; a caller's own action runs first,
   so it can stopImmediatePropagation() to veto the save (question-form does).
+
+  `hints` is an optional { value => short marker } map. A new step arrives with
+  NOTHING selected here, deliberately: a Question silently defaulted to "Text
+  Input" runs and is wrong, which is far harder to notice than one that is
+  obviously unset — and WorkflowHealthCheck now reports the unset case. The
+  marker exists so "pick one" is still steered rather than left blank, which is
+  how Zingtree labels its own most-used node type.
 %>
+<% hints ||= {} %>
 <% data = input_data.merge(action: [input_data[:action], "change->inline-autosave#schedule"].compact.join(" ")) %>
 <div class="choice-cards" role="radiogroup" aria-labelledby="<%= labelled_by %>">
   <% choices.each do |label, value| %>
     <label class="choice-card">
       <%= form.radio_button attribute, value, checked: selected == value, class: "sr-only", data: data %>
       <span><%= label %></span>
+      <% if hints[value].present? %>
+        <span class="choice-card__hint"><%= hints[value] %></span>
+      <% end %>
     </label>
   <% end %>
 </div>

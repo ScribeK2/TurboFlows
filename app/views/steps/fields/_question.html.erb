@@ -16,6 +16,12 @@
         choices: Steps::Question::VALID_ANSWER_TYPES.map { |type| [answer_type_label(type), type] },
         selected: step.answer_type, labelled_by: dom_id(step, :answer_type_label),
         input_data: { question_form_target: "answerType", action: "change->question-form#handleAnswerTypeChange" } %>
+  <%# Nothing is selected on a new Question, on purpose — see the note in
+      _choice_cards. This line says what the choice decides, which is what a
+      first-time author actually needs: only the three option-bearing types give
+      a Connection something to branch on. %>
+  <p class="form-hint">Pick one. Yes / No, Multiple Choice and Dropdown give this step
+    answers you can branch on; the rest record what the agent typed.</p>
 
   <%# Options container for multiple_choice/dropdown. The autosave action sits on
       the wrapper so it covers the rows "+ Add Option" builds in JavaScript too;
