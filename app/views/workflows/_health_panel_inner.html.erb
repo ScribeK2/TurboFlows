@@ -37,7 +37,8 @@
         "Every step can reach a Resolve step",
         "All terminals are Resolve steps",
         "No circular sub-flows",
-        "All required fields present"
+        "All required fields present",
+        "Every step says something"
       ].each do |check| %>
         <li class="list-row list-row--compact">
           <%= icon "check", class: "icon health-panel__check-icon" %>
@@ -78,15 +79,42 @@
       </div>
     <% end %>
 
-    <%# === Warnings Section === %>
-    <% warnings = health.issues.select { |_uuid, issues| issues.any? { |i| i[:severity] == :warning } } %>
+    <%# === Warnings Section ===
+        Readiness findings are warnings too, but they answer a different question
+        and get their own section below — see READINESS_CODES. Mixing them here
+        is what let "0 warnings" mean "valid" when an author read it as "ready". %>
+    <% readiness = ->(issue) { WorkflowHealthCheck::READINESS_CODES.include?(issue[:code]) } %>
+    <% warnings = health.issues.select { |_uuid, issues| issues.any? { |i| i[:severity] == :warning && !readiness.call(i) } } %>
     <% if warnings.any? %>
       <div class="health-panel__section">
         <h4 class="health-panel__section-title">Warnings</h4>
         <div class="health-panel__issues">
         <% warnings.each do |uuid, issues| %>
           <% step = workflow.steps.find { |s| s.uuid == uuid } %>
-          <% issues.select { |i| i[:severity] == :warning }.each do |issue| %>
+          <% issues.select { |i| i[:severity] == :warning && !readiness.call(i) }.each do |issue| %>
+            <%= render "workflows/health_issue", issue: issue, uuid: uuid, step: step, workflow: workflow, ordinals: ordinals %>
+          <% end %>
+        <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <%# === Not ready for an agent ===
+        The second signal. "Can this run?" is answered above; this answers "is
+        this worth giving to somebody on a call?". Nothing here refuses a
+        publish — publishing asks instead. %>
+    <% not_ready = health.issues.select { |_uuid, issues| issues.any?(&readiness) } %>
+    <% if not_ready.any? %>
+      <div class="health-panel__section">
+        <h4 class="health-panel__section-title">Not ready for an agent</h4>
+        <p class="health-panel__section-note">
+          This workflow will run. These are the places it doesn&rsquo;t yet say anything
+          useful to whoever follows it on a call. You can still publish.
+        </p>
+        <div class="health-panel__issues">
+        <% not_ready.each do |uuid, issues| %>
+          <% step = workflow.steps.find { |s| s.uuid == uuid } %>
+          <% issues.select(&readiness).each do |issue| %>
             <%= render "workflows/health_issue", issue: issue, uuid: uuid, step: step, workflow: workflow, ordinals: ordinals %>
           <% end %>
         <% end %>
@@ -106,8 +134,12 @@
         sub-flows" though nothing was circular. Codes replace both. %>
     <% passing_checks = [] %>
     <% issue_codes = health.issues.values.flatten.filter_map { |i| i[:code] } %>
+    <% has_steps = workflow.steps.any? %>
     <% passing_checks << "Audience chosen" unless issue_codes.include?(:no_audience) %>
-    <% passing_checks << "Reachability from start" unless issue_codes.include?(:unreachable_step) %>
+    <%# Every row below this line is about steps, so on an empty workflow they are
+        vacuously true. Listing "Every step can reach a Resolve step" against zero
+        steps reads as "you are fine" when nothing exists yet. %>
+    <% passing_checks << "Reachability from start" if has_steps && !issue_codes.include?(:unreachable_step) %>
     <%# :no_outgoing_transitions stands in for both of these. A step with no
         outgoing connections IS a terminal that is not a Resolve and has no path
         to one — the health check collapses those three restatements into one
@@ -119,10 +151,11 @@
         :no_path_to_resolve — and it is the finding that fires on the very shape
         the cross-workflow check exists to catch. Without it the panel showed the
         warning and this passing row at the same time. %>
-    <% passing_checks << "Every step can reach a Resolve step" unless (issue_codes & %i[no_path_to_resolve no_outgoing_transitions no_resolve_across_workflows]).any? %>
-    <% passing_checks << "All terminals are Resolve steps" unless (issue_codes & %i[terminal_not_resolve no_outgoing_transitions]).any? %>
-    <% passing_checks << "No circular sub-flows" unless (issue_codes & %i[circular_subflow max_depth_exceeded subflow_target_missing]).any? %>
-    <% passing_checks << "All required fields present" unless (issue_codes & %i[title_required question_text_required subflow_target_required form_field_incomplete]).any? %>
+    <% passing_checks << "Every step can reach a Resolve step" if has_steps && (issue_codes & %i[no_path_to_resolve no_outgoing_transitions no_resolve_across_workflows]).none? %>
+    <% passing_checks << "All terminals are Resolve steps" if has_steps && (issue_codes & %i[terminal_not_resolve no_outgoing_transitions]).none? %>
+    <% passing_checks << "No circular sub-flows" if has_steps && (issue_codes & %i[circular_subflow max_depth_exceeded subflow_target_missing]).none? %>
+    <% passing_checks << "All required fields present" if has_steps && (issue_codes & %i[title_required question_text_required subflow_target_required form_field_incomplete]).none? %>
+    <% passing_checks << "Every step says something" if has_steps && (issue_codes & WorkflowHealthCheck::READINESS_CODES).none? %>
     <% if passing_checks.any? %>
       <div class="health-panel__section">
         <h4 class="health-panel__section-title">Passing</h4>

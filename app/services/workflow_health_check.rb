@@ -16,6 +16,17 @@ class WorkflowHealthCheck
     def publish_blockers
       issues.values.flatten.select { |issue| WorkflowHealthCheck::PUBLISH_BLOCKING_CODES.include?(issue[:code]) }
     end
+
+    # "Is this ready for an agent?", which is a different question from "can this
+    # run?". A valid graph of empty steps passes every other check here and is
+    # not worth giving to anybody. Never blocks a publish — it asks.
+    def readiness_issues
+      issues.values.flatten.select { |issue| WorkflowHealthCheck::READINESS_CODES.include?(issue[:code]) }
+    end
+
+    def ready?
+      readiness_issues.empty?
+    end
   end
 
   def self.call(workflow)
@@ -49,7 +60,34 @@ class WorkflowHealthCheck
   NON_BLOCKING_CODES = %i[
     subflow_target_unpublished title_required question_text_required
     handoff_has_transitions select_options_required form_field_incomplete
+    message_body_required action_instructions_required escalate_target_required
+    answer_type_required option_value_missing placeholder_title
   ].freeze
+
+  # The second signal. Validity asks "can this run?"; readiness asks "is this
+  # ready for an agent?" — and until 2026-09-16 only the first existed, so a
+  # published workflow whose Message, Action and Escalate steps were all empty
+  # reported 0 errors and 0 warnings while serving agents a blank grey box.
+  #
+  # Deliberately a subset of NON_BLOCKING_CODES, never of PUBLISH_BLOCKING_CODES:
+  # a hard block would be worked around by typing a space into the field. Publish
+  # asks for an explicit acknowledgement instead, so shipping a thin workflow is
+  # a decision rather than something the product congratulates you for.
+  #
+  # `placeholder_title` is what closes the Fix trapdoor: HealthFixesController
+  # conjures a Resolve titled "Resolve" with no body, so clicking Fix can no
+  # longer walk a lone Question all the way to an all-clear.
+  READINESS_CODES = %i[
+    title_required question_text_required placeholder_title
+    message_body_required action_instructions_required escalate_target_required
+    answer_type_required option_value_missing
+  ].freeze
+
+  # Titles the builder generates for you. Still carrying one means the step has
+  # not been named, which is different from a blank title (title_required).
+  PLACEHOLDER_TITLES = (
+    Step::STEP_TYPE_MAP.keys.map { |type| "Untitled #{type.titleize}" } + %w[Resolve Untitled]
+  ).freeze
 
   def collapse_no_transition_restatements(issues)
     issues.each_value do |step_issues|
@@ -209,6 +247,56 @@ class WorkflowHealthCheck
   # GraphValidator doesn't flag these directly as errors, but they're a common issue.
   def run_step_validations(issues)
     steps_collection.each do |step|
+      # --- Readiness: does this step actually say anything? ---------------
+      #
+      # None of these blocks a publish. They exist because "the graph is valid"
+      # was the only completion signal the builder had, so a workflow of empty
+      # steps was reported as perfect. See READINESS_CODES.
+
+      if PLACEHOLDER_TITLES.include?(step.title.to_s.strip)
+        add_issue(issues, step.uuid, :warning,
+                  "Still called #{step.title.inspect} — name it for whoever reads this on a call",
+                  fixable: false, code: :placeholder_title)
+      end
+
+      if step.is_a?(Steps::Message) && rich_text_blank?(step, :content)
+        add_issue(issues, step.uuid, :warning,
+                  "No message: the agent gets this step's title and an empty box",
+                  fixable: false, code: :message_body_required)
+      end
+
+      if step.is_a?(Steps::Action) && rich_text_blank?(step, :instructions)
+        add_issue(issues, step.uuid, :warning,
+                  "No instructions: the agent is told to do something without being told what",
+                  fixable: false, code: :action_instructions_required)
+      end
+
+      # Both halves, because either alone is unusable: a type with no name says
+      # "escalate to a team" and stops; a name with no type does not route.
+      if step.is_a?(Steps::Escalate) && (step.target_type.blank? || step.target_value.to_s.strip.blank?)
+        add_issue(issues, step.uuid, :warning,
+                  "No escalation destination: the agent is told to hand the call over without being told where",
+                  fixable: false, code: :escalate_target_required)
+      end
+
+      if step.is_a?(Steps::Question) && step.answer_type.blank?
+        add_issue(issues, step.uuid, :warning,
+                  "No answer type chosen, so the agent has no way to answer this",
+                  fixable: false, code: :answer_type_required)
+      end
+
+      # An option's value falls back to its label (Steps::Question), so this
+      # fires only when BOTH are blank — an answer a Transition can never match.
+      if step.is_a?(Steps::Question) && blank_option?(step)
+        add_issue(issues, step.uuid, :warning,
+                  "An answer option has no text, so nothing can be matched against it",
+                  fixable: false, code: :option_value_missing)
+      end
+
+      # A Resolve is exempt from the checks below — it is meant to be terminal —
+      # but not from the readiness checks above. A Resolve conjured by the Fix
+      # button arrives titled "Resolve" with no description, and skipping it here
+      # is what let a lone Question reach an all-clear in one click.
       next if step.is_a?(Steps::Resolve)
 
       # A handoff has no outgoing connections by design — that is what makes it a
@@ -303,6 +391,22 @@ class WorkflowHealthCheck
                   "its answer is recorded under the name",
                   fixable: false, code: :form_field_incomplete)
       end
+    end
+  end
+
+  # RichText#to_s renders through the app's display layout, so an empty body
+  # stringifies to "<div class=\"lexxy-content\">\n  \n</div>" and is never
+  # blank. Read the body — see the same warning in StepFieldMap.
+  def rich_text_blank?(step, field)
+    step.public_send(field)&.body&.to_plain_text.to_s.strip.blank?
+  end
+
+  def blank_option?(step)
+    Array(step.options).any? do |option|
+      next false unless option.is_a?(Hash)
+
+      (option["value"] || option[:value]).to_s.strip.blank? &&
+        (option["label"] || option[:label]).to_s.strip.blank?
     end
   end
 
