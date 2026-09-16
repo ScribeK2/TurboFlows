@@ -68,6 +68,19 @@ class HealthPanelOrderingTest < ActionDispatch::IntegrationTest
                  "ordering must not change what the panel says is wrong")
   end
 
+  # The inline popover on a step row renders the same findings in JavaScript,
+  # from the JSON. Sorting only in the panel left that popover showing the
+  # consequence above the row with the button.
+  test "within one step the actionable finding comes first" do
+    health = WorkflowHealthCheck.call(@workflow)
+    step_two = health.issues[@steps.second.uuid]
+
+    assert_equal 2, step_two.size, "precondition: step 2 has a cause and a consequence"
+    assert step_two.first[:fixable], "the one with a Fix leads"
+    assert_not step_two.second[:fixable]
+    assert_equal :unreachable_step, step_two.second[:code]
+  end
+
   # Every note has to be keyed to a code something actually emits, or it is
   # documentation that never renders.
   test "every consequence note names a code the check can report" do

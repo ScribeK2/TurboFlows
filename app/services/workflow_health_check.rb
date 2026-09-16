@@ -110,6 +110,24 @@ class WorkflowHealthCheck
     Step::STEP_TYPE_MAP.keys.map { |type| "Untitled #{type.titleize}" } + %w[Resolve Untitled]
   ).freeze
 
+  # Within one step, put the findings carrying a Fix above the ones whose answer
+  # is elsewhere.
+  #
+  # Done here rather than in each reader because there are two of them in two
+  # languages: the health panel (ERB) and the inline step popover (JavaScript,
+  # over the JSON this Result is serialised into). Sorting in the panel alone
+  # left the popover showing "Not reachable from the start step / clears once
+  # another step connects" ABOVE the row with the button, which is the same
+  # thing the panel was fixed for.
+  #
+  # The panel additionally sorts ACROSS steps, which cannot be done from here —
+  # that sort is stable, so this ordering survives it.
+  def order_actionable_first(issues)
+    issues.each_value do |step_issues|
+      step_issues.sort_by!.with_index { |issue, index| [issue[:fixable] && issue[:fix_type] ? 0 : 1, index] }
+    end
+  end
+
   def collapse_no_transition_restatements(issues)
     issues.each_value do |step_issues|
       next unless step_issues.any? { |i| i[:code] == :no_outgoing_transitions }
@@ -194,6 +212,7 @@ class WorkflowHealthCheck
     run_subflow_validation(issues) if subflow_steps?
     run_step_validations(issues)
     collapse_no_transition_restatements(issues)
+    order_actionable_first(issues)
 
     summary = { errors: 0, warnings: 0, total: 0 }
     issues.each_value do |step_issues|
