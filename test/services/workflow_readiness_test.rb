@@ -16,7 +16,13 @@ class WorkflowReadinessTest < ActiveSupport::TestCase
   setup do
     @user = User.create!(email: "readiness@example.com", password: "password123456", role: "editor")
     @workflow = Workflow.create!(title: "Readiness", user: @user)
-    @workflow.groups << Group.global
+    # `Group.global` is a SCOPE, so pushing it into the collection concats a
+    # relation — and with no groups fixture that relation is empty, so this
+    # assigned no audience at all and every check here ran against a workflow
+    # carrying :no_audience. It passed only because a stale Global row was
+    # sitting in the local test database; a reload surfaced it. The helper is
+    # what creates Global in a test (see GlobalGroupHelper).
+    file_in_global(@workflow)
   end
 
   test "a fully written workflow is ready" do
