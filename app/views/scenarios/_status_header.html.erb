@@ -37,6 +37,15 @@
       <%= icon "exclamation-circle", class: "icon icon--sm" %>
       Error
     </div>
+  <% elsif ending.stranded? %>
+    <%# status says "completed" for this run — the frame IS finished — so a
+        header that reads the status alone put a green check on a call that fell
+        through a hole in the graph. How it ended lives on `outcome`, and this
+        is the one ending where the two disagree about whether it went well. %>
+    <div class="badge badge--warning scenario-status-badge" role="status">
+      <%= icon "exclamation-triangle", class: "icon icon--sm" %>
+      No matching answer
+    </div>
   <% elsif ending.complete? %>
     <div class="badge badge--published scenario-status-badge" role="status">
       <%= icon "check", class: "icon icon--sm" %>

@@ -19,7 +19,7 @@
         auto_advance: auto_advance %>
 <% elsif scenario.complete? %>
   <li class="runner-thread__complete-item" data-thread-target="current">
-    <%= render "runner/thread_complete", results_url: results_url %>
+    <%= render "runner/thread_complete", scenario: scenario, results_url: results_url %>
   </li>
 <% else %>
   <%# Nothing to wait on and nothing to end: the run has no step to show. A

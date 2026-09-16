@@ -242,6 +242,18 @@
     letter-spacing: var(--letter-spacing-tight);
   }
 
+  /* One sentence under the heading, for an ending the agent needs explaining
+     rather than just naming. The heading says what happened; this says what to
+     do about it. Sits above the stats and inside the column's centring, so it
+     keeps a readable measure on a wide screen. */
+  .player-completion__note {
+    max-width: 30rem;
+    margin: calc(var(--space-6) * -1) 0 var(--space-6) 0;
+    font-size: var(--text-sm);
+    color: var(--color-ink-muted);
+    line-height: var(--line-height-normal);
+  }
+
   .player-completion__details {
     width: 100%;
     max-width: 24rem;

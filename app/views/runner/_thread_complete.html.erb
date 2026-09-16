@@ -6,9 +6,22 @@
   where they are and this sits under them; the results page is a link rather
   than a destination the runner forces you to.
 
-  locals: results_url
+  Two endings, because they are not the same news. A run that reached a Resolve
+  is finished. A stranded run stopped because the step it was on had branches
+  and the answer matched none of them — the agent did nothing wrong and the call
+  is not over, so saying "This run is complete" hands them a dead end dressed as
+  a result. The wording is for someone on a live call, not for the builder.
+
+  There is no Back here yet: without park the run has already ended. That card
+  is the next piece of this work.
+
+  locals: scenario, results_url
 %>
 <div class="runner-thread__complete">
-  <p class="text-sm">This run is complete.</p>
+  <% if scenario.stranded? %>
+    <p class="text-sm">This workflow doesn&rsquo;t have a step for that answer, so it stops here.</p>
+  <% else %>
+    <p class="text-sm">This run is complete.</p>
+  <% end %>
   <%= link_to "View results", results_url, class: "btn btn--secondary btn--sm" %>
 </div>

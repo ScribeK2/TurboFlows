@@ -40,7 +40,11 @@ module ScenariosHelper
                       "#{duration_seconds / 3600}h #{(duration_seconds % 3600) / 60}m"
                     end
 
-    parts << "Completed #{step_count} #{'step'.pluralize(step_count)} in #{duration_text}"
+    # A stranded run did not complete anything: it stopped on a step whose
+    # branches all missed. Leading with "Completed 1 step" is the same lie the
+    # green badge above used to tell.
+    verb = scenario.run_ending.stranded? ? "Stopped after" : "Completed"
+    parts << "#{verb} #{step_count} #{'step'.pluralize(step_count)} in #{duration_text}"
 
     # Counts by step type
     type_counts = path.each_with_object(Hash.new(0)) { |item, counts| counts[item['step_type']] += 1 }
