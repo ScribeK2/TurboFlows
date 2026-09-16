@@ -116,6 +116,10 @@
                     style="--template-hue: <%= template['hue'] %>">
               <span class="builder__template-dot"></span>
               <%= template["name"] %>
+              <%# "Guided Decision" vs "Diagnosis Flow" vs "Triage & Escalate" is
+                  unguessable from the name alone. The descriptions already exist
+                  in config/templates.yml. %>
+              <span class="builder__template-popover-desc"><%= template["description"] %></span>
             </button>
           <% end %>
           <div class="builder__template-popover-footer">Replaces current steps</div>

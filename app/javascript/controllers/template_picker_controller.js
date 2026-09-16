@@ -9,8 +9,10 @@ export default class extends Controller {
     this.popoverTarget.hidden = !this.popoverTarget.hidden
   }
 
+  // Guarded because the builder's empty state mounts this controller for its
+  // template cards and has no popover — apply() calls close() either way.
   close() {
-    this.popoverTarget.hidden = true
+    if (this.hasPopoverTarget) this.popoverTarget.hidden = true
   }
 
   apply(event) {
@@ -53,7 +55,7 @@ export default class extends Controller {
   }
 
   connect() {
-    document.addEventListener("click", this.closeOnOutsideClick)
+    if (this.hasPopoverTarget) document.addEventListener("click", this.closeOnOutsideClick)
   }
 
   disconnect() {

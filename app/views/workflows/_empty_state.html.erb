@@ -2,9 +2,20 @@
   Empty State — shown in the builder when a workflow has no steps.
 
   Keeps the real frame rather than a fake one: the list container renders as it
-  always does, with a single prompt row inviting the first step. Templates are
-  not duplicated here - the toolbar's Templates popover is the one place that
-  action lives.
+  always does, with a single prompt row inviting the first step.
+
+  Templates lead, and starting blank is the secondary offer. That is the reverse
+  of how this read until 2026-09-16, when seven bare step-type buttons dominated
+  and templates were a text link beside them. Two things forced the swap:
+  a template produces a correctly wired graph with zero errors in one click,
+  while adding five steps by hand produced eight errors and four unreachable
+  steps; and a first-time editor, watched building unaided, gave up and shipped
+  a two-step workflow. Steering people down the path that generates the errors
+  was backwards once the other path was actually good.
+
+  The step-type buttons now carry their descriptions rather than hiding them in
+  a `title` tooltip — the same descriptions the "Add a step" picker has always
+  shown. The first choice an author makes was the one made blind.
 
   Local variables:
   - workflow: Workflow object
@@ -22,27 +33,48 @@
     </div>
   </div>
 
-  <div class="builder__quick-starts">
-    <span class="builder__quick-starts-label">Start with</span>
-    <%# All seven, from workflows_helper's one list. This offered Question,
-        Action and Message only — so the control a new author meets first was a
-        subset of the "Add a step" picker, with no descriptions, and without
-        Resolve, which every workflow must have before it can be published. %>
-    <% step_type_options.each do |qs| %>
-      <%= button_to workflow_steps_path(workflow),
-          method: :post,
-          params: { step_type: qs[:type] },
-          data: { turbo_stream: true },
-          title: qs[:desc],
-          class: "btn btn--secondary btn--sm" do %>
-        <%= qs[:name] %>
-      <% end %>
-    <% end %>
+  <%# Templates reuse the toolbar picker's controller, so "apply" behaves
+      identically from both places. This mount has no popover, which is why
+      template-picker#close guards on hasPopoverTarget. %>
+  <section class="builder__starters"
+           data-controller="template-picker"
+           data-template-picker-workflow-id-value="<%= workflow.id %>">
+    <h2 class="builder__starters-title">Start from a template</h2>
+    <p class="builder__starters-sub">Each one is a complete, working example. Open it and change the words.</p>
 
-    <button type="button"
-            class="btn btn--plain btn--sm"
-            data-action="click->builder#focusTemplates">
-      Browse templates
-    </button>
-  </div>
+    <div class="builder__template-cards">
+      <% WorkflowTemplate.all.each do |key, template| %>
+        <button type="button"
+                class="builder__template-card"
+                data-action="click->template-picker#apply"
+                data-template-key="<%= key %>"
+                data-template-name="<%= template["name"] %>"
+                style="--template-hue: <%= template["hue"] %>">
+          <span class="builder__template-card-head">
+            <span class="builder__template-dot" aria-hidden="true"></span>
+            <span class="builder__template-card-name"><%= template["name"] %></span>
+          </span>
+          <span class="builder__template-card-desc"><%= template["description"] %></span>
+          <span class="builder__template-card-meta"><%= pluralize(template["steps"].size, "step") %></span>
+        </button>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="builder__starters builder__starters--secondary">
+    <h2 class="builder__starters-title">Or start with a single step</h2>
+
+    <div class="builder__quick-starts">
+      <% step_type_options.each do |qs| %>
+        <%= button_to workflow_steps_path(workflow),
+            method: :post,
+            params: { step_type: qs[:type] },
+            data: { turbo_stream: true },
+            class: "builder__quick-start" do %>
+          <span class="builder__quick-start-name"><%= qs[:name] %></span>
+          <span class="builder__quick-start-desc"><%= qs[:desc] %></span>
+        <% end %>
+      <% end %>
+    </div>
+  </section>
 </div>

@@ -537,17 +537,130 @@
     gap: var(--space-4);
   }
 
-  .builder__quick-starts-label {
+  /* Empty-state starters. Templates lead and blank-start is secondary — see the
+     note in workflows/_empty_state.html.erb for why that order was reversed.
+     Nothing here is a filled button: the builder header already carries the
+     screen's one .btn--primary (Publish). */
+  .builder__starters {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .builder__starters--secondary {
+    margin-top: var(--space-2);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .builder__starters-title {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-ink);
+    margin: 0;
+  }
+
+  .builder__starters-sub {
     font-size: var(--text-xs);
     color: var(--color-ink-muted);
-    margin-right: var(--space-1);
+    margin: 0;
+  }
+
+  .builder__template-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+    gap: var(--space-3);
+    margin-top: var(--space-2);
+  }
+
+  .builder__template-card {
+    --step-hue: var(--template-hue, 250);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-3);
+    text-align: left;
+    background: var(--color-canvas-raised);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: border-color var(--duration-fast) var(--ease-out),
+                background var(--duration-fast) var(--ease-out);
+  }
+
+  .builder__template-card:hover {
+    background: var(--color-canvas-alt);
+    border-color: var(--color-border-strong);
+  }
+
+  .builder__template-card-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .builder__template-card-name {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+
+  .builder__template-card-desc {
+    font-size: var(--text-xs);
+    color: var(--color-ink-subtle);
+    line-height: var(--line-height-normal);
+  }
+
+  .builder__template-card-meta {
+    font-size: var(--text-xs);
+    color: var(--color-ink-muted);
   }
 
   .builder__quick-starts {
     display: flex;
     gap: var(--space-2);
     flex-wrap: wrap;
-    justify-content: center;
+    margin-top: var(--space-1);
+  }
+
+  /* button_to wraps each button in a form; without this the forms lay out as
+     block children and the row stops wrapping as a row. */
+  .builder__quick-starts form {
+    display: contents;
+  }
+
+  .builder__quick-start {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    align-items: flex-start;
+    text-align: left;
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-canvas-raised);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: border-color var(--duration-fast) var(--ease-out),
+                background var(--duration-fast) var(--ease-out);
+  }
+
+  .builder__quick-start:hover {
+    background: var(--color-canvas-alt);
+    border-color: var(--color-border-strong);
+  }
+
+  .builder__quick-start-name {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-ink);
+  }
+
+  /* The descriptions existed only as a `title` tooltip here, while the "Add a
+     step" picker showed them in full — so the very first choice an author makes
+     was the one made blind. */
+  .builder__quick-start-desc {
+    font-size: var(--text-xs);
+    color: var(--color-ink-muted);
   }
 
 
@@ -602,9 +715,11 @@
   }
 
   .builder__template-popover-item {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto 1fr;
     align-items: center;
-    gap: var(--space-2);
+    gap: 0 var(--space-2);
+    text-align: left;
     padding: var(--space-2);
     border-radius: var(--radius);
     background: transparent;
@@ -621,6 +736,13 @@
 
   .builder__template-popover-item:hover {
     background: var(--color-canvas-alt);
+  }
+
+  .builder__template-popover-desc {
+    grid-column: 2;
+    font-size: var(--text-xs);
+    font-weight: 400;
+    color: var(--color-ink-muted);
   }
 
   .builder__template-dot {
@@ -852,6 +974,16 @@
   color: var(--color-ink);
   letter-spacing: var(--letter-spacing-tight);
   margin-bottom: var(--space-2);
+}
+
+/* The "Not ready for an agent" section leads with a line saying what it is and
+   is not: a workflow with only these findings runs perfectly well and can still
+   be published. Without it a second list of warnings reads as more errors. */
+.health-panel__section-note {
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+  line-height: var(--line-height-normal);
+  margin: calc(var(--space-2) * -1) 0 var(--space-2);
 }
 
 /* Issue rows use .list-row anatomy inside one divided container, for the same

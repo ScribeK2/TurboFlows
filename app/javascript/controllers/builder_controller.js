@@ -37,19 +37,6 @@ export default class extends Controller {
     this.loadPanel(url)
   }
 
-  // The empty state points at the toolbar's Templates popover rather than
-  // duplicating the template grid, so this just opens the one that exists.
-  focusTemplates() {
-    const trigger = this.element.querySelector("[data-action*='template-picker#toggle']")
-    if (!trigger) return
-
-    trigger.scrollIntoView({ block: "nearest" })
-
-    // Defer past this click: template-picker closes on any document click
-    // landing outside itself, and this button is outside it.
-    requestAnimationFrame(() => trigger.click())
-  }
-
   openFlowDiagram() {
     const url = this.element.querySelector("[data-builder-flow-url-value]")
       ?.dataset.builderFlowUrlValue

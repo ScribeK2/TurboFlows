@@ -18,26 +18,53 @@ class TemplateApplicationTest < ApplicationSystemTestCase
 
     assert_selector "#builder-empty-state", wait: 5
 
-    # Templates live in the toolbar popover, which is the only place that
-    # action exists — the empty state links to it rather than duplicating it.
-    click_button "Browse templates"
-    assert_selector ".builder__template-popover-item", minimum: 1, wait: 5
+    # Templates lead the empty state as cards. This used to say the opposite —
+    # "the empty state links to [the popover] rather than duplicating it" — and
+    # that ordering is what this change reverses: a template produces a correctly
+    # wired graph in one click, while building by hand produced eight errors, so
+    # the prominent path should be the one that works.
+    find(".builder__template-card", text: "Guided Decision").click
 
-    find(".builder__template-popover-item", text: "Guided Decision").click
-
-    # Should see steps populated (empty state gone)
     assert_no_selector "#builder-empty-state", wait: 5
     assert_selector ".builder__step", minimum: 3, wait: 5
   end
 
-  test "empty state offers quick starts without duplicating the template grid" do
+  # The toolbar popover still exists and still applies — it is the only way in
+  # once a workflow has steps, since the empty state is gone by then.
+  test "the toolbar popover still applies a template" do
+    visit workflows_path
+    click_button "New Workflow", match: :first
+
+    assert_selector "#builder-empty-state", wait: 5
+    click_button "Templates"
+    assert_selector ".builder__template-popover-item", minimum: 1, wait: 5
+
+    find(".builder__template-popover-item", text: "Guided Decision").click
+
+    assert_no_selector "#builder-empty-state", wait: 5
+    assert_selector ".builder__step", minimum: 3, wait: 5
+  end
+
+  test "the empty state leads with templates and offers single steps second" do
     visit workflows_path
     click_button "New Workflow", match: :first
 
     assert_selector "#builder-empty-state", wait: 5
     assert_selector "#builder-empty-state .list-row--prompt"
+
+    # Templates first, blank-start second — the inversion itself, asserted by
+    # document order so a later restyle cannot quietly put them back.
+    cards = find("#builder-empty-state .builder__template-cards")
+    quick = find("#builder-empty-state .builder__quick-starts")
+    assert_operator cards.native.location.y, :<, quick.native.location.y,
+                    "templates must sit above the single-step row"
+
+    assert_selector "#builder-empty-state .builder__template-card", count: 5
     assert_button "Question"
-    assert_no_selector "#builder-empty-state .builder__template-popover-item"
+
+    # The descriptions are visible, not hidden in a title tooltip: the first
+    # choice an author makes was the one made blind.
+    assert_text "Ask for information"
 
     click_button "Question"
 
