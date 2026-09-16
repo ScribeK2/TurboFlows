@@ -111,13 +111,25 @@ class Scenario < ApplicationRecord
   # `parked?` and the cleanup scopes keep working), while `outcome` says how it
   # ended. A run that handed its work to another workflow did not *complete*, and
   # reporting has to be able to tell those apart.
-  OUTCOMES = %w[completed resolved escalated abandoned error transferred].freeze
+  #
+  # "stranded" is that same split applied to a different ending: the run stopped
+  # because the step it was on had branches and the agent's answer matched none
+  # of them. The frame is finished, so `status` is "completed" and every
+  # retention scope keeps working; `outcome` says it ended in a hole in the
+  # graph rather than at the end of one.
+  OUTCOMES = %w[completed resolved escalated abandoned error transferred stranded].freeze
   validates :outcome, inclusion: { in: OUTCOMES }, allow_nil: true
 
   # The endings Analytics' completion rate counts (spec Q72, Q73): resolving,
   # escalating and handing off are all endings a workflow is built to reach.
   # "transferred" stays its own outcome, so reporting can still tell a handoff
-  # from a completion. Abandoned and error are finished but not completed.
+  # from a completion. Abandoned, error and stranded are finished but not
+  # completed.
+  #
+  # "stranded" being absent here is the whole point of the outcome. A run that
+  # fell through a hole was recorded as "completed", which IS in this list, so a
+  # workflow whose branches could never fire reported a 100% completion rate:
+  # nobody could finish it and every run counted as a success.
   COMPLETED_OUTCOMES = %w[completed resolved escalated transferred].freeze
 
   # Where calls start: neither a returning sub-flow's child nor the frame a
@@ -453,6 +465,15 @@ class Scenario < ApplicationRecord
     save!
   end
 
+  # True when this frame ended on a step whose branches all missed, rather than
+  # at the end of the workflow. `status` still says "completed" — the frame IS
+  # finished — so anything asking "is this over" must keep asking `terminal?`
+  # and anything asking "did this go well" asks here. Reading the status alone
+  # is what put a green Completed badge on a call that fell through a hole.
+  def stranded?
+    outcome == "stranded"
+  end
+
   # True once the run reached an end state and its outcome is settled.
   def terminal?
     # `status` is the enum READER, which returns the LABEL ("timed_out"), while
@@ -733,14 +754,38 @@ class Scenario < ApplicationRecord
     resolver = StepResolver.new(workflow)
     next_result = resolver.resolve_next(step, results)
 
-    if next_result.is_a?(StepResolver::SubflowMarker)
+    case next_result
+    when StepResolver::SubflowMarker
       # Will be handled in next process_step call
       advance_to_step_uuid(next_result.step_uuid)
-    elsif next_result.is_a?(Step)
+    when Step
       advance_to_step_uuid(next_result.uuid)
+    when StepResolver::NoMatch
+      # The step had branches and none of them fired. Leave a trace on the entry
+      # for the step the run fell out of, then stop the way this always has.
+      stamp_no_matching_transition(next_result)
+      advance_to_step_uuid(nil)
     else
       advance_to_step_uuid(nil)
     end
+  end
+
+  # Record, on the execution path, that the run left this step with nowhere to
+  # go. Written even when the agent recovers, because recovery is the common
+  # case: an agent who goes back and answers differently leaves no other sign
+  # that the workflow has a hole, and a gap nobody can see is a gap nobody fixes.
+  #
+  # Every processor appends its entry before calling advance_to_next_step, so
+  # the entry to stamp is the last one. It is matched on step_uuid anyway, so a
+  # path that did not end where this thinks it did is left alone rather than
+  # mislabelled.
+  def stamp_no_matching_transition(no_match)
+    entry = execution_path&.last
+    return unless entry.is_a?(Hash) && entry["step_uuid"] == no_match.step_uuid
+
+    entry["no_matching_transition"] = true
+    entry["transition_count"] = no_match.transition_count
+    execution_path_will_change!
   end
 
   # Append an entry to the execution path, recording what this step changed.
@@ -893,17 +938,28 @@ class Scenario < ApplicationRecord
     return if %w[stopped awaiting_subflow].include?(status)
 
     if current_node_uuid.nil?
-      record_completion("completed") if outcome.blank?
+      record_completion(ran_out_of_road_outcome) if outcome.blank?
       self.status = 'completed'
     else
       step = current_step
       if step.nil?
-        record_completion("completed") if outcome.blank?
+        record_completion(ran_out_of_road_outcome) if outcome.blank?
         self.status = 'completed'
       elsif StepResolver.new(workflow).terminal?(step) && step.step_type != 'sub_flow'
         # Terminal node that's not a sub-flow - will complete after processing
       end
     end
+  end
+
+  # Which ending to record for a run that has no current node left.
+  #
+  # Both endings look identical from here — current_node_uuid is nil either way
+  # — so the difference is read from the trace advance_to_next_step left on the
+  # path. Without it this said "completed" for both, and "completed" is in
+  # COMPLETED_OUTCOMES, so a workflow nobody could finish reported every run as
+  # a success.
+  def ran_out_of_road_outcome
+    execution_path&.last.is_a?(Hash) && execution_path.last["no_matching_transition"] ? "stranded" : "completed"
   end
 
   def evaluate_condition_string(condition_string, results)
