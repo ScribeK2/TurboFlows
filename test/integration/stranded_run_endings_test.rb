@@ -72,6 +72,17 @@ class StrandedRunEndingsTest < ActionDispatch::IntegrationTest
     assert_select ".player-completion__note", text: /doesn.t have a step for the answer you gave/
   end
 
+  # A run that ends early is usually one step long, so the completion screen's
+  # static "Steps completed" label was on screen as "1 Steps completed" more
+  # often than it was ever correct.
+  test "the completion screen counts one step in the singular" do
+    run = stranded_run
+
+    get player_scenario_show_path(run)
+    assert_match(%r{1</span>\s*<[^>]*>Step completed}, response.body)
+    assert_no_match(/1 Steps completed|>Steps completed</, response.body)
+  end
+
   # Scenario mode's results page, which an editor sees after simulating.
   test "the scenario results page does not put a green check on it" do
     run = stranded_simulation
@@ -104,6 +115,8 @@ class StrandedRunEndingsTest < ActionDispatch::IntegrationTest
     get player_scenario_show_path(run)
     assert_select ".player-completion__title", text: /Workflow Complete/
     assert_select ".player-completion__note", count: 0
+    assert_select ".player-completion__stat-label", text: /^Steps completed$/,
+                                                    count: 1
   end
 
   private

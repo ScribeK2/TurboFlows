@@ -80,7 +80,9 @@
   <div class="player-completion__stats">
     <div class="player-completion__stat">
       <span class="player-completion__stat-value"><%= steps_completed %></span>
-      <span class="player-completion__stat-label">Steps completed</span>
+      <%# A one-step run is the common case for a workflow that ends early, so
+          "1 Steps completed" was on screen more often than the plural. %>
+      <span class="player-completion__stat-label"><%= "Step".pluralize(steps_completed) %> completed</span>
     </div>
     <% if duration %>
       <div class="player-completion__stat">
