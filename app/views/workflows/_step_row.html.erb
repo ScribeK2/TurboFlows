@@ -75,6 +75,12 @@
       panel at its doors, since a row is one line tall. %>
   <% stubs = doors.stubs %>
   <% if stubs.any? %>
+    <%# View mode says where an unwired answer goes today, and that is not
+        always "nowhere": a blank-condition connection catches every answer
+        without a door of its own. The panel's door rows say the same thing in
+        the same words (steps/_doors) — when the row said "nothing yet" beside
+        a panel reading "follows “Anything else”", one of them was lying. %>
+    <% stub_state = doors.fallback ? "follows “Anything else”" : "nothing yet" %>
     <span class="builder__step-doors">
       <% if doors.doors.size <= 2 %>
         <% stubs.each do |door| %>
@@ -87,7 +93,7 @@
                   data-grow-context="<%= door.kind == :next ? "After “#{row_title}”" : "“#{row_title}” — #{door.label}" %>">
             <%= stub_label %> add step
           </button>
-          <span class="builder__door-stub-text builder__view-only"><%= stub_label %> nothing yet</span>
+          <span class="builder__door-stub-text builder__view-only"><%= stub_label %> <%= stub_state %></span>
         <% end %>
       <% else %>
         <% collapsed = "#{pluralize(stubs.size, 'answer')} #{stubs.size == 1 ? 'needs' : 'need'} a step" %>

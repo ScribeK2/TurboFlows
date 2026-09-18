@@ -491,7 +491,7 @@ class WorkflowHealthCheckTest < ActiveSupport::TestCase
 
     issue = WorkflowHealthCheck.call(wf).issues[q.uuid].find { |i| i[:code] == :unmatched_option_value }
     assert_equal :warning, issue[:severity]
-    assert_equal "This connection checks for 'modem', which is no longer an option.", issue[:message]
+    assert_equal "This connection checks for “modem”, which is no longer an option", issue[:message]
   end
 
   # A hand-made duplicate of a wired door's own condition is an "extra" (only
@@ -526,7 +526,7 @@ class WorkflowHealthCheckTest < ActiveSupport::TestCase
 
     issue = WorkflowHealthCheck.call(wf).issues[q.uuid].find { |i| i[:code] == :unmatched_option_value }
     assert_equal :warning, issue[:severity]
-    assert_equal "This connection checks for 'modem', which is no longer an option.", issue[:message]
+    assert_equal "This connection checks for “modem”, which is no longer an option", issue[:message]
   end
 
   private

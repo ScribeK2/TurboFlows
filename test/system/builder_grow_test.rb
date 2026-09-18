@@ -23,7 +23,7 @@ class BuilderGrowTest < ApplicationSystemTestCase
     visit workflow_path(@workflow, edit: true)
     assert_selector "[data-builder-mode-value='edit']", wait: 5
 
-    click_on "Add a step"
+    click_on "Add unconnected step"
     pick_type "Question"
     assert_selector STEP_ROW, count: 1
     assert_selector "input[name='step[answer_type]'][value='yes_no']:checked", visible: :all, wait: 5

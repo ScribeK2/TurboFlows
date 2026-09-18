@@ -420,7 +420,7 @@ class WorkflowHealthCheck
 
       doors.unmatched_extras.each do |(_transition, value)|
         add_issue(issues, step.uuid, :warning,
-                  "This connection checks for '#{value}', which is no longer an option.",
+                  "This connection checks for “#{value}”, which is no longer an option",
                   fixable: false, code: :unmatched_option_value)
       end
 

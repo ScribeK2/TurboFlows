@@ -165,7 +165,7 @@ class BuilderStepPanelTest < ApplicationSystemTestCase
     visit_builder_in_edit_mode
     open_step @resolve
 
-    click_on "Add a step"
+    click_on "Add unconnected step"
     assert_selector "[data-step-list-target='typePicker']:not([hidden])"
 
     page.send_keys :escape

@@ -592,7 +592,7 @@ class WorkflowsControllerTest < ActionDispatch::IntegrationTest
     end
 
     # edit=true: a failed publish leaves the builder in edit mode. Dropping it
-    # swapped the header for Edit/Run Scenario/Export and took "Add a step"
+    # swapped the header for Edit/Run Scenario/Export and took the add-step control
     # away, so the user was told to fix something and lost the tools to do it.
     assert_redirected_to workflow_path(bad_wf, edit: true)
     assert_match(/Resolve/, flash[:alert])

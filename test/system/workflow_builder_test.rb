@@ -43,7 +43,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
 
     assert_step_count 1
 
-    click_on "Add a step"
+    click_on "Add unconnected step"
     click_on "Question"
 
     assert_step_count 2
@@ -106,7 +106,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
       "Form" => "Steps::Form",
       "Escalate" => "Steps::Escalate"
     }.each do |label, klass|
-      click_on "Add a step"
+      click_on "Add unconnected step"
       click_on label
       # Scoped to the list. `data-step-type` is carried by the row *and* by the
       # editor panel, and creating a step now opens that panel — so an unscoped
@@ -401,7 +401,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
   test "adding a step opens its editor, not merely loads it" do
     visit_builder_in_edit_mode
 
-    click_on "Add a step"
+    click_on "Add unconnected step"
     click_on "Question"
 
     within "turbo-frame#builder-panel" do
@@ -432,7 +432,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
   test "a grown step's selection survives a list re-render from elsewhere" do
     visit_builder_in_edit_mode
 
-    click_on "Add a step"
+    click_on "Add unconnected step"
     click_on "Action"
 
     # Wait on the DOM, not the database directly: the click only fires the
@@ -595,7 +595,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
   # empty field, and the title was never sent, not even when the panel closed.
   test "a new question's title saves before its question text is typed" do
     visit_builder_in_edit_mode
-    click_on "Add a step"
+    click_on "Add unconnected step"
     click_on "Question"
 
     within "turbo-frame#builder-panel" do
@@ -612,7 +612,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
   # "+ Add Field" appends a row whose name and label are empty and `required`.
   test "a form step's title still saves after a field is added" do
     visit_builder_in_edit_mode
-    click_on "Add a step"
+    click_on "Add unconnected step"
     click_on "Form"
 
     within "turbo-frame#builder-panel" do
@@ -631,7 +631,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
   # title was gone after a reload.
   test "the workflow still renames while a new sub-flow has no target" do
     visit_builder_in_edit_mode
-    click_on "Add a step"
+    click_on "Add unconnected step"
     click_on "Sub-Flow"
     within("#steps-list") { assert_selector step_row_selector_for("Steps::SubFlow"), wait: 5 }
 
