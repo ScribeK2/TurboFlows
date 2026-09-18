@@ -176,3 +176,47 @@ class WorkflowsHelperDoorSummaryTest < ActionView::TestCase
     assert_equal "", summary(@question)
   end
 end
+
+class WorkflowsHelperCollapsedStubSummaryTest < ActionView::TestCase
+  include WorkflowsHelper
+
+  setup do
+    @user = User.create!(email: "collapsed-#{SecureRandom.hex(4)}@example.com", password: "password123456")
+    @workflow = Workflow.create!(title: "Collapsed", user: @user)
+    @question = Steps::Question.create!(workflow: @workflow, title: "Which one?", position: 0,
+                                        answer_type: "multiple_choice", variable_name: "pick",
+                                        options: [{ "label" => "Alpha", "value" => "alpha" },
+                                                  { "label" => "Beta", "value" => "beta" },
+                                                  { "label" => "Gamma", "value" => "gamma" },
+                                                  { "label" => "Delta", "value" => "delta" }])
+    @resolve = Steps::Resolve.create!(workflow: @workflow, title: "Done", position: 1)
+  end
+
+  def doors
+    Step::Doors.for(@question.reload)
+  end
+
+  test "with no fallback, every unwired answer needs a step" do
+    assert_equal "4 answers need a step", step_collapsed_stub_summary(doors)
+  end
+
+  test "with a wired fallback, every unwired answer already follows Anything else" do
+    Transition.create!(step: @question, target_step: @resolve)
+    assert_equal "4 answers follow “Anything else”", step_collapsed_stub_summary(doors)
+  end
+
+  test "singular wording for exactly one remaining stub" do
+    %w[alpha beta gamma].each do |value|
+      Transition.create!(step: @question, target_step: @resolve, condition: "pick == '#{value}'")
+    end
+    assert_equal "1 answer needs a step", step_collapsed_stub_summary(doors)
+  end
+
+  test "singular wording for exactly one remaining stub with a wired fallback" do
+    %w[alpha beta gamma].each do |value|
+      Transition.create!(step: @question, target_step: @resolve, condition: "pick == '#{value}'")
+    end
+    Transition.create!(step: @question, target_step: @resolve)
+    assert_equal "1 answer follows “Anything else”", step_collapsed_stub_summary(doors)
+  end
+end

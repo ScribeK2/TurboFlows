@@ -108,6 +108,20 @@ module WorkflowsHelper
     "→ #{titles.join(', ')}"
   end
 
+  # The collapsed line for a row with more doors than fit on one (see
+  # workflows/_step_row): every unwired answer already follows "Anything
+  # else" when the step has a wired blank-condition door - same fact the
+  # per-door line above reads off doors.fallback - or none of them lead
+  # anywhere yet.
+  def step_collapsed_stub_summary(doors)
+    count = doors.stubs.size
+    if doors.fallback
+      "#{pluralize(count, 'answer')} #{count == 1 ? 'follows' : 'follow'} “Anything else”"
+    else
+      "#{pluralize(count, 'answer')} #{count == 1 ? 'needs' : 'need'} a step"
+    end
+  end
+
   # The wired half of a row: "No → Power cycle · 2". Stubs are not text here -
   # the row renders them as buttons (workflows/_step_row).
   def step_door_summary(doors, ordinals)

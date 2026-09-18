@@ -82,8 +82,9 @@
         always "nowhere": a blank-condition connection catches every answer
         without a door of its own. The panel's door rows say the same thing in
         the same words (steps/_doors) — when the row said "nothing yet" beside
-        a panel reading "follows “Anything else”", one of them was lying. %>
-    <% stub_state = doors.fallback ? "follows “Anything else”" : "nothing yet" %>
+        a panel reading "follows “Anything else” for now", one of them was
+        lying. %>
+    <% stub_state = doors.fallback ? "follows “Anything else” for now" : "nothing yet" %>
     <span class="builder__step-doors">
       <% if doors.doors.size <= 2 %>
         <% stubs.each do |door| %>
@@ -99,7 +100,11 @@
           <span class="builder__door-stub-text builder__view-only"><%= stub_label %> <%= stub_state %></span>
         <% end %>
       <% else %>
-        <% collapsed = "#{pluralize(stubs.size, 'answer')} #{stubs.size == 1 ? 'needs' : 'need'} a step" %>
+        <%# Honest about a wired fallback the same way the per-door line above
+            is: an unwired answer collapsed into this summary still follows
+            "Anything else" when the step has one, so it does not read as
+            "needing a step" it already has. %>
+        <% collapsed = step_collapsed_stub_summary(doors) %>
         <button type="button" class="builder__door-stub builder__edit-only"
                 data-action="click->builder#openStepAtDoors"
                 data-builder-url-param="<%= panel_edit_workflow_step_path(workflow, step) %>">

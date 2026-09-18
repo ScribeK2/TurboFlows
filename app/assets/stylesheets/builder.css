@@ -490,8 +490,10 @@
      than the bottom prompt: it needs to sit beside whatever was pressed,
      escaping .builder__list-scroll's clipping, not anchored to the trailing
      row. The coordinates themselves (top/left) are set inline as one-off
-     layout values; this class only switches the positioning MODE. Declared
-     after .builder__type-picker so it wins at equal specificity. */
+     layout values; this class switches the positioning MODE and gives the
+     menu a fixed width, since it can no longer span the trigger the way the
+     bottom-anchored picker spans the prompt row. Declared after
+     .builder__type-picker so it wins at equal specificity. */
   .builder__type-picker--floating {
     position: fixed;
     top: auto;
