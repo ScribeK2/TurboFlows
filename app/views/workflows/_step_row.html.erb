@@ -72,7 +72,10 @@
       which hides while the panel is open - and the panel is open right after a
       grow, which is exactly when the remaining stub has to be findable. Two
       doors or fewer get a button each; more collapse to one line that opens the
-      panel at its doors, since a row is one line tall. %>
+      panel at its doors, since a row is one line tall at rest. While the panel
+      is open a stubbed row takes a second line for its stubs instead of
+      overlapping the title (builder.css), but that does not raise the collapse
+      threshold - 3 or more still read as one summary line, not a wider one. %>
   <% stubs = doors.stubs %>
   <% if stubs.any? %>
     <%# View mode says where an unwired answer goes today, and that is not

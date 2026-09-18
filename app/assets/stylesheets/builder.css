@@ -384,6 +384,48 @@
     display: none;
   }
 
+  /* A row with stubs, while a panel is open (the state after EVERY grow): the
+     list has narrowed to 38%, and .builder__step-doors (flex: 0 0 auto, never
+     shrinking) left .list-row__body only what was left over, which a long
+     title does not stay inside - it wraps within its own shrunk box and
+     visually runs under the stubs. .builder__step-doors stays visible
+     (unlike .builder__step-meta above) because the remaining stub has to be
+     findable right after a grow - so it takes its own line under the title
+     instead of competing with it. Scoped to :has(.builder__step-doors): a
+     row with no stubs has nothing to wrap and stays one line tall, exactly
+     as before. */
+  .builder:has(#builder-panel > *) .builder__step:has(.builder__step-doors) {
+    flex-wrap: wrap;
+  }
+
+  .builder:has(#builder-panel > *) .builder__step:has(.builder__step-doors) .list-row__body {
+    min-width: var(--space-16);
+  }
+
+  /* flex: 1 1 100% (not flex-basis alone) so the item can shrink by its own
+     margin-left - a plain 100% basis plus a margin would spill past the
+     row's right edge, clipped by #steps-list's overflow: hidden. The inset
+     lines the stubs up under the title, past the drag handle and the number
+     badge: handle (1rem) + gap + badge (var(--space-6), the badge's own
+     width) + gap = var(--space-16). View mode carries no drag handle
+     (builder.css hides it entirely, not just dims it), so its inset drops
+     that first icon + gap. */
+  .builder:has(#builder-panel > *) .builder__step-doors {
+    flex: 1 1 100%;
+    min-width: 0;
+    margin-left: var(--space-16);
+    /* Placed after every other child regardless of source order, so the
+       warning icon and Remove (after it in the markup) fill out line 1
+       beside the title instead of being pushed to a third line of their
+       own - a flex-basis:100% item always starts a fresh line no matter
+       where `order` puts it, so this costs the doors nothing. */
+    order: 1;
+  }
+
+  .builder[data-builder-mode-value="view"]:has(#builder-panel > *) .builder__step-doors {
+    margin-left: calc(var(--space-6) + var(--space-3));
+  }
+
   .builder__step-delete {
     opacity: 0;
     transition: opacity var(--duration-fast) var(--ease-out);
