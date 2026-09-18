@@ -115,11 +115,14 @@ class WorkflowVariableCheckTest < ActiveSupport::TestCase
     assert_equal ["their_plan"], findings.first.variables
   end
 
-  test "a spaced interpolation is not reported, because the runtime never interpolates it" do
+  # It was NOT reported until the runtime learned to interpolate it. This check
+  # references VariableInterpolator::VARIABLE_PATTERN rather than copying it, so
+  # when that pattern began allowing inner spaces this followed with no edit.
+  test "a spaced interpolation is an interpolation, so an unknown one is reported" do
     q = question(variable_name: "reason", title: "Ask about {{ account_tier }}")
     Transition.create!(step: q, target_step: resolve, position: 0)
 
-    assert_empty check, "VariableInterpolator::VARIABLE_PATTERN allows no spaces"
+    assert_equal [["account_tier"]], check.map(&:variables)
   end
 
   test "one finding per step, naming every unknown variable on it" do

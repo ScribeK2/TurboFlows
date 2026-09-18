@@ -52,7 +52,7 @@ module StepHelper
     return "".html_safe if text.blank?
 
     # Split on {{...}} patterns, escape non-variable parts, wrap variables
-    result = text.gsub(/\{\{(\w+)\}\}/) do
+    result = text.gsub(VariableInterpolator::VARIABLE_PATTERN) do
       variable = Regexp.last_match(1)
       "<span class=\"variable-tag\">{{#{ERB::Util.html_escape(variable)}}}</span>"
     end

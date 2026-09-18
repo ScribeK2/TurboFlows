@@ -44,7 +44,6 @@ class StrictImportValidator
     Regexp.new("#{pattern.source}\\s*\\z")
   end.freeze
 
-  INTERPOLATION = /\{\{\s*([a-zA-Z_]\w*)\s*\}\}/
   CONDITION_VARIABLE = /\A\s*(\w+)\s*(?:>=|<=|==|!=|>|<)/
   CONDITION_STRING_VALUE = /(?:==|!=)\s*['"]([^'"]*)['"]/
 
@@ -481,7 +480,7 @@ class StrictImportValidator
     step.each do |field, value|
       next unless value.is_a?(String)
 
-      value.scan(INTERPOLATION).flatten.uniq.each do |name|
+      value.scan(VariableInterpolator::VARIABLE_PATTERN).flatten.uniq.each do |name|
         next if defined.include?(name)
 
         add_warning("#{path}.#{field}", "undefined_variable", name,

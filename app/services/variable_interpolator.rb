@@ -8,9 +8,18 @@
 # Handles missing variables by leaving the pattern as-is ({{variable_name}})
 class VariableInterpolator
   # Pattern to match {{variable_name}} style variables
-  # Matches: {{variable_name}}, {{var}}, {{some_long_variable_name}}
+  # Matches: {{variable_name}}, {{var}}, {{ spaced }}
   # Does NOT match nested access (e.g., {{user.name}}) - keeping it simple for MVP
-  VARIABLE_PATTERN = /\{\{(\w+)\}\}/
+  #
+  # Inner whitespace is allowed. It was not, until 2026-09-18: someone who types
+  # {{ name }} means an interpolation, and the agent on a live call read the
+  # braces instead — while StrictImportValidator, carrying its own copy of this
+  # pattern that DID allow spaces, passed the same text as working.
+  #
+  # This is the ONLY spelling of the pattern. The importer, the builder's
+  # variable check and StepHelper#highlight_variables all reference it, and
+  # variable_interpolator_test refuses a second copy anywhere under app/.
+  VARIABLE_PATTERN = /\{\{\s*(\w+)\s*\}\}/
 
   # Interpolate variables in a text string
   #
