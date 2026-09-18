@@ -168,4 +168,21 @@ class StepDoorsTest < ActiveSupport::TestCase
     no_door = doors(quoted.step).doors.find { |d| d.label == "No" }
     assert_nil no_door.transition
   end
+
+  # The runner compares an ANSWER (the door's value) raw - no quote stripping.
+  # ConditionEvaluator#evaluate_comparison only strips '" from the CONDITION
+  # string's two halves; result_value.to_s.downcase is compared as-is. A door
+  # whose value contains a literal quote character must not be read as wired
+  # by its own displayed condition, because the runner never would take it.
+  test "a value containing a quote character is not read as wired by its own condition" do
+    step = question(answer_type: "dropdown",
+                    options: [{ "label" => 'Say "OK"', "value" => 'Say "OK"' }, { "label" => "Router", "value" => "router" }])
+    door = doors(step).doors.find { |d| d.label == 'Say "OK"' }
+    stale = Transition.create!(step: step, target_step: @a, condition: door.condition)
+
+    d = doors(step)
+    assert_predicate d.doors.find { |x| x.label == 'Say "OK"' }, :stub?
+    assert_equal [stale], d.extras
+    assert_not ConditionEvaluator.evaluate(door.condition, { "light" => 'Say "OK"' })
+  end
 end

@@ -6,11 +6,13 @@ class Step
   #
   # A door is wired when StepResolver would take that transition for that
   # answer, so matching reads a condition the way the runner does - case and
-  # spacing ignored, either quote style, a bare value ("yes") accepted - and no
-  # more loosely than that. In particular a value containing an apostrophe can
-  # be read as wired by an operator-form condition ("light == '...'") only
-  # when ConditionEvaluator's own quote-stripping would still find it equal -
-  # which it does not, since it keeps a backslash literally. See #reads_as?.
+  # spacing ignored, either quote style on the CONDITION side, a bare value
+  # ("yes") accepted - and no more loosely than that. The door's own value
+  # stands in for the answer the runner would compare against, and the runner
+  # compares an answer raw: quote characters in a door's value are never
+  # stripped, only case and surrounding whitespace. So a value containing an
+  # apostrophe or a literal quote character is read as wired only when it
+  # would actually match at runtime - see #reads_as?.
   class Doors
     Door = Data.define(:kind, :label, :value, :condition, :transition) do
       def target_step = transition&.target_step
@@ -157,16 +159,16 @@ class Step
       text.strip.downcase == value.to_s.strip.downcase
     end
 
-    # ConditionEvaluator#parse (what the runner reads an operator condition
-    # through) strips only '" from the expected value, keeping a backslash
-    # literally - so the same stripping, and nothing more, is applied here on
-    # both sides before comparing.
+    # ConditionEvaluator#evaluate_comparison strips '" only from the CONDITION
+    # string's own two halves (both #parse and #evaluate_comparison compute
+    # that the same way, so parsed_value already IS that stripped value - no
+    # further stripping belongs on this side). The ANSWER side - result_value
+    # in the evaluator, this door's value here - is compared raw:
+    # `result_value.to_s.downcase`, no quote stripping at all. A door's value
+    # containing a literal quote character must therefore keep it, or a door
+    # would read as wired for an answer the runner would never match.
     def operator_match?(parsed_value, value)
-      strip_quotes(parsed_value).strip.downcase == strip_quotes(value).strip.downcase
-    end
-
-    def strip_quotes(text)
-      text.to_s.delete(%q('"))
+      parsed_value.to_s.downcase == value.to_s.strip.downcase
     end
   end
 end
