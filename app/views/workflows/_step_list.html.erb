@@ -4,9 +4,12 @@
   Local variables:
   - workflow: Workflow object
   - steps: ordered step collection (preloaded with transitions)
-  - selected_step: optional Step, marked as the open row (e.g. one just grown)
+
+  Rows always render unselected. Which row is selected is a client-side fact
+  read from the open panel (builder_controller#syncSelectedRow) — see that
+  controller for why: a server-picked selected_step here raced the same
+  subtree's Action Cable rebroadcast in a solo editor's own browser.
 %>
-<% selected_step = local_assigns[:selected_step] %>
 <div class="builder__list"
      id="step-list"
      data-controller="step-list"
@@ -23,8 +26,7 @@
           summaries inherited it. One map, shared by the badge and the arrows. %>
       <% ordinals = step_ordinals(workflow) %>
       <% steps.each do |step| %>
-        <%= render "workflows/step_row", step: step, workflow: workflow, ordinals: ordinals,
-                                          selected: step == selected_step %>
+        <%= render "workflows/step_row", step: step, workflow: workflow, ordinals: ordinals %>
       <% end %>
       <% if steps.empty? %>
         <%= render "workflows/empty_state", workflow: workflow %>

@@ -13,15 +13,17 @@
     `position` column — which is 0-based in service-built workflows and 1-based
     in UI-built ones. Optional: callers that render a row on its own (Turbo
     Stream appends) fall back to the step's own place in the workflow.
-  - selected: optional, true when this row is the one just grown or opened
+
+  Rows always render unselected. builder_controller#syncSelectedRow adds
+  builder__step--selected client-side, reading data-step-id against the open
+  panel — see that controller for why selection isn't decided here.
 %>
 <% ordinals = local_assigns.fetch(:ordinals) { step_ordinals(workflow) } %>
 <% ordinal = ordinals[step.uuid] || "?" %>
 <% type_label = step_type_label(step.step_type) %>
 <% targets = (step.transitions.loaded? ? step.transitions : step.transitions.includes(:target_step)).filter_map(&:target_step) %>
-<% selected = local_assigns.fetch(:selected, false) %>
 
-<div class="list-row list-row--compact builder__step<%= ' builder__step--selected' if selected %>"
+<div class="list-row list-row--compact builder__step"
      id="<%= dom_id(step) %>"
      data-step-id="<%= step.id %>"
      data-step-uuid="<%= step.uuid %>"

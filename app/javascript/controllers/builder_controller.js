@@ -12,6 +12,21 @@ export default class extends Controller {
     this.boundKeydown = this.handleKeydown.bind(this)
     document.addEventListener("keydown", this.boundKeydown)
 
+    // Which row is selected is decided here, once, from the open panel — not
+    // by the server. A Turbo Stream response (create, a broadcast, a health
+    // fix) can repaint #steps-list at any time, including moments after this
+    // controller's own request painted a row selected; re-deriving it after
+    // every render is what keeps the two from racing. Two paths repaint the
+    // panel: a Turbo Stream response replacing #builder-panel (wrapped here),
+    // and turbo-frame navigation via loadPanel setting .src (caught below).
+    this.boundWrapStreamRender = this.wrapStreamRender.bind(this)
+    document.addEventListener("turbo:before-stream-render", this.boundWrapStreamRender)
+
+    this.boundSyncSelectedRow = this.syncSelectedRow.bind(this)
+    if (this.hasPanelTarget) {
+      this.panelTarget.addEventListener("turbo:frame-load", this.boundSyncSelectedRow)
+    }
+
     const params = new URLSearchParams(window.location.search)
     if (params.get("health") === "true") {
       requestAnimationFrame(() => this.openHealth())
@@ -20,6 +35,40 @@ export default class extends Controller {
 
   disconnect() {
     document.removeEventListener("keydown", this.boundKeydown)
+    document.removeEventListener("turbo:before-stream-render", this.boundWrapStreamRender)
+    if (this.hasPanelTarget) {
+      this.panelTarget.removeEventListener("turbo:frame-load", this.boundSyncSelectedRow)
+    }
+  }
+
+  // Composes with any other turbo:before-stream-render listener (e.g.
+  // step-warnings#onStreamRender, which only reads the event and never
+  // touches event.detail.render): each wrapper must call the render it
+  // found, never replace it with a fresh one. The render can be async, so
+  // this awaits it before re-deriving selection from the panel it just drew.
+  wrapStreamRender(event) {
+    const original = event.detail.render
+    event.detail.render = async streamElement => {
+      await original(streamElement)
+      this.syncSelectedRow()
+    }
+  }
+
+  // The one place selection is read back: clear every row, then look at
+  // whichever step panel is currently open (its body carries data-step-id —
+  // see steps/_panel_edit.html.erb) and select that row. A non-step panel
+  // (health, settings, flow diagram) has no such element, so nothing is
+  // selected, which is right.
+  syncSelectedRow() {
+    this.clearSelectedRow()
+
+    const panelBody = this.hasPanelTarget
+      ? this.panelTarget.querySelector(".builder__panel-body[data-step-id]")
+      : null
+    if (!panelBody) return
+
+    const row = this.element.querySelector(`.builder__step[data-step-id="${panelBody.dataset.stepId}"]`)
+    row?.classList.add("builder__step--selected")
   }
 
   openStep(event) {

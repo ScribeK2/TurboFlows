@@ -107,6 +107,19 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_select "turbo-stream[action='update'][target='step-count-text']"
   end
 
+  # The panel is opened client-side (builder_controller#syncSelectedRow), not
+  # by the server — a selected_step local here used to race the same
+  # #steps-list subtree's Action Cable rebroadcast in a solo editor's own
+  # browser. Every row in this response renders unselected.
+  test "create via turbo stream renders every row unselected" do
+    post workflow_steps_path(@workflow),
+         params: { step_type: "action", step: { title: "Action via Turbo" } },
+         headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :ok
+    assert_no_match "builder__step--selected", response.body
+  end
+
   test "create with from_step_id lands after the parent and connects it" do
     later = Steps::Resolve.create!(workflow: @workflow, position: 1, title: "Done")
 

@@ -86,9 +86,9 @@ class StepsController < ApplicationController
 
     broadcast_step_list
   rescue ActiveRecord::RecordInvalid => e
-    respond_to_refused_create(e.record.errors.full_messages.to_sentence)
+    respond_to_refusal(e.record.errors.full_messages.to_sentence)
   rescue GrowStep::Refused => e
-    respond_to_refused_create(e.message)
+    respond_to_refusal(e.message)
   end
 
   # PATCH /workflows/:workflow_id/steps/:id
@@ -96,7 +96,11 @@ class StepsController < ApplicationController
     if @step.update(permitted_step_params)
       if step_params[:transitions_json].present?
         refusal = sync_transitions
-        return respond_to_refused_connections(refusal) if refusal
+        # The step's own fields are already saved by the time this runs —
+        # @step.update returned true before sync_transitions was ever called.
+        # So this answers the existing refusal path rather than the success
+        # one, and says the truth: the step was saved, its connections were not.
+        return respond_to_refusal(refusal) if refusal
       end
 
       respond_to do |format|
@@ -245,10 +249,17 @@ class StepsController < ApplicationController
 
   # The whole list, not the one row: a step inserted mid-list moves the number
   # of every step after it, and every "→ Title · 4" that points at one.
+  #
+  # Rows always render unselected — the panel is the one source of truth for
+  # which row is selected, and builder_controller#syncSelectedRow reads it
+  # client-side after this (and every other) stream renders. A selected_step
+  # local here used to paint the new row directly, but the very next line
+  # broadcasts the same #steps-list subtree over Action Cable with no such
+  # local, so a solo editor's own browser raced its own two renders.
   def grown_streams(step)
     [
       turbo_stream.replace("step-list", partial: "workflows/step_list",
-                                        locals: { workflow: @workflow, steps: list_steps, selected_step: step }),
+                                        locals: { workflow: @workflow, steps: list_steps }),
       turbo_stream.replace("builder-panel", partial: "steps/panel_edit",
                                             locals: { step: step, workflow: @workflow, readonly: false }),
       turbo_stream.update("step-count-text", helpers.pluralize(@workflow.steps.count, "step"))
@@ -266,14 +277,6 @@ class StepsController < ApplicationController
       partial: "workflows/steps_list_items",
       locals: { workflow: @workflow.reload, steps: list_steps }
     )
-  end
-
-  def respond_to_refused_create(message)
-    respond_to do |format|
-      format.turbo_stream { render_refusal(message, status: :unprocessable_content) }
-      format.html { redirect_to workflow_path(@workflow, edit: true), alert: message }
-      format.json { render json: { errors: [message] }, status: :unprocessable_content }
-    end
   end
 
   def set_step
@@ -298,11 +301,7 @@ class StepsController < ApplicationController
   # sends lock_version, so this only fires when both saves overlap in the
   # database; saves seconds apart still go through, the later one winning.
   def respond_to_save_conflict
-    respond_to do |format|
-      format.turbo_stream { render_refusal(SAVE_CONFLICT_MESSAGE, status: :conflict) }
-      format.html { redirect_to workflow_path(@workflow, edit: true), alert: SAVE_CONFLICT_MESSAGE }
-      format.json { render json: { errors: [SAVE_CONFLICT_MESSAGE] }, status: :conflict }
-    end
+    respond_to_refusal(SAVE_CONFLICT_MESSAGE, status: :conflict)
   end
 
   def render_refusal(message, status:)
@@ -310,15 +309,17 @@ class StepsController < ApplicationController
     render turbo_stream: turbo_stream.update("flash", partial: "shared/flash_messages"), status: status
   end
 
-  # The step's own fields are already saved by the time this runs — @step.update
-  # returned true before sync_transitions was ever called. So this answers the
-  # existing refusal path rather than the success one, and says the truth: the
-  # step was saved, its connections were not.
-  def respond_to_refused_connections(message)
+  # The one shape every refusal in this controller shares: a turbo-stream flash,
+  # an HTML redirect back to the builder with the same alert, and a JSON body
+  # naming the single message. update's own validation-failure branch stays
+  # separate — its JSON body is @step.errors.full_messages (every individual
+  # error), not this message wrapped in a one-element array, so folding it in
+  # would change that response's shape.
+  def respond_to_refusal(message, status: :unprocessable_content)
     respond_to do |format|
-      format.turbo_stream { render_refusal(message, status: :unprocessable_content) }
+      format.turbo_stream { render_refusal(message, status: status) }
       format.html { redirect_to workflow_path(@workflow, edit: true), alert: message }
-      format.json { render json: { errors: [message] }, status: :unprocessable_content }
+      format.json { render json: { errors: [message] }, status: status }
     end
   end
 

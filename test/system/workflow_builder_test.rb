@@ -307,6 +307,45 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
     assert_panel_width(:>, 200, "the editor loaded but the panel never opened")
   end
 
+  # Selection used to be painted server-side (a selected_step local on the
+  # new row), and #create rebroadcasts the same #steps-list subtree over
+  # Action Cable right after responding — with no such local — so a solo
+  # editor's own browser raced its own two renders of the row it had just
+  # opened. Selection is now derived client-side, from the open panel
+  # (builder_controller#syncSelectedRow), so a re-render from elsewhere must
+  # not disturb it.
+  #
+  # The config/cable.yml test adapter does deliver a real broadcast to the
+  # browser (it subclasses Async) — confirmed against the pre-fix code, where
+  # a real Turbo::StreamsChannel.broadcast_update_to call here did strip the
+  # row's selected class. But its delivery latency is real network time: the
+  # same broadcast, run in isolation rather than inside the full suite, did
+  # not land within this test's 5s wait at all, so a test built on it would
+  # pass or fail depending on what else the suite is doing at the time.
+  # Injecting the same stream via Turbo.renderStreamMessage happens
+  # synchronously in the browser, so it exercises the identical client-side
+  # path (turbo:before-stream-render → syncSelectedRow) without that variance.
+  test "a grown step's selection survives a list re-render from elsewhere" do
+    visit_builder_in_edit_mode
+
+    click_on "Add a step"
+    click_on "Action"
+
+    # Wait on the DOM, not the database directly: the click only fires the
+    # request, and querying the row before the response lands races it.
+    assert_selector "[data-step-type='action'].builder__step--selected", wait: 5
+    grown = @workflow.steps.reload.find_by!(type: "Steps::Action")
+
+    html = ApplicationController.render(
+      partial: "workflows/steps_list_items",
+      locals: { workflow: @workflow.reload, steps: @workflow.steps.reload.ordered.includes(transitions: :target_step) }
+    )
+    stream = %(<turbo-stream action="update" target="steps-list"><template>#{html}</template></turbo-stream>)
+    page.execute_script("Turbo.renderStreamMessage(#{stream.to_json})")
+
+    assert_selector "[data-step-id='#{grown.id}'].builder__step--selected", wait: 5
+  end
+
   test "closing the panel collapses it again" do
     visit_builder_in_edit_mode
     step_row(@resolve.uuid).click
