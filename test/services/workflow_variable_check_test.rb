@@ -115,11 +115,14 @@ class WorkflowVariableCheckTest < ActiveSupport::TestCase
     assert_equal ["their_plan"], findings.first.variables
   end
 
-  test "a spaced interpolation is not reported, because the runtime never interpolates it" do
+  # It was NOT reported until the runtime learned to interpolate it. This check
+  # references VariableInterpolator::VARIABLE_PATTERN rather than copying it, so
+  # when that pattern began allowing inner spaces this followed with no edit.
+  test "a spaced interpolation is an interpolation, so an unknown one is reported" do
     q = question(variable_name: "reason", title: "Ask about {{ account_tier }}")
     Transition.create!(step: q, target_step: resolve, position: 0)
 
-    assert_empty check, "VariableInterpolator::VARIABLE_PATTERN allows no spaces"
+    assert_equal [["account_tier"]], check.map(&:variables)
   end
 
   test "one finding per step, naming every unknown variable on it" do
@@ -227,6 +230,56 @@ class WorkflowVariableCheckTest < ActiveSupport::TestCase
     end
 
     assert_empty sql.grep(/sub_flow_workflow_id|sub_flow_returns/), "the closure was walked for nothing"
+  end
+
+  # --- jumps ------------------------------------------------------------------
+  # StepResolver#check_jumps runs BEFORE transitions, so an unset variable in a
+  # jump is the same defect one step earlier. No builder UI writes a jump and the
+  # strict dialect refuses them, but the lenient JSON/YAML import preserves them
+  # and a non-strict export writes them back out, so they exist in real data.
+
+  test "an Action jump testing a variable nothing sets is reported" do
+    q = question(variable_name: "reason")
+    action = Steps::Action.create!(workflow: @workflow, position: 1, title: "Look it up",
+                                   jumps: [{ "condition" => "tier == 'gold'", "next_step_id" => SecureRandom.uuid }])
+    Transition.create!(step: q, target_step: action, position: 0)
+    Transition.create!(step: action, target_step: resolve(position: 2), position: 0)
+
+    findings = check
+
+    assert_equal([[action.uuid, :undefined_variable, ["tier"]]],
+                 findings.map { |f| [f.step_uuid, f.code, f.variables] })
+  end
+
+  test "a jump testing a variable a step does set is not reported" do
+    q = question(variable_name: "tier")
+    action = Steps::Action.create!(workflow: @workflow, position: 1, title: "Look it up",
+                                   jumps: [{ "condition" => "tier == 'gold'", "next_step_id" => SecureRandom.uuid }])
+    Transition.create!(step: q, target_step: action, position: 0)
+    Transition.create!(step: action, target_step: resolve(position: 2), position: 0)
+
+    assert_empty check
+  end
+
+  # check_jumps special-cases this literal on an Action; it names no variable.
+  test "an Action's `completed` jump is not reported" do
+    action = Steps::Action.create!(workflow: @workflow, position: 0, title: "Do it",
+                                   jumps: [{ "condition" => "completed", "next_step_id" => SecureRandom.uuid }])
+    Transition.create!(step: action, target_step: resolve, position: 0)
+
+    assert_empty check
+  end
+
+  # On a Question the runtime compares the jump condition to the step's own
+  # answer AS A STRING — `current_answer.to_s == jump_condition.to_s` — so text
+  # that looks like an expression is a literal there, and naming it a variable
+  # would be inventing a finding.
+  test "a Question's jump is a literal, never scanned for a variable" do
+    q = question(variable_name: "reason")
+    q.update!(jumps: [{ "condition" => "tier == 'gold'", "next_step_id" => SecureRandom.uuid }])
+    Transition.create!(step: q, target_step: resolve, position: 0)
+
+    assert_empty check
   end
 
   # --- bare conditions -------------------------------------------------------

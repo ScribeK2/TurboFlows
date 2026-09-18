@@ -192,4 +192,16 @@ class ConditionEvaluatorTest < ActiveSupport::TestCase
   test "blank condition returns false on evaluate" do
     assert_not ConditionEvaluator.evaluate("", { "status" => "active" })
   end
+  # valid? is true for anything that BEGINS with a comparison. complete? asks for
+  # the whole string, which is what both importers actually need to know.
+  test "complete? wants the whole string to be one comparison" do
+    assert ConditionEvaluator.complete?("tier == 'gold'")
+    assert ConditionEvaluator.complete?("  wait > 3  ")
+
+    assert ConditionEvaluator.valid?("tier == 'gold' && region == 'EU'"), "precondition: valid? accepts a prefix"
+    assert_not ConditionEvaluator.complete?("tier == 'gold' && region == 'EU'")
+    assert_not ConditionEvaluator.complete?("wait > 3 days then call")
+    assert_not ConditionEvaluator.complete?("Billing")
+    assert_not ConditionEvaluator.complete?(nil)
+  end
 end

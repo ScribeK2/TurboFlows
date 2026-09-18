@@ -185,6 +185,48 @@ module WorkflowParsers
       assert_equal "answer == 'yes'", conditional["condition"]
     end
 
+    # `Step 2 (if x == 'y')` was a condition; `Step 2 (x == 'y')` — the same thing
+    # without the keyword — fell to the label branch. The import succeeded with no
+    # error and no warning, and the branch was gone: an unconditional transition
+    # that fires for every answer. Parenthesised text that is EXACTLY a supported
+    # condition is a condition, and the importer says that it read it as one.
+    test "a parenthesised condition without `if` is a condition, and the parser says so" do
+      parser = WorkflowParsers::MarkdownParser.new(branching_markdown("Step 2 (answer == 'yes'), Step 3"))
+      result = parser.parse
+
+      first = result[:steps].find { |s| s["title"]&.include?("Question") }
+      branch = first["transitions"].find { |t| t["condition"].present? }
+
+      assert_not_nil branch, "the branch must survive the import"
+      assert_equal "answer == 'yes'", branch["condition"]
+      assert_nil branch["label"], "and must not ALSO become a label"
+      assert(parser.warnings.any? { |w| w.include?("answer == 'yes'") && w.match?(/condition/i) },
+             "the author is told how it was read: #{parser.warnings.inspect}")
+    end
+
+    test "parenthesised words are still a label" do
+      parser = WorkflowParsers::MarkdownParser.new(branching_markdown("Step 2 (Billing), Step 3"))
+      result = parser.parse
+
+      first = result[:steps].find { |s| s["title"]&.include?("Question") }
+      labelled = first["transitions"].find { |t| t["label"].present? }
+
+      assert_equal "Billing", labelled["label"]
+      assert_nil labelled["condition"]
+    end
+
+    # Prose that merely CONTAINS a comparison is not a condition: the match is
+    # anchored at both ends, the way StrictImportValidator anchors it.
+    test "a label that only contains a comparison stays a label" do
+      parser = WorkflowParsers::MarkdownParser.new(branching_markdown("Step 2 (wait > 3 days then call), Step 3"))
+      result = parser.parse
+
+      first = result[:steps].find { |s| s["title"]&.include?("Question") }
+
+      assert_equal(["wait > 3 days then call"], first["transitions"].filter_map { |t| t["label"] })
+      assert_empty(first["transitions"].filter_map { |t| t["condition"] })
+    end
+
     # ============================================================================
     # Test 7: Returns error for file with no steps
     # ============================================================================
@@ -220,6 +262,28 @@ module WorkflowParsers
       # Result should still be returned with a default title
       assert_not_nil result
       assert_equal "Imported Workflow", result[:title]
+    end
+
+    private
+
+    def branching_markdown(transitions)
+      <<~MD
+        # Branching
+
+        ## Step 1: Question
+        Type: question
+        Question: Which path?
+        Transitions: #{transitions}
+
+        ## Step 2: Yes Path
+        Type: action
+        Instructions: Do yes thing
+        Transitions: Step 3
+
+        ## Step 3: End
+        Type: resolve
+        Resolution Type: success
+      MD
     end
   end
 end

@@ -31,20 +31,6 @@ class StrictImportValidator
     "var == 'value'", "var != 'value'", "var > 10", "var >= 10", "var < 10", "var <= 10"
   ].freeze
 
-  # ConditionEvaluator::VALID_PATTERNS anchor at the start but not at the end, so
-  # #valid? returns true for anything that merely BEGINS with a comparison —
-  # "tier == 'gold' && region == 'EU'" and even "tier == 'gold' OR nonsense ((("
-  # all pass it. #evaluate then reads only as much as it understands, so the rest
-  # of the expression silently does nothing.
-  #
-  # Derive end-anchored versions from the same constant rather than restating the
-  # six forms, so the two cannot drift apart. The whole string must be one
-  # comparison and nothing else.
-  STRICT_CONDITION_PATTERNS = ConditionEvaluator::VALID_PATTERNS.map do |pattern|
-    Regexp.new("#{pattern.source}\\s*\\z")
-  end.freeze
-
-  INTERPOLATION = /\{\{\s*([a-zA-Z_]\w*)\s*\}\}/
   CONDITION_VARIABLE = /\A\s*(\w+)\s*(?:>=|<=|==|!=|>|<)/
   CONDITION_STRING_VALUE = /(?:==|!=)\s*['"]([^'"]*)['"]/
 
@@ -350,10 +336,14 @@ class StrictImportValidator
     name = condition[CONDITION_VARIABLE, 1]
     return if name.nil?
 
-    unless defined.include?(name)
+    # Matched the way ConditionEvaluator reads a name, not the way it is
+    # spelled: case-insensitively, with the legacy name "answer" always known.
+    # Not "this branch will not fire": against an unset variable `!=`, `<` and
+    # `<=` ALWAYS fire (nil means true; numbers compare against 0).
+    unless WorkflowVariableNames.condition_matcher(defined).call(name)
       return add_warning(path, "undefined_variable", name,
-                         "No question in this workflow sets #{name}. This branch will not " \
-                         "fire unless the scenario supplies it.")
+                         "No step in this workflow sets #{name}, so this branch cannot route " \
+                         "on it unless the scenario supplies it.")
     end
 
     value = condition[CONDITION_STRING_VALUE, 1]
@@ -366,11 +356,25 @@ class StrictImportValidator
   end
 
   def supported_condition?(condition)
-    STRICT_CONDITION_PATTERNS.any? { |pattern| pattern.match?(condition.to_s.strip) }
+    ConditionEvaluator.complete?(condition)
   end
 
+  # What a workflow's own steps put in the bag. The list of writers lives in
+  # WorkflowVariableNames, shared with the builder's health check; this only
+  # says how a parsed step reads. It used to be `variable_name` alone, which
+  # warned on every condition naming a step title or a Form field — names the
+  # runtime really does write. `output_fields` is absent on purpose: the dialect
+  # refuses the field (ImportSchemaGenerator::EXCLUDED_FIELDS).
   def defined_variables(steps)
-    steps.filter_map { |step| step["variable_name"].presence }.to_set
+    WorkflowVariableNames.written_by(steps.filter_map { |step| variable_row(step) })
+  end
+
+  def variable_row(step)
+    return unless step.is_a?(Hash)
+
+    WorkflowVariableNames::Row.new(title: step["title"], variable_name: step["variable_name"],
+                                   form_fields: (step["options"] if step["type"] == "form"),
+                                   output_fields: nil, mapping: step["variable_mapping"])
   end
 
   # What each workflow in the bundle receives from whoever calls it.
@@ -420,6 +424,16 @@ class StrictImportValidator
           before = inherited[target].size
           inherited[target] |= incoming
           changed ||= inherited[target].size != before
+
+          # And back up. Scenario#process_subflow_completion merges every
+          # non-internal child key into the parent, so a caller legitimately
+          # tests a variable only its child sets. A handoff
+          # (sub_flow_returns: false) is a tail call: nothing comes back.
+          next if step["sub_flow_returns"] == false
+
+          before = inherited[caller_index].size
+          inherited[caller_index] |= own[target] | inherited[target]
+          changed ||= inherited[caller_index].size != before
         end
       end
 
@@ -453,12 +467,12 @@ class StrictImportValidator
     step.each do |field, value|
       next unless value.is_a?(String)
 
-      value.scan(INTERPOLATION).flatten.uniq.each do |name|
+      value.scan(VariableInterpolator::VARIABLE_PATTERN).flatten.uniq.each do |name|
         next if defined.include?(name)
 
         add_warning("#{path}.#{field}", "undefined_variable", name,
-                    "{{#{name}}} is not set by any question in this workflow. It will " \
-                    "interpolate as empty unless the scenario supplies it.")
+                    "{{#{name}}} is not set by any step in this workflow. The agent will " \
+                    "see the braces as written unless the scenario supplies it.")
       end
     end
   end
@@ -649,7 +663,11 @@ class StrictImportValidator
     return unless step["options"].is_a?(Array)
 
     step["options"].each_with_index do |field, index|
-      next unless field.is_a?(Hash) && field["field_type"] == "select"
+      next unless field.is_a?(Hash)
+
+      validate_form_field_identity(field, "#{path}.options[#{index}]")
+
+      next unless field["field_type"] == "select"
       next if usable_choices?(field["select_options"])
 
       add_error("#{path}.options[#{index}].select_options", "missing_select_options",
@@ -657,6 +675,21 @@ class StrictImportValidator
                 "Field #{field['name'].inspect} is a select and lists no usable choices. " \
                 "Give it select_options as [{\"label\": ..., \"value\": ...}] — a " \
                 "select with none renders an empty dropdown nobody can answer.")
+    end
+  end
+
+  # ImportSchemaGenerator publishes `name` and `label` as required on every form
+  # field, and the agent prompt is generated from that schema — so until this ran
+  # the schema and the half that writes disagreed. A blank `name` is not
+  # cosmetic: process_form_step writes each response into the run's variables
+  # under its field name, so two nameless fields collide on the key "" and no
+  # condition can ever test either.
+  def validate_form_field_identity(field, field_path)
+    %w[name label].each do |key|
+      next if field[key].to_s.strip.present?
+
+      add_error("#{field_path}.#{key}", "missing_required_field", field[key],
+                "A form field needs a #{key}.")
     end
   end
 

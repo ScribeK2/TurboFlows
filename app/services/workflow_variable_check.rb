@@ -35,8 +35,6 @@ class WorkflowVariableCheck
   # StepHelper#render_step_content with the run's variables.
   INTERPOLATED_PLAIN = %i[title question].freeze
 
-  LEGACY_ANSWER = "answer".freeze
-
   # The only columns that can put a name in the bag. Steps of OTHER workflows in
   # the closure are read as these and nothing else — see #foreign_writers.
   NAME_COLUMNS = %i[type title variable_name options output_fields variable_mapping].freeze
@@ -68,11 +66,11 @@ class WorkflowVariableCheck
   # warning on it would be warning on the builder's own default output.
   # Interpolation below stays exact: VariableInterpolator does no such fallback.
   def condition_findings
-    named = names_by_step { |step| step.transitions.filter_map { |t| t.condition.to_s[CONDITION_VARIABLE, 1] } }
+    named = names_by_step { |step| routing_conditions(step).filter_map { |c| c.to_s[CONDITION_VARIABLE, 1] } }
     return [] if named.empty?
 
-    known = defined_variables.to_set(&:downcase) << LEGACY_ANSWER
-    findings_for(named, code: :undefined_variable) { |name| known.include?(name.downcase) }
+    known = WorkflowVariableNames.condition_matcher(defined_variables)
+    findings_for(named, code: :undefined_variable, &known)
   end
 
   def interpolation_findings
@@ -80,6 +78,22 @@ class WorkflowVariableCheck
     return [] if named.empty?
 
     findings_for(named, code: :undefined_interpolation) { |name| defined_variables.include?(name) }
+  end
+
+  # Every expression that decides where the run goes from this step: its
+  # transitions, and its jumps — StepResolver#check_jumps runs BEFORE
+  # transitions, so an unset variable there is this defect one step earlier.
+  #
+  # A Question's jumps are left out on purpose. check_jumps compares them to the
+  # step's own answer as a STRING (`current_answer.to_s == jump_condition.to_s`),
+  # so text shaped like an expression is a literal there, and reading a variable
+  # out of it would invent a finding. An Action's special "completed" literal
+  # carries no operator and falls out of CONDITION_VARIABLE on its own.
+  def routing_conditions(step)
+    conditions = step.transitions.map(&:condition)
+    return conditions if step.is_a?(Steps::Question)
+
+    conditions + Array(step.try(:jumps)).filter_map { |jump| jump["condition"] || jump[:condition] if jump.is_a?(Hash) }
   end
 
   # Names are gathered BEFORE the defined set is asked for, because most
@@ -129,41 +143,16 @@ class WorkflowVariableCheck
   # Everything that can be in the run's variable bag by the time this workflow
   # is executing — its own writers, plus every workflow whose bag flows into it.
   def defined_variables
-    @defined_variables ||= variables_written_by(own_writers + foreign_writers)
+    @defined_variables ||= WorkflowVariableNames.written_by((own_writers + foreign_writers).map { |row| to_row(row) })
   end
 
-  # What a set of steps puts into `results`, from rows shaped like NAME_COLUMNS.
-  # All in ScenarioStepProcessor: a Question writes its `variable_name` AND its
-  # title, every other type writes its title, an Action writes each output_field
-  # name, a Form writes each submitted field name, and a Sub-Flow's
-  # variable_mapping RENAMES — {"account_tier" => "tier"} seeds the child with
-  # `tier`, and the reverse mapping writes `account_tier` back on return — so
-  # both sides of every mapping are names that really exist at run time.
-  # StepResolver's simple-value match reads `results[variable_name] ||
-  # results[title]`, so a title is a real key and not a curiosity.
-  def variables_written_by(rows)
-    rows.each_with_object(Set.new) do |(type, title, variable_name, options, output_fields, mapping), names|
-      names << title.to_s.strip if title.present?
-      names << variable_name.to_s.strip if variable_name.present?
-
-      named_entries(output_fields).each { |name| names << name }
-      named_entries(options).each { |name| names << name } if type == "Steps::Form"
-
-      mapping = parse_mapping(mapping)
-      names.merge(mapping.keys.map(&:to_s) + mapping.values.map(&:to_s))
-    end
-  end
-
-  def named_entries(json)
-    Array(json).filter_map { |entry| entry["name"].to_s.strip if entry.is_a?(Hash) && entry["name"].present? }
-  end
-
-  # ScenarioStepProcessor tolerates a JSON string here, so this does too.
-  def parse_mapping(mapping)
-    mapping = JSON.parse(mapping) if mapping.is_a?(String)
-    mapping.is_a?(Hash) ? mapping : {}
-  rescue JSON::ParserError
-    {}
+  # `options` is a Form's field list and a Question's choice list, so it only
+  # counts as names on a Form. What a row WRITES is WorkflowVariableNames' job;
+  # this only says how a steps-table tuple reads.
+  def to_row((type, title, variable_name, options, output_fields, mapping))
+    WorkflowVariableNames::Row.new(title: title, variable_name: variable_name,
+                                   form_fields: (options if type == "Steps::Form"),
+                                   output_fields: output_fields, mapping: mapping)
   end
 
   def own_writers

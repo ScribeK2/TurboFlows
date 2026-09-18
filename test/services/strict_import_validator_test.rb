@@ -166,6 +166,35 @@ class StrictImportValidatorTest < ActiveSupport::TestCase
     assert_equal "envelope_invalid", report.errors.first[:code]
   end
 
+  # The published schema says every form field requires `name` and `label`, and
+  # the agent prompt is built from that schema — but the validator checked only a
+  # select's choices. A field with no name writes its answer under the key ""
+  # and a field with no label renders an unlabelled input, and both imported.
+  test "a form field with a blank name or label is refused, at the field's own path" do
+    report = validate(document_with(steps: [
+                                      { id: "f", type: "form", title: "F",
+                                        options: [{ name: "", label: "Callback number", field_type: "text" },
+                                                  { name: "account", label: " ", field_type: "text" }],
+                                        transitions: [{ target_id: "done" }] },
+                                      resolve_step
+                                    ]))
+
+    missing = report.errors.select { |e| e[:code] == "missing_required_field" }
+    assert_equal ["workflows[0].steps[0].options[0].name", "workflows[0].steps[0].options[1].label"],
+                 missing.pluck(:path)
+  end
+
+  test "a form field carrying both name and label is accepted" do
+    report = validate(document_with(steps: [
+                                      { id: "f", type: "form", title: "F",
+                                        options: [{ name: "callback", label: "Callback number", field_type: "text" }],
+                                        transitions: [{ target_id: "done" }] },
+                                      resolve_step
+                                    ]))
+
+    assert_empty(report.errors.select { |e| e[:code] == "missing_required_field" })
+  end
+
   test "malformed JSON is reported, not raised" do
     report = StrictImportValidator.new(user: @user, content: "{ nope").validate
 

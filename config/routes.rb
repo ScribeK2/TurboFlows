@@ -20,6 +20,14 @@ Rails.application.routes.draw do
   # Mount ActionCable
   mount ActionCable.server => '/cable'
 
+  # The strict preview and error report both RENDER at /workflows/import, which
+  # is POST-only. A refresh, a bookmark or Back onto that URL is a GET, and it
+  # fell through to workflows#show with "import" as the :id — a bare 404 in the
+  # middle of an upload. It has to sit ABOVE `resources :workflows`: routes match
+  # in order, and declared beside the import resource further down it loses to
+  # workflows#show every time.
+  get "workflows/import", to: redirect("/workflows/import/new")
+
   resources :workflows do
     resource :preview, only: [:show], controller: "workflows/previews"
     resource :variables, only: [:show], controller: "workflows/variables"

@@ -82,5 +82,16 @@ module Workflows
 
       assert_redirected_to new_user_session_path
     end
+
+    # The preview and the error report render AT this URL after a POST, so a
+    # refresh or Back onto it is a GET. It 404'd, as workflows#show with the id
+    # "import".
+    test "a GET onto the POST-only import URL lands on the upload form, not a 404" do
+      get "/workflows/import"
+
+      assert_redirected_to "/workflows/import/new"
+      follow_redirect!
+      assert_response :success
+    end
   end
 end

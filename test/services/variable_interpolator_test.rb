@@ -184,4 +184,28 @@ class VariableInterpolatorTest < ActiveSupport::TestCase
     assert_equal({}, VariableInterpolator.normalize_variables(nil))
     assert_equal({}, VariableInterpolator.normalize_variables("string"))
   end
+  # Someone who types {{ name }} means an interpolation. The pattern allowed no
+  # inner spaces, so the agent on a live call read the braces — while the strict
+  # importer, whose own copy of the pattern DID allow them, validated the same
+  # text as a working interpolation. Two readers, two answers.
+  test "inner spaces are an interpolation, not literal text" do
+    assert_equal "Hello John!", VariableInterpolator.interpolate("Hello {{ name }}!", { "name" => "John" })
+    assert_equal "Hello John!", VariableInterpolator.interpolate("Hello {{name }}!", { "name" => "John" })
+    assert_equal ["name"], VariableInterpolator.extract_variables("Hello {{ name }}!")
+  end
+
+  test "an unknown spaced variable is still left exactly as written" do
+    assert_equal "Hello {{ nobody }}!", VariableInterpolator.interpolate("Hello {{ nobody }}!", { "name" => "John" })
+  end
+
+  # Every reader of "what is an interpolation" must be this constant. The
+  # importer and StepHelper#highlight_variables each carried a hand-written
+  # copy, and the copies had already drifted apart.
+  test "nothing else in the app spells its own interpolation pattern" do
+    offenders = Rails.root.glob("app/**/*.{rb,erb,js}").reject { |f| f.basename.to_s == "variable_interpolator.rb" }
+                     .select { |f| f.read.include?("\\{\\{") }
+
+    assert_empty offenders.map { |f| f.relative_path_from(Rails.root).to_s },
+                 "reference VariableInterpolator::VARIABLE_PATTERN instead"
+  end
 end

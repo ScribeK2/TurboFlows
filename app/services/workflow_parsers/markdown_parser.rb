@@ -391,7 +391,21 @@ module WorkflowParsers
           condition = match[2].strip
         elsif (match = t.match(/^(.+?)\s*\((.+?)\)$/))
           target = match[1].strip
-          label = match[2].strip
+          text = match[2].strip
+
+          # `Step 2 (x == 'y')` is `Step 2 (if x == 'y')` with the keyword left
+          # off. It used to land here as a LABEL, so the import succeeded, said
+          # nothing, and the branch became an unconditional transition firing for
+          # every answer. Text that is exactly one supported comparison is never
+          # a label anyone meant — but prose that merely contains a `>` is, which
+          # is why this asks for the whole string and not for an operator.
+          if ConditionEvaluator.complete?(text)
+            condition = text
+            add_warning("Read \"#{text}\" on the transition to #{target} as a condition. " \
+                        "Write (if #{text}) to say so explicitly.")
+          else
+            label = text
+          end
         end
 
         result = { 'target_uuid' => target }
