@@ -109,7 +109,12 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
     end
   end
 
-  test "a yes/no condition restores as the Yes preset, not Custom" do
+  # Used to assert this restored as the "Yes" preset in the freeform editor.
+  # Step::Doors#reads_as? and condition_preset_controller.js#buildPresets are
+  # the same matching, so a condition the preset dropdown would recognise is
+  # now claimed as a door before the editor ever sees it - it shows as the
+  # wired door row instead, with no dropdown at all.
+  test "a yes/no condition is shown as its door, not in Other connections" do
     question = Steps::Question.create!(
       workflow: @workflow, title: "Did it work?", position: 1,
       question: "Did it work?", answer_type: "yes_no", variable_name: "verified"
@@ -120,15 +125,16 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
     step_row(question.uuid).click
 
     within "turbo-frame#builder-panel" do
-      assert_selector "select[data-condition-preset-target='presetDropdown']", wait: 5
-      assert_eventually do
-        preset_dropdown.value == "yes"
-      end
-      assert_selector "[data-condition-preset-target='sentenceContainer'].is-hidden", visible: :all
+      assert_selector ".step-doors__row", text: /Yes.*All done/m, wait: 5
+      find("summary", text: "Other connections").click
+      assert_text "No other connections."
     end
   end
 
-  test "an option condition restores as that option, not Custom" do
+  # See the comment above "a yes/no condition is shown as its door...": the
+  # same door-matching now claims an option condition before it ever reaches
+  # the freeform editor's preset dropdown.
+  test "an option condition is shown as its door, not in Other connections" do
     question = Steps::Question.create!(
       workflow: @workflow, title: "What product?", position: 1,
       question: "What product?", answer_type: "dropdown", variable_name: "what",
@@ -140,11 +146,9 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
     step_row(question.uuid).click
 
     within "turbo-frame#builder-panel" do
-      assert_selector "select[data-condition-preset-target='presetDropdown']", wait: 5
-      assert_eventually do
-        preset_dropdown.value == "option_0"
-      end
-      assert_selector "[data-condition-preset-target='sentenceContainer'].is-hidden", visible: :all
+      assert_selector ".step-doors__row", text: /Hosting.*All done/m, wait: 5
+      find("summary", text: "Other connections").click
+      assert_text "No other connections."
     end
   end
 
@@ -169,27 +173,38 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
     end
   end
 
+  # There is no longer a pre-existing transition to load this against: a
+  # blank condition on a Yes/No question is the "Anything else" door
+  # (Step::Doors), so it would be claimed before ever reaching this editor.
+  # "Add Connection" builds the same freeform row from scratch instead.
   test "choosing Custom shows the sentence, not a raw condition field" do
     question = Steps::Question.create!(
       workflow: @workflow, title: "Did it work?", position: 1,
       question: "Did it work?", answer_type: "yes_no", variable_name: "verified"
     )
-    Transition.create!(step: question, target_step: @resolve, position: 0)
 
     visit_builder_in_edit_mode
     step_row(question.uuid).click
+    assert_panel_settled
 
     within "turbo-frame#builder-panel" do
-      assert_selector "select[data-condition-preset-target='presetDropdown']", wait: 5
-      find("select[data-condition-preset-target='presetDropdown'] option[value='__custom__']").select_option
+      find("summary", text: "Other connections").click
+      click_on "Add Connection"
 
-      assert_selector "[data-condition-preset-target='sentenceContainer']:not(.is-hidden)", wait: 5
-      assert_selector "select[data-condition-preset-target='sentenceVariable']"
-      assert_no_selector "[data-condition-preset-target='customInput']"
-      assert_no_text "e.g., answer =="
+      within all(".transition-item", minimum: 1, wait: 5).last do
+        find("select[data-condition-preset-target='presetDropdown'] option[value='__custom__']").select_option
+
+        assert_selector "[data-condition-preset-target='sentenceContainer']:not(.is-hidden)", wait: 5
+        assert_selector "select[data-condition-preset-target='sentenceVariable']"
+        assert_no_selector "[data-condition-preset-target='customInput']"
+        assert_no_text "e.g., answer =="
+      end
     end
   end
 
+  # Same reason as "choosing Custom shows the sentence" above: no pre-existing
+  # transition, since a blank one on `later` would be its own "Anything else"
+  # door rather than reaching this editor.
   test "Custom can point at another question's Yes" do
     Steps::Question.create!(
       workflow: @workflow, title: "Already verified?", position: 1,
@@ -199,17 +214,22 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
       workflow: @workflow, title: "Did it work?", position: 2,
       question: "Work?", answer_type: "yes_no", variable_name: "verified"
     )
-    Transition.create!(step: later, target_step: @resolve, position: 0)
 
     visit_builder_in_edit_mode
     step_row(later.uuid).click
+    assert_panel_settled
 
     within "turbo-frame#builder-panel" do
-      find("select[data-condition-preset-target='presetDropdown'] option[value='__custom__']", wait: 5).select_option
-      assert_selector "select[data-condition-preset-target='sentenceVariable']", wait: 5
-      sentence_variable.find("option[value='already_verified']").select_option
-      sentence_operator.find("option[value='==']").select_option
-      find("[data-condition-preset-target='sentenceValue'] select option[value='yes']").select_option
+      find("summary", text: "Other connections").click
+      click_on "Add Connection"
+
+      within all(".transition-item", minimum: 1, wait: 5).last do
+        find("select[data-condition-preset-target='presetDropdown'] option[value='__custom__']").select_option
+        assert_selector "select[data-condition-preset-target='sentenceVariable']", wait: 5
+        sentence_variable.find("option[value='already_verified']").select_option
+        sentence_operator.find("option[value='==']").select_option
+        find("[data-condition-preset-target='sentenceValue'] select option[value='yes']").select_option
+      end
 
       assert_eventually do
         condition_hidden.value == "already_verified == 'yes'"
@@ -274,6 +294,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
     assert_panel_settled
 
     within "turbo-frame#builder-panel" do
+      find("summary", text: "Other connections").click
       click_on "Add Connection"
       assert_selector "[data-condition-preset-target='sentenceContainer']", visible: :all, wait: 5
       within all(".transition-item", minimum: 1).last do

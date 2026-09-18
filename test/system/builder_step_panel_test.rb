@@ -139,6 +139,7 @@ class BuilderStepPanelTest < ApplicationSystemTestCase
     open_step question
 
     within "turbo-frame#builder-panel" do
+      find("summary", text: "Other connections").click
       click_on "Add Connection"
       within all(".transition-item", minimum: 1, wait: 5).last do
         options = all("select[data-transition-field='target_uuid'] option").map { |option| option.text.strip }
