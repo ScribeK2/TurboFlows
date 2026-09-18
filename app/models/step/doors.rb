@@ -4,9 +4,13 @@ class Step
   # transition behind it is a stub - something the builder can show and offer to
   # fill. Nothing here is stored; stubs are not rows.
   #
-  # A door is wired when StepResolver would take that transition for that answer,
-  # so matching reads conditions as loosely as the runner does: case, spacing and
-  # quote style are ignored, and a bare value ("yes") counts.
+  # A door is wired when StepResolver would take that transition for that
+  # answer, so matching reads a condition the way the runner does - case and
+  # spacing ignored, either quote style, a bare value ("yes") accepted - and no
+  # more loosely than that. In particular a value containing an apostrophe can
+  # be read as wired by an operator-form condition ("light == '...'") only
+  # when ConditionEvaluator's own quote-stripping would still find it equal -
+  # which it does not, since it keeps a backslash literally. See #reads_as?.
   class Doors
     Door = Data.define(:kind, :label, :value, :condition, :transition) do
       def target_step = transition&.target_step
@@ -134,19 +138,35 @@ class Step
     def reads_as?(condition, value)
       text = condition.to_s.strip
       return false if text.blank?
-      return normalize(text) == normalize(value) unless text.match?(/[=!<>]/)
+      return bare_match?(text, value) unless text.match?(/[=!<>]/)
 
       parsed = parse(text)
       parsed.present? && parsed[:operator] == "==" && own_variable?(parsed[:variable]) &&
-        normalize(parsed[:value]) == normalize(value)
+        operator_match?(parsed[:value], value)
     end
 
     def parse(condition)
       ConditionEvaluator.new(condition).parse
     end
 
-    def normalize(text)
-      text.to_s.delete(%q('"\\)).strip.downcase
+    # StepResolver's simple-value branch does a plain downcase comparison with
+    # no quote stripping (`answer.to_s.downcase == transition.condition.to_s.downcase`),
+    # so a condition spelled with quote characters ("'no'") is a literal
+    # string to the runner, not a match for the bare answer "no".
+    def bare_match?(text, value)
+      text.strip.downcase == value.to_s.strip.downcase
+    end
+
+    # ConditionEvaluator#parse (what the runner reads an operator condition
+    # through) strips only '" from the expected value, keeping a backslash
+    # literally - so the same stripping, and nothing more, is applied here on
+    # both sides before comparing.
+    def operator_match?(parsed_value, value)
+      strip_quotes(parsed_value).strip.downcase == strip_quotes(value).strip.downcase
+    end
+
+    def strip_quotes(text)
+      text.to_s.delete(%q('"))
     end
   end
 end

@@ -128,4 +128,44 @@ class StepDoorsTest < ActiveSupport::TestCase
     assert_nil doors(step).door_for(nil)
     assert_equal :next, doors(@a).door_for(nil).kind
   end
+
+  # ConditionEvaluator strips quotes from the expected side of an operator
+  # condition but keeps a backslash literally, so no operator-form condition
+  # can ever match a value containing an apostrophe (a known runtime
+  # limitation tracked in TODOS.md). Doors must report what the runner does,
+  # not what the author meant by writing the door's own escaped condition
+  # back as a transition.
+  test "an apostrophe option's own condition is not read as wired, because the runner would not take it" do
+    step = question(answer_type: "dropdown",
+                    options: [{ "label" => "Don't know", "value" => "Don't know" }, { "label" => "Router", "value" => "router" }])
+    door = doors(step).doors.find { |d| d.label == "Don't know" }
+    stale = Transition.create!(step: step, target_step: @a, condition: door.condition)
+
+    d = doors(step)
+    assert_predicate d.doors.find { |x| x.label == "Don't know" }, :stub?
+    assert_equal [stale], d.extras
+    assert_includes d.unmatched_extras.map(&:first), stale
+  end
+
+  # Proves the claim above against the runtime itself, not against Doors
+  # agreeing with itself. The condition string below has exactly one
+  # backslash before the apostrophe - the same string condition_for writes.
+  test "the runner itself does not take an apostrophe operator-form condition" do
+    condition = "light == 'Don\\'t know'"
+    assert_not ConditionEvaluator.evaluate(condition, { "light" => "Don't know" })
+    assert ConditionEvaluator.evaluate("light == 'router'", { "light" => "Router" })
+  end
+
+  test "a bare condition matches its literal text, quotes included, exactly as the runner's simple match does" do
+    step = question(answer_type: "dropdown", options: [{ "label" => "Don't know", "value" => "Don't know" }])
+    wired = Transition.create!(step: step, target_step: @a, condition: "Don't know")
+
+    door = doors(step).doors.find { |d| d.label == "Don't know" }
+    assert_equal wired, door.transition
+
+    quoted = Transition.create!(step: question(answer_type: "yes_no", title: "Quoted", variable_name: "quoted"),
+                                target_step: @a, condition: "'no'")
+    no_door = doors(quoted.step).doors.find { |d| d.label == "No" }
+    assert_nil no_door.transition
+  end
 end
