@@ -15,6 +15,18 @@ module Steps
       parts.join(": ")
     end
 
+    # Public so GrowStep can build a name and make it unique before the save;
+    # the callback below still covers every other writer.
+    def self.variable_name_from(title)
+      title.to_s.strip
+           .gsub(/[?!.,;:'"(){}\[\]]/, "")
+           .parameterize(separator: "_")
+           .tr("-", "_").squeeze("_")
+           .gsub(/^_|_$/, "")
+           .first(30)
+           .gsub(/_$/, "")
+    end
+
     private
 
     # A Transition matches on an option's `value`, never on its `label`, but the
@@ -42,14 +54,7 @@ module Steps
     end
 
     def generate_variable_name
-      self.variable_name = title
-                           .to_s.strip
-                           .gsub(/[?!.,;:'"(){}\[\]]/, "")
-                           .parameterize(separator: "_")
-                           .tr("-", "_").squeeze("_")
-                           .gsub(/^_|_$/, "")
-                           .first(30)
-                           .gsub(/_$/, "")
+      self.variable_name = self.class.variable_name_from(title)
     end
   end
 end
