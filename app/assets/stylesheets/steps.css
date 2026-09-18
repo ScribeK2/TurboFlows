@@ -311,6 +311,53 @@
   font-style: italic;
 }
 
+/* Use an existing step (steps/_target_picker): a flat, filterable list inside
+   the dialog. */
+.step-target-list {
+  max-height: 18rem;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.step-target-list__option {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.step-target-list li:last-child .step-target-list__option {
+  border-bottom: 0;
+}
+
+.step-target-list__option:hover,
+.step-target-list__option:focus-visible {
+  background: var(--color-canvas-alt);
+}
+
+.step-target-list__title {
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+}
+
+.step-target-list__meta {
+  flex: 0 0 auto;
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ─── Step Disclosure (collapsible advanced fields) ─── */
 .step-disclosure {
   margin-top: var(--space-2);

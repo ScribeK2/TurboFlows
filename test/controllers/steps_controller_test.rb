@@ -665,4 +665,45 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_content
     assert_select "turbo-stream[target='flash']"
   end
+
+  test "the panel offers every other step as an existing target, outside the autosave form" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light green?",
+                                       answer_type: "yes_no", variable_name: "light")
+
+    get panel_edit_workflow_step_path(@workflow, question)
+
+    assert_select "dialog##{dom_id(question, :target_picker)} button[name='target_step_id'][value='#{@step.id}']"
+    assert_select "dialog button[name='target_step_id'][value='#{question.id}']", false
+    assert_select "form[data-controller~='inline-autosave'] dialog", false
+    assert_select ".step-doors__row button", text: "Use existing…"
+  end
+
+  test "the readonly panel offers no way to point a door at an existing step" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light green?",
+                                       answer_type: "yes_no", variable_name: "light")
+
+    get panel_edit_workflow_step_path(@workflow, question, readonly: 1)
+
+    assert_select "dialog", false
+    assert_select "button", text: "Use existing…", count: 0
+    assert_select "button", text: "Change", count: 0
+  end
+
+  test "a Resolve step's panel renders no target picker dialog" do
+    resolve = Steps::Resolve.create!(workflow: @workflow, position: 1, title: "Done")
+
+    get panel_edit_workflow_step_path(@workflow, resolve)
+
+    assert_select "dialog##{dom_id(resolve, :target_picker)}", false
+  end
+
+  test "a handoff Sub-Flow's panel renders no target picker dialog" do
+    published = Workflow.create!(title: "Handoff target", user: @editor).tap { |w| w.update_columns(status: "published") }
+    handoff = Steps::SubFlow.create!(workflow: @workflow, position: 1, title: "Hand off",
+                                     sub_flow_workflow_id: published.id, sub_flow_returns: false)
+
+    get panel_edit_workflow_step_path(@workflow, handoff)
+
+    assert_select "dialog##{dom_id(handoff, :target_picker)}", false
+  end
 end

@@ -132,6 +132,60 @@ class BuilderGrowTest < ApplicationSystemTestCase
     end
   end
 
+  test "a door can be pointed at a step that already exists, and Back does not bring the dialog with it" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", question: "Light green?",
+                                       position: 1, answer_type: "yes_no", variable_name: "light")
+    done = Steps::Resolve.create!(workflow: @workflow, title: "All done", position: 2)
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    find("#{STEP_ROW}[data-step-uuid='#{question.uuid}']").click
+    assert_selector "turbo-frame#builder-panel form", wait: 5
+
+    within "turbo-frame#builder-panel" do
+      find(".step-doors__row", text: "Yes").click_on "Use existing…"
+    end
+    within "dialog[open]" do
+      fill_in "Find a step", with: "done"
+      click_on "All done"
+    end
+
+    assert_eventually(timeout: 10) { question.transitions.reload.any? }
+    edge = question.transitions.sole
+    assert_equal [done.id, "light == 'yes'"], [edge.target_step_id, edge.condition]
+    within("turbo-frame#builder-panel") { assert_selector ".step-doors__row", text: /Yes.*All done/m }
+    assert_no_selector "dialog[open]", visible: :all
+
+    visit workflows_path
+    page.go_back
+    assert_no_selector "dialog[open]", visible: :all
+  end
+
+  test "Change retargets a wired door's own edge instead of adding a second one" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", question: "Light green?",
+                                       position: 1, answer_type: "yes_no", variable_name: "light")
+    first_target = Steps::Resolve.create!(workflow: @workflow, title: "First", position: 2)
+    second_target = Steps::Resolve.create!(workflow: @workflow, title: "Second", position: 3)
+    edge = Transition.create!(step: question, target_step: first_target, condition: "light == 'yes'", label: "Yes")
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    find("#{STEP_ROW}[data-step-uuid='#{question.uuid}']").click
+    assert_selector "turbo-frame#builder-panel form", wait: 5
+
+    within "turbo-frame#builder-panel" do
+      find(".step-doors__row", text: "Yes").click_on "Change"
+    end
+    within "dialog[open]" do
+      fill_in "Find a step", with: "second"
+      click_on "Second"
+    end
+
+    assert_eventually(timeout: 10) { edge.reload.target_step_id == second_target.id }
+    assert_equal 1, question.transitions.reload.count
+    assert_equal edge.id, question.transitions.sole.id
+    within("turbo-frame#builder-panel") { assert_selector ".step-doors__row", text: /Yes.*Second/m }
+    assert_no_selector "dialog[open]", visible: :all
+  end
+
   private
 
   def row(step)

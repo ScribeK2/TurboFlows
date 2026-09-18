@@ -28,6 +28,12 @@
                       data-grow-context="<%= door.kind == :next ? "After “#{title}”" : "“#{title}” — #{door.label}" %>">
                 New step
               </button>
+              <button type="button" class="btn btn--plain btn--sm"
+                      data-action="click->step-target-picker#open"
+                      data-label="<%= door.label unless door.kind == :next %>"
+                      data-condition="<%= door.condition %>">
+                Use existing…
+              </button>
             <% end %>
           <% else %>
             <% target = door.target_step %>
@@ -35,6 +41,13 @@
               → <%= target.title.presence || "Untitled" %><% if ordinals[target.uuid] %> · <%= ordinals[target.uuid] %><% end %>
             </span>
             <% unless readonly %>
+              <button type="button" class="btn btn--plain btn--sm"
+                      data-action="click->step-target-picker#open"
+                      data-label="<%= door.label unless door.kind == :next %>"
+                      data-condition="<%= door.condition %>"
+                      data-transition-url="<%= workflow_step_transition_path(workflow, step, door.transition) %>">
+                Change
+              </button>
               <%= link_to "Remove", workflow_step_transition_path(workflow, step, door.transition),
                     class: "btn btn--plain btn--sm",
                     data: { turbo_method: :delete, turbo_stream: true } %>

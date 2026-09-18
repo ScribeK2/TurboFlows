@@ -22,6 +22,7 @@
   </div>
 
   <div class="builder__panel-body"
+       data-controller="step-target-picker"
        data-step-type="<%= step.step_type %>"
        data-step-id="<%= step.id %>">
     <% if readonly %>
@@ -57,6 +58,10 @@
             <%= render "steps/connections", step: step, workflow: workflow %>
           </div>
         <% end %>
+      <% end %>
+
+      <% unless step.is_a?(Steps::Resolve) || step.hands_off? %>
+        <%= render "steps/target_picker", step: step, workflow: workflow %>
       <% end %>
 
       <%# Media attaches on choose (direct upload + Steps::MediaAttachmentsController).

@@ -1,0 +1,46 @@
+<%# locals: (step:, workflow:) %>
+<%#
+  "Use existing…": point one of this step's doors at a step that already exists -
+  how two branches meet at one Resolve. One dialog per panel, outside the
+  autosave form because it holds a real form. step-target-picker fills in which
+  door it is for. A flat, filterable list: at thirty steps typing beats scrolling.
+%>
+<% ordinals = step_ordinals(workflow) %>
+<dialog class="dialog dialog--sm" id="<%= dom_id(step, :target_picker) %>"
+        data-step-target-picker-target="dialog"
+        data-action="click->step-target-picker#backdropClose">
+  <%= form_with url: workflow_step_transitions_path(workflow, step), method: :post,
+        data: { turbo_stream: true, step_target_picker_target: "form",
+                create_url: workflow_step_transitions_path(workflow, step),
+                action: "turbo:submit-end->step-target-picker#submitEnded" } do %>
+    <input type="hidden" name="_method" value="post" data-step-target-picker-target="method">
+    <input type="hidden" name="label" data-step-target-picker-target="label">
+    <input type="hidden" name="condition" data-step-target-picker-target="condition">
+
+    <div class="dialog__header">
+      <h2 class="font-semibold" data-step-target-picker-target="heading">Use an existing step</h2>
+    </div>
+    <div class="dialog__body">
+      <label class="form-label" for="<%= dom_id(step, :target_filter) %>">Find a step</label>
+      <input type="search" class="form-input" id="<%= dom_id(step, :target_filter) %>" autocomplete="off"
+             data-step-target-picker-target="filter"
+             data-action="input->step-target-picker#filter">
+      <ul class="step-target-list" role="list">
+        <% workflow.steps.ordered.each do |candidate| %>
+          <% next if candidate == step %>
+          <li data-step-target-picker-target="option"
+              data-search="<%= "#{candidate.title} #{step_type_label(candidate.step_type)}".downcase %>">
+            <button type="submit" name="target_step_id" value="<%= candidate.id %>" class="step-target-list__option">
+              <span class="step-target-list__title"><%= candidate.title.presence || "Untitled #{candidate.step_type.titleize}" %></span>
+              <span class="step-target-list__meta"><%= step_type_label(candidate.step_type) %> · <%= ordinals[candidate.uuid] %></span>
+            </button>
+          </li>
+        <% end %>
+      </ul>
+      <p class="form-hint is-hidden" data-step-target-picker-target="empty">No step matches.</p>
+    </div>
+    <div class="dialog__footer">
+      <button type="button" class="btn btn--plain" data-action="click->step-target-picker#close">Cancel</button>
+    </div>
+  <% end %>
+</dialog>
