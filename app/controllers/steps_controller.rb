@@ -389,43 +389,75 @@ class StepsController < ApplicationController
   end
 
   # Returns nil on success, or the message to refuse the response with.
+  #
+  # RecordNotUnique is two overlapping saves of the same newly minted row -
+  # Turbo aborts the earlier fetch, not the server work behind it, so a
+  # closing flush can still overlap an in-flight submit - and the loser hits
+  # the unique index on transitions.uuid. Unlike RecordInvalid it carries no
+  # #record, so the message reads straight off the exception.
   def sync_transitions(rename_pair)
     TransitionSync.call(@step, step_params[:transitions_json], renamed_variable: rename_pair)
     nil
   rescue TransitionSync::Malformed, ActiveRecord::RecordInvalid => e
     "This step was saved, but its connections were not: #{e.message}"
+  rescue ActiveRecord::RecordNotUnique
+    "This step was saved, but its connections were not: another save landed on the same connection " \
+    "at the same moment. Reload and try again."
   end
 
   def doors_changed?
     DOOR_DECIDING_PARAMS.any? { |key| step_params.key?(key) }
   end
 
-  # True when this save turned a row the editor was showing as an ordinary
-  # connection into one of the doors Step::Doors now finds - which would
-  # otherwise render twice: once as a door, once still sitting in the editor's
-  # stale snapshot below it. Checked against the transitions as saved, not as
-  # sent, since a rewritten condition (a rename) is what can make this true.
-  def editor_row_became_door?
-    return false if step_params[:transitions_json].blank?
+  # True when this save changed the doors list in a way the editor's own
+  # snapshot cannot show on its own - checked in both directions against the
+  # transitions as saved (not as sent), since a rewritten condition is what
+  # can make either one true:
+  #
+  # - forward: a row the editor was showing as an ordinary connection just
+  #   became one of the doors Step::Doors now finds - it would otherwise
+  #   render twice, once as a door and once still sitting in the editor below.
+  # - backward: a door the editor was NOT showing (it wasn't a connection
+  #   row - it was a door) just stopped being claimed and became an extra.
+  #   Nothing about it is in the browser's `known` list, so a doors-only
+  #   replace would leave it invisible even though the transition is still
+  #   live in the database.
+  #
+  # `doors` is computed once by the caller and passed in, so this and the
+  # forward check it used to make alone share one query.
+  def door_shape_changed?(doors)
+    sent_known, sent_rows = known_and_sent_row_uuids
 
-    sent = JSON.parse(step_params[:transitions_json])["rows"].to_a.pluck("uuid")
-    Step::Doors.for(@step.reload).doors.filter_map(&:transition).any? { |t| sent.include?(t.uuid) }
+    return true if doors.doors.filter_map(&:transition).any? { |t| sent_rows.include?(t.uuid) }
+
+    doors.extras.any? { |t| sent_known.exclude?(t.uuid) }
+  end
+
+  # [known_uuids, row_uuids] from the transitions_json the browser just sent.
+  # No transitions_json, or JSON that doesn't parse, "knows nothing" - both
+  # come back as empty arrays, same as #editor_row_became_door? used to treat
+  # them.
+  def known_and_sent_row_uuids
+    return [[], []] if step_params[:transitions_json].blank?
+
+    payload = JSON.parse(step_params[:transitions_json])
+    [payload["known"].to_a.map(&:to_s), payload["rows"].to_a.pluck("uuid")]
   rescue JSON::ParserError, NoMethodError
-    false
+    [[], []]
   end
 
   # The one place that decides which, if either, of the doors list and the
   # whole Connections fragment this save needs re-rendered. A rename always
   # needs the whole fragment - the editor's own snapshot still names the old
-  # variable, and #editor_row_became_door? cannot help with that since a
-  # renamed condition does not change which uuids are doors. Otherwise, a save
-  # that changed what decides the doors gets the doors list alone, unless it
-  # just turned one of the editor's own rows into a door.
+  # variable, and #door_shape_changed? cannot help with that since a renamed
+  # condition does not change which uuids are doors. Otherwise, a save that
+  # changed what decides the doors gets the doors list alone, unless the
+  # doors list itself changed shape underneath the editor's snapshot.
   def connections_or_doors_stream(rename_pair)
     return full_connections_stream if rename_pair
     return nil unless doors_changed?
 
-    editor_row_became_door? ? full_connections_stream : doors_stream
+    door_shape_changed?(Step::Doors.for(@step.reload)) ? full_connections_stream : doors_stream
   end
 
   def full_connections_stream

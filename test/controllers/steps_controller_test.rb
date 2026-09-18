@@ -595,4 +595,74 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_select "turbo-stream[action='replace'][target='#{dom_id(question, :doors)}']"
     assert_select "turbo-stream[action='update'][target='#{dom_id(question, :connections)}']", false
   end
+
+  # Finding 1: a door that becomes an extra is never shown to the editor.
+  # A Yes/No Question has its No door wired. Switching to Text means
+  # Step::Doors no longer claims that transition - it becomes an extra - but
+  # the editor's own snapshot (sent as empty known/rows, exactly what it held
+  # before this save) never contained that uuid. The whole fragment must come
+  # back, or the panel would show "No other connections" while the edge is
+  # still live in the database.
+  test "a door that becomes an extra streams the whole connections fragment" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light green?",
+                                       answer_type: "yes_no", variable_name: "light")
+    no_edge = Transition.create!(step: question, target_step: @step, condition: "light == 'no'", label: "No")
+    transitions_json = { known: [], rows: [] }.to_json
+
+    patch workflow_step_path(@workflow, question),
+          params: { step: { answer_type: "text", transitions_json: transitions_json } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    assert_select "turbo-stream[action='update'][target='#{dom_id(question, :connections)}']"
+    assert_select "turbo-stream[action='replace'][target='#{dom_id(question, :doors)}']", false
+    assert_equal "light == 'no'", no_edge.reload.condition
+  end
+
+  # Contrast: the same shape of save, but the extra was already sitting in the
+  # editor's own known/rows before this PATCH - so the editor already shows
+  # it, and only the doors list needs replacing.
+  test "an extra the editor already knew about streams only the doors list" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light green?",
+                                       answer_type: "yes_no", variable_name: "light")
+    extra = Transition.create!(step: question, target_step: @step, condition: "tier == 'gold'")
+    transitions_json = {
+      known: [extra.uuid],
+      rows: [{ uuid: extra.uuid, target_uuid: @step.uuid, condition: "tier == 'gold'", label: nil }]
+    }.to_json
+
+    patch workflow_step_path(@workflow, question),
+          params: { step: { answer_type: "text", transitions_json: transitions_json } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    assert_select "turbo-stream[action='replace'][target='#{dom_id(question, :doors)}']"
+    assert_select "turbo-stream[action='update'][target='#{dom_id(question, :connections)}']", false
+  end
+
+  # Finding 2: sync_transitions did not rescue ActiveRecord::RecordNotUnique.
+  # Two overlapping saves of the same newly minted row (Turbo aborts the
+  # earlier fetch, not the server work) can hit the unique index on
+  # transitions.uuid; the loser must answer through the refusal path, not a
+  # 500. RecordNotUnique carries no #record, unlike RecordInvalid.
+  test "a duplicate transition uuid race answers with the refusal path, not a 500" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Q", answer_type: "text")
+    transitions_json = {
+      known: [SecureRandom.uuid],
+      rows: [{ uuid: SecureRandom.uuid, target_uuid: @step.uuid, condition: nil, label: nil }]
+    }.to_json
+
+    original_call = TransitionSync.method(:call)
+    TransitionSync.define_singleton_method(:call) { |*, **| raise ActiveRecord::RecordNotUnique, "dup" }
+    begin
+      patch workflow_step_path(@workflow, question),
+            params: { step: { transitions_json: transitions_json } },
+            headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    ensure
+      TransitionSync.define_singleton_method(:call, original_call)
+    end
+
+    assert_response :unprocessable_content
+    assert_select "turbo-stream[target='flash']"
+  end
 end

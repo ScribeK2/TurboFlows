@@ -109,6 +109,29 @@ class BuilderGrowTest < ApplicationSystemTestCase
     end
   end
 
+  # Finding 1. A Yes/No Question has its No door wired. Switching the answer
+  # type to Text means Step::Doors no longer claims that edge - it becomes an
+  # extra - and the fix is that the whole connections fragment streams back,
+  # not just the (now empty) doors list, so "Other connections" shows it at
+  # once instead of only after the panel is closed and reopened.
+  test "switching answer type reveals a former door in Other connections" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", question: "Light green?",
+                                       position: 1, answer_type: "yes_no", variable_name: "light")
+    target = Steps::Resolve.create!(workflow: @workflow, title: "Done", position: 2)
+    Transition.create!(step: question, target_step: target, condition: "light == 'no'", label: "No")
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    find("#{STEP_ROW}[data-step-uuid='#{question.uuid}']").click
+    assert_selector "turbo-frame#builder-panel form", wait: 5
+
+    within "turbo-frame#builder-panel" do
+      find(".choice-card", text: "Text Input").click
+      assert_selector "summary", text: /Other connections.*1 connection/m, wait: 5
+      label_input = find(".transition-item__label", wait: 5)
+      assert_equal "No", label_input.value
+    end
+  end
+
   private
 
   def row(step)

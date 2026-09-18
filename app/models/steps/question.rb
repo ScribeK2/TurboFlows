@@ -40,7 +40,7 @@ module Steps
       parsed = ConditionEvaluator.new(condition).parse
       return condition unless parsed && parsed[:variable] == old_name
 
-      condition.sub(/\A\s*#{Regexp.escape(old_name)}\b/, new_name)
+      condition.sub(/\A\s*#{Regexp.escape(old_name)}\b/) { new_name }
     end
 
     # nil unless THIS save renamed the variable; otherwise [old_name, new_name],
