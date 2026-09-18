@@ -29,8 +29,17 @@ class Step
     def initialize(step)
       @step = step
       # A wired door's #target_step reads every one of these - the panel's
-      # doors list would otherwise fire one query per wired door.
-      @transitions = step.transitions.includes(:target_step).to_a.sort_by { |t| [t.position || 0, t.id || 0] }
+      # doors list would otherwise fire one query per wired door. But
+      # `.includes` on an association proxy always issues a fresh query, even
+      # when the association is already loaded - so once a row builds a Doors
+      # per step (workflows/_step_row), that "one query per wired door" became
+      # one query per STEP instead, on every render of the list. loaded? mirrors
+      # the guard _step_row.html.erb used before Doors existed: reuse the
+      # caller's preload (transitions: :target_step, so target_step comes for
+      # free too) when there is one, and only query here for a single step
+      # (the panel, a lone row re-render) that never preloaded anything.
+      transitions = step.transitions.loaded? ? step.transitions : step.transitions.includes(:target_step)
+      @transitions = transitions.to_a.sort_by { |t| [t.position || 0, t.id || 0] }
     end
 
     def growable?
