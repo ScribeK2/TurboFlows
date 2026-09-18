@@ -123,4 +123,68 @@ class GrowStepTest < ActiveSupport::TestCase
     grown = GrowStep.create(workflow: @workflow, step_type: "question", attrs: { answer_type: "number" })
     assert_equal "number", grown.answer_type
   end
+
+  test "connect wires a door to a step that already exists" do
+    question = step(Steps::Question, "Q", 1, answer_type: "yes_no", variable_name: "q")
+    done = step(Steps::Resolve, "Done", 2)
+
+    assert_no_difference("Step.count") do
+      GrowStep.connect(workflow: @workflow, from_step: question, target_step: done, label: "Yes", condition: "q == 'yes'")
+    end
+
+    edge = question.transitions.reload.sole
+    assert_equal [done.id, "Yes", "q == 'yes'"], [edge.target_step_id, edge.label, edge.condition]
+  end
+
+  test "connect retargets a door that is already wired, however its condition is spelled" do
+    question = step(Steps::Question, "Q", 1, answer_type: "yes_no", variable_name: "q")
+    first = step(Steps::Action, "First", 2)
+    second = step(Steps::Action, "Second", 3)
+    existing = Transition.create!(step: question, target_step: first, condition: "Q=='YES'".sub("Q", "q"))
+
+    assert_no_difference("Transition.count") do
+      GrowStep.connect(workflow: @workflow, from_step: question, target_step: second, label: "Yes", condition: "q == 'yes'")
+    end
+    assert_equal second.id, existing.reload.target_step_id
+  end
+
+  test "connect on a Next door retargets the default edge" do
+    action = step(Steps::Action, "A", 1)
+    first = step(Steps::Action, "First", 2)
+    second = step(Steps::Resolve, "Second", 3)
+    existing = Transition.create!(step: action, target_step: first)
+
+    GrowStep.connect(workflow: @workflow, from_step: action, target_step: second)
+
+    assert_equal [second.id], action.transitions.reload.map(&:target_step_id)
+    assert_equal existing.id, action.transitions.first.id
+  end
+
+  test "connect refuses a Resolve source and a target in another workflow" do
+    resolve = step(Steps::Resolve, "Done", 1)
+    action = step(Steps::Action, "A", 2)
+    other = Workflow.create!(title: "Other", user: @user)
+    foreign = Steps::Action.create!(workflow: other, title: "Foreign", position: 1)
+
+    assert_raises(GrowStep::Refused) { GrowStep.connect(workflow: @workflow, from_step: resolve, target_step: action) }
+    assert_raises(ActiveRecord::RecordInvalid) { GrowStep.connect(workflow: @workflow, from_step: action, target_step: foreign) }
+  end
+
+  test "connect retargeting a wired door onto a collision raises and changes nothing" do
+    question = step(Steps::Question, "Q", 1, answer_type: "yes_no", variable_name: "q")
+    original_target = step(Steps::Action, "Original", 2)
+    colliding_target = step(Steps::Action, "Colliding", 3)
+    yes_edge = Transition.create!(step: question, target_step: original_target, condition: "q == 'yes'")
+    # An extra: same condition as the "Yes" door, a different target - legal
+    # to exist (a hand-made duplicate), but retargeting the door onto it would
+    # collide on [step_id, target_step_id, condition]. Doors#build claims the
+    # lower-id transition first when neither has a position, so yes_edge (the
+    # one created first) is the door and this one stays an extra.
+    Transition.create!(step: question, target_step: colliding_target, condition: "q == 'yes'")
+
+    assert_raises(ActiveRecord::RecordInvalid) do
+      GrowStep.connect(workflow: @workflow, from_step: question, target_step: colliding_target, label: "Yes", condition: "q == 'yes'")
+    end
+    assert_equal original_target.id, yes_edge.reload.target_step_id
+  end
 end

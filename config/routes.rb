@@ -67,7 +67,7 @@ Rails.application.routes.draw do
       resources :media_attachments, only: %i[create destroy], controller: "steps/media_attachments"
       # One connection at a time, from a door row in the step panel. The panel's
       # editor saves the connections that are not doors, through steps#update.
-      resources :transitions, only: %i[destroy], controller: "steps/transitions"
+      resources :transitions, only: %i[create update destroy], controller: "steps/transitions"
     end
   end
 

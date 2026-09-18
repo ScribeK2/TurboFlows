@@ -10,6 +10,23 @@ module Steps
     before_action :ensure_can_edit!
     before_action :set_step
 
+    # POST /workflows/:workflow_id/steps/:step_id/transitions
+    def create
+      GrowStep.connect(workflow: @workflow, from_step: @step, target_step: target_step,
+                       label: params[:label], condition: params[:condition])
+      render_connections
+    rescue GrowStep::Refused, ActiveRecord::RecordInvalid => e
+      render_refusal(e.message)
+    end
+
+    # PATCH /workflows/:workflow_id/steps/:step_id/transitions/:id
+    def update
+      @step.transitions.find(params[:id]).update!(target_step: target_step)
+      render_connections
+    rescue ActiveRecord::RecordInvalid => e
+      render_refusal(e.message)
+    end
+
     # DELETE /workflows/:workflow_id/steps/:step_id/transitions/:id
     def destroy
       @step.transitions.find_by(id: params[:id])&.destroy
@@ -17,6 +34,15 @@ module Steps
     end
 
     private
+
+    def target_step
+      @workflow.steps.find(params.require(:target_step_id))
+    end
+
+    def render_refusal(message)
+      flash.now[:alert] = "That connection was not saved: #{message}"
+      render turbo_stream: turbo_stream.update("flash", partial: "shared/flash_messages"), status: :unprocessable_content
+    end
 
     def set_workflow
       @workflow = Workflow.find(params[:workflow_id])

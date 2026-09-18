@@ -52,5 +52,83 @@ module Steps
       end
       assert_redirected_to workflows_path
     end
+
+    test "create points a door at an existing step" do
+      resolve = Steps::Resolve.create!(workflow: @workflow, position: 2, title: "Done")
+
+      assert_difference("Transition.count", 1) do
+        post workflow_step_transitions_path(@workflow, @question),
+             params: { target_step_id: resolve.id, label: "Yes", condition: "light == 'yes'" },
+             headers: { "Accept" => "text/vnd.turbo-stream.html" }
+      end
+
+      assert_response :ok
+      assert_equal resolve.id, @question.transitions.find_by!(label: "Yes").target_step_id
+      assert_select "turbo-stream[action='update'][target='#{dom_id(@question, :connections)}']"
+    end
+
+    test "update retargets one edge" do
+      resolve = Steps::Resolve.create!(workflow: @workflow, position: 2, title: "Done")
+
+      patch workflow_step_transition_path(@workflow, @question, @edge),
+            params: { target_step_id: resolve.id },
+            headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+      assert_response :ok
+      assert_equal resolve.id, @edge.reload.target_step_id
+    end
+
+    test "a target in another workflow is refused and says why" do
+      other = Workflow.create!(title: "Other", user: @editor)
+      foreign = Steps::Action.create!(workflow: other, position: 0, title: "Foreign")
+
+      assert_no_difference("Transition.count") do
+        post workflow_step_transitions_path(@workflow, @question),
+             params: { target_step_id: foreign.id, label: "Yes", condition: "light == 'yes'" },
+             headers: { "Accept" => "text/vnd.turbo-stream.html" }
+      end
+      assert_response :not_found
+    end
+
+    test "update refuses a collision and changes nothing" do
+      other_target = Steps::Action.create!(workflow: @workflow, position: 2, title: "Other target")
+      colliding = Transition.create!(step: @question, target_step: other_target, condition: "light == 'no'")
+
+      patch workflow_step_transition_path(@workflow, @question, colliding),
+            params: { target_step_id: @edge.target_step_id },
+            headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+      assert_response :unprocessable_content
+      assert_match(/<turbo-stream action="update" target="flash"/, response.body)
+      assert_match "not saved", response.body
+      assert_equal other_target.id, colliding.reload.target_step_id
+    end
+
+    test "create is refused for someone who cannot edit the workflow" do
+      sign_out @editor
+      stranger = User.create!(email: "st2-#{SecureRandom.hex(4)}@example.com", password: "password123!",
+                              password_confirmation: "password123!", role: "editor")
+      sign_in stranger
+      resolve = Steps::Resolve.create!(workflow: @workflow, position: 2, title: "Done")
+
+      assert_no_difference("Transition.count") do
+        post workflow_step_transitions_path(@workflow, @question),
+             params: { target_step_id: resolve.id, label: "Yes", condition: "light == 'yes'" }
+      end
+      assert_redirected_to workflows_path
+    end
+
+    test "update is refused for someone who cannot edit the workflow" do
+      sign_out @editor
+      stranger = User.create!(email: "st3-#{SecureRandom.hex(4)}@example.com", password: "password123!",
+                              password_confirmation: "password123!", role: "editor")
+      sign_in stranger
+      resolve = Steps::Resolve.create!(workflow: @workflow, position: 2, title: "Done")
+
+      patch workflow_step_transition_path(@workflow, @question, @edge),
+            params: { target_step_id: resolve.id }
+      assert_redirected_to workflows_path
+      assert_not_equal resolve.id, @edge.reload.target_step_id
+    end
   end
 end

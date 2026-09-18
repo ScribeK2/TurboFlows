@@ -12,6 +12,10 @@ class GrowStep
     new(workflow).create(step_type:, from_step:, attrs:, label:, condition:)
   end
 
+  def self.connect(workflow:, from_step:, target_step:, label: nil, condition: nil)
+    new(workflow).connect(from_step:, target_step:, label:, condition:)
+  end
+
   def initialize(workflow)
     @workflow = workflow
   end
@@ -28,6 +32,22 @@ class GrowStep
       connect_steps(from_step, step, label:, condition:) if from_step
       assign_start_step(step)
       step
+    end
+  end
+
+  # One door, one target: a door already wired is pointed somewhere else rather
+  # than given a second connection that could never fire (first match wins).
+  def connect(from_step:, target_step:, label:, condition:)
+    check_source!(from_step)
+
+    Step.transaction do
+      existing = Step::Doors.for(from_step).door_for(condition)&.transition
+      if existing
+        existing.update!(target_step: target_step)
+        existing
+      else
+        connect_steps(from_step, target_step, label:, condition:)
+      end
     end
   end
 
@@ -69,10 +89,11 @@ class GrowStep
   end
 
   def connect_steps(from_step, target, label:, condition:)
-    Transition.create!(step: from_step, target_step: target,
-                       label: label.presence, condition: condition.presence,
-                       position: from_step.transitions.count)
+    transition = Transition.create!(step: from_step, target_step: target,
+                                    label: label.presence, condition: condition.presence,
+                                    position: from_step.transitions.count)
     Transition.settle_positions(from_step)
+    transition
   end
 
   # Same write StepsController#ensure_start_step_assigned makes, for the same
