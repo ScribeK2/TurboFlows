@@ -106,4 +106,31 @@ class TransitionSyncTest < ActiveSupport::TestCase
   test "unparseable JSON is refused" do
     assert_raises(TransitionSync::Malformed) { TransitionSync.call(@question, "not json{{") }
   end
+
+  test "renamed_variable rewrites a row's condition to the new name" do
+    uuid = SecureRandom.uuid
+    TransitionSync.call(@question, payload(known: [uuid], rows: [
+                                             { uuid: uuid, target_uuid: @a.uuid, condition: "untitled_question > 3", label: "" }
+                                           ]), renamed_variable: %w[untitled_question light_green])
+
+    assert_equal "light_green > 3", @question.transitions.reload.sole.condition
+  end
+
+  test "renamed_variable leaves a row on another variable alone" do
+    uuid = SecureRandom.uuid
+    TransitionSync.call(@question, payload(known: [uuid], rows: [
+                                             { uuid: uuid, target_uuid: @a.uuid, condition: "tier == 'gold'", label: "" }
+                                           ]), renamed_variable: %w[untitled_question light_green])
+
+    assert_equal "tier == 'gold'", @question.transitions.reload.sole.condition
+  end
+
+  test "without renamed_variable nothing is rewritten" do
+    uuid = SecureRandom.uuid
+    TransitionSync.call(@question, payload(known: [uuid], rows: [
+                                             { uuid: uuid, target_uuid: @a.uuid, condition: "untitled_question > 3", label: "" }
+                                           ]))
+
+    assert_equal "untitled_question > 3", @question.transitions.reload.sole.condition
+  end
 end

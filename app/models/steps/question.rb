@@ -28,6 +28,37 @@ module Steps
            .gsub(/_$/, "")
     end
 
+    # The one rewrite #carry_conditions_to_new_variable and TransitionSync both
+    # apply: a condition whose leading identifier names old_name exactly becomes
+    # new_name; anything else - another variable, a bare value with no operator,
+    # a blank condition - is returned unchanged. Public so TransitionSync can
+    # apply the same rewrite the panel's own stale snapshot needs, without a
+    # second copy of the exact-match logic.
+    def self.rewrite_condition_variable(condition, old_name, new_name)
+      return condition if condition.blank?
+
+      parsed = ConditionEvaluator.new(condition).parse
+      return condition unless parsed && parsed[:variable] == old_name
+
+      condition.sub(/\A\s*#{Regexp.escape(old_name)}\b/, new_name)
+    end
+
+    # nil unless THIS save renamed the variable; otherwise [old_name, new_name],
+    # with a blank old name normalised to WorkflowVariableNames::LEGACY_ANSWER -
+    # the name condition_preset_controller.js writes for a Question with no
+    # variable_name yet, so a stale condition naming it is a stale condition on
+    # THIS Question, not on nothing. The one place that normalisation happens:
+    # #carry_conditions_to_new_variable and StepsController#update both read
+    # the pair from here rather than repeating it.
+    def renamed_variable_pair
+      return nil unless saved_change_to_variable_name?
+
+      old_name, new_name = saved_change_to_variable_name
+      return nil if new_name.blank?
+
+      [old_name.presence || WorkflowVariableNames::LEGACY_ANSWER, new_name]
+    end
+
     private
 
     # A Transition matches on an option's `value`, never on its `label`, but the
@@ -63,15 +94,13 @@ module Steps
     # the rename in the same save; a condition on another step that reads this
     # variable is that step's to fix, and :undefined_variable reports it.
     def carry_conditions_to_new_variable
-      old_name, new_name = saved_change_to_variable_name
-      old_name = old_name.presence || WorkflowVariableNames::LEGACY_ANSWER
-      return if new_name.blank?
+      pair = renamed_variable_pair
+      return unless pair
 
+      old_name, new_name = pair
       transitions.each do |transition|
-        parsed = ConditionEvaluator.new(transition.condition).parse
-        next unless parsed && parsed[:variable] == old_name
-
-        transition.update!(condition: transition.condition.sub(/\A\s*#{Regexp.escape(old_name)}\b/, new_name))
+        rewritten = self.class.rewrite_condition_variable(transition.condition, old_name, new_name)
+        transition.update!(condition: rewritten) if rewritten != transition.condition
       end
     end
   end

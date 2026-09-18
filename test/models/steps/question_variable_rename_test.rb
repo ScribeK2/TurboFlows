@@ -57,4 +57,27 @@ class QuestionVariableRenameTest < ActiveSupport::TestCase
     assert_equal "untitled_question", @question.variable_name
     assert_equal "untitled_question == 'yes'", yes.reload.condition
   end
+
+  # --- Steps::Question.rewrite_condition_variable ------------------------------
+  # The one rewrite TransitionSync and the rename callback both use, tested on
+  # its own so the edge cases are pinned independent of either caller.
+
+  test "rewrite_condition_variable replaces only an exact leading match" do
+    assert_equal "light_green == 'yes'",
+                 Steps::Question.rewrite_condition_variable("untitled_question == 'yes'",
+                                                            "untitled_question", "light_green")
+    assert_equal "untitled_question_2 == 'yes'",
+                 Steps::Question.rewrite_condition_variable("untitled_question_2 == 'yes'",
+                                                            "untitled_question", "light_green")
+  end
+
+  test "rewrite_condition_variable preserves the condition's own spacing" do
+    assert_equal "y=='no'", Steps::Question.rewrite_condition_variable("x=='no'", "x", "y")
+  end
+
+  test "rewrite_condition_variable leaves a bare value or a blank condition untouched" do
+    assert_equal "modem", Steps::Question.rewrite_condition_variable("modem", "modem", "router")
+    assert_nil Steps::Question.rewrite_condition_variable(nil, "x", "y")
+    assert_equal "", Steps::Question.rewrite_condition_variable("", "x", "y")
+  end
 end

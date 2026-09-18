@@ -94,8 +94,13 @@ class StepsController < ApplicationController
   # PATCH /workflows/:workflow_id/steps/:id
   def update
     if @step.update(permitted_step_params)
+      # Captured now, before anything below reloads @step and clears its
+      # saved-change tracking: nil unless this save renamed a Question's own
+      # variable_name, else [old_name, new_name].
+      rename_pair = @step.try(:renamed_variable_pair)
+
       if step_params[:transitions_json].present?
-        refusal = sync_transitions
+        refusal = sync_transitions(rename_pair)
         # The step's own fields are already saved by the time this runs —
         # @step.update returned true before sync_transitions was ever called.
         # So this answers the existing refusal path rather than the success
@@ -121,9 +126,24 @@ class StepsController < ApplicationController
             )
           end
 
+          connections_streamed = false
+
           # Come back decides whether the step takes connections at all, so the
           # open panel's Connections section has to follow it.
           if @step.is_a?(Steps::SubFlow) && step_params.key?(:sub_flow_returns)
+            streams << turbo_stream.update(
+              dom_id(@step, :connections),
+              partial: "steps/connections",
+              locals: { step: @step, workflow: @workflow }
+            )
+            connections_streamed = true
+          end
+
+          # A rename leaves the editor's own snapshot - what it sends on the
+          # NEXT autosave of any field - still naming the old identifier.
+          # Re-render it so the next save carries the true rows;
+          # TransitionSync's renamed_variable covered THIS save only.
+          if !connections_streamed && rename_pair
             streams << turbo_stream.update(
               dom_id(@step, :connections),
               partial: "steps/connections",
@@ -352,8 +372,8 @@ class StepsController < ApplicationController
   end
 
   # Returns nil on success, or the message to refuse the response with.
-  def sync_transitions
-    TransitionSync.call(@step, step_params[:transitions_json])
+  def sync_transitions(rename_pair)
+    TransitionSync.call(@step, step_params[:transitions_json], renamed_variable: rename_pair)
     nil
   rescue TransitionSync::Malformed, ActiveRecord::RecordInvalid => e
     "This step was saved, but its connections were not: #{e.message}"

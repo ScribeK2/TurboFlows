@@ -12,13 +12,14 @@
 class TransitionSync
   class Malformed < StandardError; end
 
-  def self.call(step, json)
-    new(step, json).call
+  def self.call(step, json, renamed_variable: nil)
+    new(step, json, renamed_variable).call
   end
 
-  def initialize(step, json)
+  def initialize(step, json, renamed_variable = nil)
     @step = step
     @payload = parse(json)
+    @renamed_variable = renamed_variable
   end
 
   def call
@@ -39,7 +40,7 @@ class TransitionSync
 
         transition.update!(
           target_step: target,
-          condition: row["condition"].presence,
+          condition: rewritten_condition(row["condition"]),
           label: row["label"].presence,
           position: transition.position || (next_position + index)
         )
@@ -57,6 +58,18 @@ class TransitionSync
 
   def rows
     @rows ||= @payload["rows"].select { |row| row.is_a?(Hash) && row["uuid"].present? }
+  end
+
+  # The panel's snapshot was rendered before whatever renamed the step's own
+  # variable in this same save, so a row still naming the old identifier here
+  # is stale in exactly the way Steps::Question#carry_conditions_to_new_variable
+  # already fixed once on the DB rows. Apply the same rewrite here, or this
+  # write undoes it.
+  def rewritten_condition(condition)
+    condition = condition.presence
+    return condition unless @renamed_variable
+
+    Steps::Question.rewrite_condition_variable(condition, *@renamed_variable)
   end
 
   def parse(json)

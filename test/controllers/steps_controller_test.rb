@@ -1,6 +1,8 @@
 require "test_helper"
 
 class StepsControllerTest < ActionDispatch::IntegrationTest
+  include ActionView::RecordIdentifier
+
   setup do
     @editor = User.create!(
       email: "editor-steps-#{SecureRandom.hex(4)}@example.com",
@@ -411,5 +413,49 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_content
     assert_select "turbo-stream[target='flash']"
     assert_equal other_step.id, other_transition.reload.step_id
+  end
+
+  # The panel's transitions_json hidden field is rendered inside the same
+  # autosave form as every other step field, and holds a snapshot of each
+  # transition's condition as of when the panel opened. Renaming a Question's
+  # own variable_name in the same PATCH must not have that stale snapshot
+  # write the old name straight back over what
+  # Steps::Question#carry_conditions_to_new_variable just fixed.
+  test "a variable_name save rewrites its own stale transitions_json payload, and streams the connections editor" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", position: 1,
+                                       answer_type: "yes_no", variable_name: "untitled_question")
+    target = Steps::Action.create!(workflow: @workflow, position: 2, title: "Target")
+    edge = Transition.create!(step: question, target_step: target, condition: "untitled_question == 'yes'")
+
+    stale_transitions_json = {
+      known: [edge.uuid],
+      rows: [{ uuid: edge.uuid, target_uuid: target.uuid, condition: edge.condition, label: nil }]
+    }.to_json
+
+    patch workflow_step_path(@workflow, question),
+          params: { step: { variable_name: "light_green", transitions_json: stale_transitions_json } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    assert_equal "light_green == 'yes'", edge.reload.condition
+    assert_select "turbo-stream[action='update'][target='#{dom_id(question, :connections)}']"
+
+    # The second save: just the title, carrying the payload the freshly
+    # streamed editor would now hold (built the way the view does, from the
+    # step's current transitions).
+    fresh_transitions_json = {
+      known: question.transitions.reload.map(&:uuid),
+      rows: question.transitions.map do |t|
+        { uuid: t.uuid, target_uuid: t.target_step&.uuid,
+          condition: t.condition, label: t.label }
+      end
+    }.to_json
+
+    patch workflow_step_path(@workflow, question),
+          params: { step: { title: "Renamed title", transitions_json: fresh_transitions_json } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    assert_equal "light_green == 'yes'", edge.reload.condition
   end
 end

@@ -61,6 +61,35 @@ class BuilderStepPanelTest < ApplicationSystemTestCase
     assert_eventually(timeout: 10) { question.reload.answer_type == "number" }
   end
 
+  # The real path the controller/service tests only simulate: the panel's
+  # Connections editor holds a hidden transitions_json snapshot in the SAME
+  # autosave form as every other field, taken when the panel opened. Renaming
+  # the variable used to have the very next autosave - even one touching an
+  # unrelated field - ship that stale snapshot back over the rename.
+  test "renaming a question's variable through the panel keeps its own doors renamed" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", position: 1,
+                                       question: "Light green?", answer_type: "yes_no",
+                                       variable_name: "light_green")
+    action = Steps::Action.create!(workflow: @workflow, position: 2, title: "Continue")
+    edge = Transition.create!(step: question, target_step: action, condition: "light_green == 'yes'")
+
+    visit_builder_in_edit_mode
+    open_step question
+
+    within "turbo-frame#builder-panel" do
+      find("summary", text: "Variable name").click
+      fill_in "step[variable_name]", with: "verified"
+    end
+    assert_eventually(timeout: 10) { question.reload.variable_name == "verified" }
+
+    within "turbo-frame#builder-panel" do
+      fill_in "step[title]", with: "Is it verified?"
+    end
+    assert_eventually(timeout: 10) { question.reload.title == "Is it verified?" }
+
+    assert_equal "verified == 'yes'", edge.reload.condition
+  end
+
   test "cancelling the options warning keeps the answer type and saves nothing" do
     question = Steps::Question.create!(workflow: @workflow, title: "Contact channel?", position: 1,
                                        question: "How did they reach us?", answer_type: "multiple_choice",
