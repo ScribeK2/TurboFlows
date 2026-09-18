@@ -280,6 +280,33 @@ class BuilderGrowTest < ApplicationSystemTestCase
     end
   end
 
+  # Deleting a step used to leave the rows that pointed at it stale until
+  # reload: the parent kept showing the dead target and no stub. destroy now
+  # answers the way a grow does - the whole list replaced - so this proves it
+  # without a reload.
+  test "deleting a grown step returns its parent's door to a stub" do
+    visit workflow_path(@workflow, edit: true)
+    click_on "Add unconnected step"
+    pick_type "Question"
+    assert_panel_settled
+
+    question = @workflow.steps.reload.sole
+    within(row(question)) { click_on "No → add step" }
+    pick_type "Action"
+    assert_selector STEP_ROW, count: 2
+    assert_panel_settled
+
+    action = @workflow.steps.reload.find_by!(type: "Steps::Action")
+    within(row(question)) { assert_no_selector ".builder__door-stub", text: "No →" }
+
+    action_row = row(action)
+    action_row.hover
+    accept_confirm { action_row.find("button[title='Remove step']").click }
+
+    assert_no_selector "#{STEP_ROW}[data-step-uuid='#{action.uuid}']", wait: 5
+    within(row(question)) { assert_selector ".builder__door-stub", text: "No → add step", wait: 5 }
+  end
+
   private
 
   def row(step)

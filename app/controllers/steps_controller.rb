@@ -202,37 +202,22 @@ class StepsController < ApplicationController
 
   # DELETE /workflows/:workflow_id/steps/:id
   def destroy
+    parent_steps = incoming_parent_steps(@step)
+
     if @workflow.start_step_id == @step.id
       @workflow.update_column(:start_step_id, nil)
     end
     @step.destroy
     ensure_start_step_assigned
     Step.rebalance_positions(@workflow)
-    remaining_steps = @workflow.steps.reload.count
 
     respond_to do |format|
-      format.turbo_stream do
-        streams = [
-          turbo_stream.remove(dom_id(@step)),
-          turbo_stream.update("step-count-text",
-                              helpers.pluralize(remaining_steps, "step"))
-        ]
-        if remaining_steps.zero?
-          streams << turbo_stream.append("steps-list",
-                                         partial: "workflows/empty_state",
-                                         locals: { workflow: @workflow })
-          streams << turbo_stream.update("builder-panel", "")
-        end
-        render turbo_stream: streams
-      end
+      format.turbo_stream { render turbo_stream: destroy_streams(parent_steps) }
       format.html { redirect_to workflow_path(@workflow, edit: true), notice: "Step removed." }
       format.json { head :no_content }
     end
 
-    Turbo::StreamsChannel.broadcast_remove_to(
-      "workflow_#{@workflow.id}",
-      target: dom_id(@step)
-    )
+    broadcast_step_list
   end
 
   # POST /workflows/:workflow_id/steps/apply_template
@@ -305,6 +290,37 @@ class StepsController < ApplicationController
 
   def list_steps
     @workflow.steps.reload.ordered.includes(transitions: :target_step)
+  end
+
+  # The source steps of @step's own incoming transitions, captured before
+  # @step.destroy cascades those transitions away - their rows still show the
+  # door @step used to fill until #destroy_streams refreshes them. A step
+  # whose own edge loops back to itself is excluded: it is being removed too,
+  # so there is nothing to refresh it with.
+  def incoming_parent_steps(step)
+    step.incoming_transitions.includes(:step).map(&:step).uniq.reject { |parent| parent.id == step.id }
+  end
+
+  # destroy answers the way a grow does: the whole list (already empty-state
+  # aware), the count, and - since a delete can free a door on a step whose
+  # panel happens to be open - that parent's Connections fragment. A stream at
+  # a target not on the page is a no-op, so this does not need to know which
+  # panel, if any, is open.
+  def destroy_streams(parent_steps)
+    steps = list_steps.to_a
+    streams = [
+      turbo_stream.replace("step-list", partial: "workflows/step_list",
+                                        locals: { workflow: @workflow, steps: steps }),
+      turbo_stream.update("step-count-text", helpers.pluralize(steps.size, "step"))
+    ]
+    streams << turbo_stream.update("builder-panel", "") if steps.empty?
+
+    parent_steps.each do |parent|
+      streams << turbo_stream.update(dom_id(parent, :connections), partial: "steps/connections",
+                                                                   locals: { step: parent, workflow: @workflow })
+    end
+
+    streams
   end
 
   def broadcast_step_list
