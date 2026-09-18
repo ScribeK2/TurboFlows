@@ -5,11 +5,17 @@ require "test_helper"
 # every one of them blocks. Dev data showed 8 unpublishable drafts with 0 errors.
 class WorkflowHealthCheckPublishBlockersTest < ActiveSupport::TestCase
   # Where each class states its codes. GraphValidator and SubflowValidator emit
-  # through add_finding(:code, ...); the health check coins its own with code: :x.
+  # through add_finding(:code, ...); the health check coins its own with code: :x;
+  # WorkflowVariableCheck names its codes when it builds a Finding.
+  #
+  # **Add an emitter here when you add one.** This list is the whole guard: a
+  # code emitted by a file nobody scans reads as "classified but unused" and
+  # fails, which is how WorkflowVariableCheck's two codes announced themselves.
   EMITTERS = {
     "app/services/workflow_health_check.rb" => /code: :([a-z_]+)/,
     "app/services/graph_validator.rb" => /add_finding\(:([a-z_]+)/,
-    "app/services/subflow_validator.rb" => /add_finding\(:([a-z_]+)/
+    "app/services/subflow_validator.rb" => /add_finding\(:([a-z_]+)/,
+    "app/services/workflow_variable_check.rb" => /code: :([a-z_]+)/
   }.freeze
 
   setup do

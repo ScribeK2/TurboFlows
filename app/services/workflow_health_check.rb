@@ -83,6 +83,7 @@ class WorkflowHealthCheck
     handoff_has_transitions select_options_required form_field_incomplete
     message_body_required action_instructions_required escalate_target_required
     answer_type_required option_value_missing placeholder_title
+    undefined_variable undefined_interpolation
   ].freeze
 
   # The second signal. Validity asks "can this run?"; readiness asks "is this
@@ -210,6 +211,7 @@ class WorkflowHealthCheck
     run_audience_check(issues)
     run_graph_validation(issues)
     run_subflow_validation(issues) if subflow_steps?
+    run_variable_validation(issues)
     run_step_validations(issues)
     collapse_no_transition_restatements(issues)
     order_actionable_first(issues)
@@ -251,6 +253,41 @@ class WorkflowHealthCheck
               fixable: presentation.fetch(:fixable, false),
               fix_type: presentation[:fix_type],
               code: finding.code)
+  end
+
+  # Branches that can never fire, and step copy that shows an agent raw braces.
+  # Both are what a rename of a Question's variable_name leaves behind, and
+  # until this ran the panel reported zero errors on exactly that workflow.
+  #
+  # Warnings, never publish blockers (grill Q3): the signal is new, and the
+  # honest way to earn a block is to watch its false-positive rate on real
+  # workflows first. Not readiness codes either — readiness asks whether a step
+  # says anything to an agent; this asks whether a branch can ever run.
+  def run_variable_validation(issues)
+    WorkflowVariableCheck.call(@workflow, steps_collection).each do |finding|
+      add_issue(issues, finding.step_uuid, :warning,
+                variable_finding_message(finding),
+                fixable: false, code: finding.code)
+    end
+  end
+
+  # One row per step naming every unknown variable on it, rather than a row per
+  # variable: a step whose body names three is one problem, not three. The
+  # count in this panel is read as "things wrong with my workflow".
+  def variable_finding_message(finding)
+    if finding.code == :undefined_variable
+      names = finding.variables.map { |name| "`#{name}`" }.to_sentence
+      # Not "they will not fire": against an unset variable `==` and `>` never
+      # fire, but `!=`, `<` and `<=` ALWAYS do (nil means true; numbers compare
+      # against 0), and one of those placed first shadows every branch after it.
+      # The sentence has to be true for both failures.
+      return "This step's branches test #{names}, which no step in this workflow sets, " \
+             "so they cannot route on #{finding.variables.one? ? 'it' : 'them'}."
+    end
+
+    braces = finding.variables.map { |name| "{{#{name}}}" }.to_sentence
+    pronoun = finding.variables.one? ? "it" : "them"
+    "This step's text shows #{braces} to the agent, because no step in this workflow sets #{pronoun}."
   end
 
   def run_subflow_validation(issues)
