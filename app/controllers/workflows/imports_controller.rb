@@ -76,8 +76,7 @@ module Workflows
       if result.success?
         redirect_to import_destination(result), notice: import_summary(result)
       else
-        redirect_to new_workflow_import_path,
-                    alert: "Failed to import workflow: #{truncate_for_flash(result.errors)}"
+        render_report(content, commit_refusal_report(report, result), :unprocessable_content)
       end
     end
 
@@ -90,6 +89,31 @@ module Workflows
     def render_strict_report(content)
       report = StrictImportValidator.new(user: current_user, content:).validate
       render_report(content, report, report.valid? ? :ok : :unprocessable_content)
+    end
+
+    # A refusal that only exists at commit, on the same page as one found at
+    # preview.
+    #
+    # StrictImportValidator binds in-bundle sub-flow targets by title but never
+    # walks the graph they make, so a cycle or an over-deep chain is reachable
+    # only after insert: preview passes, SubflowValidator refuses, the transaction
+    # rolls back. That went out as a flash — bottom right, gone in five seconds,
+    # three messages cut at 150 characters — and because the same file fails the
+    # same way every time, the toast was the only report anyone got. A cycle
+    # message naming five workflows runs past 250 characters, so the first one
+    # was cut in the middle of the path it existed to show.
+    #
+    # The messages are already whole on WorkflowImporter::Result; they only
+    # needed somewhere to stand. One stable code, no path: the finding is about
+    # the set, not a place in the file. The preview's warnings ride along, since
+    # they are still true of the file being sent back to whoever wrote it.
+    def commit_refusal_report(report, result)
+      errors = result.errors.map do |message|
+        { path: nil, code: "refused_at_commit", message: message.to_s, value: nil }
+      end
+
+      StrictImportValidator::Report.new(errors: errors, warnings: report.warnings,
+                                        workflows_data: nil, placements: nil)
     end
 
     def render_report(content, report, status)

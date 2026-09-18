@@ -79,6 +79,45 @@ class StrictImportFlowTest < ActionDispatch::IntegrationTest
                  "after importing a set, which ones is the immediate question")
   end
 
+  # --- a refusal that only exists at commit ----------------------------------
+  #
+  # StrictImportValidator binds in-bundle sub-flow targets by title but never
+  # walks the graph they make, so a cycle is reachable only after insert. Preview
+  # passes, commit refuses — and the refusal used to go out as a flash: bottom
+  # right, gone in five seconds, the first three messages cut at 150 characters.
+  # Observed on a real 24-workflow bundle: twelve findings, three shown, the
+  # first cut mid-cycle-path. The same file fails the same way every time, so
+  # the toast was the only report an operator or their AI agent ever got.
+
+  test "precondition: a cyclic bundle previews as ready to import" do
+    post workflow_import_path, params: { file: upload(cyclic_bundle_file) }
+
+    assert_response :success
+    assert_match(/Ready to import/, response.body)
+  end
+
+  test "a bundle refused at commit gets the persistent report page, not a flash" do
+    assert_no_difference -> { Workflow.count } do
+      post commit_workflow_import_path, params: { content: cyclic_bundle_file }
+    end
+
+    assert_response :unprocessable_content
+    assert_nil flash[:alert], "a five-second toast is not a report"
+    assert_select "[data-testid=import-report]"
+    assert_match(/cannot be imported yet/, response.body)
+    assert_match(/Nothing was created/, response.body)
+  end
+
+  test "every commit-time finding is shown whole" do
+    post commit_workflow_import_path, params: { content: cyclic_bundle_file }
+
+    assert_select ".badge--alert", text: /refused_at_commit/
+    assert_match(/Cyclic Flow A/, response.body)
+    assert_match(/Cyclic Flow B/, response.body)
+    assert_no_match(/and \d+ more/, response.body, "nothing is summarised away")
+    assert_no_match(/Failed to import workflow/, response.body)
+  end
+
   test "a committed bundle wires its sub_flow to the workflow that arrived with it" do
     post commit_workflow_import_path, params: { content: bundle_file }
 
@@ -177,6 +216,21 @@ class StrictImportFlowTest < ActionDispatch::IntegrationTest
         ]
       }]
     }.to_json
+  end
+
+  # A calls B and B calls A, both returning: legal to write, illegal to run.
+  def cyclic_bundle_file
+    flow = lambda do |title, target|
+      { title: title,
+        steps: [
+          { id: "run", type: "sub_flow", title: "Run #{target}", target_workflow_title: target,
+            transitions: [{ target_id: "done" }] },
+          { id: "done", type: "resolve", title: "Done", resolution_type: "success" }
+        ] }
+    end
+
+    { schema_version: "1",
+      workflows: [flow.call("Cyclic Flow A", "Cyclic Flow B"), flow.call("Cyclic Flow B", "Cyclic Flow A")] }.to_json
   end
 
   def bundle_file
