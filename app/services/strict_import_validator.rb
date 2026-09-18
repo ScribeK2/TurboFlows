@@ -350,10 +350,14 @@ class StrictImportValidator
     name = condition[CONDITION_VARIABLE, 1]
     return if name.nil?
 
-    unless defined.include?(name)
+    # Matched the way ConditionEvaluator reads a name, not the way it is
+    # spelled: case-insensitively, with the legacy name "answer" always known.
+    # Not "this branch will not fire": against an unset variable `!=`, `<` and
+    # `<=` ALWAYS fire (nil means true; numbers compare against 0).
+    unless WorkflowVariableNames.condition_matcher(defined).call(name)
       return add_warning(path, "undefined_variable", name,
-                         "No question in this workflow sets #{name}. This branch will not " \
-                         "fire unless the scenario supplies it.")
+                         "No step in this workflow sets #{name}, so this branch cannot route " \
+                         "on it unless the scenario supplies it.")
     end
 
     value = condition[CONDITION_STRING_VALUE, 1]
@@ -369,8 +373,22 @@ class StrictImportValidator
     STRICT_CONDITION_PATTERNS.any? { |pattern| pattern.match?(condition.to_s.strip) }
   end
 
+  # What a workflow's own steps put in the bag. The list of writers lives in
+  # WorkflowVariableNames, shared with the builder's health check; this only
+  # says how a parsed step reads. It used to be `variable_name` alone, which
+  # warned on every condition naming a step title or a Form field — names the
+  # runtime really does write. `output_fields` is absent on purpose: the dialect
+  # refuses the field (ImportSchemaGenerator::EXCLUDED_FIELDS).
   def defined_variables(steps)
-    steps.filter_map { |step| step["variable_name"].presence }.to_set
+    WorkflowVariableNames.written_by(steps.filter_map { |step| variable_row(step) })
+  end
+
+  def variable_row(step)
+    return unless step.is_a?(Hash)
+
+    WorkflowVariableNames::Row.new(title: step["title"], variable_name: step["variable_name"],
+                                   form_fields: (step["options"] if step["type"] == "form"),
+                                   output_fields: nil, mapping: step["variable_mapping"])
   end
 
   # What each workflow in the bundle receives from whoever calls it.
@@ -420,6 +438,16 @@ class StrictImportValidator
           before = inherited[target].size
           inherited[target] |= incoming
           changed ||= inherited[target].size != before
+
+          # And back up. Scenario#process_subflow_completion merges every
+          # non-internal child key into the parent, so a caller legitimately
+          # tests a variable only its child sets. A handoff
+          # (sub_flow_returns: false) is a tail call: nothing comes back.
+          next if step["sub_flow_returns"] == false
+
+          before = inherited[caller_index].size
+          inherited[caller_index] |= own[target] | inherited[target]
+          changed ||= inherited[caller_index].size != before
         end
       end
 
@@ -457,8 +485,8 @@ class StrictImportValidator
         next if defined.include?(name)
 
         add_warning("#{path}.#{field}", "undefined_variable", name,
-                    "{{#{name}}} is not set by any question in this workflow. It will " \
-                    "interpolate as empty unless the scenario supplies it.")
+                    "{{#{name}}} is not set by any step in this workflow. The agent will " \
+                    "see the braces as written unless the scenario supplies it.")
       end
     end
   end

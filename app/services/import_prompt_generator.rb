@@ -251,6 +251,12 @@ class ImportPromptGenerator
       the sub-flow is written against a different name, which is the normal case
       for a sub-flow shared by several callers that each collect the same thing
       under a name of their own.
+
+      **And it hands them back.** When a sub-flow returns, every variable it
+      collected is available to the caller under the same name, so the step
+      after it may branch on the sub-flow's answers — run a shared
+      "Verify identity" workflow, then branch on its `verified`. A handoff
+      (`sub_flow_returns: false`) never returns, so nothing comes back from one.
     MD
   end
 
