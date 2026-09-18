@@ -249,7 +249,7 @@ class StepsController < ApplicationController
     end
 
     @workflow.reload
-    steps = @workflow.steps.order(:position).includes(:transitions, :incoming_transitions)
+    steps = @workflow.steps.order(:position).includes(:incoming_transitions, transitions: :target_step)
 
     respond_to do |format|
       format.turbo_stream do

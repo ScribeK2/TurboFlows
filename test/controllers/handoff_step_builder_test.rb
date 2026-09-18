@@ -56,9 +56,8 @@ class HandoffStepBuilderTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "##{dom_id(step)}"
-    assert_select "##{dom_id(step)} .badge--warning",
-                  count: 0,
-                  message: "a handoff ends the workflow on purpose; a warning pill says it was forgotten"
+    assert_select "##{dom_id(step)} .builder__door-stub", false,
+                  "a handoff ends the workflow on purpose; it takes no doors to fill"
   end
 
   test "a returning sub-flow with no connections is still flagged" do
@@ -66,7 +65,7 @@ class HandoffStepBuilderTest < ActionDispatch::IntegrationTest
 
     get workflow_path(@workflow)
 
-    assert_select "##{dom_id(step)} .badge--warning", text: "No connections"
+    assert_select "##{dom_id(step)} .builder__door-stub", text: /add step/
   end
 
   # --- the step panel --------------------------------------------------------

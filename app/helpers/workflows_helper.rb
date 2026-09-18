@@ -108,6 +108,18 @@ module WorkflowsHelper
     "→ #{titles.join(', ')}"
   end
 
+  # The wired half of a row: "No → Power cycle · 2". Stubs are not text here -
+  # the row renders them as buttons (workflows/_step_row).
+  def step_door_summary(doors, ordinals)
+    wired = doors.doors.reject(&:stub?).map do |door|
+      arrow = step_connection_summary([door.target_step], ordinals)
+      door.kind == :next ? arrow : "#{door.label} #{arrow}"
+    end
+    extras = doors.extras.filter_map(&:target_step)
+    wired << step_connection_summary(extras, ordinals) if extras.any?
+    wired.join(" · ")
+  end
+
   # Computed, not memoised: a helper's instance variables live in the view
   # context, so caching here would outlive the workflow it was built for.
   # Callers that render a list compute it once and pass it down.

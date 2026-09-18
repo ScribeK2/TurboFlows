@@ -135,7 +135,7 @@ class BuilderStepPanelTest < ApplicationSystemTestCase
                                        question: "Is the site down?", answer_type: "yes_no")
     Steps::Escalate.create!(workflow: @workflow, title: "Escalate to network", position: 2)
     visit_builder_in_edit_mode
-    assert_selector ".badge", text: "No connections"
+    assert_selector ".builder__door-stub", text: /add step/
     open_step question
 
     within "turbo-frame#builder-panel" do

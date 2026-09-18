@@ -21,7 +21,8 @@
 <% ordinals = local_assigns.fetch(:ordinals) { step_ordinals(workflow) } %>
 <% ordinal = ordinals[step.uuid] || "?" %>
 <% type_label = step_type_label(step.step_type) %>
-<% targets = (step.transitions.loaded? ? step.transitions : step.transitions.includes(:target_step)).filter_map(&:target_step) %>
+<% doors = Step::Doors.for(step) %>
+<% row_title = step.title.presence || "Untitled #{step.step_type.titleize}" %>
 
 <div class="list-row list-row--compact builder__step"
      id="<%= dom_id(step) %>"
@@ -49,12 +50,7 @@
 
   <div class="list-row__body">
     <div class="list-row__title">
-      <%= step.title.presence || "Untitled #{step.step_type.titleize}" %>
-      <%# A handoff ends the workflow on purpose, so no connections is its shape,
-          not something forgotten. %>
-      <% if step.transitions.empty? && !step.is_a?(Steps::Resolve) && !step.hands_off? %>
-        <span class="badge badge--warning">No connections</span>
-      <% end %>
+      <%= row_title %>
     </div>
   </div>
 
@@ -65,27 +61,50 @@
   <% parts = [] %>
   <% parts << "Start" if step == workflow.start_step %>
   <% parts << "Terminal" if step.terminal? %>
-  <% parts << step_connection_summary(targets, ordinals) if targets.any? %>
+  <% door_summary = step_door_summary(doors, ordinals) %>
+  <% parts << door_summary if door_summary.present? %>
   <% meta = parts.join(" · ") %>
   <span class="builder__step-meta"<% if meta.present? %> title="<%= meta %>"<% end %>>
     <%= meta %>
   </span>
 
+  <%# Stubs: the answers that lead nowhere yet. Not inside .builder__step-meta,
+      which hides while the panel is open - and the panel is open right after a
+      grow, which is exactly when the remaining stub has to be findable. Two
+      doors or fewer get a button each; more collapse to one line that opens the
+      panel at its doors, since a row is one line tall. %>
+  <% stubs = doors.stubs %>
+  <% if stubs.any? %>
+    <span class="builder__step-doors">
+      <% if doors.doors.size <= 2 %>
+        <% stubs.each do |door| %>
+          <% stub_label = door.kind == :next ? "→" : "#{door.label} →" %>
+          <button type="button" class="builder__door-stub builder__edit-only"
+                  data-action="click->step-list#growFromDoor"
+                  data-grow-from="<%= step.id %>"
+                  data-grow-label="<%= door.label unless door.kind == :next %>"
+                  data-grow-condition="<%= door.condition %>"
+                  data-grow-context="<%= door.kind == :next ? "After “#{row_title}”" : "“#{row_title}” — #{door.label}" %>">
+            <%= stub_label %> add step
+          </button>
+          <span class="builder__door-stub-text builder__view-only"><%= stub_label %> nothing yet</span>
+        <% end %>
+      <% else %>
+        <% collapsed = "#{pluralize(stubs.size, 'answer')} #{stubs.size == 1 ? 'needs' : 'need'} a step" %>
+        <button type="button" class="builder__door-stub builder__edit-only"
+                data-action="click->builder#openStepAtDoors"
+                data-builder-url-param="<%= panel_edit_workflow_step_path(workflow, step) %>">
+          <%= collapsed %>
+        </button>
+        <span class="builder__door-stub-text builder__view-only"><%= collapsed %></span>
+      <% end %>
+    </span>
+  <% end %>
+
   <%# Warning Icon (populated by step_warnings_controller.js) %>
   <span class="step-warning-icon" data-step-warnings-target="icon" data-step-uuid="<%= step.uuid %>" hidden></span>
 
   <div class="list-row__actions builder__edit-only">
-    <% unless step.is_a?(Steps::Resolve) || step.hands_off? %>
-      <button type="button"
-              class="builder__step-grow btn btn--plain btn--sm"
-              title="Add the step that follows this one"
-              aria-label="Add the step that follows <%= step.title.presence || 'this step' %>"
-              data-action="click->step-list#growFromDoor"
-              data-grow-from="<%= step.id %>"
-              data-grow-context="After “<%= step.title.presence || "Untitled #{step.step_type.titleize}" %>”">
-        <%= icon "plus", class: "icon icon--sm" %>
-      </button>
-    <% end %>
     <%= button_to workflow_step_path(workflow, step),
           method: :delete,
           data: { turbo_confirm: "Remove this step?", turbo_stream: true, action: "click->step-list#stopPropagation" },

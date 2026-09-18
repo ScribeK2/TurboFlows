@@ -22,10 +22,13 @@ export default class extends Controller {
     this.boundWrapStreamRender = this.wrapStreamRender.bind(this)
     document.addEventListener("turbo:before-stream-render", this.boundWrapStreamRender)
 
-    this.boundSyncSelectedRow = this.syncSelectedRow.bind(this)
-    if (this.hasPanelTarget) {
-      this.panelTarget.addEventListener("turbo:frame-load", this.boundSyncSelectedRow)
-    }
+    // Bound on document, not the panel target: StepsController#create's
+    // grown_streams REPLACES #builder-panel wholesale (a fresh <turbo-frame>
+    // from steps/panel_edit), so a listener attached to the target node at
+    // connect() time ends up on a detached element after the first grow.
+    // Filtering by event.target.id keeps this scoped to the one frame.
+    this.boundOnPanelFrameLoad = this.onPanelFrameLoad.bind(this)
+    document.addEventListener("turbo:frame-load", this.boundOnPanelFrameLoad)
 
     const params = new URLSearchParams(window.location.search)
     if (params.get("health") === "true") {
@@ -36,9 +39,13 @@ export default class extends Controller {
   disconnect() {
     document.removeEventListener("keydown", this.boundKeydown)
     document.removeEventListener("turbo:before-stream-render", this.boundWrapStreamRender)
-    if (this.hasPanelTarget) {
-      this.panelTarget.removeEventListener("turbo:frame-load", this.boundSyncSelectedRow)
-    }
+    document.removeEventListener("turbo:frame-load", this.boundOnPanelFrameLoad)
+  }
+
+  // See the connect() comment above: this stays a document listener so it
+  // survives #builder-panel being replaced wholesale.
+  onPanelFrameLoad(event) {
+    if (event.target.id === "builder-panel") this.syncSelectedRow()
   }
 
   // Composes with any other turbo:before-stream-render listener (e.g.
@@ -83,6 +90,23 @@ export default class extends Controller {
     })
     event.currentTarget.classList.add("builder__step--selected")
 
+    this.loadPanel(url)
+  }
+
+  // A row with more doors than fit on one line: open its panel at the doors.
+  openStepAtDoors(event) {
+    const row = event.currentTarget.closest(".builder__step")
+    const url = event.currentTarget.dataset.builderUrlParam
+    if (!row || !url) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    this.clearSelectedRow()
+    row.classList.add("builder__step--selected")
+
+    this.panelTarget.addEventListener("turbo:frame-load", () => {
+      this.panelTarget.querySelector(".step-doors")?.scrollIntoView({ block: "center" })
+    }, { once: true })
     this.loadPanel(url)
   }
 

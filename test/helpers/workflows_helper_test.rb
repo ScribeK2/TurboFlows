@@ -139,3 +139,40 @@ class WorkflowsHelperTest < ActionView::TestCase
     assert_equal "My Step", result
   end
 end
+
+class WorkflowsHelperDoorSummaryTest < ActionView::TestCase
+  include WorkflowsHelper
+
+  setup do
+    @user = User.create!(email: "sum-#{SecureRandom.hex(4)}@example.com", password: "password123456")
+    @workflow = Workflow.create!(title: "Summary", user: @user)
+    @question = Steps::Question.create!(workflow: @workflow, title: "Light green?", position: 0,
+                                        answer_type: "yes_no", variable_name: "light")
+    @action = Steps::Action.create!(workflow: @workflow, title: "Power cycle", position: 1)
+    @resolve = Steps::Resolve.create!(workflow: @workflow, title: "Done", position: 2)
+  end
+
+  def summary(step)
+    step_door_summary(Step::Doors.for(step.reload), step_ordinals(@workflow))
+  end
+
+  test "a wired answer door names its answer, target and number" do
+    Transition.create!(step: @question, target_step: @action, condition: "light == 'no'")
+    assert_equal "No → Power cycle · 2", summary(@question)
+  end
+
+  test "a wired Next door reads as it always has" do
+    Transition.create!(step: @action, target_step: @resolve)
+    assert_equal "→ Done · 3", summary(@action)
+  end
+
+  test "extras follow the doors" do
+    Transition.create!(step: @question, target_step: @action, condition: "light == 'no'")
+    Transition.create!(step: @question, target_step: @resolve, condition: "tier == 'gold'")
+    assert_equal "No → Power cycle · 2 · → Done · 3", summary(@question)
+  end
+
+  test "nothing wired is an empty summary" do
+    assert_equal "", summary(@question)
+  end
+end

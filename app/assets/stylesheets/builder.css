@@ -245,6 +245,41 @@
     font-variant-numeric: tabular-nums;
   }
 
+  .builder__step-doors {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  /* A stub reads as quiet text that can be pressed: no fill, a dashed hairline.
+     Not a warning colour - an unwired answer on a draft is work in progress. */
+  .builder__door-stub {
+    padding: 0 var(--space-2);
+    border: 1px dashed var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    font-size: var(--text-xs);
+    color: var(--color-primary-text);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .builder__door-stub:hover {
+    border-style: solid;
+    color: var(--color-primary-text-hover);
+  }
+
+  .builder__door-stub:focus-visible {
+    outline: var(--focus-ring);
+  }
+
+  .builder__door-stub-text {
+    font-size: var(--text-xs);
+    color: var(--color-ink-muted);
+    white-space: nowrap;
+  }
+
   .builder__step:not(:last-child) {
     border-bottom: 1px solid var(--color-border);
   }
@@ -358,25 +393,6 @@
     opacity: 1;
   }
 
-  /* Task 8 replaces this with door stubs; it exists so Slice A is usable
-     alone. background declared explicitly, rather than left silent for
-     reset.css to (not) fill in — see UIGUIDE § The unstyled-button trap.
-     var(--btn-bg) rather than a literal transparent: .btn--plain:hover only
-     repoints that variable, and builder.css loads after buttons.css, so a
-     literal here at equal specificity would win and lock the button flat
-     even while hovered — the same failure that trap warns about, just one
-     property later. */
-  .builder__step-grow {
-    opacity: 0;
-    background: var(--btn-bg);
-    transition: opacity var(--duration-fast) var(--ease-out);
-  }
-
-  .builder__step:hover .builder__step-grow,
-  .builder__step-grow:focus-visible {
-    opacity: 1;
-  }
-
   /* ===== Add Step =====
      A trailing prompt row in the same container as the steps, rather than a
      dashed box floating below it. Anatomy comes from .list-row--prompt; only
@@ -425,6 +441,23 @@
       opacity: 0;
       transform: scale(0.95);
     }
+  }
+
+  /* Set by step_list_controller#positionPickerNear when the picker is opened
+     from a row's own door stub (or the panel's "New step" buttons), rather
+     than the bottom prompt: it needs to sit beside whatever was pressed,
+     escaping .builder__list-scroll's clipping, not anchored to the trailing
+     row. The coordinates themselves (top/left) are set inline as one-off
+     layout values; this class only switches the positioning MODE. Declared
+     after .builder__type-picker so it wins at equal specificity. */
+  .builder__type-picker--floating {
+    position: fixed;
+    top: auto;
+    bottom: auto;
+    left: auto;
+    right: auto;
+    width: 16rem;
+    margin: 0;
   }
 
   .builder__type-option {
@@ -786,6 +819,10 @@
   .builder[data-builder-mode-value="view"] .builder__list-add,
   .builder[data-builder-mode-value="view"] .builder__step-delete,
   .builder[data-builder-mode-value="view"] .builder__edit-only {
+    display: none;
+  }
+
+  .builder[data-builder-mode-value="edit"] .builder__view-only {
     display: none;
   }
 
