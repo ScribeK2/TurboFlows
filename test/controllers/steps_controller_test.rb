@@ -93,8 +93,8 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 0, extra.reload.position
   end
 
-  # 7. create step via Turbo Stream appends to steps-list
-  test "create step via turbo stream appends card" do
+  # 7. create step via Turbo Stream replaces the list and opens the new step
+  test "create via turbo stream replaces the list and opens the new step" do
     assert_difference("Step.count", 1) do
       post workflow_steps_path(@workflow),
            params: { step_type: "action", step: { title: "Action via Turbo" } },
@@ -102,8 +102,45 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :ok
-    assert_includes response.body, "turbo-stream"
-    assert_includes response.body, "append"
+    assert_select "turbo-stream[action='replace'][target='step-list']"
+    assert_select "turbo-stream[action='replace'][target='builder-panel']"
+    assert_select "turbo-stream[action='update'][target='step-count-text']"
+  end
+
+  test "create with from_step_id lands after the parent and connects it" do
+    later = Steps::Resolve.create!(workflow: @workflow, position: 1, title: "Done")
+
+    assert_difference("Transition.count", 1) do
+      post workflow_steps_path(@workflow),
+           params: { step_type: "message", from_step_id: @step.id, label: "No", condition: "answer == 'no'" },
+           headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+
+    grown = @workflow.steps.find_by!(type: "Steps::Message")
+    assert_equal [@step.id, grown.id, later.id], @workflow.steps.order(:position).map(&:id)
+    edge = @step.transitions.sole
+    assert_equal [grown.id, "No", "answer == 'no'"], [edge.target_step_id, edge.label, edge.condition]
+  end
+
+  test "create from a Resolve is refused with a message" do
+    resolve = Steps::Resolve.create!(workflow: @workflow, position: 1, title: "Done")
+
+    assert_no_difference("Step.count") do
+      post workflow_steps_path(@workflow),
+           params: { step_type: "action", from_step_id: resolve.id },
+           headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+
+    assert_response :unprocessable_content
+    assert_select "turbo-stream[target='flash']"
+  end
+
+  test "create with another workflow's step id is not found" do
+    other = Workflow.create!(title: "Other", user: @editor)
+    foreign = Steps::Action.create!(workflow: other, position: 0, title: "Foreign")
+
+    post workflow_steps_path(@workflow), params: { step_type: "action", from_step_id: foreign.id }, as: :json
+    assert_response :not_found
   end
 
   # 9. requires authentication — unauthenticated POST redirects

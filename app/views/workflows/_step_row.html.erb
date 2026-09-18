@@ -13,13 +13,15 @@
     `position` column — which is 0-based in service-built workflows and 1-based
     in UI-built ones. Optional: callers that render a row on its own (Turbo
     Stream appends) fall back to the step's own place in the workflow.
+  - selected: optional, true when this row is the one just grown or opened
 %>
 <% ordinals = local_assigns.fetch(:ordinals) { step_ordinals(workflow) } %>
 <% ordinal = ordinals[step.uuid] || "?" %>
 <% type_label = step_type_label(step.step_type) %>
 <% targets = (step.transitions.loaded? ? step.transitions : step.transitions.includes(:target_step)).filter_map(&:target_step) %>
+<% selected = local_assigns.fetch(:selected, false) %>
 
-<div class="list-row list-row--compact builder__step"
+<div class="list-row list-row--compact builder__step<%= ' builder__step--selected' if selected %>"
      id="<%= dom_id(step) %>"
      data-step-id="<%= step.id %>"
      data-step-uuid="<%= step.uuid %>"
@@ -71,6 +73,17 @@
   <span class="step-warning-icon" data-step-warnings-target="icon" data-step-uuid="<%= step.uuid %>" hidden></span>
 
   <div class="list-row__actions builder__edit-only">
+    <% unless step.is_a?(Steps::Resolve) || step.hands_off? %>
+      <button type="button"
+              class="builder__step-grow btn btn--plain btn--sm"
+              title="Add the step that follows this one"
+              aria-label="Add the step that follows <%= step.title.presence || 'this step' %>"
+              data-action="click->step-list#growFromDoor"
+              data-grow-from="<%= step.id %>"
+              data-grow-context="After “<%= step.title.presence || "Untitled #{step.step_type.titleize}" %>”">
+        <%= icon "plus", class: "icon icon--sm" %>
+      </button>
+    <% end %>
     <%= button_to workflow_step_path(workflow, step),
           method: :delete,
           data: { turbo_confirm: "Remove this step?", turbo_stream: true, action: "click->step-list#stopPropagation" },

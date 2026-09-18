@@ -4,7 +4,9 @@
   Local variables:
   - workflow: Workflow object
   - steps: ordered step collection (preloaded with transitions)
+  - selected_step: optional Step, marked as the open row (e.g. one just grown)
 %>
+<% selected_step = local_assigns[:selected_step] %>
 <div class="builder__list"
      id="step-list"
      data-controller="step-list"
@@ -21,7 +23,8 @@
           summaries inherited it. One map, shared by the badge and the arrows. %>
       <% ordinals = step_ordinals(workflow) %>
       <% steps.each do |step| %>
-        <%= render "workflows/step_row", step: step, workflow: workflow, ordinals: ordinals %>
+        <%= render "workflows/step_row", step: step, workflow: workflow, ordinals: ordinals,
+                                          selected: step == selected_step %>
       <% end %>
       <% if steps.empty? %>
         <%= render "workflows/empty_state", workflow: workflow %>

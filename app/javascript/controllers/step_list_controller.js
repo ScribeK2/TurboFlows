@@ -3,7 +3,7 @@ import Sortable from "sortablejs"
 
 // Manages the step list: SortableJS drag-and-drop and type picker popover.
 export default class extends Controller {
-  static targets = ["list", "typePicker"]
+  static targets = ["list", "typePicker", "pickerContext", "fromStepId", "doorLabel", "doorCondition"]
   static values = {
     reorderUrl: String
   }
@@ -27,21 +27,67 @@ export default class extends Controller {
     // not the panel behind it.
     this.boundCloseOnEscape = this.closeOnEscape.bind(this)
     document.addEventListener("keydown", this.boundCloseOnEscape, true)
+
+    // Door buttons in the step panel sit outside this controller's element.
+    this.boundGrowFromOutside = this.growFromOutside.bind(this)
+    document.addEventListener("click", this.boundGrowFromOutside)
   }
 
   disconnect() {
     this.sortable?.destroy()
     document.removeEventListener("click", this.boundCloseOnOutsideClick)
     document.removeEventListener("keydown", this.boundCloseOnEscape, true)
+    document.removeEventListener("click", this.boundGrowFromOutside)
   }
 
+  // The bottom prompt: a step connected to nothing.
   toggleTypePicker(event) {
     event.stopPropagation()
-    this.setTypePickerHidden(!this.typePickerTarget?.hidden)
+    const opening = this.typePickerTarget?.hidden
+    if (opening) this.setDoor({})
+    this.setTypePickerHidden(!opening)
   }
 
   closeTypePicker() {
     this.setTypePickerHidden(true)
+  }
+
+  // A row's own button. Stop the click reaching the row, which opens the panel.
+  growFromDoor(event) {
+    event.preventDefault()
+    event.stopPropagation()
+    this.openForDoor(event.currentTarget)
+  }
+
+  growFromOutside(event) {
+    const trigger = event.target.closest("[data-grow-from]")
+    if (!trigger || this.element.contains(trigger)) return
+
+    event.preventDefault()
+    this.openForDoor(trigger)
+  }
+
+  openForDoor(trigger) {
+    this.setDoor({
+      from: trigger.dataset.growFrom,
+      label: trigger.dataset.growLabel,
+      condition: trigger.dataset.growCondition,
+      context: trigger.dataset.growContext
+    })
+    this.setTypePickerHidden(false)
+  }
+
+  // Written when the picker OPENS, never when it closes: choosing a type closes
+  // the picker on click, before the form submits, and clearing here would send
+  // the grow with no parent.
+  setDoor({ from = "", label = "", condition = "", context = "" }) {
+    this.fromStepIdTargets.forEach(field => { field.value = from })
+    this.doorLabelTargets.forEach(field => { field.value = label })
+    this.doorConditionTargets.forEach(field => { field.value = condition })
+    if (this.hasPickerContextTarget) {
+      this.pickerContextTarget.textContent = context
+      this.pickerContextTarget.hidden = !context
+    }
   }
 
   // The picker is a .dropdown__menu, and that component is driven by
@@ -89,7 +135,7 @@ export default class extends Controller {
 
   closeOnOutsideClick(event) {
     if (this.hasTypePickerTarget && !this.typePickerTarget.hidden) {
-      if (!event.target.closest(".builder__list-add-wrapper")) {
+      if (!event.target.closest(".builder__list-add-wrapper") && !event.target.closest("[data-grow-from]")) {
         this.setTypePickerHidden(true)
       }
     }

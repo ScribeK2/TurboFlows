@@ -70,49 +70,25 @@ class StepsController < ApplicationController
   end
 
   # POST /workflows/:workflow_id/steps
+  #
+  # from_step_id (with label and condition, from a named door) grows the new
+  # step from that one: it lands directly after it, already connected.
   def create
     step_type = step_params[:type] || params[:step_type] || "action"
-    step_class = step_class_for(step_type)
-    position = @workflow.steps.maximum(:position).to_i + 1
+    @step = GrowStep.create(workflow: @workflow, step_type: step_type, from_step: grow_from_step,
+                            attrs: permitted_step_params, label: params[:label], condition: params[:condition])
 
-    attrs = permitted_step_params.merge(workflow: @workflow, position: position)
-    attrs[:title] = "Untitled #{step_type.titleize}" if attrs[:title].blank?
-
-    @step = step_class.new(attrs)
-
-    if @step.save
-      ensure_start_step_assigned
-
-      respond_to do |format|
-        format.turbo_stream do
-          streams = [
-            turbo_stream.append("steps-list",
-                                partial: "workflows/step_row",
-                                locals: { step: @step, workflow: @workflow }),
-            turbo_stream.remove("builder-empty-state"),
-            turbo_stream.replace("builder-panel",
-                                 partial: "steps/panel_edit",
-                                 locals: { step: @step, workflow: @workflow, readonly: false }),
-            turbo_stream.update("step-count-text",
-                                helpers.pluralize(@workflow.steps.count, "step"))
-          ]
-          render turbo_stream: streams
-        end
-        format.html { redirect_to workflow_path(@workflow, edit: true), notice: "Step added." }
-        format.json { render json: step_json(@step), status: :created }
-      end
-
-      broadcast_step_row(@step)
-    else
-      respond_to do |format|
-        format.turbo_stream do
-          render turbo_stream: turbo_stream.update("steps-list",
-                                                   html: helpers.tag.div(@step.errors.full_messages.join(", "), class: "alert alert--warning mb-4")), status: :unprocessable_content
-        end
-        format.html { redirect_to workflow_path(@workflow, edit: true), alert: @step.errors.full_messages.join(", ") }
-        format.json { render json: { errors: @step.errors.full_messages }, status: :unprocessable_content }
-      end
+    respond_to do |format|
+      format.turbo_stream { render turbo_stream: grown_streams(@step) }
+      format.html { redirect_to workflow_path(@workflow, edit: true), notice: "Step added." }
+      format.json { render json: step_json(@step), status: :created }
     end
+
+    broadcast_step_list
+  rescue ActiveRecord::RecordInvalid => e
+    respond_to_refused_create(e.record.errors.full_messages.to_sentence)
+  rescue GrowStep::Refused => e
+    respond_to_refused_create(e.message)
   end
 
   # PATCH /workflows/:workflow_id/steps/:id
@@ -252,14 +228,7 @@ class StepsController < ApplicationController
   # PATCH /workflows/:workflow_id/steps/:id/reorder
   def reorder
     StepReorderer.call(@workflow, @step, params[:position])
-
-    # Broadcast updated list to all collaborators (update = replace inner HTML, preserving container attributes)
-    Turbo::StreamsChannel.broadcast_update_to(
-      "workflow_#{@workflow.id}",
-      target: "steps-list",
-      partial: "workflows/steps_list_items",
-      locals: { workflow: @workflow.reload, steps: @workflow.steps.reload.includes(:transitions, :incoming_transitions) }
-    )
+    broadcast_step_list
 
     head :ok
   end
@@ -268,6 +237,43 @@ class StepsController < ApplicationController
 
   def set_workflow
     @workflow = Workflow.find(params[:workflow_id])
+  end
+
+  def grow_from_step
+    @workflow.steps.find(params[:from_step_id]) if params[:from_step_id].present?
+  end
+
+  # The whole list, not the one row: a step inserted mid-list moves the number
+  # of every step after it, and every "→ Title · 4" that points at one.
+  def grown_streams(step)
+    [
+      turbo_stream.replace("step-list", partial: "workflows/step_list",
+                                        locals: { workflow: @workflow, steps: list_steps, selected_step: step }),
+      turbo_stream.replace("builder-panel", partial: "steps/panel_edit",
+                                            locals: { step: step, workflow: @workflow, readonly: false }),
+      turbo_stream.update("step-count-text", helpers.pluralize(@workflow.steps.count, "step"))
+    ]
+  end
+
+  def list_steps
+    @workflow.steps.reload.ordered.includes(transitions: :target_step)
+  end
+
+  def broadcast_step_list
+    Turbo::StreamsChannel.broadcast_update_to(
+      "workflow_#{@workflow.id}",
+      target: "steps-list",
+      partial: "workflows/steps_list_items",
+      locals: { workflow: @workflow.reload, steps: list_steps }
+    )
+  end
+
+  def respond_to_refused_create(message)
+    respond_to do |format|
+      format.turbo_stream { render_refusal(message, status: :unprocessable_content) }
+      format.html { redirect_to workflow_path(@workflow, edit: true), alert: message }
+      format.json { render json: { errors: [message] }, status: :unprocessable_content }
+    end
   end
 
   def set_step

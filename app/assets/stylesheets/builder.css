@@ -358,6 +358,25 @@
     opacity: 1;
   }
 
+  /* Task 8 replaces this with door stubs; it exists so Slice A is usable
+     alone. background declared explicitly, rather than left silent for
+     reset.css to (not) fill in — see UIGUIDE § The unstyled-button trap.
+     var(--btn-bg) rather than a literal transparent: .btn--plain:hover only
+     repoints that variable, and builder.css loads after buttons.css, so a
+     literal here at equal specificity would win and lock the button flat
+     even while hovered — the same failure that trap warns about, just one
+     property later. */
+  .builder__step-grow {
+    opacity: 0;
+    background: var(--btn-bg);
+    transition: opacity var(--duration-fast) var(--ease-out);
+  }
+
+  .builder__step:hover .builder__step-grow,
+  .builder__step-grow:focus-visible {
+    opacity: 1;
+  }
+
   /* ===== Add Step =====
      A trailing prompt row in the same container as the steps, rather than a
      dashed box floating below it. Anatomy comes from .list-row--prompt; only
