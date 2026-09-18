@@ -70,11 +70,13 @@ module Steps
         turbo_stream.update(dom_id(@step, :connections), partial: "steps/connections",
                                                          locals: { step: @step, workflow: @workflow }),
         # The dialog's own list is rendered with the panel, so a step grown
-        # after it opened is missing until this refreshes it. It also closes
-        # the dialog on success once applied - the JS-side close (on
-        # turbo:submit-end, gated on success) has already run by then, since
-        # that event fires before this stream is applied; this replace keeps
-        # the list fresh for the next open rather than fighting that close.
+        # after it opened is missing until this refreshes it. This never fights
+        # the JS-side close: turbo:submit-end (which closes the dialog on a
+        # successful submit) fires before this stream is applied to the DOM -
+        # StreamObserver's response handling is async, requestFinished's
+        # dispatch is not - so by the time this replace lands the dialog is
+        # already closed, and it stays closed (the fresh copy carries no
+        # `open` attribute).
         turbo_stream.replace(dom_id(@step, :target_picker), partial: "steps/target_picker",
                                                             locals: { step: @step, workflow: @workflow })
       ]

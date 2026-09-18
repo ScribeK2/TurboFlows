@@ -154,9 +154,44 @@ class BuilderGrowTest < ApplicationSystemTestCase
     assert_equal [done.id, "light == 'yes'"], [edge.target_step_id, edge.condition]
     within("turbo-frame#builder-panel") { assert_selector ".step-doors__row", text: /Yes.*All done/m }
     assert_no_selector "dialog[open]", visible: :all
+  end
 
-    visit workflows_path
-    page.go_back
+  # The test above only shows the dialog closes on a successful submit - by
+  # then it is already closed, so leaving and coming back would prove nothing
+  # about the turbo:before-cache handler. This leaves the dialog OPEN instead,
+  # then leaves the page: that is the moment Turbo caches this page's DOM (the
+  # dialog still in it) for a future Back, and the handler's one chance to
+  # close it before the snapshot is taken.
+  #
+  # A modal blocks every click on the page behind it (Selenium refuses to
+  # click a nav link here: the dialog "would receive the click"), so a real
+  # user could only leave through browser chrome - typing a URL, a bookmark,
+  # the physical Back button - never a page link. `Turbo.visit` stands in for
+  # that: a real Turbo Drive visit, executed in the page rather than clicked.
+  # `history.back()` runs in the page for the same reason AND on purpose,
+  # matching test/system/admin_users_test.rb's proven pattern: Capybara's own
+  # `go_back` travels through WebDriver, and on that path Chrome closes the
+  # modal itself - so the assertion below would still pass with the
+  # turbo:before-cache handler removed.
+  test "Back does not bring an open target-picker dialog back with it" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", question: "Light green?",
+                                       position: 1, answer_type: "yes_no", variable_name: "light")
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    find("#{STEP_ROW}[data-step-uuid='#{question.uuid}']").click
+    assert_selector "turbo-frame#builder-panel form", wait: 5
+
+    within "turbo-frame#builder-panel" do
+      find(".step-doors__row", text: "Yes").click_on "Use existing…"
+    end
+    assert_selector "dialog[open]", wait: 5
+
+    execute_script("Turbo.visit(#{workflows_path.to_json})")
+    assert_selector "h1", text: "Workflows", wait: 5
+
+    execute_script("history.back()")
+    assert_selector "turbo-frame#builder-panel form", wait: 5
+
     assert_no_selector "dialog[open]", visible: :all
   end
 

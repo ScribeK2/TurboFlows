@@ -49,6 +49,15 @@ export default class extends Controller {
     if (event.target === this.dialogTarget) this.close()
   }
 
+  // builder_controller listens for Escape on the document to close the whole
+  // panel. Stopping it here leaves the browser's own default action alone -
+  // stopPropagation() doesn't cancel that, only preventDefault() would - so
+  // the dialog still closes itself natively. Without this, Escape while
+  // picking a target closed the panel out from under the author too.
+  stopEscape(event) {
+    event.stopPropagation()
+  }
+
   filter() {
     const query = this.filterTarget.value.trim().toLowerCase()
     let shown = 0

@@ -676,6 +676,13 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_select "dialog button[name='target_step_id'][value='#{question.id}']", false
     assert_select "form[data-controller~='inline-autosave'] dialog", false
     assert_select ".step-doors__row button", text: "Use existing…"
+    # form_with method: :post renders no _method field of its own - the
+    # dialog's hidden field (flipped to "patch" by JS for a retarget) must be
+    # the only one, or Rails would read whichever one comes first. (No
+    # authenticity_token field to check alongside it: every form_with in this
+    # app is Turbo-submitted, so Rails leaves the CSRF token out of the HTML
+    # and Turbo attaches it as a request header from the page's meta tag.)
+    assert_select "dialog form input[name='_method']", count: 1
   end
 
   test "the readonly panel offers no way to point a door at an existing step" do

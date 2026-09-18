@@ -8,7 +8,7 @@
 <% ordinals = step_ordinals(workflow) %>
 <dialog class="dialog dialog--sm" id="<%= dom_id(step, :target_picker) %>"
         data-step-target-picker-target="dialog"
-        data-action="click->step-target-picker#backdropClose">
+        data-action="click->step-target-picker#backdropClose keydown.esc->step-target-picker#stopEscape">
   <%= form_with url: workflow_step_transitions_path(workflow, step), method: :post,
         data: { turbo_stream: true, step_target_picker_target: "form",
                 create_url: workflow_step_transitions_path(workflow, step),
