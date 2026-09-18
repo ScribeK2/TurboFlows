@@ -147,18 +147,16 @@
     </div>
   <% end %>
 
-  <% if step.transitions.any? %>
-    <div class="form-group">
-      <dt class="form-label">Connections</dt>
-      <dd>
-        <% step.transitions.includes(:target_step).each do |t| %>
-          <div class="flex items-center gap-2 py-1">
-            <span class="text-sm"><%= t.condition.presence || "Default" %></span>
-            <span aria-hidden="true">&rarr;</span>
-            <span class="text-sm"><%= t.target_step&.title %></span>
-          </div>
+  <% unless step.is_a?(Steps::Resolve) %>
+    <%= render "steps/connections", step: step, workflow: workflow, readonly: true %>
+    <% extras = Step::Doors.for(step).extras %>
+    <% if extras.any? %>
+      <dl>
+        <dt class="form-label">Other connections</dt>
+        <% extras.each do |t| %>
+          <dd class="text-sm"><%= [t.label.presence, t.condition.presence].compact.join(" · ") %> → <%= t.target_step&.title.presence || "Untitled" %></dd>
         <% end %>
-      </dd>
-    </div>
+      </dl>
+    <% end %>
   <% end %>
 </dl>

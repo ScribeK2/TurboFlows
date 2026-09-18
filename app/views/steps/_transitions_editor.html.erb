@@ -1,5 +1,10 @@
 <%#
-  Transitions Editor — server-rendered transition management for graph mode.
+  Transitions Editor — server-rendered transition management for graph mode,
+  narrowed to the connections Step::Doors does not already show as a door: a
+  handoff's own connection (it has no doors), plus anything else no door
+  describes (a numeric range, another variable, a second condition on one
+  answer). Step::Doors.for(step).extras is exactly that set - it starts from
+  every transition on the step and subtracts the ones each door claimed.
 
   Local variables:
   - step: AR Step object
@@ -7,114 +12,128 @@
 %>
 <% sentence_variables_json = ERB::Util.html_escape(condition_sentence_variables(workflow, step).to_json) %>
 
-<div class="mt-4 border-t" style="padding-top: var(--space-4);"
-     data-controller="step-transitions"
-     data-step-transitions-step-id-value="<%= step.uuid %>"
-     data-step-transitions-step-index-value="<%= step.position %>"
-     data-step-transitions-variables-value="<%= sentence_variables_json %>">
+<%# `known` is every transition this editor was rendered with. TransitionSync
+    deletes only a known row the author removed; an edge made elsewhere while
+    this panel sat open is not the editor's to delete.
 
-  <div class="flex items-center justify-between mb-3">
-    <label class="form-label mb-0">
-      <%= icon "arrow-right", class: "icon icon--sm inline-block mr-1" %>
-      Connections
-    </label>
-    <button type="button"
-            data-action="click->step-transitions#addTransition"
-            class="btn btn--plain btn--sm">
-      <%= icon "plus", class: "icon icon--xs" %>
-      Add Connection
-    </button>
-  </div>
+    A handoff has no doors (Step::Doors#growable? is false for one), so its own
+    connection would otherwise vanish from both the doors list and this editor.
+    #extras is then the same set as step.transitions - asserted in
+    test/controllers/steps_controller_test.rb. %>
+<% editor_transitions = step.hands_off? ? step.transitions.includes(:target_step).to_a : Step::Doors.for(step).extras %>
 
-  <%# `known` is every transition this editor was rendered with. TransitionSync
-      deletes only a known row the author removed; an edge made elsewhere while
-      this panel sat open is not the editor's to delete. %>
-  <% editor_transitions = step.transitions.includes(:target_step).to_a %>
-  <% transitions_data = {
-       "known" => editor_transitions.map(&:uuid),
-       "rows" => editor_transitions.map { |t| { "uuid" => t.uuid, "target_uuid" => t.target_step&.uuid, "condition" => t.condition, "label" => t.label } }
-     } %>
-  <input type="hidden"
-         name="step[transitions_json]"
-         value="<%= transitions_data.to_json %>"
-         data-step-transitions-target="hiddenInput"
-         data-step-id="<%= step.uuid %>"
-         data-action="input->inline-autosave#schedule">
+<details class="step-disclosure"<%= " open" if editor_transitions.any? %>>
+  <summary class="step-disclosure__summary">
+    <span class="step-disclosure__label">Other connections</span>
+    <span class="step-disclosure__sep" aria-hidden="true">&middot;</span>
+    <span class="step-disclosure__value"><%= editor_transitions.any? ? pluralize(editor_transitions.size, "connection") : "numeric ranges, other variables" %></span>
+  </summary>
+  <div class="step-disclosure__body">
+    <div data-controller="step-transitions"
+         data-step-transitions-step-id-value="<%= step.uuid %>"
+         data-step-transitions-step-index-value="<%= step.position %>"
+         data-step-transitions-variables-value="<%= sentence_variables_json %>">
 
-  <%# Rows are rendered by step-transitions from these templates, so the
-      markup lives once. The JavaScript used to carry its own copy, which drifted. %>
-  <div data-step-transitions-target="transitionsList" class="flex-col-gap-2"></div>
-
-  <template data-step-transitions-target="emptyTemplate">
-    <p class="text-sm italic py-2">No connections yet. Add a connection to link this step to another.</p>
-  </template>
-
-  <template data-step-transitions-target="rowTemplate">
-    <div class="transition-item card card--muted" data-transition-index="">
-      <%= icon "arrow-right", class: "icon icon--sm flex-shrink-0" %>
-      <select data-action="change->step-transitions#updateTransition"
-              data-transition-field="target_uuid"
-              class="form-select transition-item__target"
-              aria-label="Target step">
-        <option value="">-- Select target step --</option>
-      </select>
-      <div class="transition-item__condition"
-           data-controller="condition-preset"
-           data-condition-preset-condition-value=""
-           data-condition-preset-label-value=""
-           data-condition-preset-variables-value="<%= sentence_variables_json %>">
-        <select data-condition-preset-target="presetDropdown"
-                data-action="change->condition-preset#handlePresetChange"
-                class="form-select"
-                title="Select a condition preset or choose Custom">
-        </select>
-        <div data-condition-preset-target="numericContainer" class="is-hidden flex items-center gap-1">
-          <input type="number"
-                 data-condition-preset-target="numericValueInput"
-                 data-action="input->condition-preset#handleNumericChange"
-                 placeholder="Value" class="form-input form-input--sm" style="width: 5rem;">
-        </div>
-        <div data-condition-preset-target="sentenceContainer" class="is-hidden condition-sentence">
-          <select data-condition-preset-target="sentenceVariable"
-                  data-action="change->condition-preset#handleSentenceChange"
-                  class="form-select condition-sentence__variable"
-                  aria-label="Condition variable"
-                  title="Which answer this connection checks">
-          </select>
-          <select data-condition-preset-target="sentenceOperator"
-                  data-action="change->condition-preset#handleSentenceChange"
-                  class="form-select condition-sentence__operator"
-                  aria-label="Condition operator"
-                  title="How to compare">
-          </select>
-          <span data-condition-preset-target="sentenceValue" class="condition-sentence__value"></span>
-          <p data-condition-preset-target="keepAsWritten" class="condition-sentence__kept is-hidden" hidden></p>
-        </div>
-        <input type="hidden"
-               data-condition-preset-target="conditionHidden"
-               data-transition-field="condition"
-               data-action="input->step-transitions#updateTransition"
-               value="">
+      <div class="flex items-center justify-between mb-3">
+        <label class="form-label mb-0">
+          <%= icon "arrow-right", class: "icon icon--sm inline-block mr-1" %>
+          Other connections
+        </label>
+        <button type="button"
+                data-action="click->step-transitions#addTransition"
+                class="btn btn--plain btn--sm">
+          <%= icon "plus", class: "icon icon--xs" %>
+          Add Connection
+        </button>
       </div>
-      <input type="text"
-             data-action="input->step-transitions#updateTransition input->condition-preset#handleLabelInput"
-             data-transition-field="label"
-             data-condition-preset-target="labelInput"
-             value=""
-             placeholder="Label"
-             title="Display label for this connection"
-             aria-label="Connection label"
-             class="form-input transition-item__label">
-      <button type="button"
-              data-action="click->step-transitions#removeTransition"
-              class="btn btn--plain btn--sm transition-item__delete"
-              title="Remove connection">
-        <%= icon "trash", class: "icon icon--sm" %>
-      </button>
-    </div>
-  </template>
 
-  <p class="form-hint mt-2">
-    Select a preset, or choose "Custom..." to build "when this answer is …".
-  </p>
-</div>
+      <% transitions_data = {
+           "known" => editor_transitions.map(&:uuid),
+           "rows" => editor_transitions.map { |t| { "uuid" => t.uuid, "target_uuid" => t.target_step&.uuid, "condition" => t.condition, "label" => t.label } }
+         } %>
+      <input type="hidden"
+             name="step[transitions_json]"
+             value="<%= transitions_data.to_json %>"
+             data-step-transitions-target="hiddenInput"
+             data-step-id="<%= step.uuid %>"
+             data-action="input->inline-autosave#schedule">
+
+      <%# Rows are rendered by step-transitions from these templates, so the
+          markup lives once. The JavaScript used to carry its own copy, which drifted. %>
+      <div data-step-transitions-target="transitionsList" class="flex-col-gap-2"></div>
+
+      <template data-step-transitions-target="emptyTemplate">
+        <p class="text-sm italic py-2">No other connections.</p>
+      </template>
+
+      <template data-step-transitions-target="rowTemplate">
+        <div class="transition-item card card--muted" data-transition-index="">
+          <%= icon "arrow-right", class: "icon icon--sm flex-shrink-0" %>
+          <select data-action="change->step-transitions#updateTransition"
+                  data-transition-field="target_uuid"
+                  class="form-select transition-item__target"
+                  aria-label="Target step">
+            <option value="">-- Select target step --</option>
+          </select>
+          <div class="transition-item__condition"
+               data-controller="condition-preset"
+               data-condition-preset-condition-value=""
+               data-condition-preset-label-value=""
+               data-condition-preset-variables-value="<%= sentence_variables_json %>">
+            <select data-condition-preset-target="presetDropdown"
+                    data-action="change->condition-preset#handlePresetChange"
+                    class="form-select"
+                    title="Select a condition preset or choose Custom">
+            </select>
+            <div data-condition-preset-target="numericContainer" class="is-hidden flex items-center gap-1">
+              <input type="number"
+                     data-condition-preset-target="numericValueInput"
+                     data-action="input->condition-preset#handleNumericChange"
+                     placeholder="Value" class="form-input form-input--sm" style="width: 5rem;">
+            </div>
+            <div data-condition-preset-target="sentenceContainer" class="is-hidden condition-sentence">
+              <select data-condition-preset-target="sentenceVariable"
+                      data-action="change->condition-preset#handleSentenceChange"
+                      class="form-select condition-sentence__variable"
+                      aria-label="Condition variable"
+                      title="Which answer this connection checks">
+              </select>
+              <select data-condition-preset-target="sentenceOperator"
+                      data-action="change->condition-preset#handleSentenceChange"
+                      class="form-select condition-sentence__operator"
+                      aria-label="Condition operator"
+                      title="How to compare">
+              </select>
+              <span data-condition-preset-target="sentenceValue" class="condition-sentence__value"></span>
+              <p data-condition-preset-target="keepAsWritten" class="condition-sentence__kept is-hidden" hidden></p>
+            </div>
+            <input type="hidden"
+                   data-condition-preset-target="conditionHidden"
+                   data-transition-field="condition"
+                   data-action="input->step-transitions#updateTransition"
+                   value="">
+          </div>
+          <input type="text"
+                 data-action="input->step-transitions#updateTransition input->condition-preset#handleLabelInput"
+                 data-transition-field="label"
+                 data-condition-preset-target="labelInput"
+                 value=""
+                 placeholder="Label"
+                 title="Display label for this connection"
+                 aria-label="Connection label"
+                 class="form-input transition-item__label">
+          <button type="button"
+                  data-action="click->step-transitions#removeTransition"
+                  class="btn btn--plain btn--sm transition-item__delete"
+                  title="Remove connection">
+            <%= icon "trash", class: "icon icon--sm" %>
+          </button>
+        </div>
+      </template>
+
+      <p class="form-hint mt-2">
+        Select a preset, or choose "Custom..." to build "when this answer is …".
+      </p>
+    </div>
+  </div>
+</details>

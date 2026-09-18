@@ -28,7 +28,9 @@ class Step
 
     def initialize(step)
       @step = step
-      @transitions = step.transitions.to_a.sort_by { |t| [t.position || 0, t.id || 0] }
+      # A wired door's #target_step reads every one of these - the panel's
+      # doors list would otherwise fire one query per wired door.
+      @transitions = step.transitions.includes(:target_step).to_a.sort_by { |t| [t.position || 0, t.id || 0] }
     end
 
     def growable?

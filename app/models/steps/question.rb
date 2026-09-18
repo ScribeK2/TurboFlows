@@ -98,7 +98,7 @@ module Steps
       return unless pair
 
       old_name, new_name = pair
-      transitions.each do |transition|
+      transitions.includes(:target_step).each do |transition|
         rewritten = self.class.rewrite_condition_variable(transition.condition, old_name, new_name)
         transition.update!(condition: rewritten) if rewritten != transition.condition
       end

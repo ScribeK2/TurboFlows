@@ -458,4 +458,87 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_equal "light_green == 'yes'", edge.reload.condition
   end
+
+  test "the panel shows a Yes/No Question's doors, stubs with a New step button" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light green?",
+                                       answer_type: "yes_no", variable_name: "light")
+    Transition.create!(step: question, target_step: @step, condition: "light == 'yes'", label: "Yes")
+
+    get panel_edit_workflow_step_path(@workflow, question)
+
+    assert_select "##{dom_id(question, :doors)} .step-doors__row", 2
+    assert_select ".step-doors__row", text: /Yes.*Existing Step/m
+    assert_select ".step-doors__row button[data-grow-from='#{question.id}'][data-grow-condition=\"light == 'no'\"]", text: "New step"
+    assert_select "form form", false, "a form was nested inside the panel's autosave form"
+  end
+
+  test "the readonly panel shows doors with nothing to press" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light green?",
+                                       answer_type: "yes_no", variable_name: "light")
+
+    get panel_edit_workflow_step_path(@workflow, question, readonly: 1)
+
+    assert_select "##{dom_id(question, :doors)} .step-doors__row", 2
+    assert_select "##{dom_id(question, :doors)} button", false
+    assert_select "##{dom_id(question, :doors)} a", false
+    assert_select ".step-doors__row", text: /No.*nothing yet/m
+  end
+
+  test "the editor lists only connections that are not doors" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light green?",
+                                       answer_type: "yes_no", variable_name: "light")
+    Transition.create!(step: question, target_step: @step, condition: "light == 'yes'")
+    extra = Transition.create!(step: question, target_step: @step, condition: "tier == 'gold'")
+
+    get panel_edit_workflow_step_path(@workflow, question)
+
+    payload = JSON.parse(css_select("input[name='step[transitions_json]']").first["value"])
+    assert_equal [extra.uuid], payload["known"]
+    assert_equal [extra.uuid], payload["rows"].pluck("uuid")
+  end
+
+  test "changing the answer type streams the doors" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Q", answer_type: "yes_no")
+
+    patch workflow_step_path(@workflow, question),
+          params: { step: { answer_type: "text" } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_select "turbo-stream[action='replace'][target='#{dom_id(question, :doors)}']"
+  end
+
+  # A handoff has no doors (Step::Doors#growable? is false for one), so its own
+  # connection, if it has one, must still show up in the "Other connections"
+  # editor - and _transitions_editor.html.erb reads it via step.transitions
+  # directly rather than Step::Doors.for(step).extras. This is the claim that
+  # makes the two interchangeable there.
+  test "a handoff's extras are exactly its own transitions" do
+    target_workflow = Workflow.create!(title: "Handoff Target", user: @editor)
+    Steps::Resolve.create!(workflow: target_workflow, position: 0, title: "Done", resolution_type: "success")
+    handoff = Steps::SubFlow.create!(workflow: @workflow, position: 1, title: "Continue elsewhere",
+                                     sub_flow_workflow_id: target_workflow.id, sub_flow_returns: false)
+    edge = Transition.create!(step: handoff, target_step: @step)
+
+    assert_equal [edge], Step::Doors.for(handoff).extras
+  end
+
+  # Two connections from one Question to the same target, one condition
+  # naming each variable. Renaming the old variable to the new one rewrites
+  # the first condition onto the second's, which Transition's own uniqueness
+  # validation refuses from inside Question#carry_conditions_to_new_variable's
+  # after_update callback - the whole save, rename included, rolls back.
+  test "a rename that collides two conditions onto one target is refused, not a 500" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Q",
+                                       answer_type: "yes_no", variable_name: "old")
+    Transition.create!(step: question, target_step: @step, condition: "old == 'yes'")
+    Transition.create!(step: question, target_step: @step, condition: "new == 'yes'")
+
+    patch workflow_step_path(@workflow, question),
+          params: { step: { variable_name: "new" } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :unprocessable_content
+    assert_select "turbo-stream[target='flash']"
+    assert_equal "old", question.reload.variable_name
+  end
 end

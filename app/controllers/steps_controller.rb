@@ -22,6 +22,10 @@ class StepsController < ApplicationController
   SAVE_CONFLICT_MESSAGE = "Someone else saved this step at the same moment, so your change wasn't saved. " \
                           "Reload to see the latest version, then make your change again.".freeze
 
+  # Which fields, when this save touches them, change what Step::Doors would
+  # read off this step — so the open panel's doors list is now stale.
+  DOOR_DECIDING_PARAMS = %i[answer_type options variable_name transitions_json].freeze
+
   include ActionView::RecordIdentifier
 
   before_action :set_workflow
@@ -140,15 +144,16 @@ class StepsController < ApplicationController
           end
 
           # A rename leaves the editor's own snapshot - what it sends on the
-          # NEXT autosave of any field - still naming the old identifier.
-          # Re-render it so the next save carries the true rows;
-          # TransitionSync's renamed_variable covered THIS save only.
-          if !connections_streamed && rename_pair
-            streams << turbo_stream.update(
-              dom_id(@step, :connections),
-              partial: "steps/connections",
-              locals: { step: @step, workflow: @workflow }
-            )
+          # NEXT autosave of any field - still naming the old identifier. A
+          # save that instead touched what decides the doors (answer_type,
+          # options, variable_name, transitions_json) only needs the doors
+          # list replaced - unless it just turned one of the editor's own rows
+          # into a door, which would then show in both places at once.
+          # #connections_or_doors_stream is the one place that decides which,
+          # if either, this save needs.
+          unless connections_streamed
+            stream = connections_or_doors_stream(rename_pair)
+            streams << stream if stream
           end
 
           # The "Default for X" card describes the chosen type; the panel is
@@ -181,6 +186,13 @@ class StepsController < ApplicationController
     end
   rescue ActiveRecord::StaleObjectError
     respond_to_save_conflict
+  rescue ActiveRecord::RecordInvalid => e
+    # Raised from inside an after_update callback - Question#carry_conditions_to_new_variable
+    # calling transition.update! and hitting Transition's own uniqueness
+    # validation when a rename collides two conditions onto one target. That
+    # callback runs in the same transaction as @step's own save, so the whole
+    # thing - the rename included - rolls back; nothing here was saved.
+    respond_to_refusal("This step was not saved: #{e.record.errors.full_messages.to_sentence}.")
   end
 
   # DELETE /workflows/:workflow_id/steps/:id
@@ -377,6 +389,48 @@ class StepsController < ApplicationController
     nil
   rescue TransitionSync::Malformed, ActiveRecord::RecordInvalid => e
     "This step was saved, but its connections were not: #{e.message}"
+  end
+
+  def doors_changed?
+    DOOR_DECIDING_PARAMS.any? { |key| step_params.key?(key) }
+  end
+
+  # True when this save turned a row the editor was showing as an ordinary
+  # connection into one of the doors Step::Doors now finds - which would
+  # otherwise render twice: once as a door, once still sitting in the editor's
+  # stale snapshot below it. Checked against the transitions as saved, not as
+  # sent, since a rewritten condition (a rename) is what can make this true.
+  def editor_row_became_door?
+    return false if step_params[:transitions_json].blank?
+
+    sent = JSON.parse(step_params[:transitions_json])["rows"].to_a.pluck("uuid")
+    Step::Doors.for(@step.reload).doors.filter_map(&:transition).any? { |t| sent.include?(t.uuid) }
+  rescue JSON::ParserError, NoMethodError
+    false
+  end
+
+  # The one place that decides which, if either, of the doors list and the
+  # whole Connections fragment this save needs re-rendered. A rename always
+  # needs the whole fragment - the editor's own snapshot still names the old
+  # variable, and #editor_row_became_door? cannot help with that since a
+  # renamed condition does not change which uuids are doors. Otherwise, a save
+  # that changed what decides the doors gets the doors list alone, unless it
+  # just turned one of the editor's own rows into a door.
+  def connections_or_doors_stream(rename_pair)
+    return full_connections_stream if rename_pair
+    return nil unless doors_changed?
+
+    editor_row_became_door? ? full_connections_stream : doors_stream
+  end
+
+  def full_connections_stream
+    turbo_stream.update(dom_id(@step, :connections), partial: "steps/connections",
+                                                     locals: { step: @step, workflow: @workflow })
+  end
+
+  def doors_stream
+    turbo_stream.replace(dom_id(@step, :doors), partial: "steps/doors",
+                                                locals: { step: @step, workflow: @workflow })
   end
 
   def broadcast_step_row(step)
