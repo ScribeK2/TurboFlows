@@ -282,5 +282,48 @@ module Workflows
         assert_includes response.body, check
       end
     end
+
+    # Step::Doors.for(step) reuses whatever the step's transitions association
+    # already has loaded (see its class comment), so as long as
+    # eager_load_steps preloads transitions: :target_step, the health check's
+    # missing-door and unmatched-value scan should not cost a query per step.
+    # A 3-step and a 12-step workflow, each wired the same way, should issue the
+    # same count.
+    test "the JSON health request costs the same number of queries at 3 and 12 steps" do
+      small = file_in_global(Workflow.create!(title: "Small doors", user: @editor, status: "draft"))
+      build_door_chain(small, 3)
+      large = file_in_global(Workflow.create!(title: "Large doors", user: @editor, status: "draft"))
+      build_door_chain(large, 12)
+
+      # One untracked request first: warden re-verifies the session user on the
+      # first request of a test differently than on later ones, which is one
+      # query neither of these workflows' step count has anything to do with.
+      get workflow_health_path(small, format: :json)
+
+      small_queries = count_queries { get workflow_health_path(small, format: :json) }
+      large_queries = count_queries { get workflow_health_path(large, format: :json) }
+
+      assert_response :success
+      assert_equal small_queries, large_queries,
+                   "Step::Doors must not add a query per step — got #{small_queries} for 3 steps, " \
+                   "#{large_queries} for 12"
+    end
+
+    private
+
+    # `count` Yes/No Questions, each with only its Yes wired to a shared
+    # Resolve — leaving No missing on every one, so doors.missing and
+    # doors.unmatched_extras both actually run.
+    def build_door_chain(workflow, count)
+      resolve = Steps::Resolve.create!(workflow: workflow, position: count, title: "Done", resolution_type: "success")
+      first = nil
+      count.times do |i|
+        q = Steps::Question.create!(workflow: workflow, position: i, title: "Q#{i}", question: "Q#{i}?",
+                                    answer_type: "yes_no", variable_name: "q#{i}")
+        Transition.create!(step: q, target_step: resolve, condition: "q#{i} == 'yes'", position: 0)
+        first ||= q
+      end
+      workflow.update!(start_step: first)
+    end
   end
 end
