@@ -138,12 +138,9 @@ class BuilderGrowTest < ApplicationSystemTestCase
     done = Steps::Resolve.create!(workflow: @workflow, title: "All done", position: 2)
     @workflow.update!(start_step: question)
     visit workflow_path(@workflow, edit: true)
-    find("#{STEP_ROW}[data-step-uuid='#{question.uuid}']").click
-    assert_selector "turbo-frame#builder-panel form", wait: 5
+    open_step(question)
 
-    within "turbo-frame#builder-panel" do
-      find(".step-doors__row", text: "Yes").click_on "Use existing…"
-    end
+    open_target_picker("Yes", "Use existing…")
     within "dialog[open]" do
       fill_in "Find a step", with: "done"
       click_on "All done"
@@ -178,13 +175,9 @@ class BuilderGrowTest < ApplicationSystemTestCase
                                        position: 1, answer_type: "yes_no", variable_name: "light")
     @workflow.update!(start_step: question)
     visit workflow_path(@workflow, edit: true)
-    find("#{STEP_ROW}[data-step-uuid='#{question.uuid}']").click
-    assert_selector "turbo-frame#builder-panel form", wait: 5
+    open_step(question)
 
-    within "turbo-frame#builder-panel" do
-      find(".step-doors__row", text: "Yes").click_on "Use existing…"
-    end
-    assert_selector "dialog[open]", wait: 5
+    open_target_picker("Yes", "Use existing…")
 
     execute_script("Turbo.visit(#{workflows_path.to_json})")
     assert_selector "h1", text: "Workflows", wait: 5
@@ -204,13 +197,9 @@ class BuilderGrowTest < ApplicationSystemTestCase
                                        position: 1, answer_type: "yes_no", variable_name: "light")
     @workflow.update!(start_step: question)
     visit workflow_path(@workflow, edit: true)
-    find("#{STEP_ROW}[data-step-uuid='#{question.uuid}']").click
-    assert_selector "turbo-frame#builder-panel form", wait: 5
+    open_step(question)
 
-    within "turbo-frame#builder-panel" do
-      find(".step-doors__row", text: "Yes").click_on "Use existing…"
-    end
-    assert_selector "dialog[open]", wait: 5
+    open_target_picker("Yes", "Use existing…")
 
     find("[data-step-target-picker-target='filter']").send_keys(:escape)
 
@@ -226,12 +215,9 @@ class BuilderGrowTest < ApplicationSystemTestCase
     edge = Transition.create!(step: question, target_step: first_target, condition: "light == 'yes'", label: "Yes")
     @workflow.update!(start_step: question)
     visit workflow_path(@workflow, edit: true)
-    find("#{STEP_ROW}[data-step-uuid='#{question.uuid}']").click
-    assert_selector "turbo-frame#builder-panel form", wait: 5
+    open_step(question)
 
-    within "turbo-frame#builder-panel" do
-      find(".step-doors__row", text: "Yes").click_on "Change"
-    end
+    open_target_picker("Yes", "Change")
     within "dialog[open]" do
       fill_in "Find a step", with: "second"
       click_on "Second"
@@ -260,18 +246,14 @@ class BuilderGrowTest < ApplicationSystemTestCase
     Transition.create!(step: question, target_step: second, condition: "light == 'yes'")
     @workflow.update!(start_step: question)
     visit workflow_path(@workflow, edit: true)
-    find("#{STEP_ROW}[data-step-uuid='#{question.uuid}']").click
-    assert_selector "turbo-frame#builder-panel form", wait: 5
+    open_step(question)
 
-    within "turbo-frame#builder-panel" do
-      find(".step-doors__row", text: "Yes").click_on "Change"
-    end
+    open_target_picker("Yes", "Change")
     within "dialog[open]" do
       fill_in "Find a step", with: "second"
       click_on "Second branch"
     end
 
-    assert_selector "dialog[open]", wait: 5
     within "dialog[open]" do
       assert_selector ".form-error", text: /already has a transition/i, wait: 5
     end
@@ -287,9 +269,7 @@ class BuilderGrowTest < ApplicationSystemTestCase
     assert_no_selector "dialog[open]", visible: :all
     within("turbo-frame#builder-panel") { assert_selector ".step-doors__row", text: /Yes.*Third target/m }
 
-    within "turbo-frame#builder-panel" do
-      find(".step-doors__row", text: "Yes").click_on "Change"
-    end
+    open_target_picker("Yes", "Change")
     within "dialog[open]" do
       assert_no_selector ".form-error", text: /already has a transition/i
     end
@@ -303,5 +283,50 @@ class BuilderGrowTest < ApplicationSystemTestCase
 
   def pick_type(name)
     within(".builder__type-picker") { find(".builder__type-name", text: name, exact_text: true).click }
+  end
+
+  # Opens a step's panel and waits for it to actually be ready to click in.
+  # The panel animates open over 250ms and its fields re-wrap as it widens, so
+  # a door-row button found mid-animation moves before the click lands and the
+  # click hits whatever slid under the old spot - see assert_panel_settled.
+  # Diagnosed the same way in workflow_builder_test.rb and
+  # builder_step_panel_test.rb; this is that same helper, a third time.
+  def open_step(step)
+    find("#{STEP_ROW}[data-step-uuid='#{step.uuid}']").click
+    assert_selector "turbo-frame#builder-panel form", wait: 5
+    assert_panel_settled
+  end
+
+  def assert_panel_settled(timeout: 5)
+    deadline = Time.current + timeout
+    previous = nil
+    loop do
+      width = panel_body_width
+      return if width > 200 && width == previous
+
+      flunk "the panel never settled open (#{width}px wide)" if Time.current > deadline
+      previous = width
+      sleep 0.1
+    end
+  end
+
+  def panel_body_width
+    page.evaluate_script(<<~JS)
+      (() => {
+        const b = document.querySelector('#builder-panel .builder__panel-body');
+        return b ? Math.round(b.getBoundingClientRect().width) : 0;
+      })()
+    JS
+  end
+
+  # Clicks a door row's button ("Use existing…" or "Change") and waits for
+  # the target-picker dialog it opens - the one interaction every test in
+  # this file that touches the dialog shares, so they can't drift into
+  # slightly different (and differently racy) open sequences.
+  def open_target_picker(row_text, button_text)
+    within "turbo-frame#builder-panel" do
+      find(".step-doors__row", text: row_text).click_on button_text
+    end
+    assert_selector "dialog[open]", wait: 5
   end
 end
