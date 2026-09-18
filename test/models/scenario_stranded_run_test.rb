@@ -147,6 +147,8 @@ class ScenarioStrandedRunTest < ActiveSupport::TestCase
 
     assert_equal "stranded", run.outcome,
                  "the parent came back from the sub-flow with nowhere to go"
+    assert_not_includes Scenario::COMPLETED_OUTCOMES, run.outcome,
+                        "a call nobody could finish must not count toward the completion rate"
     entry = run.execution_path.rfind { |e| e["step_uuid"] == sub.uuid }
     assert entry["no_matching_transition"], "the gap is traced on the sub-flow step's own entry"
     assert_equal 2, entry["transition_count"]
