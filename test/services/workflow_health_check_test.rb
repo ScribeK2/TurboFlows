@@ -494,6 +494,23 @@ class WorkflowHealthCheckTest < ActiveSupport::TestCase
     assert_equal "This connection checks for 'modem', which is no longer an option.", issue[:message]
   end
 
+  # A hand-made duplicate of a wired door's own condition is an "extra" (only
+  # the first transition claims the door), but its value is still a real
+  # answer - it must not be reported as though the step stopped offering it.
+  test "a duplicate connection sharing a wired door's condition is not reported as unmatched" do
+    user = User.create!(email: "hc-#{SecureRandom.hex(4)}@example.com", password: "password123456")
+    wf = Workflow.create!(title: "HC duplicate", user: user)
+    q = Steps::Question.create!(workflow: wf, title: "Q", question: "Q", position: 0, answer_type: "yes_no", variable_name: "q")
+    done = Steps::Resolve.create!(workflow: wf, title: "Done", position: 1, resolution_type: "success")
+    also = Steps::Resolve.create!(workflow: wf, title: "Also", position: 2, resolution_type: "success")
+    wf.update!(start_step: q)
+    Transition.create!(step: q, target_step: done, condition: "q == 'yes'", position: 0)
+    Transition.create!(step: q, target_step: also, condition: "q == 'yes'", position: 1)
+
+    codes = WorkflowHealthCheck.call(wf).issues.fetch(q.uuid, []).pluck(:code)
+    assert_not_includes codes, :unmatched_option_value
+  end
+
   # Same as above, but the stale connection is a bare value with no operator -
   # the shape #Step::Doors#unmatched_extras learned to catch alongside the
   # operator form (see test/models/step_doors_test.rb).

@@ -121,6 +121,20 @@ class StepDoorsTest < ActiveSupport::TestCase
     assert_equal [[stale, "modem"]], doors(step).unmatched_extras
   end
 
+  # A hand-made duplicate of a wired door's own condition is an "extra" (only
+  # the first transition claims the door - see #extras), but its value is
+  # still a real answer. Reporting it as unmatched would say 'yes' is no
+  # longer an option on a step where it plainly still is.
+  test "a duplicate of a wired door's own condition is not unmatched" do
+    step = question(answer_type: "yes_no")
+    Transition.create!(step: step, target_step: @a, condition: "light == 'yes'", position: 0)
+    duplicate = Transition.create!(step: step, target_step: @b, condition: "light == 'yes'", position: 1)
+
+    d = doors(step)
+    assert_equal [duplicate], d.extras
+    assert_empty d.unmatched_extras
+  end
+
   test "door_for finds a door by any spelling of its condition" do
     step = question(answer_type: "yes_no")
     assert_equal "No", doors(step).door_for("light=='NO'").label

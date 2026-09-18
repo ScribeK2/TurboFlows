@@ -79,7 +79,13 @@ class Step
     end
 
     # [transition, value] for a condition on THIS step's answer naming a value
-    # the step no longer offers - an edge that can never fire.
+    # the step no longer offers - an edge that can never fire. An extra whose
+    # value DOES match a current answer is not stale - a hand-made duplicate
+    # of a wired door's own condition (see "a hand-made duplicate of a wired
+    # door is an extra" in the test) is a repeat, not a value the step stopped
+    # offering, so both branches below exclude it the same way #build claims a
+    # door: by checking the value against every current answer, not merely
+    # against whichever answer the same condition happened to claim first.
     #
     # A bare condition (no [=!<>]) is checked the same way #reads_as? checks
     # one: ConditionEvaluator#parse returns nil for it, so the operator-form
@@ -96,7 +102,9 @@ class Step
 
         if text.match?(/[=!<>]/)
           parsed = parse(text)
-          [transition, parsed[:value]] if parsed && parsed[:operator] == "==" && own_variable?(parsed[:variable])
+          next unless parsed && parsed[:operator] == "==" && own_variable?(parsed[:variable])
+
+          [transition, parsed[:value]] unless answers.any? { |_, value| operator_match?(parsed[:value], value) }
         else
           [transition, text] unless answers.any? { |_, value| bare_match?(text, value) }
         end
