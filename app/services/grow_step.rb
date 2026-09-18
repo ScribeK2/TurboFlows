@@ -22,7 +22,7 @@ class GrowStep
     Step.transaction do
       step = Step.class_for_type(step_type).new(attrs.to_h.merge(workflow: @workflow, position: claim_position(from_step)))
       step.title = "Untitled #{step_type.to_s.titleize}" if step.title.blank?
-      name_question(step) if step.is_a?(Steps::Question)
+      prepare_question(step) if step.is_a?(Steps::Question)
       step.save!
 
       connect_steps(from_step, step, label:, condition:) if from_step
@@ -52,7 +52,12 @@ class GrowStep
 
   # Every builder-made Question is titled "Untitled Question", so the model's
   # own callback would name them all `untitled_question`, and it never renames.
-  def name_question(step)
+  #
+  # Yes/No is what a call-centre Question usually is, and a wrong guess shows at
+  # once as two doors. The builder used to select nothing, because a silent
+  # default to Text Input ran and was wrong with nothing on screen to say so.
+  def prepare_question(step)
+    step.answer_type = "yes_no" if step.answer_type.blank?
     return if step.variable_name.present?
 
     base = Steps::Question.variable_name_from(step.title)

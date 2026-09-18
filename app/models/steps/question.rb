@@ -6,6 +6,7 @@ module Steps
 
     before_validation :generate_variable_name, if: -> { variable_name.blank? && title.present? }
     before_validation :default_option_values_to_labels
+    after_update :carry_conditions_to_new_variable, if: :saved_change_to_variable_name?
 
     def outcome_summary
       parts = []
@@ -55,6 +56,23 @@ module Steps
 
     def generate_variable_name
       self.variable_name = self.class.variable_name_from(title)
+    end
+
+    # Doors are written as "<variable> == 'yes'", and a builder-made Question is
+    # named untitled_question - a name people change. Its own connections follow
+    # the rename in the same save; a condition on another step that reads this
+    # variable is that step's to fix, and :undefined_variable reports it.
+    def carry_conditions_to_new_variable
+      old_name, new_name = saved_change_to_variable_name
+      old_name = old_name.presence || WorkflowVariableNames::LEGACY_ANSWER
+      return if new_name.blank?
+
+      transitions.each do |transition|
+        parsed = ConditionEvaluator.new(transition.condition).parse
+        next unless parsed && parsed[:variable] == old_name
+
+        transition.update!(condition: transition.condition.sub(/\A\s*#{Regexp.escape(old_name)}\b/, new_name))
+      end
     end
   end
 end

@@ -114,4 +114,13 @@ class GrowStepTest < ActiveSupport::TestCase
                             attrs: { title: "Is it on?", variable_name: "power" })
     assert_equal "power", grown.variable_name
   end
+
+  test "a builder-made Question starts as Yes/No" do
+    assert_equal "yes_no", GrowStep.create(workflow: @workflow, step_type: "question").answer_type
+  end
+
+  test "an answer type the caller supplies is kept" do
+    grown = GrowStep.create(workflow: @workflow, step_type: "question", attrs: { answer_type: "number" })
+    assert_equal "number", grown.answer_type
+  end
 end
