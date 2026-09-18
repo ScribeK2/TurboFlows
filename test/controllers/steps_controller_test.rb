@@ -679,9 +679,9 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     # form_with method: :post renders no _method field of its own - the
     # dialog's hidden field (flipped to "patch" by JS for a retarget) must be
     # the only one, or Rails would read whichever one comes first. (No
-    # authenticity_token field to check alongside it: every form_with in this
-    # app is Turbo-submitted, so Rails leaves the CSRF token out of the HTML
-    # and Turbo attaches it as a request header from the page's meta tag.)
+    # authenticity_token field to check alongside it: config/environments/test.rb
+    # sets allow_forgery_protection false, so no form embeds one in this
+    # environment - not something specific to this dialog's form.)
     assert_select "dialog form input[name='_method']", count: 1
   end
 

@@ -195,6 +195,29 @@ class BuilderGrowTest < ApplicationSystemTestCase
     assert_no_selector "dialog[open]", visible: :all
   end
 
+  # builder_controller closes the whole panel on Escape, with no awareness of a
+  # modal dialog on top of it. The dialog must swallow the keypress before that
+  # listener sees it, or picking a target and changing your mind loses the
+  # panel you were editing along with the dialog.
+  test "Escape closes the dialog without also closing the panel behind it" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", question: "Light green?",
+                                       position: 1, answer_type: "yes_no", variable_name: "light")
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    find("#{STEP_ROW}[data-step-uuid='#{question.uuid}']").click
+    assert_selector "turbo-frame#builder-panel form", wait: 5
+
+    within "turbo-frame#builder-panel" do
+      find(".step-doors__row", text: "Yes").click_on "Use existing…"
+    end
+    assert_selector "dialog[open]", wait: 5
+
+    find("[data-step-target-picker-target='filter']").send_keys(:escape)
+
+    assert_no_selector "dialog[open]", visible: :all
+    assert_selector "turbo-frame#builder-panel form", wait: 5
+  end
+
   test "Change retargets a wired door's own edge instead of adding a second one" do
     question = Steps::Question.create!(workflow: @workflow, title: "Light green?", question: "Light green?",
                                        position: 1, answer_type: "yes_no", variable_name: "light")
