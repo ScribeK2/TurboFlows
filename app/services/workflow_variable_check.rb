@@ -66,7 +66,7 @@ class WorkflowVariableCheck
   # warning on it would be warning on the builder's own default output.
   # Interpolation below stays exact: VariableInterpolator does no such fallback.
   def condition_findings
-    named = names_by_step { |step| step.transitions.filter_map { |t| t.condition.to_s[CONDITION_VARIABLE, 1] } }
+    named = names_by_step { |step| routing_conditions(step).filter_map { |c| c.to_s[CONDITION_VARIABLE, 1] } }
     return [] if named.empty?
 
     known = WorkflowVariableNames.condition_matcher(defined_variables)
@@ -78,6 +78,22 @@ class WorkflowVariableCheck
     return [] if named.empty?
 
     findings_for(named, code: :undefined_interpolation) { |name| defined_variables.include?(name) }
+  end
+
+  # Every expression that decides where the run goes from this step: its
+  # transitions, and its jumps — StepResolver#check_jumps runs BEFORE
+  # transitions, so an unset variable there is this defect one step earlier.
+  #
+  # A Question's jumps are left out on purpose. check_jumps compares them to the
+  # step's own answer as a STRING (`current_answer.to_s == jump_condition.to_s`),
+  # so text shaped like an expression is a literal there, and reading a variable
+  # out of it would invent a finding. An Action's special "completed" literal
+  # carries no operator and falls out of CONDITION_VARIABLE on its own.
+  def routing_conditions(step)
+    conditions = step.transitions.map(&:condition)
+    return conditions if step.is_a?(Steps::Question)
+
+    conditions + Array(step.try(:jumps)).filter_map { |jump| jump["condition"] || jump[:condition] if jump.is_a?(Hash) }
   end
 
   # Names are gathered BEFORE the defined set is asked for, because most
