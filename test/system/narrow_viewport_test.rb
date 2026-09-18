@@ -65,7 +65,65 @@ class NarrowViewportTest < ApplicationSystemTestCase
     assert_selector ".builder__list", visible: true
   end
 
+  # Below the 640px breakpoint, .builder__list (and the one type picker inside
+  # it) is hidden while a panel is open - but the panel's own "New step"
+  # buttons (outside the list entirely) must still reach it. It used to be
+  # display:none, which drops the picker from the render tree along with
+  # everything else, so it sat at 0x0 with no way to open it.
+  test "at 600px with a panel open, the panel's New step reaches a real picker" do
+    question = Steps::Question.create!(workflow: @workflow, title: "wf-system-test-Light green?",
+                                       question: "Light green?", position: 0, answer_type: "yes_no",
+                                       variable_name: "light")
+    @workflow.update!(start_step: question)
+    page.driver.browser.manage.window.resize_to(600, 900)
+
+    visit workflow_path(@workflow, edit: true)
+    # Not a plain click on the row: at this width the row's own two door
+    # stubs cover most of it, so a center-point click lands on "Yes → add
+    # step" instead of opening the panel. The title never stops propagation.
+    find("[role='listitem'][data-step-uuid='#{question.uuid}'] .list-row__title").click
+    assert_selector "turbo-frame#builder-panel form", wait: 5
+
+    within "turbo-frame#builder-panel" do
+      find(".step-doors__row", text: "No").click_on "New step"
+    end
+
+    # The picker enters via @starting-style with a scale() transform, so a
+    # rect read in the same tick as opening it is still the scaled-down size.
+    assert_eventually(timeout: 5) { picker_rect["width"].to_i > 100 }
+
+    rect = picker_rect
+    assert_operator rect["width"], :>, 0, "the picker has no width"
+    assert_operator rect["height"], :>, 0, "the picker has no height"
+    assert_operator rect["left"], :>=, 0, "the picker sits left of the viewport"
+    assert_operator rect["top"], :>=, 0, "the picker sits above the viewport"
+    assert_operator rect["right"], :<=, page.evaluate_script("window.innerWidth"),
+                    "the picker sits right of the viewport"
+    assert_operator rect["bottom"], :<=, page.evaluate_script("window.innerHeight"),
+                    "the picker sits below the viewport"
+
+    within(".builder__type-picker--floating") do
+      find(".builder__type-name", text: "Action", exact_text: true).click
+    end
+
+    assert_eventually(timeout: 10) { question.transitions.reload.any? }
+    edge = question.transitions.sole
+    action = @workflow.steps.reload.find_by!(type: "Steps::Action")
+    assert_equal [action.id, "No", "light == 'no'"], [edge.target_step_id, edge.label, edge.condition]
+  end
+
   private
+
+  def picker_rect
+    page.evaluate_script(<<~JS)
+      (() => {
+        const el = document.querySelector('.builder__type-picker--floating');
+        if (!el) return { width: 0, height: 0, left: -1, top: -1, right: 999999, bottom: 999999 };
+        const r = el.getBoundingClientRect();
+        return { width: r.width, height: r.height, left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+      })()
+    JS
+  end
 
   def assert_phone_width
     assert_operator page.evaluate_script("window.innerWidth"), :<=, 400, "the window didn't shrink to a phone's width"

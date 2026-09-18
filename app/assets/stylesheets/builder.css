@@ -1163,9 +1163,35 @@
     }
 
     /* One column at a phone's width: the open panel is the page, and Close
-       brings the list back. Side by side, the list squeezed to a letter a line. */
+       brings the list back. Side by side, the list squeezed to a letter a
+       line. Not display:none: the type picker is rendered INSIDE this list
+       and floats beside a door via position:fixed when opened from a row's
+       stub or the panel's own "New step" buttons - a display:none ancestor
+       drops it (and everything else) from the render tree too, so the
+       picker sat at 0x0 until reload with no way to reach it. visibility
+       keeps the list itself out of the accessibility tree and tab order
+       (the same as display:none did), and the zeroed flex/width takes it
+       out of the row so the panel still gets the full width; overflow keeps
+       its (invisible) content from adding scroll. The floating picker
+       overrides visibility back to visible below - a descendant's own
+       value always wins over an inherited one, no matter what the
+       ancestor's is. */
     .builder:has(#builder-panel > *) .builder__list {
-      display: none;
+      visibility: hidden;
+      flex: 0 0 0;
+      width: 0;
+      min-width: 0;
+      padding: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    /* The one exception: reachable from the panel's door rows (outside this
+       list entirely) as well as a row's own stub, so it must stay usable
+       while the list around it is hidden. */
+    .builder:has(#builder-panel > *) .builder__type-picker--floating {
+      visibility: visible;
+      pointer-events: auto;
     }
 
     /* No slide at this width: transition: none stops the desktop animation,
