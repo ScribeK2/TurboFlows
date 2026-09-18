@@ -50,6 +50,50 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
     assert_equal 1, @workflow.steps.where(type: "Steps::Question").count
   end
 
+  # Regression: the picker used to be anchored to the bottom prompt, so on a
+  # 40-step workflow it opened ~650px below a stub pressed on row 1. Door
+  # stubs make the picker's own trigger the main gesture, so it has to open
+  # beside whatever was pressed, wherever that row sits in the list.
+  test "the type picker opens beside a door stub pressed high in a long list" do
+    @resolve.update!(position: 30)
+    steps = Array.new(25) { |i| Steps::Action.create!(workflow: @workflow, position: i, title: "Step #{i + 1}") }
+    @workflow.update!(start_step: steps.first)
+
+    visit_builder_in_edit_mode
+    assert_step_count 26
+
+    page.execute_script("document.querySelector('.builder__list-scroll').scrollTop = 0")
+
+    step_row(steps.first.uuid).find(".builder__door-stub").click
+    assert_selector "[data-step-list-target='typePicker']:not(.is-hidden)", wait: 5
+
+    rects = page.evaluate_script(<<~JS)
+      (() => {
+        const stub = document.querySelector("[data-step-uuid='#{steps.first.uuid}'] .builder__door-stub");
+        const menu = document.querySelector("[data-step-list-target='typePicker']");
+        const s = stub.getBoundingClientRect();
+        const m = menu.getBoundingClientRect();
+        return { gap: m.top - s.bottom, top: m.top, bottom: m.bottom, left: m.left, right: m.right,
+                 winW: window.innerWidth, winH: window.innerHeight };
+      })()
+    JS
+
+    assert_operator rects["gap"].abs, :<=, 60,
+                    "the picker should open within ~60px of the stub it belongs to, not the bottom prompt"
+    assert_operator rects["top"], :>=, 0, "the picker must not open above the viewport"
+    assert_operator rects["bottom"], :<=, rects["winH"], "the picker must not open below the viewport"
+    assert_operator rects["left"], :>=, 0, "the picker must not open left of the viewport"
+    assert_operator rects["right"], :<=, rects["winW"], "the picker must not open right of the viewport"
+
+    click_on "Action"
+
+    assert_eventually(timeout: 10) { @workflow.steps.reload.count == 26 + 1 }
+    new_step = @workflow.steps.order(:position).second
+    assert_equal "Untitled Action", new_step.title
+    assert_equal [new_step], steps.first.reload.transitions.map(&:target_step),
+                 "the new step should land directly after row 1 and be connected from it"
+  end
+
   test "each type in the picker creates that type of step" do
     visit_builder_in_edit_mode
 
