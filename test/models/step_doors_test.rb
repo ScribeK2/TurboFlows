@@ -185,4 +185,32 @@ class StepDoorsTest < ActiveSupport::TestCase
     assert_equal [stale], d.extras
     assert_not ConditionEvaluator.evaluate(door.condition, { "light" => 'Say "OK"' })
   end
+
+  # ConditionEvaluator#parse returns nil for a bare value like "modem" (no
+  # [=!<>]), so the operator-form branch of unmatched_extras never saw it -
+  # yet StepResolver's simple-value match honours exactly this condition at
+  # runtime, so it is just as stale as an operator-form one that names a
+  # value the step no longer offers.
+  test "a bare stale value with no operator is unmatched too" do
+    step = question(answer_type: "dropdown", options: [{ "label" => "Router", "value" => "router" }])
+    stale = Transition.create!(step: step, target_step: @a, condition: "modem")
+
+    assert_equal [[stale, "modem"]], doors(step).unmatched_extras
+  end
+
+  test "a bare value matching an answer is that door, not an unmatched extra" do
+    step = question(answer_type: "dropdown", options: [{ "label" => "Router", "value" => "router" }])
+    wired = Transition.create!(step: step, target_step: @a, condition: "router")
+
+    d = doors(step)
+    door = d.doors.find { |x| x.label == "Router" }
+    assert_equal wired, door.transition
+    assert_empty d.unmatched_extras
+  end
+
+  test "a step with no answers never reports a bare extra" do
+    Transition.create!(step: @a, target_step: @b, condition: "modem")
+
+    assert_empty doors(@a).unmatched_extras
+  end
 end

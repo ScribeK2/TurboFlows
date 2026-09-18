@@ -80,12 +80,26 @@ class Step
 
     # [transition, value] for a condition on THIS step's answer naming a value
     # the step no longer offers - an edge that can never fire.
+    #
+    # A bare condition (no [=!<>]) is checked the same way #reads_as? checks
+    # one: ConditionEvaluator#parse returns nil for it, so the operator-form
+    # branch below never saw it, yet StepResolver's simple-value match honours
+    # it at runtime. A bare value that DOES equal an answer is already claimed
+    # as that door by #build, so it never reaches +extras+ at all - only a
+    # bare value matching no answer lands here.
     def unmatched_extras
       return [] if answers.empty?
 
       extras.filter_map do |transition|
-        parsed = parse(transition.condition)
-        [transition, parsed[:value]] if parsed && parsed[:operator] == "==" && own_variable?(parsed[:variable])
+        text = transition.condition.to_s.strip
+        next if text.blank?
+
+        if text.match?(/[=!<>]/)
+          parsed = parse(text)
+          [transition, parsed[:value]] if parsed && parsed[:operator] == "==" && own_variable?(parsed[:variable])
+        else
+          [transition, text] unless answers.any? { |_, value| bare_match?(text, value) }
+        end
       end
     end
 
