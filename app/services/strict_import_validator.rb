@@ -649,7 +649,11 @@ class StrictImportValidator
     return unless step["options"].is_a?(Array)
 
     step["options"].each_with_index do |field, index|
-      next unless field.is_a?(Hash) && field["field_type"] == "select"
+      next unless field.is_a?(Hash)
+
+      validate_form_field_identity(field, "#{path}.options[#{index}]")
+
+      next unless field["field_type"] == "select"
       next if usable_choices?(field["select_options"])
 
       add_error("#{path}.options[#{index}].select_options", "missing_select_options",
@@ -657,6 +661,21 @@ class StrictImportValidator
                 "Field #{field['name'].inspect} is a select and lists no usable choices. " \
                 "Give it select_options as [{\"label\": ..., \"value\": ...}] — a " \
                 "select with none renders an empty dropdown nobody can answer.")
+    end
+  end
+
+  # ImportSchemaGenerator publishes `name` and `label` as required on every form
+  # field, and the agent prompt is generated from that schema — so until this ran
+  # the schema and the half that writes disagreed. A blank `name` is not
+  # cosmetic: process_form_step writes each response into the run's variables
+  # under its field name, so two nameless fields collide on the key "" and no
+  # condition can ever test either.
+  def validate_form_field_identity(field, field_path)
+    %w[name label].each do |key|
+      next if field[key].to_s.strip.present?
+
+      add_error("#{field_path}.#{key}", "missing_required_field", field[key],
+                "A form field needs a #{key}.")
     end
   end
 

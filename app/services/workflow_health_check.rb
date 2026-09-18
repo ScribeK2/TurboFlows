@@ -465,7 +465,8 @@ class WorkflowHealthCheck
         named = field["label"].presence || field["name"]
         add_issue(issues, step.uuid, :warning,
                   "Form field #{named.to_s.inspect} needs both a name and a label: " \
-                  "its answer is recorded under the name",
+                  "its answer is recorded under the name, and an export of this " \
+                  "workflow cannot be imported again until it has both",
                   fixable: false, code: :form_field_incomplete)
       end
     end

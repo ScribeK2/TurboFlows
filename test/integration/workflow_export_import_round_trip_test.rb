@@ -61,6 +61,33 @@ class WorkflowExportImportRoundTripTest < ActionDispatch::IntegrationTest
            "the health panel is how an operator finds this before exporting")
   end
 
+  # A fourth narrow break, and the builder makes it on purpose: a Form field row
+  # autosaves before its name is typed (a refused save lost the edit). The export
+  # carries the half-filled field and the strict path refuses it, because the
+  # published schema has always required both keys.
+  test "a form field with no name exports, and the strict path refuses it back" do
+    workflow = Workflow.create!(title: "Half Field #{SecureRandom.hex(2)}", user: @user, status: "draft")
+    form = Steps::Form.new(workflow: workflow, uuid: SecureRandom.uuid, position: 0, title: "Collect",
+                           options: [{ "name" => "", "label" => "Callback number", "field_type" => "text" }])
+    form.save!(validate: false)
+    resolve = Steps::Resolve.create!(workflow: workflow, uuid: SecureRandom.uuid, position: 1,
+                                     title: "Done", resolution_type: "success")
+    Transition.create!(step: form, target_step: resolve, position: 0)
+    workflow.update!(start_step: form)
+
+    get workflow_export_path(workflow)
+    assert_response :success
+
+    report = StrictImportValidator.new(user: @user, content: response.body).validate
+    assert_not report.valid?
+    assert_equal ["missing_required_field"], report.errors.pluck(:code).uniq
+    assert_match(/options\[0\]\.name\z/, report.errors.first[:path])
+
+    flagged = WorkflowHealthCheck.new(workflow.reload).call.issues[form.uuid]
+    assert(flagged.any? { |i| i[:code] == :form_field_incomplete },
+           "the health panel is how an operator finds this before exporting")
+  end
+
   # The same narrow break, for fields the builder saves blank on purpose. The
   # step panel lets a step autosave with no title or question text (a refused
   # save lost the edit), and the runner shows the title when the question is
