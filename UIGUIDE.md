@@ -385,6 +385,26 @@ reset dialog came back with the temporary password in it. Test it with
 from opacity 0, which Selenium reports as not displayed, so a visible-only
 assertion passes with the fix removed.
 
+**An error raised while a modal dialog is open must render INSIDE the dialog.**
+`showModal()` promotes the dialog and its `::backdrop` to the browser's top
+layer, which sits above every ordinary stacking context — so `#flash`, fixed
+position and all, renders *behind* it whatever its z-index, and the author sees
+a dialog that did nothing. Give the dialog its own `.form-error` (kept empty,
+and `.form-error:empty` is `display: none` so it costs no space), clear it when
+the dialog opens, and have the refusal stream to both targets: a Turbo Stream
+aimed at a target that is not on the page is a no-op, so the controller need not
+know who asked. `steps/_target_picker` and `password_reset_controller.js` are
+the worked examples. Verify this kind of claim by hit-testing —
+`document.elementFromPoint(x, y)` at the flash's own coordinates returned the
+`<dialog>` — not from a screenshot, where the flash may simply be off screen.
+
+**Escape inside a dialog needs `stopPropagation` where a document-level Escape
+listener exists.** `builder_controller` closes the whole step panel on Escape,
+so dismissing the target picker took the panel down with it. Stop the event at
+the dialog (`keydown.esc->…#stopEscape`); `stopPropagation()` does not cancel
+the browser's own default, so the dialog still closes itself natively. Only
+`preventDefault()` would break that.
+
 The admin Users screens are the worked examples: `admin/users/show` (a two-step
 password reset) and the bulk dialogs in `admin/users/index`. The old pattern — a
 `.dialog-overlay` div toggled with `.is-hidden`, driven by `modal_controller.js`
@@ -435,6 +455,11 @@ password reset) and the bulk dialogs in `admin/users/index`. The old pattern —
 **Tiering rule:** a badge is a pill only when it marks a **step type** or an
 **exceptional state**. Ordinary status and role read as plain text, so a list
 does not become a wall of pastel and the eye finds real problems instantly.
+
+A builder step row used to carry a `.badge--warning` reading "No connections".
+It is gone: a row now shows a pressable `.builder__door-stub` per unwired
+answer, which names the answer and fixes it in one click instead of announcing
+a problem. Do not bring the pill back — see the Row door stubs entry below.
 
 ### Flash Messages (`flash.css`)
 
@@ -561,6 +586,11 @@ so `.tab-bar` drops into any existing tablist with no JS change.
 | Choice cards | `.choice-cards`, `.choice-card` | `forms.css` | `render "steps/fields/choice_cards", form:, attribute:, choices:, selected:, labelled_by:` — pick one of N as real radios in labelled cards. The chosen card is `.choice-card:has(> input:checked)`, so no controller keeps a class in step with a hidden field (that is what `selection-group` did wrong; deleted 2026-09-15). Each radio autosaves on change; a caller's own `input_data[:action]` runs first and may `stopImmediatePropagation()` to veto the save |
 | Attachment list | `.media-list`, `__row`, `__row--pending`, `__thumb`, `__icon`, `__name`, `__size`, `__progress`, `__remove` | `_media.css` | `render "steps/media_list", step:, removable:` — the one list of a step's media, replaced whole by `Steps::MediaAttachmentsController` after an attach or a Remove. Files attach on choose via direct upload (`media-attachments` controller), with a `<progress>` row while they go. The runner keeps `steps/_media_attachments`, which shows images inline |
 | Runner thread | `.runner-thread`, `__card`, `__check`, `__kind`, `__current`, `__complete` | `runner.css` | The run as one growing list: answered steps as compact cards (completion dot, type label, `title → answer`), then the open card. The dot is the one place step colour appears outside a badge. Answered steps were one-line rows first — see §Surfaces Deliberately Excluded for why that lost |
+| Door rows | `.step-doors`, `__list`, `__row`, `__label`, `__target`, `__target--stub` | `steps.css` | `render "steps/doors", step:, workflow:, readonly:` — the ways out of the open step, one row each: the answer's label, then where it goes or a muted `__target--stub` saying it goes nowhere yet. Hairlines and muted text only: an unwired answer on a draft is work in progress, not a warning, so no semantic colour. It sits INSIDE the panel's autosave form, so it holds no `<form>` — New step is `<button type="button">` opening the type picker, Remove is a `link_to` with `data-turbo-method`. The readonly branch omits the buttons from the markup rather than hiding them in CSS |
+| Row door stubs | `.builder__step-doors`, `.builder__door-stub`, `.builder__door-stub-text` | `builder.css` | A step row's unwired answers, each a pressable stub (`No → add step`) that opens the type picker for that door. Dashed hairline, quiet text, never a warning colour. They live in their own element, NOT in `.builder__step-meta`, which is hidden while the panel is open — and the panel is open right after every grow, which is exactly when the remaining stub has to be findable. Two doors or fewer get a button each; more collapse to one (`3 answers need a step`) that opens the panel at its doors, because a row is one line tall. `__stub-text` is the view-mode reading of the same fact |
+| Type picker | `.builder__type-picker`, `--floating`, `.builder__type-option` | `builder.css` | The seven step types as a `.dropdown__menu`. `--floating` is the modifier `step-list#positionPickerNear` adds when the picker was opened from a door rather than the bottom prompt: it switches positioning to `position: fixed` (escaping the list's `overflow-y` clipping) and nothing else — the coordinates are inline one-off layout values. Anchored to the bottom prompt, a stub on row 1 of a long list opened its picker ~650px away. Measure such a menu with `offsetWidth`/`offsetHeight`: it enters via `@starting-style` with a `scale()`, so a `getBoundingClientRect` read in the same tick as un-hiding it is the scaled size |
+| Mode-only elements | `.builder__edit-only`, `.builder__view-only` | `builder.css` | Shown or hidden by `data-builder-mode-value` on the builder container: `__edit-only` for a control (a stub button, a delete), `__view-only` for the plain-text reading of the same fact. Both are rendered; neither is a permission guard — the server renders the readonly panel without the forms at all |
+| Step target list | `.step-target-list`, `__option`, `__title`, `__meta` | `steps.css` | The "Use existing…" dialog's body (`steps/_target_picker`): every other step in the workflow as a flat, filterable list, since at thirty steps typing beats scrolling. The dialog carries its own `.form-error` above the list — a refusal cannot be left to `#flash` (see § Dialogs) — which `.form-error:empty` hides so an empty one reserves no space |
 | List rows | `.list-section`, `.list-row`, `.list-row--compact` | `lists.css` | Section + hairline-divided rows. `--compact` is the dense size (builder step list); same anatomy, tighter box — sized like `.btn--sm` is to `.btn` |
 | Player index row | `.player-row`, `__run`, `__pin` | `_player.css` | A `/play` row: the Run button (a `button_to` whose form is `__run`) and, for a Regular user, a pin toggle in `__pin` beside it. The wrapper carries the divider and `data-player-filter-target="card"`, so a search hides the toggle with its row. Hover lights only the Run area, telling it apart from the toggle |
 | Pin toggle | `.pin-button`, `.is-pinned` | `dashboard.css` | `render "workflows/pins/toggle", workflow:, pinned:, location:`, where location is `pinned`, `recent` or `play`. A bookmark button with a 2.5rem square target: a solid bookmark in primary text when pinned, outline in muted ink when not. Its id is `dom_id(workflow, "pin_#{location}")`, so every copy on a page is replaced after a pin change |
@@ -628,6 +658,8 @@ These are the most-used controllers. Wire them via `data-controller` on the appr
 | `tooltip` | Show/hide tooltips | `mouseenter->tooltip#show`, `mouseleave->tooltip#hide` |
 | `nav-search` | Cmd+K fuzzy search | On search input |
 | `step-warnings` | Async health check, inline warning icons, popover | On builder container, auto-fetches after saves |
+| `step-list` | Drag-reorder + the type picker. A control that grows a step from a door carries `data-grow-from`, `-label`, `-condition` and `-context`; the picker copies them into its hidden fields when it OPENS (choosing a type closes it before the form submits, so writing on close sends a grow with no parent) | `click->step-list#growFromDoor` on a row's stub; a panel button outside the list element is picked up by a document listener |
+| `step-target-picker` | The "Use existing…" `<dialog>` on a door row: which door it is for, the filter, and a refusal rendered inside the dialog | On the panel body; `click->step-target-picker#open` on the door's button, `keydown.esc->step-target-picker#stopEscape` and `click->step-target-picker#backdropClose` on the dialog |
 | `scenario-step` | Player step interactions | On step card, handles auto-advance |
 | `tabs` | Tab switching | `click->tabs#select` |
 | `inline-rename` | Rename in place: Enter or blur saves once, Escape reverts | On the one-field form; `input` target with `keydown.enter->inline-rename#commit blur->inline-rename#commit keydown.esc->inline-rename#revert` |
@@ -935,11 +967,11 @@ For page types not covered by a recipe, read these exemplary views. They demonst
 | `session_timeout.css` | components | Session timeout UI |
 | `navigation.css` | modules | Top nav bar |
 | `layout.css` | modules | Page structure (.page-body, .page-main) |
-| `builder.css` | components | Builder-specific styles (includes health panel, inline warnings, popover) |
+| `builder.css` | components | Builder-specific styles (includes health panel, inline warnings, the type picker and its floating variant, row door stubs) |
 | `workflows.css` | modules | Workflow list/show styles |
 | `runner.css` | modules | The Scenario + Player runner: answer cards, the runner thread, step content box |
 | `scenarios.css` | modules | Scenario **results** page only — the runner half lives in `runner.css` |
-| `steps.css` | modules | Step editor styles |
+| `steps.css` | modules | Step editor styles: the panel's fields, the step disclosure, door rows, the target-picker list |
 | `editor.css` | modules | Grab bag, and mis-described here for a long time: it is not the Lexxy editor. It holds the button spinner, collaboration presence styles, empty-state text, the inline step creator, the step outline wrapper, the step editor's two-column layout and a flow preview section. The visual-editor chrome it also carried was deleted 2026-08-29, and the CSS of the unmounted Stimulus controllers (template cards, condition tokens, branch and step pickers, variable autocomplete) on 2026-09-10 |
 | `dashboard.css` | modules | Dashboard shell: `.dashboard-*`, `.home-resume`, `.stat-panel`/`.stat-cell` |
 | `auth.css` | modules | Login/signup pages |
