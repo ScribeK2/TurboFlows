@@ -59,6 +59,56 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
     assert_no_current_path "/users/sign_in", wait: 5
   end
 
+  # ── Builder helpers (shared by the three builder system test files) ──
+  #
+  # A step row in the builder list, named by its step's uuid rather than
+  # counted from the top.
+  #
+  # Two elements per step carry data-step-uuid: the row itself and the warning
+  # icon, which step_warnings_controller un-hides when the step has issues. A
+  # bare [data-step-uuid] therefore counts double for any step with a warning,
+  # which makes the count depend on when the async health fetch lands. Scope to
+  # the row's list semantics instead.
+  STEP_ROW = "[role='listitem'][data-step-uuid]".freeze
+
+  # Opens a step's panel and waits until it is safe to click inside.
+  def open_step(step)
+    find("#{STEP_ROW}[data-step-uuid='#{step.uuid}']").click
+    assert_selector "turbo-frame#builder-panel form", wait: 5
+    assert_panel_settled
+  end
+
+  # The panel animates open over 250ms and the fields in it re-wrap as it
+  # widens, so a button found mid-animation moves before the click lands and
+  # the click hits whatever slid under the old spot — about one run in seven.
+  # "Wider than 200px" is not enough: the width has to stop changing.
+  #
+  # Diagnosed in workflow_builder_test.rb, then copied into two more files
+  # before it landed here.
+  def assert_panel_settled(timeout: 5)
+    deadline = Time.current + timeout
+    previous = nil
+    loop do
+      width = panel_body_width
+      return if width > 200 && width == previous
+
+      flunk "the panel never settled open (#{width}px wide)" if Time.current > deadline
+      previous = width
+      sleep 0.1
+    end
+  end
+
+  # Width of the panel's content box. 0 when closed, ~62% of the builder when
+  # open, and 32px in the bug assert_panel_width guards against.
+  def panel_body_width
+    page.evaluate_script(<<~JS)
+      (() => {
+        const b = document.querySelector('#builder-panel .builder__panel-body');
+        return b ? Math.round(b.getBoundingClientRect().width) : 0;
+      })()
+    JS
+  end
+
   # Polls a condition the page cannot show — a record an autosave wrote, a
   # broadcast another session received — rather than sleeping a fixed time.
   def assert_eventually(timeout: 5, interval: 0.2)

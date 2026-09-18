@@ -5,8 +5,6 @@ require "application_system_test_case"
 # a <select>. If the No answer ever needs Health to attach it, this project was
 # not implemented.
 class BuilderGrowTest < ApplicationSystemTestCase
-  STEP_ROW = "[role='listitem'][data-step-uuid]".freeze
-
   setup do
     @user = User.create!(email: "grow-sys-#{SecureRandom.hex(4)}@example.com",
                          password: "password123!", password_confirmation: "password123!", role: "editor")
@@ -27,11 +25,16 @@ class BuilderGrowTest < ApplicationSystemTestCase
     pick_type "Question"
     assert_selector STEP_ROW, count: 1
     assert_selector "input[name='step[answer_type]'][value='yes_no']:checked", visible: :all, wait: 5
+    # Every grow opens the new step's panel, and the list narrows as it slides
+    # in - so a stub pressed now moves out from under the click. This is
+    # open_step's wait without open_step's click: the panel is already ours.
+    assert_panel_settled
 
     question = @workflow.steps.reload.sole
     within(row(question)) { click_on "No → add step" }
     pick_type "Action"
     assert_selector STEP_ROW, count: 2
+    assert_panel_settled
 
     action = @workflow.steps.reload.find_by!(type: "Steps::Action")
     edge = question.transitions.reload.sole
@@ -66,8 +69,7 @@ class BuilderGrowTest < ApplicationSystemTestCase
                                        position: 1, answer_type: "yes_no", variable_name: "light")
     @workflow.update!(start_step: question)
     visit workflow_path(@workflow, edit: true)
-    find("#{STEP_ROW}[data-step-uuid='#{question.uuid}']").click
-    assert_selector "turbo-frame#builder-panel form", wait: 5
+    open_step(question)
 
     within "turbo-frame#builder-panel" do
       fill_in "step[title]", with: "Is the light green?"
@@ -90,8 +92,7 @@ class BuilderGrowTest < ApplicationSystemTestCase
     target = Steps::Resolve.create!(workflow: @workflow, title: "Done", position: 2)
     @workflow.update!(start_step: question)
     visit workflow_path(@workflow, edit: true)
-    find("#{STEP_ROW}[data-step-uuid='#{question.uuid}']").click
-    assert_selector "turbo-frame#builder-panel form", wait: 5
+    open_step(question)
 
     within "turbo-frame#builder-panel" do
       find("summary", text: "Other connections").click
@@ -121,8 +122,7 @@ class BuilderGrowTest < ApplicationSystemTestCase
     Transition.create!(step: question, target_step: target, condition: "light == 'no'", label: "No")
     @workflow.update!(start_step: question)
     visit workflow_path(@workflow, edit: true)
-    find("#{STEP_ROW}[data-step-uuid='#{question.uuid}']").click
-    assert_selector "turbo-frame#builder-panel form", wait: 5
+    open_step(question)
 
     within "turbo-frame#builder-panel" do
       find(".choice-card", text: "Text Input").click
@@ -254,6 +254,11 @@ class BuilderGrowTest < ApplicationSystemTestCase
       click_on "Second branch"
     end
 
+    # The refusal has to travel before the dialog can be judged: without this
+    # wait, `within "dialog[open]"` below could match the dialog as it was a
+    # moment ago and then fail on an error element the stream had not filled
+    # in yet. Naming the wait says which fact the test is waiting for.
+    assert_selector "dialog[open]", wait: 5
     within "dialog[open]" do
       assert_selector ".form-error", text: /already has a transition/i, wait: 5
     end
@@ -283,40 +288,6 @@ class BuilderGrowTest < ApplicationSystemTestCase
 
   def pick_type(name)
     within(".builder__type-picker") { find(".builder__type-name", text: name, exact_text: true).click }
-  end
-
-  # Opens a step's panel and waits for it to actually be ready to click in.
-  # The panel animates open over 250ms and its fields re-wrap as it widens, so
-  # a door-row button found mid-animation moves before the click lands and the
-  # click hits whatever slid under the old spot - see assert_panel_settled.
-  # Diagnosed the same way in workflow_builder_test.rb and
-  # builder_step_panel_test.rb; this is that same helper, a third time.
-  def open_step(step)
-    find("#{STEP_ROW}[data-step-uuid='#{step.uuid}']").click
-    assert_selector "turbo-frame#builder-panel form", wait: 5
-    assert_panel_settled
-  end
-
-  def assert_panel_settled(timeout: 5)
-    deadline = Time.current + timeout
-    previous = nil
-    loop do
-      width = panel_body_width
-      return if width > 200 && width == previous
-
-      flunk "the panel never settled open (#{width}px wide)" if Time.current > deadline
-      previous = width
-      sleep 0.1
-    end
-  end
-
-  def panel_body_width
-    page.evaluate_script(<<~JS)
-      (() => {
-        const b = document.querySelector('#builder-panel .builder__panel-body');
-        return b ? Math.round(b.getBoundingClientRect().width) : 0;
-      })()
-    JS
   end
 
   # Clicks a door row's button ("Use existing…" or "Change") and waits for

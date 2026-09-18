@@ -4,8 +4,6 @@ require "application_system_test_case"
 # behaviours here was found broken in the 2026-09-15 audit: the value saved but
 # the control never showed it, or the control showed it and nothing saved.
 class BuilderStepPanelTest < ApplicationSystemTestCase
-  STEP_ROW = "[role='listitem'][data-step-uuid]".freeze
-
   setup do
     @user = User.create!(
       email: "wf-system-test-panel-#{SecureRandom.hex(4)}@example.com",
@@ -186,37 +184,5 @@ class BuilderStepPanelTest < ApplicationSystemTestCase
   def visit_builder_in_edit_mode
     visit workflow_path(@workflow, edit: true)
     assert_selector "[data-builder-mode-value='edit']", wait: 5
-  end
-
-  def open_step(step)
-    find("#{STEP_ROW}[data-step-uuid='#{step.uuid}']").click
-    assert_selector "turbo-frame#builder-panel form", wait: 5
-    assert_panel_settled
-  end
-
-  # The panel animates open over 250ms and the fields in it re-wrap as it
-  # widens, so a button found mid-animation moves before the click lands and
-  # the click hits whatever slid under the old spot. See the identical helper
-  # (and its comment) in workflow_builder_test.rb, where this was diagnosed.
-  def assert_panel_settled(timeout: 5)
-    deadline = Time.current + timeout
-    previous = nil
-    loop do
-      width = panel_body_width
-      return if width > 200 && width == previous
-
-      flunk "the panel never settled open (#{width}px wide)" if Time.current > deadline
-      previous = width
-      sleep 0.1
-    end
-  end
-
-  def panel_body_width
-    page.evaluate_script(<<~JS)
-      (() => {
-        const b = document.querySelector('#builder-panel .builder__panel-body');
-        return b ? Math.round(b.getBoundingClientRect().width) : 0;
-      })()
-    JS
   end
 end
