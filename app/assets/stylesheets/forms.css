@@ -81,6 +81,13 @@
   color: var(--color-negative);
 }
 
+/* An always-rendered .form-error (filled in later by a Turbo Stream, e.g. the
+   target-picker dialog's) otherwise reserves a line's height and margin with
+   nothing in it. */
+.form-error:empty {
+  display: none;
+}
+
 .form-error__list {
   margin: 0;
   padding-left: var(--space-4);

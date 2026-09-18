@@ -4,7 +4,7 @@ import { Controller } from "@hotwired/stimulus"
 // steps. One dialog serves every door on the panel; opening it writes which door
 // it is for - and, for a door already wired, the connection to retarget.
 export default class extends Controller {
-  static targets = ["dialog", "form", "method", "label", "condition", "heading", "filter", "option", "empty"]
+  static targets = ["dialog", "form", "method", "label", "condition", "heading", "filter", "option", "empty", "error"]
 
   connect() {
     // Turbo snapshots the page as you leave; an open dialog comes back on Back
@@ -25,6 +25,11 @@ export default class extends Controller {
     this.formTarget.action = transitionUrl || this.formTarget.dataset.createUrl
     this.methodTarget.value = transitionUrl ? "patch" : "post"
     this.headingTarget.textContent = label ? `“${label}” leads to…` : "This step leads to…"
+
+    // A refused attempt fills this in without reloading the rest of the
+    // dialog (see render_refusal); clear it so a fresh open never shows a
+    // stale reason for something the author hasn't tried yet.
+    this.errorTarget.textContent = ""
 
     this.filterTarget.value = ""
     this.filter()

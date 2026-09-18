@@ -41,9 +41,25 @@ module Steps
       @workflow.steps.find(params.require(:target_step_id))
     end
 
+    # showModal() puts the target-picker dialog in the browser's top layer,
+    # so #flash - fixed position, an ordinary stacking context - renders
+    # BEHIND it regardless of z-index: an author with the dialog open would
+    # never see a refusal answered only there. This answers inside the
+    # dialog too. A Turbo Stream aimed at a target not on the page is a
+    # no-op, so this doesn't need to know whether a dialog is even open, or
+    # exists for this step at all (a Resolve or handoff source has none).
+    #
+    # turbo_stream.update marks a plain String content html_safe WITHOUT
+    # escaping it first (Turbo::Streams::ActionHelper builds the template
+    # with `template.to_s.html_safe`, not an auto-escaping `<%= %>`), so the
+    # message is escaped by hand here - a step title or condition value
+    # containing `<` or `&` would otherwise land in the page as raw markup.
     def render_refusal(message)
       flash.now[:alert] = "That connection was not saved: #{message}"
-      render turbo_stream: turbo_stream.update("flash", partial: "shared/flash_messages"), status: :unprocessable_content
+      render turbo_stream: [
+        turbo_stream.update("flash", partial: "shared/flash_messages"),
+        turbo_stream.update(dom_id(@step, :target_picker_error), ERB::Util.html_escape(message))
+      ], status: :unprocessable_content
     end
 
     def set_workflow

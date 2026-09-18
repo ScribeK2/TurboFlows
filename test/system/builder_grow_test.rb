@@ -244,6 +244,57 @@ class BuilderGrowTest < ApplicationSystemTestCase
     assert_no_selector "dialog[open]", visible: :all
   end
 
+  # showModal() promotes the dialog (and its ::backdrop) to the browser's top
+  # layer; #flash is a fixed-position element in the ordinary stacking context
+  # and renders behind it regardless of z-index. So a refusal has to answer
+  # inside the dialog too, or the author sees nothing at all.
+  test "a refused Change answers inside the still-open dialog, and a later success clears it" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", question: "Light green?",
+                                       position: 1, answer_type: "yes_no", variable_name: "light")
+    first = Steps::Resolve.create!(workflow: @workflow, title: "First", position: 2)
+    second = Steps::Action.create!(workflow: @workflow, title: "Second branch", position: 3)
+    third = Steps::Resolve.create!(workflow: @workflow, title: "Third target", position: 4)
+    edge = Transition.create!(step: question, target_step: first, condition: "light == 'yes'", label: "Yes")
+    # An extra sharing the Yes door's own condition: retargeting the door onto
+    # its target collides with it.
+    Transition.create!(step: question, target_step: second, condition: "light == 'yes'")
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    find("#{STEP_ROW}[data-step-uuid='#{question.uuid}']").click
+    assert_selector "turbo-frame#builder-panel form", wait: 5
+
+    within "turbo-frame#builder-panel" do
+      find(".step-doors__row", text: "Yes").click_on "Change"
+    end
+    within "dialog[open]" do
+      fill_in "Find a step", with: "second"
+      click_on "Second branch"
+    end
+
+    assert_selector "dialog[open]", wait: 5
+    within "dialog[open]" do
+      assert_selector ".form-error", text: /already has a transition/i, wait: 5
+    end
+    assert_equal first.id, edge.reload.target_step_id
+    within("turbo-frame#builder-panel") { assert_selector ".step-doors__row", text: /Yes.*First/m }
+
+    within "dialog[open]" do
+      fill_in "Find a step", with: "third"
+      click_on "Third target"
+    end
+
+    assert_eventually(timeout: 10) { edge.reload.target_step_id == third.id }
+    assert_no_selector "dialog[open]", visible: :all
+    within("turbo-frame#builder-panel") { assert_selector ".step-doors__row", text: /Yes.*Third target/m }
+
+    within "turbo-frame#builder-panel" do
+      find(".step-doors__row", text: "Yes").click_on "Change"
+    end
+    within "dialog[open]" do
+      assert_no_selector ".form-error", text: /already has a transition/i
+    end
+  end
+
   private
 
   def row(step)

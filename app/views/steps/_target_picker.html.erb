@@ -21,6 +21,13 @@
       <h2 class="font-semibold" data-step-target-picker-target="heading">Use an existing step</h2>
     </div>
     <div class="dialog__body">
+      <%# showModal() puts this dialog in the browser's top layer, so #flash
+          (fixed position, an ordinary stacking context) renders BEHIND it -
+          a refusal has to answer here too, or it answers nowhere the author
+          can see. Empty and hidden until a refusal fills it in; cleared again
+          on the next #open so a stale message never greets a fresh attempt. %>
+      <p class="form-error" role="alert" id="<%= dom_id(step, :target_picker_error) %>"
+         data-step-target-picker-target="error"></p>
       <label class="form-label" for="<%= dom_id(step, :target_filter) %>">Find a step</label>
       <input type="search" class="form-input" id="<%= dom_id(step, :target_filter) %>" autocomplete="off"
              data-step-target-picker-target="filter"

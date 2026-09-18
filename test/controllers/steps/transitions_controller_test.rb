@@ -102,6 +102,31 @@ module Steps
       assert_match(/<turbo-stream action="update" target="flash"/, response.body)
       assert_match "not saved", response.body
       assert_equal other_target.id, colliding.reload.target_step_id
+      # The dialog stays open on a refusal (submitEnded only closes on
+      # success), and #flash is invisible behind a showModal() dialog's top
+      # layer - the error must also land inside the dialog itself.
+      assert_select "turbo-stream[action='update'][target='#{dom_id(@question, :target_picker_error)}']"
+      assert_no_match "Validation failed", response.body
+    end
+
+    test "create refuses a collision and changes nothing, answering inside the dialog too" do
+      resolve = Steps::Resolve.create!(workflow: @workflow, position: 2, title: "Done")
+      # An extra sharing the wired door's own condition: retargeting the door
+      # (through GrowStep.connect, which create uses) collides with it.
+      extra = Transition.create!(step: @question, target_step: resolve, condition: "light == 'no'")
+
+      assert_no_difference("Transition.count") do
+        post workflow_step_transitions_path(@workflow, @question),
+             params: { target_step_id: resolve.id, condition: "light == 'no'" },
+             headers: { "Accept" => "text/vnd.turbo-stream.html" }
+      end
+
+      assert_response :unprocessable_content
+      assert_select "turbo-stream[action='update'][target='flash']"
+      assert_select "turbo-stream[action='update'][target='#{dom_id(@question, :target_picker_error)}']"
+      assert_no_match "Validation failed", response.body
+      assert_equal @action.id, @edge.reload.target_step_id
+      assert_equal resolve.id, extra.reload.target_step_id
     end
 
     test "create is refused for someone who cannot edit the workflow" do
