@@ -21,7 +21,7 @@ class Transition < ApplicationRecord
   # always matches - so a default edge sitting above a conditional one swallows
   # it. Conditionals first, in the order they already had; defaults last.
   def self.settle_positions(step)
-    rows = step.transitions.reload.to_a
+    rows = step.transitions.includes(:target_step, :step).to_a
     ordered = rows.each_with_index.sort_by { |t, i| [t.condition.blank? ? 1 : 0, t.position || i, i] }.map(&:first)
     ordered.each_with_index { |t, i| t.update!(position: i) unless t.position == i }
   end

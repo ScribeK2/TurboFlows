@@ -118,7 +118,7 @@ class StepsController < ApplicationController
   # PATCH /workflows/:workflow_id/steps/:id
   def update
     if @step.update(permitted_step_params)
-      sync_transitions_from_json if step_params[:transitions_json].present?
+      sync_transitions if step_params[:transitions_json].present?
 
       respond_to do |format|
         format.turbo_stream do
@@ -329,31 +329,10 @@ class StepsController < ApplicationController
     @workflow.update_column(:start_step_id, first_step.id) if first_step
   end
 
-  def sync_transitions_from_json
-    parsed = JSON.parse(step_params[:transitions_json])
-    return unless parsed.is_a?(Array)
-
-    steps_by_uuid = @workflow.steps.index_by(&:uuid)
-
-    @step.transitions.destroy_all
-
-    parsed.each_with_index do |t, pos|
-      target_uuid = t["target_uuid"]
-      next if target_uuid.blank?
-
-      target = steps_by_uuid[target_uuid]
-      next unless target
-
-      Transition.create!(
-        step: @step,
-        target_step: target,
-        condition: t["condition"].presence,
-        label: t["label"].presence,
-        position: pos
-      )
-    end
-  rescue JSON::ParserError => e
-    @step.errors.add(:base, "Invalid transitions JSON: #{e.message}")
+  def sync_transitions
+    TransitionSync.call(@step, step_params[:transitions_json])
+  rescue TransitionSync::Malformed, ActiveRecord::RecordInvalid => e
+    @step.errors.add(:base, e.message)
   end
 
   def broadcast_step_row(step)

@@ -18,41 +18,46 @@ export default class extends Controller {
     this.refresh()
   }
 
-  /**
-   * Refresh and re-render transitions
-   */
   refresh() {
-    this.transitions = this.loadTransitions()
+    const state = this.loadState()
+    this.known = state.known
+    this.transitions = state.rows
     this.renderTransitions()
   }
 
-  /**
-   * Load transitions from the hidden input
-   */
-  loadTransitions() {
-    if (this.hasHiddenInputTarget && this.hiddenInputTarget.value) {
-      try {
-        return JSON.parse(this.hiddenInputTarget.value)
-      } catch (e) {
-        console.error('[StepTransitions] Failed to parse transitions:', e)
-        return []
-      }
+  // { known: [uuid], rows: [{ uuid, target_uuid, condition, label }] }
+  loadState() {
+    const empty = { known: [], rows: [] }
+    if (!this.hasHiddenInputTarget || !this.hiddenInputTarget.value) return empty
+
+    try {
+      const parsed = JSON.parse(this.hiddenInputTarget.value)
+      return { known: parsed.known || [], rows: parsed.rows || [] }
+    } catch (e) {
+      console.error('[StepTransitions] Failed to parse transitions:', e)
+      return empty
     }
-    return []
   }
 
-  /**
-   * Save transitions to the hidden input
-   */
   saveTransitions() {
     if (this.hasHiddenInputTarget) {
-      this.hiddenInputTarget.value = JSON.stringify(this.transitions)
-      // Trigger autosave by dispatching input event on the hidden field
+      this.hiddenInputTarget.value = JSON.stringify({ known: this.known, rows: this.transitions })
       this.hiddenInputTarget.dispatchEvent(new Event("input", { bubbles: true }))
     }
 
-    // Dispatch event for flow preview update
     document.dispatchEvent(new CustomEvent("workflow:updated"))
+  }
+
+  // randomUUID exists only in a secure context; an install served over plain
+  // http on an internal hostname has getRandomValues but not randomUUID.
+  newUuid() {
+    if (crypto.randomUUID) return crypto.randomUUID()
+
+    const b = crypto.getRandomValues(new Uint8Array(16))
+    b[6] = (b[6] & 0x0f) | 0x40
+    b[8] = (b[8] & 0x3f) | 0x80
+    const h = [...b].map(x => x.toString(16).padStart(2, "0")).join("")
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`
   }
 
   /**
@@ -87,13 +92,12 @@ export default class extends Controller {
     // Capture current DOM values before modifying
     this.syncFromDOM()
 
-    const newTransition = {
-      target_uuid: "",
-      condition: "",
-      label: ""
-    }
-
-    this.transitions.push(newTransition)
+    // The row's key is made here, before the server has seen it, so the same
+    // save sent twice writes one transition. It joins `known` at once: a row
+    // added and then removed in one sitting still has to be deleted.
+    const uuid = this.newUuid()
+    this.known.push(uuid)
+    this.transitions.push({ uuid, target_uuid: "", condition: "", label: "" })
     this.saveTransitions()
     this.renderTransitions()
   }

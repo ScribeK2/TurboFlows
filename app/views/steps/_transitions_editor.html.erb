@@ -26,8 +26,14 @@
     </button>
   </div>
 
-  <%# Hidden field to store transitions JSON for form submission %>
-  <% transitions_data = step.transitions.includes(:target_step).map { |t| { 'target_uuid' => t.target_step&.uuid, 'condition' => t.condition, 'label' => t.label } } %>
+  <%# `known` is every transition this editor was rendered with. TransitionSync
+      deletes only a known row the author removed; an edge made elsewhere while
+      this panel sat open is not the editor's to delete. %>
+  <% editor_transitions = step.transitions.includes(:target_step).to_a %>
+  <% transitions_data = {
+       "known" => editor_transitions.map(&:uuid),
+       "rows" => editor_transitions.map { |t| { "uuid" => t.uuid, "target_uuid" => t.target_step&.uuid, "condition" => t.condition, "label" => t.label } }
+     } %>
   <input type="hidden"
          name="step[transitions_json]"
          value="<%= transitions_data.to_json %>"

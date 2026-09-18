@@ -331,4 +331,17 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to workflows_path
     assert_equal "Existing Step", @step.reload.title
   end
+
+  test "a panel save with a stale snapshot leaves a server-made edge alone" do
+    target = Steps::Resolve.create!(workflow: @workflow, position: 1, title: "Done")
+    grown = Transition.create!(step: @step, target_step: target)
+
+    patch workflow_step_path(@workflow, @step),
+          params: { step: { title: "Renamed", transitions_json: { known: [], rows: [] }.to_json } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :ok
+    assert Transition.exists?(grown.id)
+    assert_equal "Renamed", @step.reload.title
+  end
 end
