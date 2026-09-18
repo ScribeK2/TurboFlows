@@ -152,6 +152,45 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
     end
   end
 
+  # What this pins: a stored condition comes back as its preset, not as
+  # Custom. The two tests above moved that claim onto the door row for the
+  # transition Step::Doors claims; this is the same claim for a transition it
+  # does not - Step::Doors claims only the first matching transition per door
+  # (position order), so a second "verified == 'yes'" transition, on a
+  # different target, stays an "extra" the freeform editor still has to
+  # restore correctly rather than falling back to Custom. Without this, no
+  # test anywhere - controller or system - exercises
+  # condition_preset_controller.js's known-preset restore branch at all, since
+  # every condition it would recognise is now claimed by a door before the
+  # editor ever renders it.
+  test "a second transition sharing a door's condition still restores as that preset" do
+    question = Steps::Question.create!(
+      workflow: @workflow, title: "Did it work?", position: 1,
+      question: "Did it work?", answer_type: "yes_no", variable_name: "verified"
+    )
+    also_yes = Steps::Action.create!(workflow: @workflow, position: 2, title: "Also yes")
+    Transition.create!(step: question, target_step: @resolve, position: 0, condition: "verified == 'yes'")
+    Transition.create!(step: question, target_step: also_yes, position: 1, condition: "verified == 'yes'")
+
+    visit_builder_in_edit_mode
+    step_row(question.uuid).click
+
+    within "turbo-frame#builder-panel" do
+      assert_selector ".step-doors__row", text: /Yes.*All done/m, wait: 5
+      # Already open: the disclosure starts open whenever it has a row to show
+      # (editor_transitions.any?), unlike the empty-state tests above, which
+      # open it themselves.
+      assert_text "1 connection"
+
+      within all(".transition-item", minimum: 1, wait: 5).last do
+        assert_eventually do
+          preset_dropdown.value == "yes"
+        end
+        assert_selector "[data-condition-preset-target='sentenceContainer'].is-hidden", visible: :all
+      end
+    end
+  end
+
   test "an unmatched condition stays Custom" do
     question = Steps::Question.create!(
       workflow: @workflow, title: "Did it work?", position: 1,

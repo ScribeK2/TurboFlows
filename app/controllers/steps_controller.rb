@@ -24,7 +24,12 @@ class StepsController < ApplicationController
 
   # Which fields, when this save touches them, change what Step::Doors would
   # read off this step — so the open panel's doors list is now stale.
-  DOOR_DECIDING_PARAMS = %i[answer_type options variable_name transitions_json].freeze
+  #
+  # variable_name is deliberately absent: a save that actually renames it sets
+  # rename_pair, which #connections_or_doors_stream answers first (the whole
+  # fragment, not just the doors) - this list only needs to cover the fields a
+  # doors-only replace has to answer for.
+  DOOR_DECIDING_PARAMS = %i[answer_type options transitions_json].freeze
 
   include ActionView::RecordIdentifier
 

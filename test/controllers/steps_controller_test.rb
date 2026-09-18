@@ -543,4 +543,56 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "old == 'yes'", first.reload.condition,
                  "the whole transaction must roll back, not just the variable_name"
   end
+
+  # connections_or_doors_stream has three outcomes; the two above (rename,
+  # doors_changed? false) are covered elsewhere. This is the third: a save
+  # whose transitions_json turns one of the editor's own rows into a door -
+  # the row's condition now reads as the No door - so the whole Connections
+  # fragment has to come back, not just the doors list, or the row would show
+  # twice: once as a door, once still sitting in the editor below it.
+  test "a save that turns an editor row into a door streams the whole connections fragment" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light green?",
+                                       answer_type: "yes_no", variable_name: "light")
+    new_uuid = SecureRandom.uuid
+    transitions_json = {
+      known: [new_uuid],
+      rows: [{ uuid: new_uuid, target_uuid: @step.uuid, condition: "light == 'no'", label: "No" }]
+    }.to_json
+
+    patch workflow_step_path(@workflow, question),
+          params: { step: { transitions_json: transitions_json } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    transition = question.transitions.reload.sole
+    assert_equal transition, Step::Doors.for(question.reload).door_for("light == 'no'").transition
+
+    assert_select "turbo-stream[action='update'][target='#{dom_id(question, :connections)}']"
+    assert_select "turbo-stream[action='replace'][target='#{dom_id(question, :doors)}']", false
+  end
+
+  # The contrast case: the same shape of save, but the sent row's condition
+  # names a variable no door of this step reads at all, so it stays an
+  # "extra" - editor_row_became_door? is false, and only the doors list (not
+  # the whole fragment) needs replacing.
+  test "a save whose new row is not a door streams only the doors list" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light green?",
+                                       answer_type: "yes_no", variable_name: "light")
+    new_uuid = SecureRandom.uuid
+    transitions_json = {
+      known: [new_uuid],
+      rows: [{ uuid: new_uuid, target_uuid: @step.uuid, condition: "tier == 'gold'", label: nil }]
+    }.to_json
+
+    patch workflow_step_path(@workflow, question),
+          params: { step: { transitions_json: transitions_json } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    transition = question.transitions.reload.sole
+    assert_includes Step::Doors.for(question.reload).extras, transition
+
+    assert_select "turbo-stream[action='replace'][target='#{dom_id(question, :doors)}']"
+    assert_select "turbo-stream[action='update'][target='#{dom_id(question, :connections)}']", false
+  end
 end
