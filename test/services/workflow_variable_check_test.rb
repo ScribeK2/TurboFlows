@@ -132,6 +132,103 @@ class WorkflowVariableCheckTest < ActiveSupport::TestCase
     assert_equal %w[one two three], findings.first.variables
   end
 
+  # --- found in review: three ways this warned on a branch that fires --------
+
+  # condition_presets.js writes `step.variable_name || "answer"`, so a Question
+  # with no variable_name gets `answer == 'yes'` from the builder's OWN preset
+  # picker, and ConditionEvaluator#lookup_value resolves "answer" as the last
+  # value given. Warning on that is warning on the product's default output.
+  test "the legacy name `answer` is never reported" do
+    q = question(variable_name: nil)
+    Transition.create!(step: q, target_step: resolve, condition: "answer == 'billing'", position: 0)
+
+    assert_empty check
+    assert ConditionEvaluator.evaluate("answer == 'billing'", { q.title => "billing" }),
+           "and the runtime agrees it fires"
+  end
+
+  # lookup_value falls back to a case-insensitive key match.
+  test "a condition matches its variable whatever the case" do
+    q = question(variable_name: "reason")
+    Transition.create!(step: q, target_step: resolve, condition: "Reason == 'billing'", position: 0)
+
+    assert_empty check
+    assert ConditionEvaluator.evaluate("Reason == 'billing'", { "reason" => "billing" })
+  end
+
+  # A caller's variable_mapping RENAMES on the way in: {"account_tier" => "tier"}
+  # seeds the child with `tier`, which no step anywhere sets under that name.
+  test "a name a caller's variable_mapping creates counts in the target" do
+    parent = Workflow.create!(title: "Mapper", user: @user, status: "draft")
+    Steps::Question.create!(workflow: parent, position: 0, title: "Tier?", question: "Tier?",
+                            answer_type: "text", variable_name: "account_tier")
+    Steps::SubFlow.create!(workflow: parent, position: 1, title: "Run the child",
+                           sub_flow_workflow_id: @workflow.id, sub_flow_returns: true,
+                           variable_mapping: { "account_tier" => "tier" })
+
+    q = question(variable_name: "reason")
+    Transition.create!(step: q, target_step: resolve, condition: "tier == 'gold'", position: 0)
+
+    assert_empty check
+  end
+
+  # --- found in review: the message was wrong for half the operators ---------
+
+  # Against a variable nothing sets, `!=` evaluates TRUE (nil means true) and
+  # `<` / `<=` compare against 0 — so those branches ALWAYS fire, and one that
+  # comes first shadows every branch after it. "They will not fire" described
+  # the opposite of the worse failure.
+  test "the message does not claim a branch will not fire when it always will" do
+    q = question(variable_name: "reason")
+    Transition.create!(step: q, target_step: resolve, condition: "gone != 'x'", position: 0)
+
+    assert ConditionEvaluator.evaluate("gone != 'x'", {}), "precondition: this branch always fires"
+
+    message = WorkflowHealthCheck.call(@workflow.reload).issues.values.flatten
+                                 .find { |i| i[:code] == :undefined_variable }[:message]
+    assert_no_match(/will not fire/, message)
+  end
+
+  # --- found in review: cost --------------------------------------------------
+
+  # One shared sub-flow called by most workflows pulls nearly every workflow
+  # into the closure. Their steps are read as six plucked columns in ONE query,
+  # never as full records, because this runs after every autosave.
+  test "a large closure costs a bounded number of queries and loads no foreign records" do
+    shared = Workflow.create!(title: "Verify identity", user: @user, status: "draft")
+    Steps::Question.create!(workflow: shared, position: 0, title: "Verified?", question: "Verified?",
+                            answer_type: "yes_no", variable_name: "verified")
+    5.times do |i|
+      caller_wf = Workflow.create!(title: "Caller #{i}", user: @user, status: "draft")
+      4.times { |n| Steps::Message.create!(workflow: caller_wf, position: n, title: "Say #{i}-#{n}") }
+      Steps::SubFlow.create!(workflow: caller_wf, position: 9, title: "verify",
+                             sub_flow_workflow_id: shared.id, sub_flow_returns: true)
+    end
+    Steps::SubFlow.create!(workflow: @workflow, position: 0, title: "verify",
+                           sub_flow_workflow_id: shared.id, sub_flow_returns: true)
+
+    steps = @workflow.reload.steps.includes(transitions: :target_step).to_a
+    queries = count_queries { WorkflowVariableCheck.call(@workflow, steps) }
+
+    assert_operator queries, :<=, 8, "two per closure level plus one pluck — not one per workflow"
+  end
+
+  # Most workflows name no variable anywhere — every shipped template among
+  # them — and those must not pay for the sub-flow closure walk.
+  test "a workflow with nothing to check runs no closure queries" do
+    q = question(variable_name: "reason")
+    Transition.create!(step: q, target_step: resolve, condition: "billing", position: 0)
+
+    steps = @workflow.reload.steps.includes(transitions: :target_step).to_a
+    sql = []
+    counter = ->(*, payload) { sql << payload[:sql] }
+    ActiveSupport::Notifications.subscribed(counter, "sql.active_record") do
+      WorkflowVariableCheck.call(@workflow, steps)
+    end
+
+    assert_empty sql.grep(/sub_flow_workflow_id|sub_flow_returns/), "the closure was walked for nothing"
+  end
+
   # --- bare conditions -------------------------------------------------------
 
   test "a bare value condition names no variable and is skipped" do
@@ -237,6 +334,21 @@ class WorkflowVariableCheckTest < ActiveSupport::TestCase
 
     assert_equal [question.uuid], findings.map(&:step_uuid)
     assert_includes findings.first.variables, "call_reason"
+  end
+
+  # Copy is read by someone who is already unsure whether they broke something,
+  # so "sets it" about two variables is a small thing that reads as carelessness.
+  test "the interpolation message agrees in number" do
+    q = question(variable_name: "reason", title: "Ask {{one}}")
+    Transition.create!(step: q, target_step: resolve, position: 0)
+    single = WorkflowHealthCheck.call(@workflow.reload).issues.values.flatten
+                                .find { |i| i[:code] == :undefined_interpolation }
+    assert_match(/sets it\./, single[:message])
+
+    q.update!(title: "Ask {{one}} and {{two}}")
+    double = WorkflowHealthCheck.call(@workflow.reload).issues.values.flatten
+                                .find { |i| i[:code] == :undefined_interpolation }
+    assert_match(/sets them\./, double[:message])
   end
 
   # --- cost ------------------------------------------------------------------

@@ -35,6 +35,12 @@ class WorkflowVariableCheck
   # StepHelper#render_step_content with the run's variables.
   INTERPOLATED_PLAIN = %i[title question].freeze
 
+  LEGACY_ANSWER = "answer".freeze
+
+  # The only columns that can put a name in the bag. Steps of OTHER workflows in
+  # the closure are read as these and nothing else — see #foreign_writers.
+  NAME_COLUMNS = %i[type title variable_name options output_fields variable_mapping].freeze
+
   def self.call(workflow, steps)
     new(workflow, steps).call
   end
@@ -55,23 +61,42 @@ class WorkflowVariableCheck
 
   attr_reader :workflow, :steps
 
+  # Conditions are matched the way ConditionEvaluator#lookup_value reads them,
+  # not the way they are spelled: it falls back to a case-insensitive key match,
+  # and it resolves the legacy name "answer" as the last value given — which is
+  # what condition_presets.js writes for a Question with no variable_name, so
+  # warning on it would be warning on the builder's own default output.
+  # Interpolation below stays exact: VariableInterpolator does no such fallback.
   def condition_findings
-    steps.filter_map do |step|
-      names = step.transitions.filter_map { |t| t.condition.to_s[CONDITION_VARIABLE, 1] }
-      unknown = names.uniq - defined_variables.to_a
-      next if unknown.empty?
+    named = names_by_step { |step| step.transitions.filter_map { |t| t.condition.to_s[CONDITION_VARIABLE, 1] } }
+    return [] if named.empty?
 
-      Finding.new(step_uuid: step.uuid, code: :undefined_variable, variables: unknown)
-    end
+    known = defined_variables.to_set(&:downcase) << LEGACY_ANSWER
+    findings_for(named, :undefined_variable) { |name| known.include?(name.downcase) }
   end
 
   def interpolation_findings
-    steps.filter_map do |step|
-      names = interpolated_text(step).scan(VariableInterpolator::VARIABLE_PATTERN).flatten
-      unknown = names.uniq - defined_variables.to_a
-      next if unknown.empty?
+    named = names_by_step { |step| interpolated_text(step).scan(VariableInterpolator::VARIABLE_PATTERN).flatten }
+    return [] if named.empty?
 
-      Finding.new(step_uuid: step.uuid, code: :undefined_interpolation, variables: unknown)
+    findings_for(named, :undefined_interpolation) { |name| defined_variables.include?(name) }
+  end
+
+  # Names are gathered BEFORE the defined set is asked for, because most
+  # workflows name no variable anywhere and the defined set is the expensive
+  # half: it walks the sub-flow closure. A workflow with nothing to check costs
+  # no closure queries at all.
+  def names_by_step
+    steps.each_with_object({}) do |step, named|
+      names = yield(step).uniq
+      named[step.uuid] = names if names.any?
+    end
+  end
+
+  def findings_for(named, code, &)
+    named.filter_map do |uuid, names|
+      unknown = names.reject(&)
+      Finding.new(step_uuid: uuid, code: code, variables: unknown) if unknown.any?
     end
   end
 
@@ -99,37 +124,56 @@ class WorkflowVariableCheck
   # Everything that can be in the run's variable bag by the time this workflow
   # is executing — its own writers, plus every workflow whose bag flows into it.
   def defined_variables
-    @defined_variables ||= variables_written_by(related_workflow_steps)
+    @defined_variables ||= variables_written_by(own_writers + foreign_writers)
   end
 
-  # What a set of steps puts into `results`. Six writers, all in
-  # ScenarioStepProcessor: a Question writes its `variable_name` AND its title,
-  # every other type writes its title, an Action writes each output_field name,
-  # and a Form writes each submitted field name. StepResolver's simple-value
-  # match reads `results[variable_name] || results[title]`, so a title is a real
-  # key and not a curiosity.
-  def variables_written_by(collection)
-    collection.each_with_object(Set.new) do |step, names|
-      names << step.title.to_s.strip if step.title.present?
-      names << step.variable_name.to_s.strip if step.try(:variable_name).present?
+  # What a set of steps puts into `results`, from rows shaped like NAME_COLUMNS.
+  # All in ScenarioStepProcessor: a Question writes its `variable_name` AND its
+  # title, every other type writes its title, an Action writes each output_field
+  # name, a Form writes each submitted field name, and a Sub-Flow's
+  # variable_mapping RENAMES — {"account_tier" => "tier"} seeds the child with
+  # `tier`, and the reverse mapping writes `account_tier` back on return — so
+  # both sides of every mapping are names that really exist at run time.
+  # StepResolver's simple-value match reads `results[variable_name] ||
+  # results[title]`, so a title is a real key and not a curiosity.
+  def variables_written_by(rows)
+    rows.each_with_object(Set.new) do |(type, title, variable_name, options, output_fields, mapping), names|
+      names << title.to_s.strip if title.present?
+      names << variable_name.to_s.strip if variable_name.present?
 
-      Array(step.try(:output_fields)).each do |field|
-        names << field["name"].to_s.strip if field.is_a?(Hash) && field["name"].present?
-      end
+      named_entries(output_fields).each { |name| names << name }
+      named_entries(options).each { |name| names << name } if type == "Steps::Form"
 
-      next unless step.is_a?(Steps::Form)
-
-      Array(step.try(:fields)).each do |field|
-        names << field["name"].to_s.strip if field.is_a?(Hash) && field["name"].present?
-      end
+      mapping = parse_mapping(mapping)
+      names.merge(mapping.keys.map(&:to_s) + mapping.values.map(&:to_s))
     end
   end
 
-  def related_workflow_steps
-    others = contributing_workflow_ids - [workflow.id]
-    return steps if others.empty?
+  def named_entries(json)
+    Array(json).filter_map { |entry| entry["name"].to_s.strip if entry.is_a?(Hash) && entry["name"].present? }
+  end
 
-    steps + Step.where(workflow_id: others).to_a
+  # ScenarioStepProcessor tolerates a JSON string here, so this does too.
+  def parse_mapping(mapping)
+    mapping = JSON.parse(mapping) if mapping.is_a?(String)
+    mapping.is_a?(Hash) ? mapping : {}
+  rescue JSON::ParserError
+    {}
+  end
+
+  def own_writers
+    steps.map { |step| NAME_COLUMNS.map { |column| step.read_attribute(column) } }
+  end
+
+  # One shared sub-flow — "Verify identity", called by most workflows — pulls
+  # nearly the whole organisation into the closure, and this runs on every
+  # health fetch, which the builder makes after every autosave. So foreign steps
+  # are six plucked columns in one query, never instantiated records.
+  def foreign_writers
+    others = contributing_workflow_ids - [workflow.id]
+    return [] if others.empty?
+
+    Step.where(workflow_id: others.to_a).pluck(*NAME_COLUMNS)
   end
 
   # Every workflow whose variables can reach this one, to a fixed point.

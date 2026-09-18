@@ -277,11 +277,17 @@ class WorkflowHealthCheck
   def variable_finding_message(finding)
     if finding.code == :undefined_variable
       names = finding.variables.map { |name| "`#{name}`" }.to_sentence
-      return "This step's branches test #{names}, which no step in this workflow sets. They will not fire."
+      # Not "they will not fire": against an unset variable `==` and `>` never
+      # fire, but `!=`, `<` and `<=` ALWAYS do (nil means true; numbers compare
+      # against 0), and one of those placed first shadows every branch after it.
+      # The sentence has to be true for both failures.
+      return "This step's branches test #{names}, which no step in this workflow sets, " \
+             "so they cannot route on #{finding.variables.one? ? 'it' : 'them'}."
     end
 
     braces = finding.variables.map { |name| "{{#{name}}}" }.to_sentence
-    "This step's text shows #{braces} to the agent, because no step in this workflow sets it."
+    pronoun = finding.variables.one? ? "it" : "them"
+    "This step's text shows #{braces} to the agent, because no step in this workflow sets #{pronoun}."
   end
 
   def run_subflow_validation(issues)
