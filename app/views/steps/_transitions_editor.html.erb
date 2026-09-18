@@ -26,7 +26,11 @@
   <summary class="step-disclosure__summary">
     <span class="step-disclosure__label">Other connections</span>
     <span class="step-disclosure__sep" aria-hidden="true">&middot;</span>
-    <span class="step-disclosure__value"><%= editor_transitions.any? ? pluralize(editor_transitions.size, "connection") : "numeric ranges, other variables" %></span>
+    <% if editor_transitions.any? %>
+      <span class="step-disclosure__value"><%= pluralize(editor_transitions.size, "connection") %></span>
+    <% else %>
+      <span class="step-disclosure__value step-disclosure__value--auto">numeric ranges, other variables</span>
+    <% end %>
   </summary>
   <div class="step-disclosure__body">
     <div data-controller="step-transitions"

@@ -530,7 +530,7 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
   test "a rename that collides two conditions onto one target is refused, not a 500" do
     question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Q",
                                        answer_type: "yes_no", variable_name: "old")
-    Transition.create!(step: question, target_step: @step, condition: "old == 'yes'")
+    first = Transition.create!(step: question, target_step: @step, condition: "old == 'yes'")
     Transition.create!(step: question, target_step: @step, condition: "new == 'yes'")
 
     patch workflow_step_path(@workflow, question),
@@ -540,5 +540,7 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_content
     assert_select "turbo-stream[target='flash']"
     assert_equal "old", question.reload.variable_name
+    assert_equal "old == 'yes'", first.reload.condition,
+                 "the whole transaction must roll back, not just the variable_name"
   end
 end

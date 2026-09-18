@@ -80,7 +80,7 @@ class HandoffStepBuilderTest < ActionDispatch::IntegrationTest
     assert_select "##{dom_id(step, :connections)}", 1,
                   "the section stays in the page, empty, so toggling Come back can fill it"
     assert_no_match "Add Connection", response.body
-    assert_no_match "No connections yet", response.body
+    assert_no_match "No other connections", response.body
   end
 
   test "a returning sub-flow's panel still offers connections" do
