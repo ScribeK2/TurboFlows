@@ -137,10 +137,10 @@ class WorkflowVariableCheckTest < ActiveSupport::TestCase
 
   # --- found in review: three ways this warned on a branch that fires --------
 
-  # condition_presets.js writes `step.variable_name || "answer"`, so a Question
-  # with no variable_name gets `answer == 'yes'` from the builder's OWN preset
-  # picker, and ConditionEvaluator#lookup_value resolves "answer" as the last
-  # value given. Warning on that is warning on the product's default output.
+  # condition_preset_controller.js#buildPresets writes `step.variable_name || "answer"`,
+  # so a Question with no variable_name gets `answer == 'yes'` from the builder's
+  # OWN preset picker, and ConditionEvaluator#lookup_value resolves "answer" as
+  # the last value given. Warning on that is warning on the product's default output.
   test "the legacy name `answer` is never reported" do
     q = question(variable_name: nil)
     Transition.create!(step: q, target_step: resolve, condition: "answer == 'billing'", position: 0)

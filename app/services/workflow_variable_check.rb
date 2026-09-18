@@ -62,8 +62,9 @@ class WorkflowVariableCheck
   # Conditions are matched the way ConditionEvaluator#lookup_value reads them,
   # not the way they are spelled: it falls back to a case-insensitive key match,
   # and it resolves the legacy name "answer" as the last value given — which is
-  # what condition_presets.js writes for a Question with no variable_name, so
-  # warning on it would be warning on the builder's own default output.
+  # what condition_preset_controller.js#buildPresets writes for a Question with
+  # no variable_name, so warning on it would be warning on the builder's own
+  # default output.
   # Interpolation below stays exact: VariableInterpolator does no such fallback.
   def condition_findings
     named = names_by_step { |step| routing_conditions(step).filter_map { |c| c.to_s[CONDITION_VARIABLE, 1] } }
