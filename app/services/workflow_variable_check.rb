@@ -72,14 +72,14 @@ class WorkflowVariableCheck
     return [] if named.empty?
 
     known = defined_variables.to_set(&:downcase) << LEGACY_ANSWER
-    findings_for(named, :undefined_variable) { |name| known.include?(name.downcase) }
+    findings_for(named, code: :undefined_variable) { |name| known.include?(name.downcase) }
   end
 
   def interpolation_findings
     named = names_by_step { |step| interpolated_text(step).scan(VariableInterpolator::VARIABLE_PATTERN).flatten }
     return [] if named.empty?
 
-    findings_for(named, :undefined_interpolation) { |name| defined_variables.include?(name) }
+    findings_for(named, code: :undefined_interpolation) { |name| defined_variables.include?(name) }
   end
 
   # Names are gathered BEFORE the defined set is asked for, because most
@@ -93,7 +93,12 @@ class WorkflowVariableCheck
     end
   end
 
-  def findings_for(named, code, &)
+  # `code` is a keyword on purpose. The classification guard in
+  # workflow_health_check_publish_blockers_test finds this file's codes by
+  # scanning for the keyword followed by a symbol, so a positional symbol is
+  # invisible to it — and so is any example of the form written in a comment,
+  # which it would read as a real code.
+  def findings_for(named, code:, &)
     named.filter_map do |uuid, names|
       unknown = names.reject(&)
       Finding.new(step_uuid: uuid, code: code, variables: unknown) if unknown.any?
