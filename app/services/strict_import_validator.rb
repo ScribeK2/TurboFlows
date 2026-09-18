@@ -31,19 +31,6 @@ class StrictImportValidator
     "var == 'value'", "var != 'value'", "var > 10", "var >= 10", "var < 10", "var <= 10"
   ].freeze
 
-  # ConditionEvaluator::VALID_PATTERNS anchor at the start but not at the end, so
-  # #valid? returns true for anything that merely BEGINS with a comparison —
-  # "tier == 'gold' && region == 'EU'" and even "tier == 'gold' OR nonsense ((("
-  # all pass it. #evaluate then reads only as much as it understands, so the rest
-  # of the expression silently does nothing.
-  #
-  # Derive end-anchored versions from the same constant rather than restating the
-  # six forms, so the two cannot drift apart. The whole string must be one
-  # comparison and nothing else.
-  STRICT_CONDITION_PATTERNS = ConditionEvaluator::VALID_PATTERNS.map do |pattern|
-    Regexp.new("#{pattern.source}\\s*\\z")
-  end.freeze
-
   CONDITION_VARIABLE = /\A\s*(\w+)\s*(?:>=|<=|==|!=|>|<)/
   CONDITION_STRING_VALUE = /(?:==|!=)\s*['"]([^'"]*)['"]/
 
@@ -369,7 +356,7 @@ class StrictImportValidator
   end
 
   def supported_condition?(condition)
-    STRICT_CONDITION_PATTERNS.any? { |pattern| pattern.match?(condition.to_s.strip) }
+    ConditionEvaluator.complete?(condition)
   end
 
   # What a workflow's own steps put in the bag. The list of writers lives in

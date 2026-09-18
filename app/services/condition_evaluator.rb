@@ -87,6 +87,21 @@ class ConditionEvaluator
     new(condition).valid?
   end
 
+  # VALID_PATTERNS anchor at the start but not the end, so #valid? is true for
+  # anything that merely BEGINS with a comparison — "tier == 'gold' && region ==
+  # 'EU'" passes it, and #evaluate then reads only as much as it understands.
+  # These are the same six forms anchored at both ends, derived rather than
+  # restated so the two cannot drift.
+  COMPLETE_PATTERNS = VALID_PATTERNS.map { |pattern| Regexp.new("#{pattern.source}\\s*\\z") }.freeze
+
+  # True when the WHOLE string is one supported comparison and nothing else.
+  # The question two importers ask: the strict one to refuse a compound
+  # condition, the Markdown one to tell a condition from a label.
+  def self.complete?(condition)
+    text = condition.to_s.strip
+    COMPLETE_PATTERNS.any? { |pattern| pattern.match?(text) }
+  end
+
   # Class method for quick evaluation
   def self.evaluate(condition, results)
     new(condition).evaluate(results)
