@@ -159,19 +159,21 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_equal empty_workflow.steps.first.id, empty_workflow.start_step_id
   end
 
-  # 13. malformed transitions_json returns error (not silently swallowed)
-  test "malformed transitions_json surfaces error" do
+  # 13. malformed transitions_json refuses the response, but the step's own
+  # fields were already saved and no transition was written or removed.
+  test "malformed transitions_json refuses the response without dropping the field save" do
+    before_count = Transition.count
+
     patch workflow_step_path(@workflow, @step),
-          params: { step: { transitions_json: "not valid json{{{" } },
+          params: { step: { title: "Renamed despite bad json", transitions_json: "not valid json{{{" } },
           as: :json
 
-    # The update itself succeeds (title etc.), but the JSON parse error
-    # is added to step.errors. Since step.update already passed,
-    # the response is 200 but the error is recorded on the model.
-    # The key assertion: it does NOT silently swallow the error.
-    assert_response :ok
-    # Verify the step has the error recorded (it was added to step.errors)
-    # The sync_transitions_from_json now adds an error instead of silently ignoring
+    assert_response :unprocessable_content
+    json = response.parsed_body
+    assert json["errors"].any? { |e| e.include?("connections") },
+           "expected an error mentioning connections, got #{json['errors'].inspect}"
+    assert_equal "Renamed despite bad json", @step.reload.title
+    assert_equal before_count, Transition.count
   end
 
   # 14. regular user cannot create steps
@@ -343,5 +345,21 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_response :ok
     assert Transition.exists?(grown.id)
     assert_equal "Renamed", @step.reload.title
+  end
+
+  test "a save that reaches another step's transition by uuid is refused as a turbo stream" do
+    target = Steps::Resolve.create!(workflow: @workflow, position: 1, title: "Done")
+    other_step = Steps::Action.create!(workflow: @workflow, position: 2, title: "Other")
+    other_transition = Transition.create!(step: other_step, target_step: target)
+
+    patch workflow_step_path(@workflow, @step),
+          params: { step: { transitions_json: { known: [other_transition.uuid], rows: [
+            { uuid: other_transition.uuid, target_uuid: target.uuid, condition: "", label: "" }
+          ] }.to_json } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :unprocessable_content
+    assert_select "turbo-stream[target='flash']"
+    assert_equal other_step.id, other_transition.reload.step_id
   end
 end

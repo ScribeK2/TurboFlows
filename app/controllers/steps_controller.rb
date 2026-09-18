@@ -118,7 +118,10 @@ class StepsController < ApplicationController
   # PATCH /workflows/:workflow_id/steps/:id
   def update
     if @step.update(permitted_step_params)
-      sync_transitions if step_params[:transitions_json].present?
+      if step_params[:transitions_json].present?
+        refusal = sync_transitions
+        return respond_to_refused_connections(refusal) if refusal
+      end
 
       respond_to do |format|
         format.turbo_stream do
@@ -301,6 +304,18 @@ class StepsController < ApplicationController
     render turbo_stream: turbo_stream.update("flash", partial: "shared/flash_messages"), status: status
   end
 
+  # The step's own fields are already saved by the time this runs — @step.update
+  # returned true before sync_transitions was ever called. So this answers the
+  # existing refusal path rather than the success one, and says the truth: the
+  # step was saved, its connections were not.
+  def respond_to_refused_connections(message)
+    respond_to do |format|
+      format.turbo_stream { render_refusal(message, status: :unprocessable_content) }
+      format.html { redirect_to workflow_path(@workflow, edit: true), alert: message }
+      format.json { render json: { errors: [message] }, status: :unprocessable_content }
+    end
+  end
+
   def step_params
     params.fetch(:step, {}).permit(*PERMITTED_STEP_PARAMS, **PERMITTED_STEP_PARAM_SHAPES)
   end
@@ -329,10 +344,12 @@ class StepsController < ApplicationController
     @workflow.update_column(:start_step_id, first_step.id) if first_step
   end
 
+  # Returns nil on success, or the message to refuse the response with.
   def sync_transitions
     TransitionSync.call(@step, step_params[:transitions_json])
+    nil
   rescue TransitionSync::Malformed, ActiveRecord::RecordInvalid => e
-    @step.errors.add(:base, e.message)
+    "This step was saved, but its connections were not: #{e.message}"
   end
 
   def broadcast_step_row(step)
