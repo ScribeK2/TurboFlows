@@ -62,12 +62,18 @@
           pre-2026-09-19 step_transitions_controller.js, since
           javascript_importmap_tags carries no data-turbo-track and a builder
           save/panel-open is a stream or frame load, never a Turbo visit that
-          would refetch it - can still remove a connection. That old JS's
-          loadState reads only `known` (never `rendered`/`minted`) and never
-          mutates it, so without this key it always sends `known: []`,
-          TransitionSync's legacy branch computes an empty delete set, and
+          would refetch it - can still remove a connection the SERVER
+          rendered into it, not only one it minted itself this session. That
+          old JS's loadState reads only `known` (never `rendered`/`minted`),
+          and only addTransition ever pushes a new row's uuid into it - so
+          without this key, `known` starts empty and a removal of any
+          pre-existing row (never in `known` to begin with) computes an empty
+          delete set: TransitionSync's legacy branch destroys nothing, and
           #door_shape_changed? immediately re-streams the "removed" row right
-          back. Every NEW reader (TransitionSync#parse,
+          back. (A row added and then removed within the SAME old-tab
+          session was never broken: addTransition pushes its uuid into
+          `known` before the removal, so that delete set is never empty.)
+          Every NEW reader (TransitionSync#parse,
           StepsController#shown_and_sent_row_uuids, this same JS's own
           loadState) already prefers `rendered`/`minted` outright whenever
           either is present, so this changes nothing for the current

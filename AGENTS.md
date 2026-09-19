@@ -288,14 +288,18 @@ one reason: a builder tab open ACROSS A DEPLOY keeps running the pre-2026-09-19
 `step_transitions_controller.js` (`javascript_importmap_tags` carries no
 `data-turbo-track`, and a builder save or panel open is a stream or frame
 load, never a Turbo visit that would refetch it), whose `loadState` reads
-only `known` and never mutates it. Without a real `known` in the field, that
-old tab always computes an empty delete set on removal — it can still add and
-edit a connection (those go through `rows`, which both JS versions write the
-same way), but never remove one; the transition it "removed" was never
-actually deleted, and the server's `door_shape_changed?` backward check
-(reading the same empty `known` through `shown_and_sent_row_uuids`) then
-re-streams the whole fragment on that very save, showing the still-there row
-right back. `known` is TRANSITIONAL: every current reader (`TransitionSync#parse`,
+only `known`, and whose `addTransition` still pushes a freshly minted uuid
+into it. Without a real `known` in the field, that old tab starts with an
+empty `known`, so it can still add, edit, and even remove
+a row it minted in THIS session (that uuid did make it into `this.known`, via
+`addTransition`); what it can never remove is a row the SERVER rendered into
+it — any pre-existing connection, which `this.known` never held to begin with
+— because removing one still computes an empty delete set. The transition it
+"removed" was never actually deleted, and the server's `door_shape_changed?`
+backward check (reading the same empty `known` through
+`shown_and_sent_row_uuids`) then re-streams the whole fragment on that very
+save, showing the still-there row right back. `known` is TRANSITIONAL: every
+current reader (`TransitionSync#parse`,
 `StepsController#shown_and_sent_row_uuids`, the current JS's own `loadState`)
 already prefers `rendered`/`minted` outright whenever either is present, and
 the current JS's `saveTransitions` never echoes `known` back — so nothing
