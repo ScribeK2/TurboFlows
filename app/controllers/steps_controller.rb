@@ -102,7 +102,7 @@ class StepsController < ApplicationController
   rescue ActiveRecord::RecordInvalid => e
     respond_to_refusal(e.record.errors.full_messages.to_sentence)
   rescue GrowStep::Refused => e
-    respond_to_refusal(e.message)
+    respond_to_refused_grow(e.message)
   end
 
   # PATCH /workflows/:workflow_id/steps/:id
@@ -117,9 +117,9 @@ class StepsController < ApplicationController
         refusal = sync_transitions(rename_pair)
         # The step's own fields are already saved by the time this runs —
         # @step.update returned true before sync_transitions was ever called.
-        # So this answers the existing refusal path rather than the success
-        # one, and says the truth: the step was saved, its connections were not.
-        return respond_to_refusal(refusal) if refusal
+        # So this answers a refusal rather than the success path, and says the
+        # truth: the step was saved, its connections were not.
+        return respond_to_connections_refusal(refusal, rename_pair) if refusal
       end
 
       respond_to do |format|
@@ -279,6 +279,30 @@ class StepsController < ApplicationController
     @workflow = Workflow.find(params[:workflow_id])
   end
 
+  # What the author pressed is what was stale - a stub for a door that has
+  # since been wired - so the refusal replaces the list that holds it and the
+  # parent's own Connections fragment (a no-op unless that panel is open),
+  # rather than leaving the same stub there to be pressed again.
+  def respond_to_refused_grow(message)
+    respond_to do |format|
+      format.turbo_stream do
+        flash.now[:alert] = message
+        parent = grow_from_step
+        streams = [turbo_stream.replace("step-list", partial: "workflows/step_list",
+                                                     locals: { workflow: @workflow, steps: list_steps })]
+        if parent
+          streams << turbo_stream.update(dom_id(parent, :connections), partial: "steps/connections",
+                                                                       locals: { step: parent, workflow: @workflow })
+        end
+        streams << turbo_stream.update("flash", partial: "shared/flash_messages")
+
+        render turbo_stream: streams, status: :unprocessable_content
+      end
+      format.html { redirect_to workflow_path(@workflow, edit: true), alert: message }
+      format.json { render json: { errors: [message] }, status: :unprocessable_content }
+    end
+  end
+
   def grow_from_step
     @workflow.steps.find(params[:from_step_id]) if params[:from_step_id].present?
   end
@@ -390,6 +414,35 @@ class StepsController < ApplicationController
     end
   end
 
+  # A refusal with something saved behind it: @step.update committed before
+  # TransitionSync refused, so the row that shows the step's fields still has to
+  # follow - here, and in every other editor's list.
+  #
+  # The Connections fragment follows only when that save renamed the variable.
+  # The rename's callback already rewrote the step's own conditions, while the
+  # editor's snapshot still names the old identifier, and the panel sends the
+  # whole step on every change - so left alone, its next autosave of any field
+  # writes the stale conditions straight back. Any other refusal leaves the
+  # editor as it is: the row that was refused is the author's to fix, and
+  # re-rendering from the database would take it away before they could.
+  def respond_to_connections_refusal(message, rename_pair)
+    respond_to do |format|
+      format.turbo_stream do
+        flash.now[:alert] = message
+        streams = [turbo_stream.replace(dom_id(@step), partial: "workflows/step_row",
+                                                       locals: { step: @step.reload, workflow: @workflow })]
+        streams << full_connections_stream if rename_pair
+        streams << turbo_stream.update("flash", partial: "shared/flash_messages")
+
+        render turbo_stream: streams, status: :unprocessable_content
+      end
+      format.html { redirect_to workflow_path(@workflow, edit: true), alert: message }
+      format.json { render json: { errors: [message] }, status: :unprocessable_content }
+    end
+
+    broadcast_step_row(@step)
+  end
+
   def step_params
     params.fetch(:step, {}).permit(*PERMITTED_STEP_PARAMS, **PERMITTED_STEP_PARAM_SHAPES)
   end
@@ -482,9 +535,11 @@ class StepsController < ApplicationController
   # "Shown" is what the browser says this editor displayed: `rendered +
   # minted` under the current shape, or `known` under the legacy one - the
   # same either-shape read TransitionSync does, kept independent of it since
-  # this runs whether or not a sync happened at all. No transitions_json, or
-  # JSON that doesn't parse, "knows nothing" - both come back as empty arrays,
-  # same as #editor_row_became_door? used to treat them.
+  # this runs whether or not a sync happened at all. No transitions_json, JSON
+  # that doesn't parse, or a payload that is not the shape this page sends (an
+  # Array, a scalar where a list belongs) "knows nothing" - each comes back as
+  # empty arrays, same as #editor_row_became_door? used to treat them. A row
+  # that is not an object is dropped, as TransitionSync#rows drops it.
   def shown_and_sent_row_uuids
     return [[], []] if step_params[:transitions_json].blank?
 
@@ -495,8 +550,8 @@ class StepsController < ApplicationController
               payload["known"].to_a.map(&:to_s)
             end
 
-    [shown, payload["rows"].to_a.pluck("uuid")]
-  rescue JSON::ParserError, NoMethodError
+    [shown, payload["rows"].to_a.grep(Hash).pluck("uuid")]
+  rescue JSON::ParserError, NoMethodError, TypeError
     [[], []]
   end
 

@@ -89,6 +89,84 @@ class GrowStepTest < ActiveSupport::TestCase
     assert_raises(GrowStep::Refused) { GrowStep.create(workflow: @workflow, step_type: "action", from_step: foreign) }
   end
 
+  # A stub's data-grow-* attributes go stale when the door is wired between
+  # the row rendering and "New step" being pressed - another editor, a second
+  # click racing the first. A second edge on that door could never fire (first
+  # match wins), so the step it reached would be one nothing points at.
+  test "refuses to grow from a door that is already wired, and adds nothing" do
+    question = step(Steps::Question, "Light green?", 1, answer_type: "yes_no", variable_name: "light")
+    wired = step(Steps::Action, "Already there", 2)
+    Transition.create!(step: question, target_step: wired, condition: "light == 'no'", label: "No")
+
+    error = assert_raises(GrowStep::Refused) do
+      GrowStep.create(workflow: @workflow, step_type: "action", from_step: question,
+                      label: "No", condition: "light=='NO'")
+    end
+
+    assert_match(/already leads to/, error.message)
+    assert_equal [wired.id], question.transitions.reload.map(&:target_step_id)
+    assert_equal 2, @workflow.steps.count
+    assert_equal 2, wired.reload.position
+  end
+
+  test "refuses to grow from a Next door that is already wired" do
+    parent = step(Steps::Action, "Parent", 1)
+    child = step(Steps::Action, "Child", 2)
+    Transition.create!(step: parent, target_step: child)
+
+    assert_raises(GrowStep::Refused) do
+      GrowStep.create(workflow: @workflow, step_type: "action", from_step: parent)
+    end
+    assert_equal 2, @workflow.steps.count
+  end
+
+  test "a wired door does not stop a grow from another door on the same step" do
+    question = step(Steps::Question, "Light green?", 1, answer_type: "yes_no", variable_name: "light")
+    Transition.create!(step: question, target_step: step(Steps::Action, "No side", 2), condition: "light == 'no'")
+
+    grown = GrowStep.create(workflow: @workflow, step_type: "action", from_step: question,
+                            label: "Yes", condition: "light == 'yes'")
+
+    assert_includes question.transitions.reload.map(&:target_step_id), grown.id
+  end
+
+  # The stub the author pressed says "No" leads nowhere, because a default edge
+  # an import sorted first shadows No's own edge. Adding a second No edge would
+  # be the wrong repair: once anything settles the order, the OLD edge claims
+  # the door and the new step is the one nothing reaches. So the order is put
+  # right before the doors are read, and the door turns out to be taken.
+  test "a grow from a door shadowed by a default edge settles the order instead of adding a second edge" do
+    question = step(Steps::Question, "Light green?", 1, answer_type: "yes_no", variable_name: "light")
+    rest = step(Steps::Action, "Everything else", 2)
+    no_side = step(Steps::Action, "No side", 3)
+    Transition.create!(step: question, target_step: rest, position: 0)
+    Transition.create!(step: question, target_step: no_side, condition: "light == 'no'", position: 1)
+
+    assert_raises(GrowStep::Refused) do
+      GrowStep.create(workflow: @workflow, step_type: "action", from_step: question,
+                      label: "No", condition: "light == 'no'")
+    end
+
+    assert_equal ["light == 'no'", nil], question.transitions.reload.order(:position).map(&:condition)
+    assert_equal 3, @workflow.steps.count
+  end
+
+  test "connect to a door shadowed by a default edge retargets its own edge" do
+    question = step(Steps::Question, "Light green?", 1, answer_type: "yes_no", variable_name: "light")
+    rest = step(Steps::Action, "Everything else", 2)
+    no_side = step(Steps::Action, "No side", 3)
+    elsewhere = step(Steps::Action, "Elsewhere", 4)
+    Transition.create!(step: question, target_step: rest, position: 0)
+    shadowed = Transition.create!(step: question, target_step: no_side, condition: "light == 'no'", position: 1)
+
+    GrowStep.connect(workflow: @workflow, from_step: question, target_step: elsewhere,
+                     label: "No", condition: "light == 'no'")
+
+    assert_equal elsewhere.id, shadowed.reload.target_step_id
+    assert_equal 2, question.transitions.count
+    assert_equal ["light == 'no'", nil], question.transitions.reload.order(:position).map(&:condition)
+  end
+
   test "a refused or invalid grow shifts nothing" do
     parent = step(Steps::Action, "Parent", 1)
     later = step(Steps::Action, "Later", 2)

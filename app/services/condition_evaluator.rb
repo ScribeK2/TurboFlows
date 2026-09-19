@@ -52,6 +52,7 @@ class ConditionEvaluator
   # character. The value groups are mutually exclusive.
   STRING_COMPARISON = /\A\s*(\w+)\s*(==|!=)\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")/
   WHOLE_STRING_COMPARISON = /#{STRING_COMPARISON.source}\s*\z/
+  private_constant :STRING_COMPARISON, :WHOLE_STRING_COMPARISON
 
   attr_reader :condition
 

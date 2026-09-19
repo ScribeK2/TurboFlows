@@ -135,6 +135,83 @@ class StepDoorsTest < ActiveSupport::TestCase
     assert_empty d.unmatched_extras
   end
 
+  # The same rule under BOTH readings of a value: the old writer's spelling
+  # (backslash kept literally) and the new one's (backslash escaped) name one
+  # answer, so whichever is the repeat is a repeat - not a value the step
+  # stopped offering. #unmatched_extras has to read a condition exactly as
+  # wiring a door reads it, or the health panel disagrees with the row.
+  test "a duplicate spelled with the other backslash escaping is not unmatched either" do
+    value = %q(C:\temp)
+    spellings = ["path == 'C:\\temp'", "path == 'C:\\\\temp'"]
+    assert_equal([1, 2], spellings.map { |c| c.count("\\") })
+
+    [spellings, spellings.reverse].each do |first, second|
+      step = question(answer_type: "dropdown", variable_name: "path",
+                      options: [{ "label" => "Path", "value" => value }])
+      Transition.create!(step: step, target_step: @a, condition: first, position: 0)
+      duplicate = Transition.create!(step: step, target_step: @b, condition: second, position: 1)
+
+      d = doors(step)
+      assert_equal [duplicate], d.extras
+      assert_empty d.unmatched_extras, "#{second.inspect} was reported as unmatched"
+      step.destroy
+    end
+  end
+
+  # StepResolver takes the first transition that matches, in position order,
+  # and a blank condition always matches. Transition.settle_positions keeps a
+  # default edge last for every builder write, but an import can write one
+  # first - and then the runner never reaches the edges below it, whatever
+  # they say. A door that read as wired there was the lie.
+  test "an answer whose own edge sits below a default edge is a stub, because the runner never reaches it" do
+    step = question(answer_type: "yes_no")
+    default = Transition.create!(step: step, target_step: @a, position: 0)
+    dead = Transition.create!(step: step, target_step: @b, condition: "light == 'no'", position: 1)
+
+    d = doors(step)
+    no_door = d.doors.find { |door| door.label == "No" }
+
+    assert_predicate no_door, :stub?
+    assert_equal default, d.fallback.transition
+    assert_equal [dead], d.extras
+    assert_equal [dead], d.shadowed
+    assert_empty d.missing, "the default edge catches No, so it leads somewhere"
+    assert_equal @a, StepResolver.new(@workflow).resolve_next(step, { "light" => "no" }),
+                 "the runner itself takes the default edge for No"
+  end
+
+  test "an edge above the default edge still claims its door, and nothing is shadowed" do
+    step = question(answer_type: "yes_no")
+    live = Transition.create!(step: step, target_step: @b, condition: "light == 'no'", position: 0)
+    Transition.create!(step: step, target_step: @a, position: 1)
+
+    d = doors(step)
+    assert_equal live, d.doors.find { |door| door.label == "No" }.transition
+    assert_empty d.shadowed
+  end
+
+  # Doors has to read the order exactly as StepResolver does, or "the runner
+  # never reaches it" is a guess: a default edge with no position is tried
+  # LAST, so it shadows nothing.
+  test "a default edge with no position shadows nothing, because the runner tries it last" do
+    step = question(answer_type: "yes_no")
+    Transition.create!(step: step, target_step: @a, position: nil)
+    live = Transition.create!(step: step, target_step: @b, condition: "light == 'no'", position: 0)
+
+    d = doors(step)
+    assert_equal live, d.doors.find { |door| door.label == "No" }.transition
+    assert_empty d.shadowed
+    assert_equal @b, StepResolver.new(@workflow).resolve_next(step, { "light" => "no" })
+  end
+
+  test "a second default edge is not reported as shadowed: re-sorting cannot fix it" do
+    Transition.create!(step: @a, target_step: @b, position: 0)
+    other = Steps::Action.create!(workflow: @workflow, title: "C", position: 12)
+    Transition.create!(step: @a, target_step: other, position: 1)
+
+    assert_empty doors(@a).shadowed
+  end
+
   test "door_for finds a door by any spelling of its condition" do
     step = question(answer_type: "yes_no")
     assert_equal "No", doors(step).door_for("light=='NO'").label

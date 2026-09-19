@@ -332,13 +332,18 @@ export default class extends Controller {
   async executeFix(stepUuid, fixType, button) {
     // Build confirm message
     const row = this.element.querySelector(`[data-step-uuid="${stepUuid}"]`)
-    const stepTitle = row?.querySelector(".builder__step-title")?.textContent?.trim() || "this step"
+    // The row's own data attribute, not a class inside it: this read
+    // .builder__step-title, which no row has carried since the chrome
+    // migration, so every confirm said "this step".
+    const stepTitle = row?.dataset.stepTitle?.trim() || "this step"
 
     let message
     if (fixType === "connect_next") {
       message = `Connect "${stepTitle}" to the next step?`
     } else if (fixType === "add_resolve_after") {
       message = `Add a new Resolve step after "${stepTitle}"?`
+    } else if (fixType === "settle_connections") {
+      message = `Move "Anything else" below the other connections on "${stepTitle}"?`
     } else {
       return
     }

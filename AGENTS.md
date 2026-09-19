@@ -146,10 +146,22 @@ doors on the row. `GrowStep` is **not** `StepBuilder` — that bulk-writes an
 import or a template and demands a Resolve in the payload — and import never
 calls it. `GrowStep.connect` wires a door to a step that already exists,
 retargeting that door's own edge rather than adding a second one that could
-never fire (first match wins). The one `update_column` here is
+never fire (first match wins). `GrowStep.create` meets the same collision
+the other way: it **refuses** (`GrowStep::Refused`) a door that is already
+wired rather than retargeting it, because a grow only ever starts from a stub —
+so a wired door there means the stub was stale (another editor wired it, or a
+second click raced the first), and retargeting would silently strand the step
+the door already led to. `StepsController#respond_to_refused_grow` answers with
+the whole list and the parent's Connections fragment, so the stale stub goes. The one `update_column` here is
 `assign_start_step`, moved from `StepsController` unchanged: a full save would
 bump the workflow's `lock_version` under whatever the title or Details autosave
-is holding and be refused as stale. Every grow replaces the **whole** step list
+is holding and be refused as stale. Both `GrowStep` entry points hold a **row lock on the workflow**
+(`Workflow.lock.find`, no `lock_version` bump) for their transaction, because
+everything they do reads before it writes: on PostgreSQL four grows at once gave
+positions `[1, 2, 2, 2, 3]`, and one door pressed four times grew three steps.
+SQLite ignores `FOR UPDATE`, so only `test/services/grow_step_concurrency_test.rb`
+can show it, on PostgreSQL — it skips itself locally and its header says how to
+run it. Every grow replaces the **whole** step list
 and broadcasts it, because a mid-list insert moves every later ordinal and every
 "→ Title · 4" that names one.
 
@@ -170,7 +182,20 @@ comparison's value has two readings — `ConditionEvaluator#parse`'s `:value`
 (unescaped) and `:literal_value` (the literal text between the delimiters,
 backslashes kept) — and the runner takes an answer matching either one, so
 `Doors#operator_match?` checks both too: still no more loosely than the
-runner, against a runner that itself grew less strict. What no door claims is
+runner, against a runner that itself grew less strict. **Position counts too**, since 2026-09-19:
+`StepResolver` takes the first match in position order and a blank condition
+always matches, so only a transition sorted AHEAD of the first default edge can
+claim a door. `Transition.settle_positions` keeps a default last for every
+builder write, but an import can write one first — and a door that read as
+wired below it was the same lie in a different place. That answer is a stub
+reading `follows “Anything else”`, its dead edge is an extra, and `#shadowed`
+lists every conditional edge in that state so `WorkflowHealthCheck` can say so
+(`:shadowed_connection`, a warning whose Fix is `settle_connections` — it
+re-sorts and changes no connection). `GrowStep` settles the order BEFORE it
+reads the doors, and outside its own transaction: adding a second edge for a
+shadowed door would be the wrong repair (the next settle hands the door back
+to the old edge, stranding the new step), and a refusal must not roll the
+repair back. What no door claims is
 an **extra** (`#extras`); a wired
 blank-condition edge is the `fallback`, rendered last as "Anything else", which
 is why a stub above it reads `follows “Anything else”` and not "nothing yet".
@@ -274,7 +299,9 @@ The SERVER still reads a payload sending the legacy `{known, rows}` shape
 exactly as it always did: `known` never actually gated creation even before
 this change (only the delete set), so under this shape a missing row is still
 created outright and nothing is ever reported skipped. `rendered`/`minted`
-win outright whenever either key is present as an Array, even an empty one,
+win outright whenever either key is present as an Array, even an empty one
+(the other may be absent, but a scalar there is refused as `Malformed` rather
+than wrapped into a list),
 and `known` is then ignored for both the delete set and the row loop; only
 when neither is an Array does the payload fall back to `known`. A payload
 that is none of those shapes — an Array, say — is **refused**, never read as
@@ -299,7 +326,7 @@ it — any pre-existing connection, which `this.known` never held to begin with
 backward check (reading the same empty `known` through
 `shown_and_sent_row_uuids`) then re-streams the whole fragment on that very
 save, showing the still-there row right back. `known` is TRANSITIONAL: every
-current reader (`TransitionSync#parse`,
+current reader (`TransitionSync#shape_of`,
 `StepsController#shown_and_sent_row_uuids`, the current JS's own `loadState`)
 already prefers `rendered`/`minted` outright whenever either is present, and
 the current JS's `saveTransitions` never echoes `known` back — so nothing
@@ -339,7 +366,13 @@ public method — by the model callback to the rows, and by `TransitionSync` to
 the incoming payload — and the `[old, new]` pair is captured in
 `StepsController#update` **before** anything reloads `@step` and clears its
 saved-change tracking. The same save re-streams the Connections fragment so the
-editor's snapshot is rebuilt rather than left naming the old identifier. Which
+editor's snapshot is rebuilt rather than left naming the old identifier — and
+that holds when the connections are then **refused**, which is the case that
+used to skip it: `@step.update` has already committed the rename by the time
+`TransitionSync` refuses, so `respond_to_connections_refusal` re-streams the
+fragment too (only after a rename; any other refusal leaves the editor alone,
+since the refused row is the author's to fix), along with the step's row, which
+it also broadcasts, because the step's own fields did save. Which
 fragment a save streams is decided in one place (`connections_or_doors_stream`):
 a rename gets the whole `dom_id(step, :connections)`; so does a save that moved
 a transition between doors and extras **in either direction** (a row the editor
@@ -348,7 +381,7 @@ the editor has never heard of); otherwise a save that touched `answer_type`,
 `options` or `transitions_json` gets the doors list alone. One stream per
 target, never both. That decision reads the payload's shape through its own
 method, `StepsController#shown_and_sent_row_uuids` — a SECOND, independent
-reader of `rendered`/`minted`/`known`, kept apart from `TransitionSync#parse`
+reader of `rendered`/`minted`/`known`, kept apart from `TransitionSync#shape_of`
 because it has to answer even when no sync ran at all (no `transitions_json`
 submitted, say). Anyone changing what the payload's keys mean has two readers
 to update, not one.
@@ -418,8 +451,13 @@ escaping the list's `overflow-y` clipping) because anchored to the bottom prompt
 it opened ~650px from a stub on row 1 of a long list; it is measured with
 `offsetWidth`/`offsetHeight`, not `getBoundingClientRect`, which reads a
 scaled-down size during the `@starting-style` entrance and threw the clamp off
-by that margin. A fixed menu does not move with its row, so scrolling the list
-or resizing the window closes it. The bottom prompt keeps the plain anchored
+by that margin. A fixed menu does not move with its trigger, so it closes
+once that trigger has moved — whichever scroller moved it, the list for a row's
+stub or the panel for a door (one capture-phase `scroll` listener on the
+document, since scroll does not bubble) — or the window is resized. It asks
+whether the trigger MOVED rather than whether something scrolled: at phone
+width the document fires scroll events as a click lands that move nothing,
+and closing on those shut the menu under the pointer. The bottom prompt keeps the plain anchored
 menu.
 
 **At ≤640px with a panel open, `.builder__list` is `visibility: hidden` with
@@ -473,7 +511,7 @@ the two-readings note above (`Step::Doors#operator_match?` and
 - Warning icons appear inline on step rows with issue counts; clicking opens a popover with issue details and Fix buttons
 - Toolbar shows aggregate issue count next to step count; clicking opens the Health panel in the slide-in panel
 - Health panel (`_health_panel.html.erb`) shows categorized Errors/Warnings/Passing sections with clickable step links and Fix buttons
-- Fix buttons (`connect_next`, `add_resolve_after`) are deterministic, additive autocorrects that respond with Turbo Streams to update both the step list and health panel. A step with more than one door gets **no** Fix for `:no_outgoing_transitions`: both fixes write a blank-condition edge, which on a Yes/No Question catches every answer, so one click let a workflow ship with nobody having looked at No. That issue reads "No answers lead anywhere yet" and opens the step's panel instead
+- Fix buttons (`connect_next`, `add_resolve_after`, and `settle_connections`, which only re-sorts) are deterministic autocorrects that respond with Turbo Streams to update both the step list and health panel. A step with more than one door gets **no** Fix for `:no_outgoing_transitions`: both fixes write a blank-condition edge, which on a Yes/No Question catches every answer, so one click let a workflow ship with nobody having looked at No. That issue reads "No answers lead anywhere yet" and opens the step's panel instead
 - Import handoff: imports with issues redirect to `?health=true` which auto-opens the health panel on builder connect
 - Health fetch is separate from autosave because autosave responds with Turbo Streams (HTML), not JSON
 
@@ -658,7 +696,7 @@ the concern.
 All workflows are graphs. There is no separate "linear mode" — a sequential flow is just a graph where each step has one transition to the next.
 
 **Key services:**
-- `StepResolver` — graph traversal engine. Evaluates transitions in position order, handles conditional branching (via `ConditionEvaluator`), simple value matching for Question answers, SubFlow markers, and jump evaluation (`check_jumps`).
+- `StepResolver` — graph traversal engine. Evaluates transitions in position order — `Transition.in_runner_order`, spelled out since 2026-09-19 because `transitions.position` is nullable and a bare `ORDER BY position` puts a NULL first on SQLite and last on PostgreSQL, so the same rows routed differently in dev and in production. The scope says what production already did (NULL last, id breaking a tie) and uses `reorder`, since `Step`'s `has_many :transitions` carries its own `order(:position)`. `Step::Doors` sorts loaded rows by `Transition#runner_sort_key`, the same rule in Ruby; change one and you change both — handles conditional branching (via `ConditionEvaluator`), simple value matching for Question answers, SubFlow markers, and jump evaluation (`check_jumps`).
 - `GrowStep` — the builder's own writer: one step plus the edge that reaches it, in one transaction, inserted after its parent. Never called from import, and deliberately not part of `StepBuilder`. See **Builder UI § Growing a workflow**, which also covers `Step::Doors` (a model, `app/models/step/doors.rb`, not a service) and `TransitionSync`.
 - `TransitionSync` — saves the step panel's connection editor by uuid: an existing row named in `rows` is updated, a missing row is created only when this editor minted it rather than merely rendered it, and `(rendered + minted) - rows` is deleted — so a stale second panel can no longer resurrect a connection someone else deleted (the pre-2026-09-19 `{known, rows}` shape is still honoured, for a browser mid-deploy; the transitional editor field carries `known` too, so a browser mid-deploy can still remove a connection, not just add or edit one — see **Builder UI § Growing a workflow**). It replaced a `destroy_all`-and-rebuild that deleted edges written while the panel was open.
 - `StepBuilder` — creates AR steps from hash data. Auto-creates sequential transitions when no explicit transitions provided. Validates at least one Resolve step exists. Also provides `StepBuilder.normalize` (class method), its own helper, which `WorkflowImporter` borrows.
@@ -669,7 +707,7 @@ All workflows are graphs. There is no separate "linear mode" — a sequential fl
 - `StrictImportValidator` — validates a strict-dialect file without writing: envelope, structure, graph (same `GraphValidator` publish runs), semantics (condition syntax, undefined variables, unmatched option values), and external references (groups via `WorkflowPlacement`, sub-flow targets scoped to `Workflow.visible_to`). Returns a `Report` of errors and warnings; `WorkflowImporter` takes a valid one via `strict_report:` and only writes. The option-value check reads a condition through `ConditionEvaluator#parse` rather than its own regex, matching either of the value's two readings against the question's option values — coerced to strings, so a bare JSON number in an option does not false-positive against a quoted condition — and a genuinely numeric-looking mismatch (`plan == '9'` against `["3", "4"]`) still warns. An unquoted `plan == 9` never reaches this check: `#supported_condition?` refuses it earlier as `:invalid_condition_syntax`, since `==`/`!=` require a quoted value.
 - `ConditionEvaluator` — the grammar every reader of a condition shares: a string value is delimited by `'` or by `"`, the SAME one at both ends, and inside it a backslash escapes the next character. `#evaluate` and `#parse` read through one private tokenizer (`#string_comparison`); `#valid?` and `#complete?` never call it — they derive their patterns from the same string-value fragment, plus `LEGACY_STRING_VALUE`, the pre-2026-09-19 value pattern verbatim (its delimiters need NOT match). That keeps both a strict SUPERSET of what they accepted before this branch, not a narrower grammar: mismatched delimiters (`'yes"`) and a value ending in a bare backslash (`'C:\'`) are still accepted by both, exactly as they always were — a base-vs-current diff found zero conditions that were accepted before and are refused now by either. The WIDENING is visible at `#complete?` only: only a value containing a quote character — its own delimiter escaped, or the other delimiter unescaped, e.g. `'Say "OK"'` — is newly accepted there. `#valid?` accepts NOTHING new: its pattern is anchored at the start but not the end, so a mere prefix match is enough, and the pre-2026-09-19 pattern already supplied a quote-delimited prefix for any text with a quote character anywhere later in it — `light == 'Say "OK"'` already satisfied `#valid?` before this branch by matching only as far as `'Say "`, well short of the whole string, which is exactly why `#complete?` (anchored at both ends) needed the fix and `#valid?` never did. A bare backslash was never what the old pattern excluded either way, so it changes nothing about what `#complete?`/`#valid?` accept, only what `#evaluate`/`#parse` understand such a value to mean. `#complete?` is the one that matters in practice — it is what `StrictImportValidator#supported_condition?` and the Markdown parser ask, to refuse a compound condition and to tell a condition from a label respectively — and narrowing it below what it used to accept would make an exportable workflow un-importable, or misread an existing Markdown transition as a label. `#valid?` itself has no caller in `app/`; only `#complete?` is. `#parse` returns `:value` (unescaped) and `:literal_value` (the text between the delimiters exactly as written, backslashes kept) — both readings, never nil whenever `#parse` returns a hash at all: its own legacy fallback (splitting on the first supported operator, tried longest first, that appears ANYWHERE in the text — not the leftmost one, so `x == 'a>=b'` splits on `>=` — and stripping every quote character) sets both to the same stripped string. Both branches also return `:is_numeric`, which nothing in `app/` reads. Two DIFFERENT readings arise because a condition written before 2026-09-19 escaped a quote but never a backslash (`Step::Doors#condition_for` and the panel's writer both only ever did that), so a stored `path == 'C:\temp'` means a literal backslash, not an escape. `#evaluate`'s `==`/`!=` match an answer equal to EITHER reading, and every other reader that asks "does this condition mean this value" — `Step::Doors#operator_match?`, `StrictImportValidator#check_option_value`, the panel's `conditionsMatch` — has to check both, or re-create the bug this closed. When one of those checks fails, what gets reported is quoted AS WRITTEN, not unescaped: `StrictImportValidator#check_option_value`'s `unmatched_option_value` warning and `Step::Doors#unmatched_extras` (a separate Doors method from `#operator_match?`, feeding the health panel) both report `:literal_value`, so the author sees the backslash they actually typed. The cost: where the two readings differ (the value contains a backslash), `!=` is stricter exactly where `==` is looser — an answer matching either reading satisfies `==`, so it must fail to match BOTH before `!=` is true. The tokenizer only fires when the WHOLE condition is one well-formed string comparison; anything else — mismatched delimiters, an unquoted `x == 5`, trailing text — falls through to the reader this class has always had, unchanged: a live workflow must not change routing when the parser gets better. Verified by diffing old vs. new `#evaluate` over ~12.9M generated cases — every disagreement fell into three named, deliberate families: a value containing a quote (the fix), one containing a backslash (the two-readings rule above), and one containing the substring `!=` (the old reader split on it and matched every answer regardless; now it compares for real — nobody could have been relying on an always-true branch). Writers (`Step::Doors#condition_for`, the panel's `escapeQuotes`) escape a backslash before the delimiter — in that order, whether as one `gsub` over both characters or two chained replacements — so a value round-trips whatever QUOTE OR BACKSLASH it contains. Surrounding whitespace never does: both the tokenizer and the legacy reader strip the extracted value once they read it, while the answer side is compared raw — see "Option labels and values are trimmed on save" above for why that makes trimming an option at the source the only fix.
 - `ImportSchemaGenerator` / `ImportPromptGenerator` — the published JSON Schema and the agent prompt, both generated from the models so neither can drift from what the app accepts.
-- `WorkflowHealthCheck` — aggregates GraphValidator + SubflowValidator + step-level checks into a per-step issue map. Returns `Data.define` Result with issues keyed by step UUID, severity levels, fixable flags, and summary counts. Used by both the health panel (HTML) and async JS fetch (JSON). Two codes read `Step::Doors`: `:missing_expected_door` (an answer with no step of its own — "“No” has no step yet", suppressed by a blank-condition edge, which catches it) and `:unmatched_option_value` (a connection checking for a value the step no longer offers). Both are warnings and both are in `NON_BLOCKING_CODES`; neither is in `READINESS_CODES`, which asks whether a step's *content* is filled in, and these are routing findings. `:no_outgoing_transitions` stays an error but loses its Fix on a multi-door step (see Builder UI).
+- `WorkflowHealthCheck` — aggregates GraphValidator + SubflowValidator + step-level checks into a per-step issue map. Returns `Data.define` Result with issues keyed by step UUID, severity levels, fixable flags, and summary counts. Used by both the health panel (HTML) and async JS fetch (JSON). Three codes read `Step::Doors` — the third is `:shadowed_connection` (a conditional connection sorted below the default one, which the runner never reaches; fixable, see Builder UI). The other two: `:missing_expected_door` (an answer with no step of its own — "“No” has no step yet", suppressed by a blank-condition edge, which catches it) and `:unmatched_option_value` (a connection checking for a value the step no longer offers). All three are warnings in `NON_BLOCKING_CODES`; none is in `READINESS_CODES`, which asks whether a step's *content* is filled in, and these are routing findings. `:no_outgoing_transitions` stays an error but loses its Fix on a multi-door step (see Builder UI).
 - `WorkflowPublisher` — publishes workflow versions with full graph validation. Uses `Workflow#validation_graph_hash`.
 - `FlowDiagramService` — BFS layout for the builder's flow diagram panel.
 
@@ -940,4 +978,5 @@ Playwright MCP (for UI/system testing). Point agent to running app at `http://lo
 - The `20260911120000_add_self_join_to_groups` migration makes every existing group self-joinable (`admins_add_members` defaults to `false`), and sign-up is open — right after deploying, an administrator should mark sensitive groups "Only administrators add people" before the feature is announced
 - The `20260915120000_backfill_step_defaults` migration writes `resolution_type = 'success'` on Resolve steps and `priority = 'medium'` on Escalate steps that had a blank; it runs unattended and needs no operator step
 - The `20260918120000_add_uuid_to_transitions` migration backfills every transition, then adds `NOT NULL` and a unique index, all in one DDL transaction — on PostgreSQL the table is locked for the duration. Seconds for thousands of rows; check `Transition.count` first if the install is large. There is also a cutover hazard: while the previous container is still serving requests against the already-migrated schema, its step-panel autosave deletes a step's transitions and then fails to re-create them (the old code has no uuid to key on, no `NOT NULL` default, and no transaction) — the deletes stay, the re-creates don't. Deploy this migration when nobody is in the builder, or stop the old container before `db:prepare` runs against the new schema
+- The `Step::Doors` position rule (2026-09-19) changes what an existing workflow SHOWS, not how it runs: a workflow whose default connection is sorted above a conditional one (only an import could write that) opens after this deploy with those answers reading as stubs and a `:shadowed_connection` warning. That is the routing it always had; the warning's Fix re-sorts it. No migration, no operator step
 - The `rendered`/`minted` deploy (2026-09-19) has the same shape of cutover window, narrower than it first looks because of the transitional `known` key: a NEW-JavaScript tab's hidden `transitions_json` field holds whatever the server last rendered into it — `known` included — UNTIL `saveTransitions` overwrites it, which only happens when the author actually adds, removes or edits a connection in that panel (`step_transitions_controller.js#connect`/`#refresh` never call `saveTransitions`, so opening the panel and editing some OTHER field never touches it). So a save that never touched connections still carries `known` and an OLD container's `TransitionSync#parse` accepts it and reads it legacy-style, correctly — nothing is refused. Only a save made AFTER the connections editor was touched sends the current shape (`{rendered, minted, rows}`, no `known`), and THAT one an OLD container refuses: `TransitionSync#parse` requires `known` present as an Array or raises `Malformed` ("This step was saved, but its connections were not…") — the step's own fields still save first (`@step.update` runs before `sync_transitions`), so no TRANSITION is written or deleted on that request, but the rest of the PATCH did write. It clears as soon as the cutover completes and every request reaches a new container

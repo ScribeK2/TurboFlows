@@ -190,4 +190,29 @@ class StepResolverTest < ActiveSupport::TestCase
     resolver = StepResolver.new(@workflow)
     assert_equal a, resolver.resolve_next(q, {})
   end
+
+  # transitions.position is nullable, and ORDER BY position alone puts a NULL
+  # first on SQLite and last on PostgreSQL - so the same rows routed one way
+  # here and another in production. The order is spelled out now, the way
+  # production already read it: NULL last, id breaking a tie.
+  test "a transition with no position is tried last, on every database" do
+    q = create_step(Steps::Question, "Q", 0, answer_type: "yes_no", variable_name: "q")
+    rest = create_step(Steps::Resolve, "Rest", 1)
+    yes = create_step(Steps::Resolve, "Yes", 2)
+    link(q, rest, position: nil)
+    link(q, yes, condition: "q == 'yes'", position: 0)
+
+    assert_equal yes, StepResolver.new(@workflow).resolve_next(q, { "q" => "yes" })
+    assert_equal rest, StepResolver.new(@workflow).resolve_next(q, { "q" => "no" })
+  end
+
+  test "transitions sharing a position are tried in the order they were made" do
+    q = create_step(Steps::Question, "Q", 0, answer_type: "yes_no", variable_name: "q")
+    first = create_step(Steps::Resolve, "First", 1)
+    second = create_step(Steps::Resolve, "Second", 2)
+    link(q, first, condition: "q == 'yes'", position: 0)
+    link(q, second, condition: "q != 'no'", position: 0)
+
+    assert_equal first, StepResolver.new(@workflow).resolve_next(q, { "q" => "yes" })
+  end
 end

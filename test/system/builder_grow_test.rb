@@ -185,10 +185,15 @@ class BuilderGrowTest < ApplicationSystemTestCase
     within "turbo-frame#builder-panel" do
       find("summary", text: "Other connections").click
       click_on "Add Connection"
-      find("select[data-transition-field='target_uuid']").select "Done"
+      # The target goes LAST. A row with no target is written nowhere, so no
+      # autosave landing between these four selects can save a half-built
+      # connection. Target first, and a debounce firing before the condition
+      # was chosen would save a blank-condition edge - which is the "Anything
+      # else" door, so the row would move out of the editor mid-sequence.
       find("select[data-condition-preset-target='presetDropdown']").select "Custom..."
       find("select[data-condition-preset-target='sentenceOperator']").select "is not"
       find("[data-condition-preset-target='sentenceValue'] select").select "Yes"
+      find("select[data-transition-field='target_uuid']").select "Done"
     end
 
     assert_eventually(timeout: 10) { question.transitions.reload.any? }
@@ -466,6 +471,97 @@ class BuilderGrowTest < ApplicationSystemTestCase
     open_target_picker("Yes", "Change")
     within "dialog[open]" do
       assert_no_selector ".form-error", text: /already has a transition/i
+    end
+  end
+
+  # An import can write a default connection above a conditional one, which the
+  # runner then never reaches. The health panel says so and its Fix re-sorts -
+  # and the confirm it asks has to name the step, not "this step": it looked
+  # the title up by a class no row has carried since the chrome migration.
+  test "the health panel's Fix for a shadowed connection names the step and puts the default last" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", question: "Light green?",
+                                       position: 1, answer_type: "yes_no", variable_name: "light")
+    rest = Steps::Resolve.create!(workflow: @workflow, title: "Everything else", position: 2)
+    no_side = Steps::Resolve.create!(workflow: @workflow, title: "No side", position: 3)
+    Transition.create!(step: question, target_step: rest, position: 0)
+    Transition.create!(step: question, target_step: no_side, condition: "light == 'no'", position: 1)
+    @workflow.update!(start_step: question)
+
+    visit workflow_path(@workflow, edit: true, health: true)
+
+    # ?health=true slides the panel open like any other, so the Fix button is
+    # still moving when it first appears (see assert_panel_settled).
+    within("turbo-frame#builder-panel") { assert_text "“Anything else” is checked first", wait: 10 }
+    assert_panel_settled
+
+    message = within("turbo-frame#builder-panel") { accept_confirm { click_on "Fix" } }
+
+    assert_includes message, "Light green?"
+    assert_eventually(timeout: 10) do
+      question.transitions.reload.order(:position).map(&:condition) == ["light == 'no'", nil]
+    end
+    within("turbo-frame#builder-panel") { assert_no_text "“Anything else” is checked first", wait: 10 }
+  end
+
+  # The floating picker is position: fixed beside whatever was pressed. It
+  # closed when the LIST scrolled or the window resized, but a door's "New
+  # step" lives in the PANEL, which scrolls on its own - so the menu stayed put
+  # while its trigger slid away underneath it.
+  test "scrolling the panel closes a type picker opened from one of its doors" do
+    options = (1..14).map { |n| { "label" => "Option #{n}", "value" => "option_#{n}" } }
+    question = Steps::Question.create!(workflow: @workflow, title: "Which one?", question: "Which one?",
+                                       position: 1, answer_type: "multiple_choice", variable_name: "which",
+                                       options: options)
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    open_step(question)
+
+    within "turbo-frame#builder-panel" do
+      find(".step-doors__row", text: "Option 1", exact_text: false, match: :first).click_on "New step"
+    end
+    assert_selector ".builder__type-picker--floating", wait: 5
+
+    scrolled = page.evaluate_script(<<~JS)
+      (() => {
+        const body = document.querySelector(".builder__panel-body")
+        body.scrollTop = body.scrollHeight
+        return body.scrollTop
+      })()
+    JS
+    assert_operator scrolled, :>, 0, "the panel did not scroll, so this proves nothing"
+
+    assert_no_selector ".builder__type-picker--floating", wait: 5
+  end
+
+  # A pick refused because its step is gone re-streams the candidate list
+  # fresh, and the filter used to run only when the dialog opened - so the
+  # text the author had typed sat above a list it no longer described.
+  test "a refused pick keeps the typed filter applied to the fresh list" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", question: "Light green?",
+                                       position: 1, answer_type: "yes_no", variable_name: "light")
+    Steps::Resolve.create!(workflow: @workflow, title: "First", position: 2)
+    doomed = Steps::Action.create!(workflow: @workflow, title: "Second branch", position: 3)
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    open_step(question)
+
+    open_target_picker("Yes", "Use existing…")
+    within "dialog[open]" do
+      fill_in "Find a step", with: "second"
+      assert_no_selector ".step-target-list__option", text: "First"
+    end
+
+    # Gone behind this browser's back: its row is still in the list here, so
+    # nothing on the page knows until the pick is refused.
+    doomed.destroy!
+
+    within("dialog[open]") { click_on "Second branch" }
+
+    within "dialog[open]" do
+      assert_selector ".form-error", text: /./, wait: 5
+      assert_no_selector ".step-target-list__option", text: "Second branch"
+      assert_no_selector ".step-target-list__option", text: "First"
+      assert_text "No step matches."
     end
   end
 

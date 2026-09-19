@@ -73,7 +73,7 @@
           back. (A row added and then removed within the SAME old-tab
           session was never broken: addTransition pushes its uuid into
           `known` before the removal, so that delete set is never empty.)
-          Every NEW reader (TransitionSync#parse,
+          Every NEW reader (TransitionSync#shape_of,
           StepsController#shown_and_sent_row_uuids, this same JS's own
           loadState) already prefers `rendered`/`minted` outright whenever
           either is present, so this changes nothing for the current

@@ -20,6 +20,27 @@ module Workflows
       Bullet.enable = true
     end
 
+    test "settle_connections moves the default connection last and adds or removes nothing" do
+      q = Steps::Question.create!(workflow: @workflow, position: 0, title: "Ask", question: "What?",
+                                  answer_type: "yes_no", variable_name: "ask")
+      yes = Steps::Resolve.create!(workflow: @workflow, position: 1, title: "Yes side", resolution_type: "success")
+      rest = Steps::Resolve.create!(workflow: @workflow, position: 2, title: "Everything else", resolution_type: "success")
+      @workflow.update!(start_step: q)
+      Transition.create!(step: q, target_step: rest, position: 0)
+      Transition.create!(step: q, target_step: yes, condition: "ask == 'yes'", position: 1)
+
+      assert_no_difference "Transition.count" do
+        post workflow_health_fix_path(@workflow),
+             params: { fix_type: "settle_connections", step_uuid: q.uuid },
+             as: :turbo_stream
+      end
+
+      assert_response :success
+      assert_equal ["ask == 'yes'", nil], q.transitions.reload.order(:position).map(&:condition)
+      assert_equal yes, StepResolver.new(@workflow).resolve_next(q, { "ask" => "yes" })
+      assert_select "turbo-stream[action='replace'][target='step-list']"
+    end
+
     test "connect_next creates transition to next step" do
       q = Steps::Question.create!(
         workflow: @workflow, uuid: SecureRandom.uuid, position: 0,

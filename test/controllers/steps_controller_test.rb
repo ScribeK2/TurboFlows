@@ -228,6 +228,19 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_equal before_count, Transition.count
   end
 
+  # TransitionSync drops a row that is not an object and carries on, so the
+  # controller's own reader of the same payload sees it too - and plucking a
+  # key out of an Integer raises TypeError, which it did not rescue.
+  test "a row that is not an object is ignored by both readers of the payload" do
+    patch workflow_step_path(@workflow, @step),
+          params: { step: { title: "Saved beside an odd row",
+                            transitions_json: { rendered: [], minted: [], rows: [1] }.to_json } },
+          as: :turbo_stream
+
+    assert_response :success
+    assert_equal "Saved beside an odd row", @step.reload.title
+  end
+
   # 14. regular user cannot create steps
   test "regular user cannot create steps" do
     regular = User.create!(

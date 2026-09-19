@@ -39,6 +39,7 @@ class TransitionSync
     @renamed_variable = renamed_variable
     @skipped = []
     @payload = parse(json)
+    @legacy, @rendered, @minted = shape_of(@payload)
   end
 
   def call
@@ -116,30 +117,39 @@ class TransitionSync
     Steps::Question.rewrite_condition_variable(condition, *@renamed_variable)
   end
 
-  # Accepts either the current shape or the legacy one. A payload carrying
-  # both - unreachable from the current JS, but not unparseable - resolves to
-  # the current shape: `rendered`/`minted` win outright and `known` is
-  # ignored, for the delete set as much as for the row loop.
+  # Only reads: what the payload's keys MEAN is #shape_of's to say, so nothing
+  # here assigns state.
   def parse(json)
     parsed = JSON.parse(json.to_s)
     raise malformed unless parsed.is_a?(Hash) && parsed["rows"].is_a?(Array)
 
-    if parsed["rendered"].is_a?(Array) || parsed["minted"].is_a?(Array)
-      @legacy = false
-      @rendered = Array(parsed["rendered"]).map(&:to_s)
-      @minted = Array(parsed["minted"]).map(&:to_s)
-    elsif parsed["known"].is_a?(Array)
-      @legacy = true
-      known = parsed["known"].map(&:to_s)
-      @rendered = known
-      @minted = known
-    else
-      raise malformed
-    end
-
     parsed
   rescue JSON::ParserError => e
     raise Malformed, "Invalid transitions JSON: #{e.message}"
+  end
+
+  # [legacy, rendered, minted] for a parsed payload, in either the current
+  # shape or the legacy one. A payload carrying both - unreachable from the
+  # current JS, but not unparseable - resolves to the current shape:
+  # `rendered`/`minted` win outright and `known` is ignored, for the delete set
+  # as much as for the row loop. Under the current shape
+  # either key may be absent, but one that is present has to be an Array:
+  # wrapping a stray scalar would read a lone string as a uuid this editor
+  # showed or minted, and a payload this page never sends is refused, not
+  # guessed at.
+  def shape_of(parsed)
+    rendered, minted, known = parsed.values_at("rendered", "minted", "known")
+
+    if rendered.is_a?(Array) || minted.is_a?(Array)
+      raise malformed unless [rendered, minted].all? { |list| list.nil? || list.is_a?(Array) }
+
+      [false, rendered.to_a.map(&:to_s), minted.to_a.map(&:to_s)]
+    elsif known.is_a?(Array)
+      known = known.map(&:to_s)
+      [true, known, known]
+    else
+      raise malformed
+    end
   end
 
   def malformed

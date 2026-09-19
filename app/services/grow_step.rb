@@ -22,8 +22,12 @@ class GrowStep
 
   def create(step_type:, from_step:, attrs:, label:, condition:)
     check_source!(from_step) if from_step
+    settle_before_reading_doors(from_step) if from_step
 
     Step.transaction do
+      lock_workflow!
+      check_door_is_free!(from_step, condition) if from_step
+
       step = Step.class_for_type(step_type).new(attrs.to_h.merge(workflow: @workflow, position: claim_position(from_step)))
       step.title = "Untitled #{step_type.to_s.titleize}" if step.title.blank?
       prepare_question(step) if step.is_a?(Steps::Question)
@@ -39,8 +43,10 @@ class GrowStep
   # than given a second connection that could never fire (first match wins).
   def connect(from_step:, target_step:, label:, condition:)
     check_source!(from_step)
+    settle_before_reading_doors(from_step)
 
     Step.transaction do
+      lock_workflow!
       existing = Step::Doors.for(from_step).door_for(condition)&.transition
       if existing
         existing.update!(target_step: target_step)
@@ -53,10 +59,53 @@ class GrowStep
 
   private
 
+  # One grow at a time per workflow. Everything below reads before it writes -
+  # which door is free, which position comes next - and two grows landing
+  # together each read what the other had not yet committed: both inserted at
+  # parent.position + 1, and two presses of one door both found it a stub.
+  #
+  # A row lock, not a save: it holds other grows off until this transaction
+  # ends and bumps no lock_version, so the title and Details autosaves are not
+  # refused as stale (see #assign_start_step). Queried fresh rather than
+  # @workflow.lock!, which would reload the caller's object under it. SQLite
+  # ignores FOR UPDATE and serialises writers anyway, so only
+  # test/services/grow_step_concurrency_test.rb, on PostgreSQL, can show this.
+  def lock_workflow!
+    Workflow.lock.find(@workflow.id)
+  end
+
   def check_source!(from_step)
     raise Refused, "That step belongs to another workflow." if from_step.workflow_id != @workflow.id
     raise Refused, "A Resolve step ends the workflow, so nothing can follow it." if from_step.is_a?(Steps::Resolve)
     raise Refused, "This step hands the run to another workflow, so nothing can follow it." if from_step.hands_off?
+  end
+
+  # Step::Doors reads a door whose own edge sits below a default edge as a stub,
+  # because the runner never reaches it (an import can write that order; no
+  # builder write does). Adding a second edge for that door would be the wrong
+  # repair: the next thing to settle the order would hand the door back to the
+  # OLD edge, and the new one would be the edge nothing reaches. So the order
+  # is put right first and the doors are read after.
+  #
+  # Outside the transaction below on purpose: a grow that is then refused must
+  # not roll the repair back, or the response re-renders the same stale stub.
+  def settle_before_reading_doors(from_step)
+    Transition.settle_positions(from_step)
+    from_step.transitions.reset
+  end
+
+  # A door takes one step. The buttons that grow only ever sit on a stub, but a
+  # stub's data-grow-* attributes go stale the moment someone else wires that
+  # door - or a second click races the first - and a second edge on it could
+  # never fire (first match wins), so the step it reached would be one nothing
+  # points at. #connect retargets instead, because there the author has just
+  # chosen where the door should go; here they were told it went nowhere.
+  def check_door_is_free!(from_step, condition)
+    door = Step::Doors.for(from_step).door_for(condition)
+    return if door.nil? || door.stub?
+
+    target = door.target_step.title.presence || "another step"
+    raise Refused, "“#{door.label}” already leads to “#{target}”. Change it from the step's panel instead."
   end
 
   # Directly after the parent, using whatever numbering the workflow already

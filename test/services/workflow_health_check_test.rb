@@ -452,6 +452,28 @@ class WorkflowHealthCheckTest < ActiveSupport::TestCase
     assert_not_includes codes, :missing_expected_door
   end
 
+  test "a connection sorted below the default one is reported as unreachable, with a fix that re-sorts" do
+    user = User.create!(email: "hc-#{SecureRandom.hex(4)}@example.com", password: "password123456")
+    wf = Workflow.create!(title: "HC shadowed", user: user)
+    q = Steps::Question.create!(workflow: wf, title: "Q", question: "Q", position: 0, answer_type: "yes_no", variable_name: "q")
+    done = Steps::Resolve.create!(workflow: wf, title: "Done", position: 1, resolution_type: "success")
+    other = Steps::Resolve.create!(workflow: wf, title: "Other", position: 2, resolution_type: "success")
+    wf.update!(start_step: q)
+    Transition.create!(step: q, target_step: other, position: 0)
+    Transition.create!(step: q, target_step: done, condition: "q == 'yes'", position: 1)
+
+    issue = WorkflowHealthCheck.call(wf).issues[q.uuid].find { |i| i[:code] == :shadowed_connection }
+
+    assert_equal :warning, issue[:severity]
+    assert_equal "“Anything else” is checked first, so 1 connection below it can never run", issue[:message]
+    assert issue[:fixable]
+    assert_equal "settle_connections", issue[:fix_type]
+
+    Transition.settle_positions(q)
+    codes = WorkflowHealthCheck.call(wf.reload).issues.fetch(q.uuid, []).pluck(:code)
+    assert_not_includes codes, :shadowed_connection
+  end
+
   test "a multi-door step with nothing wired says so once, with no one-click fix" do
     user = User.create!(email: "hc-#{SecureRandom.hex(4)}@example.com", password: "password123456")
     wf = Workflow.create!(title: "HC none", user: user)

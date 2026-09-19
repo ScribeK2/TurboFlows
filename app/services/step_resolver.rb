@@ -81,7 +81,7 @@ class StepResolver
   private
 
   def resolve_graph_next(step, results)
-    transitions = step.transitions.order(:position)
+    transitions = step.transitions.in_runner_order
     return nil if transitions.empty?
 
     # Check universal jumps first
