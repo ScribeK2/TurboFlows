@@ -141,8 +141,16 @@
 
     <%# Slide-In Panel (empty frame, loaded on demand) %>
     <div class="builder__panel">
+      <%# panel-title is declared HERE as well as on the partial's own
+          <turbo-frame>, and it has to be: a frame NAVIGATION (loadPanel sets
+          src) replaces this element's CONTENTS and keeps the element, so
+          attributes on the incoming frame tag are discarded - while
+          `turbo_stream.replace "builder-panel"` (what a grow answers with)
+          replaces the element itself, attributes and all. One of the two paths
+          would otherwise arrive without the controller. %>
       <turbo-frame id="builder-panel"
-                   data-builder-target="panel">
+                   data-builder-target="panel"
+                   data-controller="panel-title">
       </turbo-frame>
     </div>
   </div>

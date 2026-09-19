@@ -121,12 +121,20 @@ The unified builder lives at `workflows/:id` — one URL for both viewing and ed
 - `_empty_state.html.erb` — shown when no steps; includes template archetype cards
 
 **Key Stimulus controllers:**
+- `panel_title_controller.js` — keeps the step panel's header in step with the title field as it is typed. Declared on the builder's own `<turbo-frame id="builder-panel">` **and** on the one `steps/_panel_edit` renders, because the two delivery paths differ: a frame navigation replaces the frame's CONTENTS and keeps the element (so attributes on the incoming tag are discarded), while `turbo_stream.replace "builder-panel"` (a grow) replaces the element itself
 - `builder_controller.js` — panel open/close, step selection, title autosave, Escape to close, `openHealth` action, auto-opens health panel when `?health=true` URL param is present
 - `step_list_controller.js` — SortableJS reorder + the type picker: opening it for a door (from a row's stub or the panel's "New step"), writing the `data-grow-*` fields, and floating it beside its trigger
 - `step_target_picker_controller.js` — the "Use existing…" dialog on a door row: which door it is for, waiting for the panel's pending save before the pick is sent, the filter, Escape (`stopPropagation`, or the whole panel closes behind it), and closing on `turbo:before-cache`
 - `inline_autosave_controller.js` — debounced autosave (2s), `flush()` for whoever must act after the pending save (it returns a promise that resolves once nothing is in flight), the panel's **save indicator** (see below), listens for `lexxy:change` events, flushes pending saves on disconnect via `FormData` + `fetch`, dispatches `health:check-needed` after disconnect saves
 - `step_warnings_controller.js` — async health check fetch, renders inline warning icons on step rows, toolbar issue count, click-to-open popover with Fix buttons. Listens for `turbo:submit-end`, `health:check-needed`, `turbo:before-stream-render`
 - `template_picker_controller.js` — template popover in toolbar, applies workflow archetypes
+
+**The panel header follows the title field as it is typed**, not the save. It
+used to name the step as it was when the panel OPENED, so renaming one left it
+reading "Untitled Question" above a field that said otherwise (the step's ROW
+updated on save; only the header two inches from the field was stale). Showing
+unsaved text there is honest only because the save indicator sits beside it and
+says so — the two were ruled on together.
 
 **The panel says what its autosave is doing.** A `[data-autosave-status]` span in
 the step panel's header, driven by `inline-autosave` in four states: **Unsaved

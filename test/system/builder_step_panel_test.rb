@@ -35,6 +35,40 @@ class BuilderStepPanelTest < ApplicationSystemTestCase
     assert_equal "Check the modem", action.reload.title
   end
 
+  # The header named the step as it was when the panel OPENED, so renaming one
+  # left it reading "Untitled Question" above a field that said otherwise.
+  #
+  # It follows the field as you type rather than waiting for the save: the
+  # indicator beside it already says whether what you are looking at is stored,
+  # so live text here is not a claim that it is.
+  test "the panel header follows the title as it is typed, before the save lands" do
+    action = Steps::Action.create!(workflow: @workflow, title: "Check the router", position: 1)
+    visit_builder_in_edit_mode
+    open_step action
+    assert_panel_settled
+
+    within "turbo-frame#builder-panel" do
+      assert_selector ".builder__panel-header-left strong", text: "Check the router"
+      fill_in "step[title]", with: "Check the modem"
+
+      # Both at once: the header has caught up while the edit is still unsaved.
+      assert_selector "[data-autosave-status]", text: "Unsaved changes"
+      assert_selector ".builder__panel-header-left strong", text: "Check the modem"
+    end
+  end
+
+  test "emptying the title leaves the header saying Untitled, not blank" do
+    action = Steps::Action.create!(workflow: @workflow, title: "Check the router", position: 1)
+    visit_builder_in_edit_mode
+    open_step action
+    assert_panel_settled
+
+    within "turbo-frame#builder-panel" do
+      fill_in "step[title]", with: ""
+      assert_selector ".builder__panel-header-left strong", text: "Untitled"
+    end
+  end
+
   # A save the server refuses. The reason goes to #flash as it always did; what
   # was missing is the panel itself admitting the edit is not saved.
   test "the panel says Not saved when the server refuses the edit" do
