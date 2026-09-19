@@ -341,7 +341,13 @@ public method — by the model callback to the rows, and by `TransitionSync` to
 the incoming payload — and the `[old, new]` pair is captured in
 `StepsController#update` **before** anything reloads `@step` and clears its
 saved-change tracking. The same save re-streams the Connections fragment so the
-editor's snapshot is rebuilt rather than left naming the old identifier. Which
+editor's snapshot is rebuilt rather than left naming the old identifier — and
+that holds when the connections are then **refused**, which is the case that
+used to skip it: `@step.update` has already committed the rename by the time
+`TransitionSync` refuses, so `respond_to_connections_refusal` re-streams the
+fragment too (only after a rename; any other refusal leaves the editor alone,
+since the refused row is the author's to fix), along with the step's row, which
+it also broadcasts, because the step's own fields did save. Which
 fragment a save streams is decided in one place (`connections_or_doors_stream`):
 a rename gets the whole `dom_id(step, :connections)`; so does a save that moved
 a transition between doors and extras **in either direction** (a row the editor

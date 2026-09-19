@@ -117,9 +117,9 @@ class StepsController < ApplicationController
         refusal = sync_transitions(rename_pair)
         # The step's own fields are already saved by the time this runs —
         # @step.update returned true before sync_transitions was ever called.
-        # So this answers the existing refusal path rather than the success
-        # one, and says the truth: the step was saved, its connections were not.
-        return respond_to_refusal(refusal) if refusal
+        # So this answers a refusal rather than the success path, and says the
+        # truth: the step was saved, its connections were not.
+        return respond_to_connections_refusal(refusal, rename_pair) if refusal
       end
 
       respond_to do |format|
@@ -388,6 +388,35 @@ class StepsController < ApplicationController
       format.html { redirect_to workflow_path(@workflow, edit: true), alert: message }
       format.json { render json: { errors: [message] }, status: status }
     end
+  end
+
+  # A refusal with something saved behind it: @step.update committed before
+  # TransitionSync refused, so the row that shows the step's fields still has to
+  # follow - here, and in every other editor's list.
+  #
+  # The Connections fragment follows only when that save renamed the variable.
+  # The rename's callback already rewrote the step's own conditions, while the
+  # editor's snapshot still names the old identifier, and the panel sends the
+  # whole step on every change - so left alone, its next autosave of any field
+  # writes the stale conditions straight back. Any other refusal leaves the
+  # editor as it is: the row that was refused is the author's to fix, and
+  # re-rendering from the database would take it away before they could.
+  def respond_to_connections_refusal(message, rename_pair)
+    respond_to do |format|
+      format.turbo_stream do
+        flash.now[:alert] = message
+        streams = [turbo_stream.replace(dom_id(@step), partial: "workflows/step_row",
+                                                       locals: { step: @step.reload, workflow: @workflow })]
+        streams << full_connections_stream if rename_pair
+        streams << turbo_stream.update("flash", partial: "shared/flash_messages")
+
+        render turbo_stream: streams, status: :unprocessable_content
+      end
+      format.html { redirect_to workflow_path(@workflow, edit: true), alert: message }
+      format.json { render json: { errors: [message] }, status: :unprocessable_content }
+    end
+
+    broadcast_step_row(@step)
   end
 
   def step_params
