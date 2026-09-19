@@ -8,8 +8,10 @@
 #
 # The payload distinguishes two facts a single `known` list used to conflate:
 # `rendered` is every uuid the server actually put in this editor; `minted` is
-# every uuid this editor invented itself (a row the author added and has not
-# yet saved). A rendered uuid missing from `rows` was removed by the author - OR
+# every uuid this editor invented itself - a row the author added, whether or
+# not it has since saved: nothing moves a uuid out of `minted` on success,
+# only a fresh render of the whole fragment starts `minted` over. A rendered
+# uuid missing from `rows` was removed by the author - OR
 # by someone else's save landing while this panel sat open, and the two cannot
 # be told apart from a missing row alone. So a MISSING row is only ever created
 # when it was minted here; a rendered-but-missing row is left alone and

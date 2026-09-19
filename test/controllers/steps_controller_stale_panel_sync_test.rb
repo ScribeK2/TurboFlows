@@ -181,14 +181,17 @@ class StepsControllerStalePanelSyncTest < ActionDispatch::IntegrationTest
   # step_transitions_controller.js (javascript_importmap_tags carries no
   # data-turbo-track, and nothing about opening or saving the panel is a
   # Turbo visit, so the module is never refetched). That old JS's loadState
-  # reads only `known`, never `rendered`/`minted`, and never mutates it on
-  # removal - so it needs the field to carry a real, usable `known` list, not
-  # merely be present-but-empty, or a removal sends an empty delete set and
-  # the "removed" row snaps right back (#door_shape_changed?'s backward
-  # check re-streams the whole fragment on the very same save). This
-  # reproduces exactly what that old JS would send: read the field the
-  # server rendered, take its `known` (the TRANSITIONAL duplicate of
-  # `rendered` in _transitions_editor.html.erb), and PATCH the shape the old
+  # reads only `known` (`parsed.known || []` - never `rendered`/`minted`) and
+  # never mutates it on removal - so it needs the field to carry a real,
+  # usable `known` list, not merely be present-but-empty, or a removal sends
+  # an empty delete set and the "removed" row snaps right back
+  # (#door_shape_changed?'s backward check re-streams the whole fragment on
+  # the very same save). This reproduces exactly what that old JS would send
+  # whether or not the field carries a `known` key at all - `|| []` is
+  # `loadState`'s own fallback, not a concession to the field's current
+  # shape: read the field the server rendered, take its `known` (the
+  # TRANSITIONAL duplicate of `rendered` in _transitions_editor.html.erb, or
+  # nothing at all without it), and PATCH the shape the old
   # removeTransition/saveTransitions pair would produce - `rows` with the
   # extra spliced out, `known` untouched.
   test "a tab still running the pre-deploy controller can still remove a connection" do
@@ -198,7 +201,7 @@ class StepsControllerStalePanelSyncTest < ActionDispatch::IntegrationTest
 
     get panel_edit_workflow_step_path(@workflow, question)
     rendered_payload = JSON.parse(css_select("input[name='step[transitions_json]']").first["value"])
-    old_js_payload = { known: rendered_payload["known"], rows: [] }.to_json
+    old_js_payload = { known: rendered_payload["known"] || [], rows: [] }.to_json
 
     patch workflow_step_path(@workflow, question),
           params: { step: { transitions_json: old_js_payload } },
