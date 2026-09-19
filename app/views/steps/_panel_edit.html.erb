@@ -7,12 +7,15 @@
   - readonly: boolean (default false)
 %>
 <% readonly = local_assigns.fetch(:readonly, false) %>
+<%# panel-title spans the header and the form below it: the heading it keeps in
+    step with the title field is outside that field's own form. %>
 <turbo-frame id="builder-panel"
-              data-builder-target="panel">
+              data-builder-target="panel"
+              data-controller="panel-title">
   <div class="builder__panel-header">
     <div class="builder__panel-header-left">
       <span class="builder__panel-type-badge builder__panel-type-badge--<%= step.step_type %>"><%= step_type_label(step.step_type) %></span>
-      <strong><%= step.title.presence || "Untitled" %></strong>
+      <strong data-panel-title-target="heading"><%= step.title.presence || "Untitled" %></strong>
       <%# What the panel's own autosave is doing, beside the step it describes.
           The builder header's #autosave-status is the WORKFLOW title's; step
           saves reported nowhere, which is how a refused one looked fine for
@@ -57,7 +60,8 @@
           <%= f.label :title, class: "form-label" %>
           <%= f.text_field :title, class: "form-input", required: true,
               placeholder: "Enter a descriptive title...",
-              data: { action: "input->inline-autosave#schedule" } %>
+              data: { action: "input->inline-autosave#schedule input->panel-title#update",
+                      panel_title_target: "field" } %>
         </div>
 
         <%# Type-specific fields %>
