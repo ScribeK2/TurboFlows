@@ -386,6 +386,21 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Existing Step", @step.reload.title
   end
 
+  # This test and several below it send the LEGACY `{known, rows}` transitions_json
+  # shape on purpose, not merely because they predate the rendered/minted
+  # split - a browser running pre-deploy JavaScript still sends exactly this
+  # shape today, and
+  # TransitionSync must keep honouring it (see its class comment). The shape
+  # today's editor actually sends is covered in
+  # test/controllers/steps_controller_stale_panel_sync_test.rb and
+  # test/services/transition_sync_test.rb. Of these `known`-shaped tests, only
+  # one has an outcome that genuinely depends on the shape: "a save that
+  # reaches another step's transition by uuid is refused as a turbo stream" -
+  # under `known`/legacy a missing row is always attempted as a create, which
+  # collides with the foreign transition's uuid and raises RecordInvalid
+  # (422); under `rendered` alone the same row would be skipped and the panel
+  # healed (200) instead. The rest here are shape-agnostic: empty lists, a
+  # row that already exists, or a stubbed TransitionSync.call.
   test "a panel save with a stale snapshot leaves a server-made edge alone" do
     target = Steps::Resolve.create!(workflow: @workflow, position: 1, title: "Done")
     grown = Transition.create!(step: @step, target_step: target)

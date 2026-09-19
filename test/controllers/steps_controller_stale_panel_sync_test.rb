@@ -118,4 +118,62 @@ class StepsControllerStalePanelSyncTest < ActionDispatch::IntegrationTest
     assert_select "turbo-stream[action='replace'][target='#{dom_id(question, :doors)}']"
     assert_select "turbo-stream[action='update'][target='#{dom_id(question, :connections)}']", false
   end
+
+  # steps_controller_test.rb's "a save that turns an editor row into a door
+  # streams the whole connections fragment" and its contrast ("...streams
+  # only the doors list") both predate the rendered/minted split and send a
+  # brand-new row's uuid as `known`. In real traffic a brand-new row is always
+  # `minted`, never `rendered` - TransitionSync#sync_row's creation gate treats
+  # the two differently (minted/legacy -> create; rendered-only -> skip and
+  # heal) - so this is the shape those two tests would send today, and the
+  # first proof that #door_shape_changed? reads a MINTED new row as "shown" at
+  # all, not just a rendered one.
+  test "a minted row that becomes a door streams the whole connections fragment, with no stale-panel notice" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light green?",
+                                       answer_type: "yes_no", variable_name: "light")
+    new_uuid = SecureRandom.uuid
+    transitions_json = {
+      rendered: [], minted: [new_uuid],
+      rows: [{ uuid: new_uuid, target_uuid: @step.uuid, condition: "light == 'no'", label: "No" }]
+    }.to_json
+
+    patch workflow_step_path(@workflow, question),
+          params: { step: { transitions_json: transitions_json } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    transition = question.transitions.reload.sole
+    assert_equal transition, Step::Doors.for(question.reload).door_for("light == 'no'").transition
+
+    assert_select "turbo-stream[action='update'][target='#{dom_id(question, :connections)}']"
+    assert_select "turbo-stream[action='replace'][target='#{dom_id(question, :doors)}']", false
+    assert_not_includes response.body, "A connection you had open was removed elsewhere"
+  end
+
+  # The contrast case: the same minted-new-row shape, but the sent row's
+  # condition names a variable no door of this step reads at all, so it stays
+  # an extra and only the doors list needs replacing - not the notice, which
+  # never fires for a row this editor minted and TransitionSync went on to
+  # create.
+  test "a minted row that stays an extra streams only the doors list, with no stale-panel notice" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light green?",
+                                       answer_type: "yes_no", variable_name: "light")
+    new_uuid = SecureRandom.uuid
+    transitions_json = {
+      rendered: [], minted: [new_uuid],
+      rows: [{ uuid: new_uuid, target_uuid: @step.uuid, condition: "tier == 'gold'", label: nil }]
+    }.to_json
+
+    patch workflow_step_path(@workflow, question),
+          params: { step: { transitions_json: transitions_json } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    transition = question.transitions.reload.sole
+    assert_includes Step::Doors.for(question.reload).extras, transition
+
+    assert_select "turbo-stream[action='replace'][target='#{dom_id(question, :doors)}']"
+    assert_select "turbo-stream[action='update'][target='#{dom_id(question, :connections)}']", false
+    assert_not_includes response.body, "A connection you had open was removed elsewhere"
+  end
 end
