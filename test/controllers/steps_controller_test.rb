@@ -244,6 +244,24 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Saved beside an odd row", @step.reload.title
   end
 
+  # An HTML form posts no key at all for an empty list, so removing a
+  # Question's ONLY option used to leave it stored: step_params permitted
+  # nothing for options and the save carried none. The panel sends a blank
+  # marker entry instead, which has to read as "no options", not as one
+  # blank option.
+  test "a blank options marker clears a Question's last option" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Q", question: "Q?",
+                                       answer_type: "multiple_choice", variable_name: "q",
+                                       options: [{ "label" => "Only", "value" => "only" }])
+
+    patch workflow_step_path(@workflow, question),
+          params: { step: { options: [""] } },
+          as: :turbo_stream
+
+    assert_response :success
+    assert_empty question.reload.options
+  end
+
   # 14. regular user cannot create steps
   test "regular user cannot create steps" do
     regular = User.create!(

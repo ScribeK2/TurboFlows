@@ -50,6 +50,19 @@
         <% end %>
       <% end %>
     </div>
+    <%# An HTML form posts no key at all for an empty list, so removing the LAST
+        option sent no `options` - the server permitted nothing for it and kept
+        the option that had just been removed. This marker posts a blank entry
+        instead, which `permit` (options is an array of hashes) drops, leaving
+        the empty array that clears them.
+
+        question-form enables it only for an answer type that HAS options and
+        only while none are left, so an ordinary save never carries it: posting
+        `options` on every save would stream the doors every time
+        (StepsController::DOOR_DECIDING_PARAMS reads the key, not a change) and
+        would write [] over a nil on steps that never had options. %>
+    <input type="hidden" name="step[options][]" value="" disabled
+           data-question-form-target="emptyMarker">
     <button type="button" class="btn btn--plain btn--sm mt-2"
             data-action="click->question-form#addOption">+ Add Option</button>
   </div>

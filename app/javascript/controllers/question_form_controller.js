@@ -5,8 +5,12 @@ export default class extends Controller {
   static targets = [
     "answerType",
     "optionsContainer",
-    "optionsList"
+    "optionsList",
+    "emptyMarker"
   ]
+
+  // The answer types whose options the author edits below.
+  static TYPES_WITH_OPTIONS = ["multiple_choice", "dropdown"]
 
   connect() {
     // Set initial state based on checked radio button
@@ -20,6 +24,11 @@ export default class extends Controller {
     if (this.hasOptionsListTarget && !this.optionsListTarget.classList.contains('is-hidden')) {
       this.initializeSortable()
     }
+
+    // Unconditionally, not only from handleAnswerTypeChange above: an imported
+    // Question may have no answer type checked at all, and that is exactly a
+    // step whose marker must stay off.
+    this.syncEmptyMarker()
   }
 
   disconnect() {
@@ -51,12 +60,26 @@ export default class extends Controller {
   // anyone typing, so tell the step panel's autosave (via the options
   // container's input action) the way a keystroke would.
   optionsChanged() {
+    // Before the event: that is what schedules the save which reads this form.
+    this.syncEmptyMarker()
     this.optionsListTarget.dispatchEvent(new Event("input", { bubbles: true }))
+  }
+
+  // The marker is submitted ONLY when this Question takes options and has none
+  // left, which is the one case an HTML form cannot say by itself.
+  syncEmptyMarker() {
+    if (!this.hasEmptyMarkerTarget) return
+
+    const checked = this.answerTypeTargets.find(radio => radio.checked)
+    const takesOptions = checked && this.constructor.TYPES_WITH_OPTIONS.includes(checked.value)
+    const rows = this.hasOptionsListTarget ? this.optionsListTarget.querySelectorAll(".option-item").length : 0
+
+    this.emptyMarkerTarget.disabled = !(takesOptions && rows === 0)
   }
 
   handleAnswerTypeChange(event, isInitial = false) {
     const answerType = event.target.value
-    const typesWithOptions = ['multiple_choice', 'dropdown']
+    const typesWithOptions = this.constructor.TYPES_WITH_OPTIONS
 
     // Switching away from a type with options throws the options away, so ask.
     // A refused change puts the previous radio back and stops the autosave
@@ -75,6 +98,7 @@ export default class extends Controller {
     }
 
     this.previousAnswerType = answerType
+    this.syncEmptyMarker()
 
     // Show/hide options container based on answer type
     if (this.hasOptionsContainerTarget) {

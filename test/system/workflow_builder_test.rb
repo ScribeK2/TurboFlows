@@ -585,6 +585,49 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
     end
   end
 
+  # The 1 -> 0 case. An HTML form posts no key at all for an empty list, so
+  # this save carried no `options` and the server, permitting nothing for it,
+  # kept the option that had just been removed - it came back on reload.
+  test "removing a question's only option in the builder is saved" do
+    question = question_with_options([{ "label" => "Phone", "value" => "phone" }])
+
+    visit_builder_in_edit_mode
+    step_row(question.uuid).click
+    assert_panel_settled
+
+    within "turbo-frame#builder-panel" do
+      assert_field "step[options][][label]", with: "Phone", wait: 5
+      row = find_field("step[options][][label]", with: "Phone").ancestor(".option-item")
+      row.hover
+      row.find("button[title='Remove option']").click
+    end
+
+    assert_eventually(timeout: 10) { question.reload.options == [] }
+
+    # And the step is saveable afterwards: a Question with no options at all is
+    # what the health check asks about, not something the panel refuses.
+    within("turbo-frame#builder-panel") { fill_in "step[title]", with: "No options left" }
+    assert_eventually(timeout: 10) { question.reload.title == "No options left" }
+    assert_equal [], question.reload.options
+  end
+
+  # The marker above must stay off for a Question that takes no options, or
+  # every save would carry `options` - writing [] over a nil and streaming the
+  # doors on each one (DOOR_DECIDING_PARAMS reads the key, not a change).
+  test "saving a Yes/No question does not send an options list it never had" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light?", question: "Light?",
+                                       position: 9, answer_type: "yes_no", variable_name: "light")
+
+    visit_builder_in_edit_mode
+    step_row(question.uuid).click
+    assert_panel_settled
+
+    within("turbo-frame#builder-panel") { fill_in "step[title]", with: "Is the light green?" }
+
+    assert_eventually(timeout: 10) { question.reload.title == "Is the light green?" }
+    assert_nil question.reload.options
+  end
+
   # A new Question starts with no question text, and that field was `required`.
   # requestSubmit() runs the browser's required check, so two seconds after the
   # title was typed the browser refused the save, moved the cursor into the
