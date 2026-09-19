@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { deferSubmitUntilPanelSaved } from "services/pending_panel_saves"
-import { focusWhenPresent } from "services/focus"
+import { focusWhenReplaced } from "services/focus"
 
 // "Use existing…" on a door row: a native <dialog> listing the workflow's other
 // steps. One dialog serves every door on the panel; opening it writes which door
@@ -61,7 +61,7 @@ export default class extends Controller {
     // The doors list is re-rendered by this very response, so the button that
     // opened the dialog is gone and the browser's own restore has nothing to
     // go back to. Without this, focus lands on <body>.
-    focusWhenPresent(".step-doors", { within: this.element })
+    focusWhenReplaced(".step-doors", { within: this.element })
   }
 
   // A click whose target is the <dialog> itself landed on the backdrop.

@@ -61,6 +61,14 @@ class BuilderFocusTest < ApplicationSystemTestCase
     assert_eventually(timeout: 10) { @workflow.steps.reload.count == 3 }
     assert_equal "step[title]", page.evaluate_script("document.activeElement?.name"),
                  "the grown step's panel did not take focus"
+    # Selected, not merely focused: the field holds "Untitled Action", and
+    # typing should replace it rather than append to it.
+    assert_equal "Untitled Action", page.evaluate_script(<<~JS)
+      (() => {
+        const el = document.activeElement
+        return el.value.slice(el.selectionStart, el.selectionEnd)
+      })()
+    JS
   end
 
   # The mechanism a live region depends on: it has to be IN the accessibility

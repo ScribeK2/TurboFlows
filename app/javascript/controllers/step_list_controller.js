@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import Sortable from "sortablejs"
 import { deferSubmitUntilPanelSaved } from "services/pending_panel_saves"
-import { focusWhenPresent } from "services/focus"
+import { focusWhenReplaced } from "services/focus"
 
 // Manages the step list: SortableJS drag-and-drop and type picker popover.
 export default class extends Controller {
@@ -94,7 +94,9 @@ export default class extends Controller {
   grown(event) {
     if (!event.detail.success) return
 
-    focusWhenPresent('#builder-panel input[name="step[title]"]')
+    // Selected, not just focused: the field holds "Untitled Action", which is
+    // the thing the author is there to replace.
+    focusWhenReplaced('#builder-panel input[name="step[title]"]').then(field => field?.select())
   }
 
   openForDoor(trigger) {
