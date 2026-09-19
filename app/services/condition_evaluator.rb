@@ -10,9 +10,15 @@
 #   - variable <= 10         (numeric less than or equal)
 #
 class ConditionEvaluator
+  # A string value's content: whatever the delimiter allows, or a backslash
+  # followed by any one character (the escape). Shared by VALID_PATTERNS (which
+  # only needs to know a value is well-formed) and STRING_COMPARISON (which
+  # captures it to unescape).
+  STRING_VALUE = /'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"/
+
   VALID_PATTERNS = [
-    /^\w+\s*==\s*['"][^'"]*['"]/,  # variable == 'value'
-    /^\w+\s*!=\s*['"][^'"]*['"]/,  # variable != 'value'
+    /^\w+\s*==\s*(?:#{STRING_VALUE.source})/, # variable == 'value' (escapes allowed)
+    /^\w+\s*!=\s*(?:#{STRING_VALUE.source})/, # variable != 'value' (escapes allowed)
     /^\w+\s*>\s*\d+/,              # variable > 10
     /^\w+\s*<\s*\d+/,              # variable < 10
     /^\w+\s*>=\s*\d+/,             # variable >= 10
@@ -20,6 +26,12 @@ class ConditionEvaluator
   ].freeze
 
   OPERATORS = %w[>= <= != == > <].freeze
+
+  # One string comparison, whole: a name, == or !=, and a value delimited by ' or
+  # by " - the same one at both ends - in which a backslash escapes the next
+  # character. The value groups are mutually exclusive.
+  STRING_COMPARISON = /\A\s*(\w+)\s*(==|!=)\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")/
+  WHOLE_STRING_COMPARISON = /#{STRING_COMPARISON.source}\s*\z/
 
   attr_reader :condition
 
@@ -38,6 +50,11 @@ class ConditionEvaluator
   # Returns true/false based on condition evaluation
   def evaluate(results)
     return false if condition.blank? || !results.is_a?(Hash)
+
+    if (tokens = string_comparison)
+      variable, operator, value = tokens
+      return compare_values(operator, lookup_value(variable, results), value)
+    end
 
     if condition.include?('==') && condition.exclude?('!=')
       evaluate_equality(results)
@@ -60,6 +77,16 @@ class ConditionEvaluator
   # Returns { variable: 'name', operator: '==', value: 'test' } or nil
   def parse
     return nil if condition.blank?
+
+    if (tokens = string_comparison)
+      variable, operator, value = tokens
+      return {
+        variable: variable,
+        operator: operator,
+        value: value,
+        is_numeric: value.match?(/^\d+$/)
+      }
+    end
 
     # Try each operator in order (longer operators first to avoid partial matches)
     OPERATORS.each do |op|
@@ -124,12 +151,33 @@ class ConditionEvaluator
     key = parts[0].gsub(/['"]/, '').strip
     expected_value = parts[1].gsub(/['"]/, '').strip
 
-    result_value = lookup_value(key, results)
+    compare_values(operator, lookup_value(key, results), expected_value)
+  end
+
+  # The == / != comparison itself, shared by the legacy quote-stripping reader
+  # above and the tokenizer below. For ==, a nil result means false; for !=, it
+  # means true. Otherwise a case-insensitive string comparison.
+  def compare_values(operator, result_value, expected_value)
     return operator == '!=' if result_value.nil?
 
-    # Case-insensitive comparison for strings
     values_equal = result_value.to_s.downcase == expected_value.to_s.downcase
     operator == '==' ? values_equal : !values_equal
+  end
+
+  # [variable, operator, unescaped, stripped value] when the WHOLE condition is
+  # one well-formed string comparison; nil otherwise, and the caller falls back
+  # to the reader this class has always had. That fallback is deliberate: it
+  # strips every quote character and tolerates mismatched delimiters and
+  # unquoted values, and live workflows route on it. It could never match a
+  # value that contains a quote - which is the one thing this tokenizer adds.
+  # The value is stripped here, once, so both #evaluate and #parse agree on it
+  # the same way the legacy reader's two halves always have.
+  def string_comparison
+    match = WHOLE_STRING_COMPARISON.match(condition)
+    return unless match
+
+    value = (match[3] || match[4]).gsub(/\\(.)/m) { Regexp.last_match(1) }
+    [match[1], match[2], value.strip]
   end
 
   def evaluate_numeric(operator, results)

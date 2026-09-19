@@ -204,4 +204,66 @@ class ConditionEvaluatorTest < ActiveSupport::TestCase
     assert_not ConditionEvaluator.complete?("Billing")
     assert_not ConditionEvaluator.complete?(nil)
   end
+
+  # --- string values that contain a quote (2026-09-19) ---
+
+  test "an escaped apostrophe in the value matches the answer that contains one" do
+    assert ConditionEvaluator.evaluate("light == 'Don\\'t know'", { "light" => "Don't know" })
+    assert_not ConditionEvaluator.evaluate("light == 'Don\\'t know'", { "light" => "Dont know" })
+  end
+
+  test "a double-quoted value may contain an apostrophe, and the reverse" do
+    assert ConditionEvaluator.evaluate(%(light == "Don't know"), { "light" => "don't know" })
+    assert ConditionEvaluator.evaluate(%(light == 'Say "OK"'), { "light" => 'Say "OK"' })
+  end
+
+  test "an escaped backslash is one backslash" do
+    assert ConditionEvaluator.evaluate("path == 'C:\\\\temp'", { "path" => "C:\\temp" })
+  end
+
+  test "inequality reads the same grammar" do
+    assert ConditionEvaluator.evaluate("light != 'Don\\'t know'", { "light" => "Yes" })
+    assert_not ConditionEvaluator.evaluate("light != 'Don\\'t know'", { "light" => "Don't know" })
+  end
+
+  test "parse returns the unescaped value" do
+    parsed = ConditionEvaluator.new("light == 'Don\\'t know'").parse
+    assert_equal ["light", "==", "Don't know"], parsed.values_at(:variable, :operator, :value)
+  end
+
+  # parse has always stripped the expected value (as the old split-based reader
+  # does), and Step::Doors relies on that: it compares parsed_value with no
+  # strip of its own. The tokenizer must agree.
+  test "parse strips a padded value the same as the legacy reader always did" do
+    assert_equal "yes", ConditionEvaluator.new("light == ' yes '").parse[:value]
+    assert ConditionEvaluator.new("count == ' 5 '").parse[:is_numeric]
+  end
+
+  test "complete? accepts an escaped quote and refuses mismatched delimiters" do
+    assert ConditionEvaluator.complete?("light == 'Don\\'t know'")
+    assert ConditionEvaluator.complete?(%(light == "Don't know"))
+    assert_not ConditionEvaluator.complete?(%(light == 'yes"))
+    assert_not ConditionEvaluator.complete?("light == 'Don't know'")
+  end
+
+  # A live workflow must not change routing because the parser got better: each
+  # of these shapes takes the code path it took before, and answers as it did.
+  test "legacy shapes evaluate exactly as they did" do
+    assert ConditionEvaluator.evaluate(%(light == 'yes"), { "light" => "yes" }), "mismatched delimiters"
+    assert ConditionEvaluator.evaluate("count == 5", { "count" => "5" }), "unquoted equality"
+    assert ConditionEvaluator.evaluate("light=='YES'", { "light" => "yes" }), "no spaces, other case"
+    assert ConditionEvaluator.evaluate("light == ' yes '", { "light" => "yes" }), "padded expected value"
+    assert_not ConditionEvaluator.evaluate("tier == 'gold' && region == 'EU'", { "tier" => "gold", "region" => "EU" }),
+               "a compound condition never matched on ==, and still does not"
+    assert ConditionEvaluator.evaluate("answer == 'yes'", { "anything" => "yes" }), "legacy answer keyword"
+    assert_not ConditionEvaluator.evaluate("x = 'yes'", { "x" => "yes" }), "single equals is not an operator"
+    assert ConditionEvaluator.evaluate("my-var == 'x'", { "my-var" => "x" }), "a hyphenated name is not \\w+, so this falls to the legacy split"
+    assert ConditionEvaluator.evaluate("x == ''", { "x" => "" }), "an empty quoted value matches an empty answer"
+    # The panel has never escaped a backslash (that starts with this task, going
+    # forward only): a value ending in one, like a Windows path, was written
+    # bare. The trailing backslash swallows the closing quote as an "escaped"
+    # character, so the tokenizer can't close the string and declines - the
+    # legacy path reads it exactly as it always has.
+    assert ConditionEvaluator.evaluate("path == 'C:\\'", { "path" => "C:\\" }), "a value ending in a bare backslash"
+  end
 end
