@@ -538,6 +538,40 @@ class BuilderGrowTest < ApplicationSystemTestCase
     end
   end
 
+  # flush() is what a grow waits on, so it must not report "nothing in flight"
+  # while a save is. Turbo dispatches turbo:submit-end from a `finally`, so a
+  # submission ABORTED because a newer save superseded it fires one too - with
+  # no `success` key in its detail, since it never got a result. Counting that
+  # as the end let a grow through while the save that mattered was still on its
+  # way: type a title, then change the answer type, then press a door.
+  #
+  # Driven through the controller, not the network: a system test cannot hold
+  # one save in flight while a second supersedes it. The event shapes are
+  # Turbo's own (FormSubmission#requestFinished, turbo-rails 2.0.23).
+  test "a superseded save's aborted submit-end does not end what flush is waiting for" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", question: "Light green?",
+                                       position: 1, answer_type: "yes_no", variable_name: "light")
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    open_step(question)
+
+    states = page.evaluate_script(<<~JS)
+      (() => {
+        const form = document.querySelector('#builder-panel form[data-controller~="inline-autosave"]')
+        const controller = window.Stimulus.getControllerForElementAndIdentifier(form, "inline-autosave")
+        controller.trackSubmission()
+        controller.trackSubmission() // a second save supersedes the first
+        form.dispatchEvent(new CustomEvent("turbo:submit-end", { bubbles: true, detail: { formSubmission: {} } }))
+        const afterAbort = controller.inFlight !== null && controller.inFlight !== undefined
+        form.dispatchEvent(new CustomEvent("turbo:submit-end", { bubbles: true, detail: { formSubmission: {}, success: true } }))
+        const afterSuccess = controller.inFlight !== null && controller.inFlight !== undefined
+        return [afterAbort, afterSuccess]
+      })()
+    JS
+
+    assert_equal [true, false], states, "[still in flight after the aborted one, still in flight after the real one]"
+  end
+
   # An import can write a default connection above a conditional one, which the
   # runner then never reaches. The health panel says so and its Fix re-sorts -
   # and the confirm it asks has to name the step, not "this step": it looked
