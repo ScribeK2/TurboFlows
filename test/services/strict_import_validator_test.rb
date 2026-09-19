@@ -501,6 +501,19 @@ class StrictImportValidatorTest < ActiveSupport::TestCase
     assert_match(/true, false/, warning[:message])
   end
 
+  test "an option written as a bare JSON false still counts as a value the question offers" do
+    report = validate(document_with(steps: [
+                                      { id: "q", type: "question", title: "Down?", question: "Is it down?",
+                                        answer_type: "multiple_choice", variable_name: "down",
+                                        options: [{ label: "Yes", value: true }, { label: "No", value: false }],
+                                        transitions: [{ target_id: "done", condition: "down == 'false'" }] },
+                                      resolve_step
+                                    ]))
+
+    assert_predicate report, :valid?, report.errors.inspect
+    assert_empty(report.warnings.select { |w| w[:code] == "unmatched_option_value" })
+  end
+
   test "an unknown group is an error on the strict report" do
     report = StrictImportValidator.new(user: @user, content: {
       schema_version: "1",

@@ -501,7 +501,9 @@ class StrictImportValidator
       next unless step["type"] == "question" && step["variable_name"].present?
       next unless step["options"].is_a?(Array)
 
-      values = step["options"].filter_map { |o| o.is_a?(Hash) ? o["value"] : nil }.map(&:to_s)
+      # `&.to_s` before filter_map sees it: filter_map drops any falsy result,
+      # not just nil, and a bare JSON `false` is a value the question offers.
+      values = step["options"].grep(Hash).filter_map { |o| o["value"]&.to_s }
       map[step["variable_name"]] = values if values.any?
     end
   end
