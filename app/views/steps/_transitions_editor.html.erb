@@ -12,9 +12,15 @@
 %>
 <% sentence_variables_json = ERB::Util.html_escape(condition_sentence_variables(workflow, step).to_json) %>
 
-<%# `known` is every transition this editor was rendered with. TransitionSync
-    deletes only a known row the author removed; an edge made elsewhere while
-    this panel sat open is not the editor's to delete.
+<%# `rendered` is every transition this editor was actually shown; `minted`
+    (always empty here - only this editor's own JS ever adds to it) is every
+    row the author has invented since. TransitionSync needs both, not one
+    list: a rendered uuid missing from `rows` could mean the author removed it
+    HERE, or someone else's save removed it while this panel sat open, and a
+    single list can't tell those apart. So only a MINTED row is ever created
+    when it's missing - a rendered-but-missing one is left alone and reported,
+    so the server can heal this panel instead of quietly re-creating a
+    connection someone else deleted.
 
     A handoff has no doors (Step::Doors#growable? is false for one), so its own
     connection would otherwise vanish from both the doors list and this editor.
@@ -51,7 +57,33 @@
         </button>
       </div>
 
+      <%# TRANSITIONAL (2026-09-19): `known` duplicates `rendered` here so a
+          builder tab that is open ACROSS A DEPLOY - still running the
+          pre-2026-09-19 step_transitions_controller.js, since
+          javascript_importmap_tags carries no data-turbo-track and a builder
+          save/panel-open is a stream or frame load, never a Turbo visit that
+          would refetch it - can still remove a connection the SERVER
+          rendered into it, not only one it minted itself this session. That
+          old JS's loadState reads only `known` (never `rendered`/`minted`),
+          and only addTransition ever pushes a new row's uuid into it - so
+          without this key, `known` starts empty and a removal of any
+          pre-existing row (never in `known` to begin with) computes an empty
+          delete set: TransitionSync's legacy branch destroys nothing, and
+          #door_shape_changed? immediately re-streams the "removed" row right
+          back. (A row added and then removed within the SAME old-tab
+          session was never broken: addTransition pushes its uuid into
+          `known` before the removal, so that delete set is never empty.)
+          Every NEW reader (TransitionSync#parse,
+          StepsController#shown_and_sent_row_uuids, this same JS's own
+          loadState) already prefers `rendered`/`minted` outright whenever
+          either is present, so this changes nothing for the current
+          JavaScript - it never echoes `known` back in what it saves. Delete
+          this key once no tab can still be running the pre-2026-09-19
+          controller: any release after every open tab has reloaded past
+          this deploy. %>
       <% transitions_data = {
+           "rendered" => editor_transitions.map(&:uuid),
+           "minted" => [],
            "known" => editor_transitions.map(&:uuid),
            "rows" => editor_transitions.map { |t| { "uuid" => t.uuid, "target_uuid" => t.target_step&.uuid, "condition" => t.condition, "label" => t.label } }
          } %>

@@ -20,19 +20,36 @@ export default class extends Controller {
 
   refresh() {
     const state = this.loadState()
-    this.known = state.known
+    this.rendered = state.rendered
+    this.minted = state.minted
     this.transitions = state.rows
     this.renderTransitions()
   }
 
-  // { known: [uuid], rows: [{ uuid, target_uuid, condition, label }] }
+  // { rendered: [uuid], minted: [uuid], rows: [{ uuid, target_uuid, condition, label }] }
+  //
+  // `rendered` is every uuid the server actually put in this editor; `minted`
+  // is every uuid this editor invented itself. A single list used to stand
+  // for both, and the server could not tell "the author removed this row
+  // here" from "someone else's save removed it while this panel sat open" -
+  // a stale second panel's next save re-created a connection deleted
+  // elsewhere. Splitting the list is what lets the server tell them apart:
+  // see TransitionSync's class comment.
   loadState() {
-    const empty = { known: [], rows: [] }
+    const empty = { rendered: [], minted: [], rows: [] }
     if (!this.hasHiddenInputTarget || !this.hiddenInputTarget.value) return empty
 
     try {
       const parsed = JSON.parse(this.hiddenInputTarget.value)
-      return { known: parsed.known || [], rows: parsed.rows || [] }
+      if (Array.isArray(parsed.rendered) || Array.isArray(parsed.minted)) {
+        return { rendered: parsed.rendered || [], minted: parsed.minted || [], rows: parsed.rows || [] }
+      }
+
+      // An old cached page (Turbo's bfcache preview, or a tab left open
+      // across a deploy) can still hold the legacy single-list shape in its
+      // hidden field even though this JS is current. Nothing was minted by
+      // THIS fresh instance yet, so read it all as rendered.
+      return { rendered: parsed.known || [], minted: [], rows: parsed.rows || [] }
     } catch (e) {
       console.error('[StepTransitions] Failed to parse transitions:', e)
       return empty
@@ -41,7 +58,7 @@ export default class extends Controller {
 
   saveTransitions() {
     if (this.hasHiddenInputTarget) {
-      this.hiddenInputTarget.value = JSON.stringify({ known: this.known, rows: this.transitions })
+      this.hiddenInputTarget.value = JSON.stringify({ rendered: this.rendered, minted: this.minted, rows: this.transitions })
       this.hiddenInputTarget.dispatchEvent(new Event("input", { bubbles: true }))
     }
 
@@ -93,10 +110,12 @@ export default class extends Controller {
     this.syncFromDOM()
 
     // The row's key is made here, before the server has seen it, so the same
-    // save sent twice writes one transition. It joins `known` at once: a row
-    // added and then removed in one sitting still has to be deleted.
+    // save sent twice writes one transition. It joins `minted` at once: a row
+    // added and then removed in one sitting still has to be deleted - and
+    // only `minted` (never `rendered`) makes a missing row's absence mean
+    // "delete this", rather than "someone else already did".
     const uuid = this.newUuid()
-    this.known.push(uuid)
+    this.minted.push(uuid)
     this.transitions.push({ uuid, target_uuid: "", condition: "", label: "" })
     this.saveTransitions()
     this.renderTransitions()

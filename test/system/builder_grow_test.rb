@@ -5,6 +5,8 @@ require "application_system_test_case"
 # a <select>. If the No answer ever needs Health to attach it, this project was
 # not implemented.
 class BuilderGrowTest < ApplicationSystemTestCase
+  include ActionView::RecordIdentifier
+
   setup do
     @user = User.create!(email: "grow-sys-#{SecureRandom.hex(4)}@example.com",
                          password: "password123!", password_confirmation: "password123!", role: "editor")
@@ -82,6 +84,127 @@ class BuilderGrowTest < ApplicationSystemTestCase
     # the test passes whenever no flush fires, which is the hollow version.
     assert_eventually(timeout: 10) { question.reload.title == "Is the light green?" }
     assert_equal ["light == 'no'"], question.transitions.reload.map(&:condition)
+  end
+
+  # Task B2. Panel A (another tab, or another editor's save landing behind
+  # this one) deletes an extra connection this panel was rendered with. This
+  # panel's next save must not bring it back: the row was in `rendered`, never
+  # `minted`, so TransitionSync skips it and heals the panel instead of
+  # re-creating it. The "Other connections" disclosure renders `open` only
+  # when it has rows (see _transitions_editor.html.erb), so asserting it
+  # closed afterwards - rather than clicking its summary, which would close
+  # an already-open one and prove nothing - is itself proof the row is gone
+  # from the editor, not just the database.
+  test "a connection removed elsewhere is not brought back by this panel's next save" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", question: "Light green?",
+                                       position: 1, answer_type: "yes_no", variable_name: "light")
+    target = Steps::Action.create!(workflow: @workflow, title: "Somewhere else", position: 2)
+    extra = Transition.create!(step: question, target_step: target, condition: "tier == 'gold'")
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    open_step(question)
+
+    connections = "##{dom_id(question, :connections)}"
+    within connections do
+      assert_selector "details.step-disclosure[open]", text: "Other connections"
+      assert_selector ".transition-item", count: 1
+    end
+
+    # Bypasses the controller (and its broadcast) on purpose: this is what a
+    # second tab's or a health-fix's own save looks like from here, landing
+    # with no signal that reaches this open panel.
+    Transition.find(extra.id).destroy
+
+    within "turbo-frame#builder-panel" do
+      fill_in "step[title]", with: "Renamed while stale"
+    end
+
+    assert_selector "#flash .flash--notice", text: /removed elsewhere/, wait: 10
+    assert_eventually(timeout: 10) { question.reload.title == "Renamed while stale" }
+    assert_not transition_exists?(uuid: extra.uuid)
+
+    within connections do
+      assert_no_selector "details.step-disclosure[open]"
+      assert_selector "summary", text: /Other connections.*numeric ranges, other variables/m
+    end
+  end
+
+  # Task B2. Continues the scenario above: once the panel has healed, a
+  # further save must not flash again and must not resurrect anything. The
+  # flash auto-dismisses after 5s on its own timer - waiting on that would
+  # make the "no flash" assertion pass whenever it simply hadn't fired yet, so
+  # this closes the first notice itself and proves the second save happened
+  # from the database, not from the timer.
+  test "after a heal, this panel's next save does not flash again and does not resurrect anything" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", question: "Light green?",
+                                       position: 1, answer_type: "yes_no", variable_name: "light")
+    target = Steps::Action.create!(workflow: @workflow, title: "Somewhere else", position: 2)
+    extra = Transition.create!(step: question, target_step: target, condition: "tier == 'gold'")
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    open_step(question)
+
+    Transition.find(extra.id).destroy
+
+    within "turbo-frame#builder-panel" do
+      fill_in "step[title]", with: "Renamed while stale"
+    end
+
+    assert_selector "#flash .flash--notice", text: /removed elsewhere/, wait: 10
+    assert_eventually(timeout: 10) { question.reload.title == "Renamed while stale" }
+
+    find("#flash .flash__close").click
+    assert_no_selector "#flash .flash--notice", wait: 5
+
+    within "turbo-frame#builder-panel" do
+      fill_in "step[title]", with: "Second edit after heal"
+    end
+
+    assert_eventually(timeout: 10) { question.reload.title == "Second edit after heal" }
+    assert_no_selector "#flash .flash--notice"
+    assert_not transition_exists?(uuid: extra.uuid)
+  end
+
+  # Task B2. `minted` is what makes a row this panel added and saved still
+  # deletable in the SAME panel session - the delete-set job `known` used to
+  # do alone. The new row's condition compares the step's own variable with
+  # "!=", which Step::Doors never claims for any door (a door only ever
+  # matches an "==" comparison - see Step::Doors#reads_as?), so it stays an
+  # "extra" the whole way through and neither save here replaces the editor
+  # wholesale - proving this is the client's own `minted` bookkeeping at work,
+  # not the server re-rendering a fresh `rendered` list that happens to still
+  # contain the row.
+  test "a connection added and saved in this panel can still be removed in it" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", question: "Light green?",
+                                       position: 1, answer_type: "yes_no", variable_name: "light")
+    target = Steps::Resolve.create!(workflow: @workflow, title: "Done", position: 2)
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    open_step(question)
+
+    within "turbo-frame#builder-panel" do
+      find("summary", text: "Other connections").click
+      click_on "Add Connection"
+      find("select[data-transition-field='target_uuid']").select "Done"
+      find("select[data-condition-preset-target='presetDropdown']").select "Custom..."
+      find("select[data-condition-preset-target='sentenceOperator']").select "is not"
+      find("[data-condition-preset-target='sentenceValue'] select").select "Yes"
+    end
+
+    assert_eventually(timeout: 10) { question.transitions.reload.any? }
+    edge = question.transitions.sole
+    assert_equal [target.id, "light != 'yes'"], [edge.target_step_id, edge.condition]
+
+    hidden_value = find("input[name='step[transitions_json]']", visible: false).value
+    state = JSON.parse(hidden_value)
+    assert_includes state["minted"], edge.uuid
+    assert_not_includes state["rendered"], edge.uuid
+
+    within "turbo-frame#builder-panel" do
+      find(".transition-item__delete").click
+    end
+
+    assert_eventually(timeout: 10) { !transition_exists?(id: edge.id) }
   end
 
   # Holds the Ruby doors and the JS presets together by what they do, not by
@@ -574,6 +697,14 @@ class BuilderGrowTest < ApplicationSystemTestCase
   end
 
   private
+
+  # The app server and this test share one connection, and a request switches
+  # its query cache on - so a plain Transition.exists? polled right after a
+  # save can keep answering from before that save. See
+  # test/system/admin_group_folders_test.rb's #saved_order for the same trap.
+  def transition_exists?(**attrs)
+    Transition.uncached { Transition.exists?(**attrs) }
+  end
 
   def row(step)
     find("#{STEP_ROW}[data-step-uuid='#{step.uuid}']")

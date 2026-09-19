@@ -386,6 +386,25 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Existing Step", @step.reload.title
   end
 
+  # This test and several below it send the LEGACY `{known, rows}` transitions_json
+  # shape on purpose, not merely because they predate the rendered/minted
+  # split - a browser running pre-deploy JavaScript still sends exactly this
+  # shape today, and
+  # TransitionSync must keep honouring it (see its class comment). The shape
+  # today's editor actually sends is covered in
+  # test/controllers/steps_controller_stale_panel_sync_test.rb and
+  # test/services/transition_sync_test.rb. Of these `known`-shaped tests, only
+  # one has an outcome that genuinely depends on the shape: "a save that
+  # reaches another step's transition by uuid is refused as a turbo stream" -
+  # under `known`/legacy a missing row is always attempted as a create, which
+  # collides with the foreign transition's uuid and raises RecordInvalid
+  # (422); under `rendered` alone the same row would be skipped and the panel
+  # healed (200) instead. The rest here are shape-agnostic: empty lists, a
+  # row that already exists, a stubbed TransitionSync.call, or - "a save that
+  # turns an editor row into a door" and its contrast below - a brand-new
+  # uuid sent as `known`, which under `rendered`/`minted` would arrive as
+  # `minted` instead and behave the same way: both shapes create the row
+  # outright, so the door-shape outcome does not depend on which one sent it.
   test "a panel save with a stale snapshot leaves a server-made edge alone" do
     target = Steps::Resolve.create!(workflow: @workflow, position: 1, title: "Done")
     grown = Transition.create!(step: @step, target_step: target)
@@ -442,9 +461,10 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
 
     # The second save: just the title, carrying the payload the freshly
     # streamed editor would now hold (built the way the view does, from the
-    # step's current transitions).
+    # step's current transitions - all `rendered`, nothing `minted`).
     fresh_transitions_json = {
-      known: question.transitions.reload.map(&:uuid),
+      rendered: question.transitions.reload.map(&:uuid),
+      minted: [],
       rows: question.transitions.map do |t|
         { uuid: t.uuid, target_uuid: t.target_step&.uuid,
           condition: t.condition, label: t.label }
@@ -530,8 +550,14 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     get panel_edit_workflow_step_path(@workflow, question)
 
     payload = JSON.parse(css_select("input[name='step[transitions_json]']").first["value"])
-    assert_equal [extra.uuid], payload["known"]
+    assert_equal [extra.uuid], payload["rendered"]
+    assert_equal [], payload["minted"]
     assert_equal [extra.uuid], payload["rows"].pluck("uuid")
+    # `known` is the TRANSITIONAL duplicate of `rendered` (see
+    # _transitions_editor.html.erb's comment): a tab still running the
+    # pre-2026-09-19 controller reads only this key, so it has to carry a
+    # real, usable delete set - not be absent, and not merely present-but-empty.
+    assert_equal payload["rendered"], payload["known"]
   end
 
   test "changing the answer type streams the doors" do
