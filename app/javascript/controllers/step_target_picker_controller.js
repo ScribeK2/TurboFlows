@@ -64,6 +64,25 @@ export default class extends Controller {
     event.stopPropagation()
   }
 
+  // A pick refused because its step is gone re-streams the candidate list
+  // (steps/_target_picker_options) into the dialog while it is still open, and
+  // fresh options arrive unfiltered - so whatever the author had typed sat
+  // above a list it no longer described. Stimulus calls this once per option,
+  // so the work is queued once for the whole batch. Nothing to do while the
+  // dialog is closed: #open runs both itself.
+  optionTargetConnected() {
+    if (this.refilterQueued || !this.hasDialogTarget || !this.dialogTarget.open) return
+
+    this.refilterQueued = true
+    queueMicrotask(() => {
+      this.refilterQueued = false
+      if (!this.hasFilterTarget) return
+
+      this.markGoneOptions()
+      this.filter()
+    })
+  }
+
   // A step this dialog's candidate list was rendered with can be gone by the
   // time it opens - this author deleted another step from the list while a
   // different door's panel state persisted, or a collaborator did. The

@@ -474,6 +474,38 @@ class BuilderGrowTest < ApplicationSystemTestCase
     end
   end
 
+  # A pick refused because its step is gone re-streams the candidate list
+  # fresh, and the filter used to run only when the dialog opened - so the
+  # text the author had typed sat above a list it no longer described.
+  test "a refused pick keeps the typed filter applied to the fresh list" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", question: "Light green?",
+                                       position: 1, answer_type: "yes_no", variable_name: "light")
+    Steps::Resolve.create!(workflow: @workflow, title: "First", position: 2)
+    doomed = Steps::Action.create!(workflow: @workflow, title: "Second branch", position: 3)
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    open_step(question)
+
+    open_target_picker("Yes", "Use existing…")
+    within "dialog[open]" do
+      fill_in "Find a step", with: "second"
+      assert_no_selector ".step-target-list__option", text: "First"
+    end
+
+    # Gone behind this browser's back: its row is still in the list here, so
+    # nothing on the page knows until the pick is refused.
+    doomed.destroy!
+
+    within("dialog[open]") { click_on "Second branch" }
+
+    within "dialog[open]" do
+      assert_selector ".form-error", text: /./, wait: 5
+      assert_no_selector ".step-target-list__option", text: "Second branch"
+      assert_no_selector ".step-target-list__option", text: "First"
+      assert_text "No step matches."
+    end
+  end
+
   # Deleting a step used to leave the rows that pointed at it stale until
   # reload: the parent kept showing the dead target and no stub. destroy now
   # answers the way a grow does - the whole list replaced - so this proves it
