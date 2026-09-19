@@ -124,9 +124,22 @@ The unified builder lives at `workflows/:id` — one URL for both viewing and ed
 - `builder_controller.js` — panel open/close, step selection, title autosave, Escape to close, `openHealth` action, auto-opens health panel when `?health=true` URL param is present
 - `step_list_controller.js` — SortableJS reorder + the type picker: opening it for a door (from a row's stub or the panel's "New step"), writing the `data-grow-*` fields, and floating it beside its trigger
 - `step_target_picker_controller.js` — the "Use existing…" dialog on a door row: which door it is for, waiting for the panel's pending save before the pick is sent, the filter, Escape (`stopPropagation`, or the whole panel closes behind it), and closing on `turbo:before-cache`
-- `inline_autosave_controller.js` — debounced autosave (2s), `flush()` for whoever must act after the pending save (it returns a promise that resolves once nothing is in flight), listens for `lexxy:change` events, flushes pending saves on disconnect via `FormData` + `fetch`, dispatches `health:check-needed` after disconnect saves
+- `inline_autosave_controller.js` — debounced autosave (2s), `flush()` for whoever must act after the pending save (it returns a promise that resolves once nothing is in flight), the panel's **save indicator** (see below), listens for `lexxy:change` events, flushes pending saves on disconnect via `FormData` + `fetch`, dispatches `health:check-needed` after disconnect saves
 - `step_warnings_controller.js` — async health check fetch, renders inline warning icons on step rows, toolbar issue count, click-to-open popover with Fix buttons. Listens for `turbo:submit-end`, `health:check-needed`, `turbo:before-stream-render`
 - `template_picker_controller.js` — template popover in toolbar, applies workflow archetypes
+
+**The panel says what its autosave is doing.** A `[data-autosave-status]` span in
+the step panel's header, driven by `inline-autosave` in four states: **Unsaved
+changes** (dirty, the moment a field changes), **Saving…**, **Saved**, **Not
+saved** (the server refused; the reason is in `#flash`, which is where it always
+went). The dirty state is not decoration — the debounce runs for two seconds,
+and an indicator reading "Saved" through them is a lie. It is NOT the builder
+header's `#autosave-status`, which belongs to the workflow title; step saves
+reported nowhere at all, which is how a refused save looked fine for months.
+The controller holds the element from `connect` rather than looking it up when
+needed (by flush time its form is detached), and skips it once it is off the
+page: a flush sent as the panel closes answers after the NEXT panel has
+rendered its own, and that one is not describing this save.
 
 **Autosave pattern:** Every field change triggers `inline-autosave#schedule` (via `data-action` on inputs or `lexxy:change` listener on the form). On disconnect (e.g., switching steps), pending saves are flushed by snapshotting `FormData` and sending via `fetch()` POST with `_method=patch`. The step panel form carries `novalidate`: `requestSubmit()` runs the browser's required-field check, and while any `required` field was empty (a new Question's text, a Form row just added) every save was refused and the edit dropped. The health check says what still needs filling in.
 
@@ -298,11 +311,12 @@ WHOLE `dom_id(step, :connections)` fragment plus a `#flash` notice
 — the SERVER never answers a heal silently, since a dropped row with no word
 said would read as data loss. One path has nowhere to show it, though:
 `inline-autosave#disconnect`'s flush, sent after the panel that made the
-request has already been replaced by another. Its `.then` only calls
-`Turbo.renderStreamMessage` for a NON-OK response (a refusal); a 200 — which
-is what a heal answers with, flash included — is left unrendered, so a heal
-that happens to land through that specific path drops the notice with
-nothing shown. That heal shares the same one-stream-per-target gate the rename and
+request has already been replaced by another. Its `.then` used to call
+`Turbo.renderStreamMessage` only for a NON-OK response (a refusal), so a 200 —
+which is what a heal answers with, flash included — was dropped with nothing
+shown. **Fixed 2026-09-19:** it renders every stream answer. A stream aimed at
+an element the page no longer has (the panel it came from has already been
+replaced) is a no-op, so the rest costs nothing. That heal shares the same one-stream-per-target gate the rename and
 door-shape triggers already use (`connections_streamed`), so it never doubles
 up with whichever of those already sent the fragment. A pending autosave
 already in flight cannot undo the heal: the heal replaces a div INSIDE the

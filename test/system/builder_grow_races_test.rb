@@ -114,6 +114,36 @@ class BuilderGrowRacesTest < ApplicationSystemTestCase
     assert_empty question.transitions, "a connection was written from a door the step no longer has"
   end
 
+  # The panel's closing flush goes out by fetch, not requestSubmit, so nothing
+  # renders its answer for it - and it only rendered a REFUSAL. A heal answers
+  # 200 with the notice in #flash, so a connection deleted elsewhere was
+  # correctly not re-created and the author was told nothing at all.
+  test "a heal that lands through the closing flush still says so" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", question: "Light green?",
+                                       position: 1, answer_type: "yes_no", variable_name: "light")
+    other = Steps::Action.create!(workflow: @workflow, title: "Somewhere else", position: 2)
+    # An EXTRA (no door claims this condition), so the connections editor
+    # renders it and the panel's snapshot lists its uuid under `rendered`.
+    extra = Transition.create!(step: question, target_step: other, condition: "light == 'maybe'")
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    open_step(question)
+
+    within("turbo-frame#builder-panel") { assert_selector "input[name='step[transitions_json]']", visible: :all, wait: 5 }
+
+    # Another editor removes it while this panel sits open.
+    extra.destroy!
+
+    # Dirty the panel and switch away inside the debounce, so the save goes out
+    # through inline-autosave#disconnect's fetch rather than requestSubmit.
+    within("turbo-frame#builder-panel") { fill_in "step[title]", with: "Is the light green?" }
+    open_step(other)
+
+    assert_selector "#flash", text: "removed elsewhere", wait: 10
+    assert_equal "Is the light green?", question.reload.title
+    assert_empty question.transitions.reload
+  end
+
   # flush() is what a grow waits on, so it must not report "nothing in flight"
   # while a save is. Turbo dispatches turbo:submit-end from a `finally`, so a
   # submission ABORTED because a newer save superseded it fires one too - with
