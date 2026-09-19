@@ -15,6 +15,44 @@ class BuilderStepPanelTest < ApplicationSystemTestCase
     sign_in_as @user
   end
 
+  # The panel autosaves and said nothing at all, which is how a refused save
+  # went unnoticed for months (see TODOS "The step panel has no save
+  # indicator"). Four states, and the dirty one matters as much as the rest:
+  # while the 2s debounce runs, an indicator still reading "Saved" is a lie.
+  test "the panel says when an edit is unsaved, saving, and saved" do
+    action = Steps::Action.create!(workflow: @workflow, title: "Check the router", position: 1)
+    visit_builder_in_edit_mode
+    open_step action
+    assert_panel_settled
+
+    within "turbo-frame#builder-panel" do
+      assert_selector "[data-autosave-status]", text: "Saved", wait: 5
+      fill_in "step[title]", with: "Check the modem"
+      assert_selector "[data-autosave-status]", text: "Unsaved changes", wait: 2
+      assert_selector "[data-autosave-status]", text: "Saved", wait: 10
+    end
+
+    assert_equal "Check the modem", action.reload.title
+  end
+
+  # A save the server refuses. The reason goes to #flash as it always did; what
+  # was missing is the panel itself admitting the edit is not saved.
+  test "the panel says Not saved when the server refuses the edit" do
+    action = Steps::Action.create!(workflow: @workflow, title: "Check the router", position: 1)
+    visit_builder_in_edit_mode
+    open_step action
+    assert_panel_settled
+
+    within "turbo-frame#builder-panel" do
+      find("summary", text: "Guidance").click
+      fill_in "step[reference_url]", with: "javascript:alert(1)"
+      assert_selector "[data-autosave-status]", text: "Not saved", wait: 10
+    end
+
+    within("#flash") { assert_text(/must use http/i, wait: 5) }
+    assert_nil action.reload.reference_url
+  end
+
   test "choosing an escalation target type shows the choice and saves it" do
     escalate = Steps::Escalate.create!(workflow: @workflow, title: "Escalate to network", position: 1)
     visit_builder_in_edit_mode

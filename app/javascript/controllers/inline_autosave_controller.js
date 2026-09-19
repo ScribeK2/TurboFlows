@@ -9,6 +9,16 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static values = { delay: { type: Number, default: 2000 } }
 
+  // What the indicator says in each state. "Unsaved changes" matters as much
+  // as the rest: the debounce runs for two seconds, and an indicator still
+  // reading "Saved" through them is a lie.
+  static STATUS = {
+    dirty: ["", "Unsaved changes"],
+    saving: ["builder__autosave--saving", "Saving\u2026"],
+    saved: ["builder__autosave--saved", "Saved"],
+    error: ["builder__autosave--error", "Not saved"]
+  }
+
   connect() {
     // Lexxy rich text editors fire lexxy:change instead of input events.
     // Stimulus data-action descriptors don't reliably bind to custom element
@@ -18,10 +28,16 @@ export default class extends Controller {
 
     this.boundSubmitEnded = this.submitEnded.bind(this)
     this.element.addEventListener("turbo:submit-end", this.boundSubmitEnded)
+
+    // Held from here, not looked up when it is needed: by the time the
+    // disconnect flush below answers, this form is detached and cannot reach
+    // its own frame any more.
+    this.statusElement = this.element.closest("turbo-frame")?.querySelector("[data-autosave-status]")
   }
 
   schedule() {
     this.dirty = true
+    this.setStatus("dirty")
     clearTimeout(this.timeout)
     this.timeout = setTimeout(() => this.save(), this.delayValue)
   }
@@ -50,10 +66,14 @@ export default class extends Controller {
         },
         body: this.lastFormData
       }).then(async (response) => {
-        // A refused save answers with a Turbo Stream saying why (a save that
-        // lost a race to another tab updates #flash). requestSubmit renders
-        // that for free; this path has to, or the refusal is silent.
-        if (!response.ok && response.headers.get("Content-Type")?.includes("turbo-stream")) {
+        // requestSubmit renders a stream answer for free; this path has to do
+        // it by hand or the answer is lost. EVERY answer, not only a refusal:
+        // a save that heals a stale panel succeeds AND carries a notice
+        // saying a connection was removed elsewhere, and that used to be
+        // dropped here with nothing shown. A stream aimed at an element this
+        // page no longer has - the panel has already been replaced - is a
+        // no-op, so rendering the rest costs nothing.
+        if (response.headers.get("Content-Type")?.includes("turbo-stream")) {
           const html = await response.text()
           if (html.trim()) Turbo.renderStreamMessage(html)
         }
@@ -87,6 +107,7 @@ export default class extends Controller {
   // floor under a submit that never reports an end (an abort nothing
   // followed), so nothing that waits on this can wait for ever.
   trackSubmission() {
+    this.setStatus("saving")
     clearTimeout(this.inFlightTimer)
     if (!this.inFlight) this.inFlight = new Promise(resolve => { this.resolveInFlight = resolve })
     this.inFlightTimer = setTimeout(() => this.settleInFlight(), 8000)
@@ -99,7 +120,20 @@ export default class extends Controller {
   submitEnded(event) {
     if (!("success" in event.detail)) return
 
+    this.setStatus(event.detail.success ? "saved" : "error")
     this.settleInFlight()
+  }
+
+  // Skipped once the element is off the page: a flush sent as the panel closes
+  // answers after the NEXT step's panel has rendered its own, and that one is
+  // not describing this save.
+  setStatus(state) {
+    const element = this.statusElement
+    if (!element?.isConnected) return
+
+    const [modifier, text] = this.constructor.STATUS[state]
+    element.className = ["builder__autosave", modifier].filter(Boolean).join(" ")
+    element.textContent = text
   }
 
   settleInFlight() {
