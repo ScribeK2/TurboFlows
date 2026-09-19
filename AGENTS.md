@@ -923,6 +923,32 @@ numbering systems disagreed inside sub-flows, and the bars divided by
 cards carry that orientation now, read from the root scenario. See UIGUIDE.md
 § Surfaces Deliberately Excluded for the reasoning.
 
+**A refusal is announced through the card's own live region.** The card is
+replaced wholesale by the answer's stream (`turbo_stream.replace
+"runner-card-current"`), so the markup holding the messages — `runner/_errors`
+and the per-field `.form-error` in `scenarios/_form_step` — is a NEW element
+every time and cannot be a live region itself; rendering an empty one up front
+would change nothing. What carries them is the `aria-live="polite"` region
+inside the card, filled by `scenario-step#connect` AFTER the card is in the
+document. `_thread_card` passes the messages as
+`data-scenario-step-refusal-value`, and the controller announces that instead
+of the step's title when it is present — never both, since the agent asked for
+one and is being told the other. Focus goes to the refused control (`.is-invalid`)
+rather than the first input, and the announcement follows it by a frame: moving
+focus makes a screen reader speak the newly focused control, which would cut off
+a polite announcement made before it. `scenario-step#focusFirstControl` picks the refused
+control, else the `input` target (a question's single answer control), else the
+first real control in the form — that last fallback is what a FORM step needs,
+since it renders its fields from the step's own definition and carries no
+`input` target, so it used to focus nothing and a keyboard agent tabbed in from
+the top of the page every time. `:not([type=hidden])` is load-bearing there:
+`form_with` emits its token first, and focusing a hidden input silently does
+nothing. **Still not routed this way: a HALT**
+(`flash.now[:alert]`), which prepends its own `role="alert"` row to the
+persistent `#runner-thread` — a newly inserted alert, which is a different
+mechanism with its own reliability. None of this is verified against a real
+screen reader.
+
 **Auto-advance has one source of truth:** `RunnerHelper#runner_auto_advances?`.
 It drives both the Stimulus value on the shell and whether Continue renders in
 the partial. Those must agree — when they didn't, a question with options and an

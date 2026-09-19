@@ -21,29 +21,32 @@ export default class extends Controller {
   static targets = ["form", "submit", "cancel", "input", "announce"]
   static values = {
     autoAdvance: { type: Boolean, default: false },
-    stepInfo: { type: String, default: "" }
+    stepInfo: { type: String, default: "" },
+    refusal: { type: String, default: "" }
   }
 
   connect() {
     this.autoAdvanceTimer = null
     this.submitted = false
 
-    // Auto-focus first input
-    if (this.hasInputTarget) {
-      // Use requestAnimationFrame to ensure DOM is ready
-      requestAnimationFrame(() => {
-        this.inputTarget.focus()
-      })
-    }
+    // Focus, then announce - in that order, and both after a frame.
+    //
+    // The order matters: moving focus makes the screen reader speak the newly
+    // focused control, which would cut off a polite announcement made before
+    // it. Saying it afterwards lets the focus speech name the field and its
+    // invalid state, and the region add the reason.
+    //
+    // The frame matters too: a live region filled in the same breath as its
+    // own insertion is the case assistive technologies are unreliable about,
+    // and this card was just inserted by a Turbo Stream.
+    requestAnimationFrame(() => {
+      this.focusFirstControl()
+      this.announce()
+    })
 
     // Dynamic page title
     if (this.hasStepInfoValue && this.stepInfoValue) {
       document.title = `Step ${this.stepInfoValue} — TurboFlows`
-    }
-
-    // ARIA announcement
-    if (this.hasAnnounceTarget && this.stepInfoValue) {
-      this.announceTarget.textContent = this.stepInfoValue
     }
 
     // Keyboard shortcuts, scoped to this card rather than the document.
@@ -57,6 +60,44 @@ export default class extends Controller {
     // focus is inside the card — which is why it has a test.
     this.handleKeydown = this.handleKeydown.bind(this)
     this.element.addEventListener("keydown", this.handleKeydown)
+  }
+
+  // Where the agent should be typing.
+  //
+  // The refused control first, when there is one: its own focus announcement
+  // names the field and says it is invalid, which is the half a live region off
+  // to the side cannot carry.
+  //
+  // Then the "input" target - a question's single answer control. A FORM step
+  // has no such target (it renders its fields from the step's own definition),
+  // so this used to focus nothing at all and a keyboard agent tabbed in from
+  // the top of the page on every form. Hence the last resort: the first real
+  // control in the form. `:not([type=hidden])` is load-bearing - form_with
+  // emits its authenticity token first, and focusing a hidden input silently
+  // does nothing, which leaves focus on <body>.
+  focusFirstControl() {
+    const target = this.element.querySelector(".is-invalid") ||
+                   (this.hasInputTarget ? this.inputTarget : null) ||
+                   this.firstFormControl()
+
+    target?.focus()
+  }
+
+  firstFormControl() {
+    const scope = this.hasFormTarget ? this.formTarget : this.element
+
+    return scope.querySelector(
+      "input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled])"
+    )
+  }
+
+  // Why the answer did not land, or which step this is - never both, since the
+  // agent asked for one and is being told the other.
+  announce() {
+    if (!this.hasAnnounceTarget) return
+
+    const message = this.refusalValue.trim() || this.stepInfoValue
+    if (message) this.announceTarget.textContent = message
   }
 
   disconnect() {

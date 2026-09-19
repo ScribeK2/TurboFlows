@@ -15,6 +15,12 @@
        id="runner-card-<%= step.uuid %>"
        data-controller="scenario-step image-lightbox"
        data-scenario-step-step-info-value="<%= step_info_text %>"
+       <%# What to say instead of the step's own title when this card is a
+           REFUSAL. The card is replaced wholesale by the answer's stream, so
+           the markup holding the messages is a new element every time and
+           cannot be a live region itself; the region inside this card, filled
+           after it is in the document, is what carries them. %>
+       data-scenario-step-refusal-value="<%= errors.any? ? "Not submitted. #{errors.to_sentence}" : "" %>"
        data-scenario-step-auto-advance-value="<%= auto_advance %>">
     <div class="card__body">
       <div aria-live="polite" class="sr-only" data-scenario-step-target="announce"></div>
