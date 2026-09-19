@@ -167,6 +167,34 @@ class GrowStepTest < ActiveSupport::TestCase
     assert_equal ["light == 'no'", nil], question.transitions.reload.order(:position).map(&:condition)
   end
 
+  # The door a stub names can stop existing before the press lands: the step's
+  # answer type or options changed (the panel's own autosave, another editor).
+  # The "Next" door of a Question that has since become Yes/No is the costly
+  # one - its blank condition would catch BOTH answers, and the health check
+  # goes quiet the moment anything catches them.
+  test "refuses a blank-condition grow from a step that now has answer doors" do
+    question = step(Steps::Question, "Light green?", 1, answer_type: "yes_no", variable_name: "light")
+
+    error = assert_raises(GrowStep::Refused) do
+      GrowStep.create(workflow: @workflow, step_type: "action", from_step: question)
+    end
+
+    assert_match(/answers have changed/, error.message)
+    assert_empty question.transitions.reload
+    assert_equal 1, @workflow.steps.count
+  end
+
+  test "refuses a grow for an answer the step no longer offers" do
+    question = step(Steps::Question, "Which?", 1, answer_type: "multiple_choice", variable_name: "which",
+                                                  options: [{ "label" => "Router", "value" => "router" }])
+
+    assert_raises(GrowStep::Refused) do
+      GrowStep.create(workflow: @workflow, step_type: "action", from_step: question,
+                      label: "Modem", condition: "which == 'modem'")
+    end
+    assert_empty question.transitions.reload
+  end
+
   test "a refused or invalid grow shifts nothing" do
     parent = step(Steps::Action, "Parent", 1)
     later = step(Steps::Action, "Later", 2)
@@ -180,8 +208,10 @@ class GrowStepTest < ActiveSupport::TestCase
 
   test "each builder-made Question gets its own variable name" do
     first = GrowStep.create(workflow: @workflow, step_type: "question")
-    second = GrowStep.create(workflow: @workflow, step_type: "question", from_step: first)
-    third = GrowStep.create(workflow: @workflow, step_type: "question", from_step: second)
+    second = GrowStep.create(workflow: @workflow, step_type: "question", from_step: first,
+                             label: "Yes", condition: "#{first.variable_name} == 'yes'")
+    third = GrowStep.create(workflow: @workflow, step_type: "question", from_step: second,
+                            label: "Yes", condition: "#{second.variable_name} == 'yes'")
 
     assert_equal %w[untitled_question untitled_question_2 untitled_question_3],
                  [first, second, third].map(&:variable_name)
@@ -263,6 +293,22 @@ class GrowStepTest < ActiveSupport::TestCase
 
     assert_equal [second.id], action.transitions.reload.map(&:target_step_id)
     assert_equal existing.id, action.transitions.first.id
+  end
+
+  # The "Use existing…" dialog names a door the same way a stub does, and can be
+  # just as stale.
+  test "connect refuses a door the step no longer has, and writes nothing" do
+    question = step(Steps::Question, "Light green?", 1, answer_type: "yes_no", variable_name: "light")
+    target = step(Steps::Action, "Target", 2)
+
+    assert_raises(GrowStep::Refused) do
+      GrowStep.connect(workflow: @workflow, from_step: question, target_step: target)
+    end
+    assert_raises(GrowStep::Refused) do
+      GrowStep.connect(workflow: @workflow, from_step: question, target_step: target,
+                       label: "Maybe", condition: "light == 'maybe'")
+    end
+    assert_empty question.transitions.reload
   end
 
   test "connect refuses a Resolve source and a target in another workflow" do

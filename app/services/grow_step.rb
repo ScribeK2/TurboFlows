@@ -8,6 +8,8 @@
 class GrowStep
   class Refused < StandardError; end
 
+  GONE_DOOR = "This step's answers have changed, so that way out is gone. Pick from the answers it has now.".freeze
+
   def self.create(workflow:, step_type:, from_step: nil, attrs: {}, label: nil, condition: nil)
     new(workflow).create(step_type:, from_step:, attrs:, label:, condition:)
   end
@@ -47,7 +49,10 @@ class GrowStep
 
     Step.transaction do
       lock_workflow!
-      existing = Step::Doors.for(from_step).door_for(condition)&.transition
+      door = Step::Doors.for(from_step).door_for(condition)
+      raise Refused, GONE_DOOR if door.nil?
+
+      existing = door.transition
       if existing
         existing.update!(target_step: target_step)
         existing
@@ -100,9 +105,18 @@ class GrowStep
   # never fire (first match wins), so the step it reached would be one nothing
   # points at. #connect retargets instead, because there the author has just
   # chosen where the door should go; here they were told it went nowhere.
+  #
+  # And a door that is not there at all is refused too. A stub names a door as
+  # the step stood when it was rendered; by the time the press lands the step's
+  # answer type or options may have changed - the panel's own autosave, inside
+  # its debounce, or another editor. The costly case is "Next" on a Question
+  # that has since become Yes/No: its blank condition would catch BOTH answers,
+  # and the health check goes quiet the moment anything catches them. No button
+  # offers a door Step::Doors does not list, so nothing honest is refused here.
   def check_door_is_free!(from_step, condition)
     door = Step::Doors.for(from_step).door_for(condition)
-    return if door.nil? || door.stub?
+    raise Refused, GONE_DOOR if door.nil?
+    return if door.stub?
 
     target = door.target_step.title.presence || "another step"
     raise Refused, "“#{door.label}” already leads to “#{target}”. Change it from the step's panel instead."

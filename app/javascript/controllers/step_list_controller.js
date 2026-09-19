@@ -78,6 +78,35 @@ export default class extends Controller {
     this.openForDoor(trigger)
   }
 
+  // A grow acts on what the server believes about the step it grows from, and
+  // the panel may be holding an edit to that very step inside its autosave
+  // debounce - an answer type just changed, say, with the old doors still on
+  // screen. Left alone the grow lands first: it writes the OLD door's
+  // connection, and the flush behind it then changes the step under it (a
+  // Text question's blank "Next" edge, on what is about to be a Yes/No
+  // question, catches both answers). So a pending save goes first and the grow
+  // follows it; if the door is gone by then, GrowStep refuses and the response
+  // re-renders the doors the step has now.
+  //
+  // Second time through nothing is pending, so the submit is left alone.
+  async growAfterPendingSave(event) {
+    const pending = this.pendingPanelSaves()
+    if (pending.length === 0) return
+
+    event.preventDefault()
+    const form = event.target
+    const submitter = event.submitter
+    await Promise.all(pending.map(controller => controller.flush()))
+
+    if (form.isConnected) form.requestSubmit(submitter?.isConnected ? submitter : undefined)
+  }
+
+  pendingPanelSaves() {
+    return [...document.querySelectorAll('#builder-panel [data-controller~="inline-autosave"]')]
+      .map(element => this.application.getControllerForElementAndIdentifier(element, "inline-autosave"))
+      .filter(controller => controller && (controller.dirty || controller.inFlight))
+  }
+
   openForDoor(trigger) {
     this.setDoor({
       from: trigger.dataset.growFrom,

@@ -66,6 +66,10 @@ class BuilderGrowTest < ApplicationSystemTestCase
   # would not do, because the No door it creates is server-rendered and only
   # appears once that autosave has landed - by which time the panel is clean
   # and its closing flush sends nothing.
+  #
+  # Since 2026-09-19 the grow WAITS for that pending save instead of racing it,
+  # so what this holds is the order - the title saved, then the grow, one edge -
+  # and no longer TransitionSync's keyed save; builder_grow_races_test.rb holds that.
   test "growing inside the autosave window keeps the new connection" do
     question = Steps::Question.create!(workflow: @workflow, title: "Untitled Question", question: "Light green?",
                                        position: 1, answer_type: "yes_no", variable_name: "light")
