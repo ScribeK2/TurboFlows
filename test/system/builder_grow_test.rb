@@ -185,10 +185,15 @@ class BuilderGrowTest < ApplicationSystemTestCase
     within "turbo-frame#builder-panel" do
       find("summary", text: "Other connections").click
       click_on "Add Connection"
-      find("select[data-transition-field='target_uuid']").select "Done"
+      # The target goes LAST. A row with no target is written nowhere, so no
+      # autosave landing between these four selects can save a half-built
+      # connection. Target first, and a debounce firing before the condition
+      # was chosen would save a blank-condition edge - which is the "Anything
+      # else" door, so the row would move out of the editor mid-sequence.
       find("select[data-condition-preset-target='presetDropdown']").select "Custom..."
       find("select[data-condition-preset-target='sentenceOperator']").select "is not"
       find("[data-condition-preset-target='sentenceValue'] select").select "Yes"
+      find("select[data-transition-field='target_uuid']").select "Done"
     end
 
     assert_eventually(timeout: 10) { question.transitions.reload.any? }
