@@ -319,10 +319,13 @@ shown and an empty `minted` — plus the transitional `known`, the same list as
 mints a new row's uuid straight into `minted` when `addTransition` creates it,
 and a REMOVED row's uuid deliberately stays in whichever list already held it
 — that is what tells the server "delete this" rather than "someone else
-already did." `loadState` also tolerates an old cached page (a Turbo bfcache
-preview, a tab left open across a deploy) whose hidden field still holds the
-legacy `known` shape even though the JS itself is current: nothing was minted
-by this fresh instance, so it is read entirely as `rendered`.
+already did." `loadState` also tolerates a hidden field still holding the
+legacy single-list shape even though the JS reading it is current — not a
+tab that predates the deploy (that tab is running the OLD controller
+entirely, which has no such branch), but a fragment Turbo's bfcache restored
+from BEFORE this deploy into a page whose module is already the new one:
+nothing was minted by this fresh instance, so it is read entirely as
+`rendered`.
 `Transition.settle_positions` keeps a blank condition sorted after every
 conditional one on the same step, since a default edge above a conditional
 swallows it.
@@ -445,11 +448,13 @@ then deleted in panel A while B stays open, is still `minted` to B — B never
 re-reads it as merely `rendered` until its own Connections fragment is
 re-rendered whole. That list is not exhaustive, but includes: a heal (see
 above), a rename, a door-shape change, a SubFlow `sub_flow_returns` toggle,
-`StepsController#destroy` deleting the step B's own minted row points AT
-(`destroy_streams` re-renders the WHOLE `:connections` fragment of every
-surviving step with an incoming transition to the one just deleted — reaching
-panel B specifically when B's step is one of them, not any open panel), or
-reopening the panel — so short of one of those, B's own next save re-creates
+B's OWN tab issuing `StepsController#destroy` for a DIFFERENT step B's open
+step connects to (`destroy_streams` answers the request that deleted it — it
+is never broadcast to another tab's panel, only rendered into the response
+the deleting tab itself receives — and in exactly this case the row could not
+have resurrected anyway: `sync_row` only ever DELETES, never recreates, a row
+whose target no longer resolves to a real step), or reopening the panel — so
+short of one of those, B's own next save re-creates
 it exactly as it always could. It needs two PANELS open on the same step's
 custom connections at once, not two people — the browser check that verified
 this used one editor in two tabs; a tombstone table of deleted
@@ -935,4 +940,4 @@ Playwright MCP (for UI/system testing). Point agent to running app at `http://lo
 - The `20260911120000_add_self_join_to_groups` migration makes every existing group self-joinable (`admins_add_members` defaults to `false`), and sign-up is open — right after deploying, an administrator should mark sensitive groups "Only administrators add people" before the feature is announced
 - The `20260915120000_backfill_step_defaults` migration writes `resolution_type = 'success'` on Resolve steps and `priority = 'medium'` on Escalate steps that had a blank; it runs unattended and needs no operator step
 - The `20260918120000_add_uuid_to_transitions` migration backfills every transition, then adds `NOT NULL` and a unique index, all in one DDL transaction — on PostgreSQL the table is locked for the duration. Seconds for thousands of rows; check `Transition.count` first if the install is large. There is also a cutover hazard: while the previous container is still serving requests against the already-migrated schema, its step-panel autosave deletes a step's transitions and then fails to re-create them (the old code has no uuid to key on, no `NOT NULL` default, and no transaction) — the deletes stay, the re-creates don't. Deploy this migration when nobody is in the builder, or stop the old container before `db:prepare` runs against the new schema
-- The `rendered`/`minted` deploy (2026-09-19) has the same shape of cutover window, and what remains of it is a refusal, not a silent mishandling: a tab that has already loaded the NEW JavaScript, whose save lands on an OLD container still running mid-cutover, is refused outright — `step_transitions_controller.js#saveTransitions` sends only `{rendered, minted, rows}`, never `known`, and the old container's `TransitionSync#parse` requires `known` to be present as an Array or raises `Malformed` ("This step was saved, but its connections were not…"). Nothing is written or deleted on that request; it clears as soon as the cutover completes and every request reaches a new container
+- The `rendered`/`minted` deploy (2026-09-19) has the same shape of cutover window, narrower than it first looks because of the transitional `known` key: a NEW-JavaScript tab's hidden `transitions_json` field holds whatever the server last rendered into it — `known` included — UNTIL `saveTransitions` overwrites it, which only happens when the author actually adds, removes or edits a connection in that panel (`step_transitions_controller.js#connect`/`#refresh` never call `saveTransitions`, so opening the panel and editing some OTHER field never touches it). So a save that never touched connections still carries `known` and an OLD container's `TransitionSync#parse` accepts it and reads it legacy-style, correctly — nothing is refused. Only a save made AFTER the connections editor was touched sends the current shape (`{rendered, minted, rows}`, no `known`), and THAT one an OLD container refuses: `TransitionSync#parse` requires `known` present as an Array or raises `Malformed` ("This step was saved, but its connections were not…") — the step's own fields still save first (`@step.update` runs before `sync_transitions`), so no TRANSITION is written or deleted on that request, but the rest of the PATCH did write. It clears as soon as the cutover completes and every request reaches a new container
