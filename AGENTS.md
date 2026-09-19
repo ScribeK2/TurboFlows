@@ -161,11 +161,17 @@ nothing can follow — and pairs each with the transition that serves it,
 or with nothing, which is a **stub**. A stub is not a row and nothing writes
 one. A door is wired only when `StepResolver` would take that transition for
 that answer and **no more loosely than that**: two review rounds each found a
-looser version — the first stripped backslashes `ConditionEvaluator` does not
-strip, so an option containing an apostrophe read as wired though the runner can
-never match it; the second stripped quote characters from the door's own value,
-which the runner compares raw. Read a condition the way the runtime reads it, or
-a stub is a lie. What no door claims is an **extra** (`#extras`); a wired
+looser version — the first stripped backslashes `ConditionEvaluator` did not
+then strip, so an option containing an apostrophe read as wired though the
+runner could not yet match it; the second stripped quote characters from the
+door's own value, which the runner compares raw. Read a condition the way the
+runtime reads it, or a stub is a lie. Since 2026-09-19 a well-formed string
+comparison's value has two readings — `ConditionEvaluator#parse`'s `:value`
+(unescaped) and `:literal_value` (the literal text between the delimiters,
+backslashes kept) — and the runner takes an answer matching either one, so
+`Doors#operator_match?` checks both too: still no more loosely than the
+runner, against a runner that itself grew less strict. What no door claims is
+an **extra** (`#extras`); a wired
 blank-condition edge is the `fallback`, rendered last as "Anything else", which
 is why a stub above it reads `follows “Anything else”` and not "nothing yet".
 `#missing` is the answers a run could give that lead nowhere: empty while
@@ -307,22 +313,18 @@ is a `link_to` with `data-turbo-method`, and the target-picker dialog (which
 does hold a real form) is rendered **outside** the autosave form, after its
 `end`.
 
-**Two known limits, neither closed.** First, an option value containing an
-apostrophe can never match at runtime: the door condition is written
-`light == 'Don\'t know'` (the escaping the panel has always used), and
-`ConditionEvaluator` unescapes that to `Don\t know` — a literal backslash-t —
-so the runner never takes the edge. `Step::Doors` reports this honestly rather
-than papering over it: the door reads as a **stub** and the dead edge shows up
-in `#unmatched_extras`, which is what the `:unmatched_option_value` warning
-reads. Fixing it means agreeing on one escaping across the panel, `Step::Doors`
-and the evaluator, and changing the evaluator changes how live runs match, so
-it is the owner's call. Second, two panels open on the same step still race:
+**One known limit remains.** Two panels open on the same step still race:
 panel B was rendered knowing edge `e1`, panel A deletes it, and B's next
 autosave carries `e1` in both `known` and `rows`, so `find_or_initialize_by`
 re-creates it — the payload cannot tell "the server rendered this and it has
 since been deleted" from "this was minted here and never saved". Far narrower
 than the `destroy_all` it replaced, which wiped a stranger's work wholesale,
-but not closed. Both carry a fix sketch in the (gitignored, local) `TODOS.md`.
+but not closed. Carries a fix sketch in the (gitignored, local) `TODOS.md`.
+The limit this section used to name alongside it — an option value containing
+an apostrophe or a backslash never matching at runtime, because the door
+condition's escaping and `ConditionEvaluator`'s reading of it disagreed — was
+closed 2026-09-19: see the two-readings note above (`Step::Doors#operator_match?`
+and `ConditionEvaluator#parse`'s `:value`/`:literal_value`).
 
 **Mode:** `data-builder-mode-value="view|edit"` on the builder container. CSS hides drag handles, add/delete buttons, and edit-only elements in view mode. View mode is a preview: `builder_controller#loadPanel` asks for `readonly=1`, and `StepsController#panel_edit` and `Workflows::SettingsController#show` render the readonly branch for that or for a viewer who may not edit. Nothing in view mode saves.
 

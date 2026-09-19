@@ -320,11 +320,15 @@ export default class extends Controller {
   }
 
   /**
-   * Escape single quotes in a string for use in conditions
+   * Escape a string for use as a single-quoted condition value: a backslash
+   * first (or escaping the apostrophe would double-escape a backslash this
+   * value already has), then the apostrophe - the same order
+   * Step::Doors#condition_for escapes in, and what ConditionEvaluator's
+   * tokenizer expects unescaping in reverse.
    */
   escapeQuotes(str) {
     if (!str) return ''
-    return str.replace(/'/g, "\\'")
+    return str.replace(/\\/g, "\\\\").replace(/'/g, "\\'")
   }
 
   /**
@@ -391,8 +395,28 @@ export default class extends Controller {
   /**
    * Imports, this dropdown, and typed custom conditions disagree about
    * quotes and Yes vs yes. Compare the meaning.
+   *
+   * Preferred: parse both sides and compare variable/operator/value, taking
+   * either of the stored side's two readings - the same "either reading"
+   * rule ConditionEvaluator#value_matches? applies at runtime. This is what
+   * lets an OLD-style stored condition for a backslash value
+   * (`path == 'C:\temp'`, one backslash) still restore to a preset written
+   * the new way (`path == 'C:\\temp'`, escaped) instead of dropping to
+   * Custom: they parse to the same variable and operator, and the stored
+   * side's literal reading (backslash kept) equals the preset's value.
+   * Falls back to the plain-text normalisation below when either side does
+   * not parse as one whole string or numeric comparison (a bare word like
+   * "Yes", mismatched delimiters, trailing text) - `#parseCondition` cannot
+   * help there and never could.
    */
   conditionsMatch(presetCondition, stored) {
+    const preset = this.parseCondition(presetCondition)
+    const storedParsed = this.parseCondition(stored)
+    if (preset && storedParsed && preset.variable.toLowerCase() === storedParsed.variable.toLowerCase() &&
+        preset.operator === storedParsed.operator) {
+      const target = String(preset.value).toLowerCase()
+      return String(storedParsed.value).toLowerCase() === target || String(storedParsed.rawValue).toLowerCase() === target
+    }
     return this.normalizeCondition(presetCondition) === this.normalizeCondition(stored)
   }
 
@@ -727,15 +751,34 @@ export default class extends Controller {
     this.updateCondition(condition)
   }
 
+  /**
+   * A string comparison's value has two readings, same as
+   * ConditionEvaluator#parse on the Ruby side: `value` is unescaped (`\'`
+   * becomes `'`, `\\` becomes `\`), `rawValue` is the literal text between
+   * the delimiters, backslashes kept. Both are returned so #conditionsMatch
+   * can accept either, the way the runner does.
+   */
   parseCondition(condition) {
     const trimmed = condition.trim()
-    const stringMatch = trimmed.match(/^(\w+)\s*(==|!=)\s*['"]([^'"]*)['"]\s*$/)
+    const stringMatch = trimmed.match(/^(\w+)\s*(==|!=)\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*$/)
     if (stringMatch) {
-      return { variable: stringMatch[1], operator: stringMatch[2], value: stringMatch[3] }
+      const raw = stringMatch[3] ?? stringMatch[4]
+      return { variable: stringMatch[1], operator: stringMatch[2], value: raw.replace(/\\(.)/g, "$1"), rawValue: raw }
+    }
+    // A value ending in a bare, un-escaped backslash ('C:\') has no valid
+    // close under the escape-aware pattern above - the trailing backslash
+    // consumes the closing quote as an "escaped" character. Mirrors
+    // ConditionEvaluator::OLD_STRING_VALUE: matched here with no escape
+    // understanding at all, so a condition written before backslashes were
+    // escaped still restores to its preset instead of falling to Custom.
+    const legacyMatch = trimmed.match(/^(\w+)\s*(==|!=)\s*(?:'([^'"]*)'|"([^'"]*)")\s*$/)
+    if (legacyMatch) {
+      const raw = legacyMatch[3] ?? legacyMatch[4]
+      return { variable: legacyMatch[1], operator: legacyMatch[2], value: raw, rawValue: raw }
     }
     const numericMatch = trimmed.match(/^(\w+)\s*(==|!=|>|>=|<|<=)\s*(\d+)\s*$/)
     if (numericMatch) {
-      return { variable: numericMatch[1], operator: numericMatch[2], value: numericMatch[3] }
+      return { variable: numericMatch[1], operator: numericMatch[2], value: numericMatch[3], rawValue: numericMatch[3] }
     }
     return null
   }
