@@ -12,9 +12,15 @@
 %>
 <% sentence_variables_json = ERB::Util.html_escape(condition_sentence_variables(workflow, step).to_json) %>
 
-<%# `known` is every transition this editor was rendered with. TransitionSync
-    deletes only a known row the author removed; an edge made elsewhere while
-    this panel sat open is not the editor's to delete.
+<%# `rendered` is every transition this editor was actually shown; `minted`
+    (always empty here - only this editor's own JS ever adds to it) is every
+    row the author has invented since. TransitionSync needs both, not one
+    list: a rendered uuid missing from `rows` could mean the author removed it
+    HERE, or someone else's save removed it while this panel sat open, and a
+    single list can't tell those apart. So only a MINTED row is ever created
+    when it's missing - a rendered-but-missing one is left alone and reported,
+    so the server can heal this panel instead of quietly re-creating a
+    connection someone else deleted.
 
     A handoff has no doors (Step::Doors#growable? is false for one), so its own
     connection would otherwise vanish from both the doors list and this editor.
@@ -52,7 +58,8 @@
       </div>
 
       <% transitions_data = {
-           "known" => editor_transitions.map(&:uuid),
+           "rendered" => editor_transitions.map(&:uuid),
+           "minted" => [],
            "rows" => editor_transitions.map { |t| { "uuid" => t.uuid, "target_uuid" => t.target_step&.uuid, "condition" => t.condition, "label" => t.label } }
          } %>
       <input type="hidden"

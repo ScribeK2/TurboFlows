@@ -442,9 +442,10 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
 
     # The second save: just the title, carrying the payload the freshly
     # streamed editor would now hold (built the way the view does, from the
-    # step's current transitions).
+    # step's current transitions - all `rendered`, nothing `minted`).
     fresh_transitions_json = {
-      known: question.transitions.reload.map(&:uuid),
+      rendered: question.transitions.reload.map(&:uuid),
+      minted: [],
       rows: question.transitions.map do |t|
         { uuid: t.uuid, target_uuid: t.target_step&.uuid,
           condition: t.condition, label: t.label }
@@ -530,8 +531,10 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     get panel_edit_workflow_step_path(@workflow, question)
 
     payload = JSON.parse(css_select("input[name='step[transitions_json]']").first["value"])
-    assert_equal [extra.uuid], payload["known"]
+    assert_equal [extra.uuid], payload["rendered"]
+    assert_equal [], payload["minted"]
     assert_equal [extra.uuid], payload["rows"].pluck("uuid")
+    assert_not payload.key?("known")
   end
 
   test "changing the answer type streams the doors" do
