@@ -208,10 +208,10 @@ module WorkflowParsers
     # a bare backslash (the trailing "\" swallows the closing quote as an
     # "escape"), which would have misread this transition as a label instead
     # of a condition. complete? accepts this shape through
-    # ConditionEvaluator::PRE_TASK_STRING_VALUE - the base grammar's value
-    # pattern, kept as an alternative so complete? never refuses less than it
-    # did before this task - and this reads as a condition again, exactly
-    # like the apostrophe-free case above.
+    # ConditionEvaluator::LEGACY_STRING_VALUE - the pre-existing grammar's
+    # value pattern, kept as an alternative so complete? never refuses less
+    # than it did before 2026-09-19 - and this reads as a condition again,
+    # exactly like the apostrophe-free case above.
     test "a parenthesised condition ending in a bare backslash is still a condition" do
       parser = WorkflowParsers::MarkdownParser.new(branching_markdown("Step 2 (path == 'C:\\'), Step 3"))
       result = parser.parse
@@ -226,10 +226,10 @@ module WorkflowParsers
 
     # Correction (2026-09-19): mismatched delimiters (`'yes"`) were ALWAYS
     # complete? at base (2efe44db) - the original pattern never required the
-    # same quote at both ends. A first draft of this task's grammar tightened
+    # same quote at both ends. An earlier draft of this grammar tightened
     # that requirement, which would have misread an existing transition
     # written this way as a label instead of a condition. Same
-    # PRE_TASK_STRING_VALUE fix as the bare-backslash case above.
+    # LEGACY_STRING_VALUE fix as the bare-backslash case above.
     test "a parenthesised condition with mismatched delimiters is still a condition" do
       parser = WorkflowParsers::MarkdownParser.new(branching_markdown(%(Step 2 (light == 'yes"), Step 3)))
       result = parser.parse

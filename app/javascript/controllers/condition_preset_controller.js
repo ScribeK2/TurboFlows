@@ -768,7 +768,7 @@ export default class extends Controller {
     // A value ending in a bare, un-escaped backslash ('C:\') has no valid
     // close under the escape-aware pattern above - the trailing backslash
     // consumes the closing quote as an "escaped" character. Matched-delimiter
-    // subset of ConditionEvaluator::PRE_TASK_STRING_VALUE (which also accepts
+    // subset of ConditionEvaluator::LEGACY_STRING_VALUE (which also accepts
     // mismatched delimiters, so complete?/valid? stay a superset of what they
     // always accepted; a mismatched-delimiter condition can safely fall to
     // Custom here instead), with no escape understanding at all, so a

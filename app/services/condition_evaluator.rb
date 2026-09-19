@@ -20,10 +20,10 @@ class ConditionEvaluator
   # unlike STRING_VALUE - the open and close delimiter need NOT match
   # ('[^'"]*" is fine). Kept as a second alternative to
   # VALID_PATTERNS/COMPLETE_PATTERNS (never to the tokenizer) so that
-  # complete?/valid? stay a SUPERSET of what they accepted before this task -
+  # complete?/valid? stay a SUPERSET of what they accepted before 2026-09-19 -
   # nothing they used to accept may become refused. Two shapes depend on this
   # specifically: a value ending in a bare, un-escaped backslash (written that
-  # way before this task, since Step::Doors and the panel never escaped a
+  # way before 2026-09-19, since Step::Doors and the panel never escaped a
   # backslash - the trailing "\" consumes the closing quote as an "escaped"
   # character under STRING_VALUE's rule, so only this alternative closes it),
   # and mismatched delimiters (`'yes"`) - always accepted by the original
@@ -31,14 +31,14 @@ class ConditionEvaluator
   # ends. #evaluate and #parse already read both shapes through the legacy
   # fallback; narrowing complete?/valid? to refuse either would make an
   # exportable workflow un-importable and would misread an existing Markdown
-  # transition as a label. See the "complete? stays a superset" section of
-  # the task report for the corpus comparison that caught the first, narrower
-  # version of this constant only requiring matched delimiters.
-  PRE_TASK_STRING_VALUE = /['"][^'"]*['"]/
+  # transition as a label. A base-vs-current diff of complete?/valid? over a
+  # generated corpus caught an earlier, narrower version of this constant
+  # that only required matched delimiters, before it shipped.
+  LEGACY_STRING_VALUE = /['"][^'"]*['"]/
 
   VALID_PATTERNS = [
-    /^\w+\s*==\s*(?:#{STRING_VALUE.source}|#{PRE_TASK_STRING_VALUE.source})/, # variable == 'value'
-    /^\w+\s*!=\s*(?:#{STRING_VALUE.source}|#{PRE_TASK_STRING_VALUE.source})/, # variable != 'value'
+    /^\w+\s*==\s*(?:#{STRING_VALUE.source}|#{LEGACY_STRING_VALUE.source})/, # variable == 'value'
+    /^\w+\s*!=\s*(?:#{STRING_VALUE.source}|#{LEGACY_STRING_VALUE.source})/, # variable != 'value'
     /^\w+\s*>\s*\d+/,              # variable > 10
     /^\w+\s*<\s*\d+/,              # variable < 10
     /^\w+\s*>=\s*\d+/,             # variable >= 10

@@ -246,21 +246,21 @@ class ConditionEvaluatorTest < ActiveSupport::TestCase
   end
 
   # Correction (2026-09-19): mismatched delimiters (`'yes"`) were ALWAYS
-  # accepted by complete?/valid? before this task - the base pattern
+  # accepted by complete?/valid? before this branch - the base pattern
   # `['"][^'"]*['"]` never required the same quote at both ends, only "no
-  # quote characters inside". A first draft of this task's grammar tightened
-  # PRE_TASK_STRING_VALUE to require matched delimiters, which silently
+  # quote characters inside". An earlier draft of this grammar tightened
+  # LEGACY_STRING_VALUE to require matched delimiters, which silently
   # NARROWED complete?/valid? below what they accepted before: a stored
   # mismatched-delimiter condition (reachable through the lenient import
   # path) would export to a file the strict importer refused, and the
   # Markdown parser would misread it as a label instead of a condition.
-  # complete?/valid? must stay a SUPERSET of what they accepted before this
-  # task, so PRE_TASK_STRING_VALUE is base's pattern verbatim - mismatched
-  # delimiters included. #evaluate/#parse were never affected either way:
-  # the legacy fallback has always read this shape the same way, both
-  # before and after. Verified against 2efe44db with a corpus comparison
-  # script - see the report's "complete? stays a superset" section.
-  test "complete? still accepts mismatched delimiters, exactly as it did before this task" do
+  # complete?/valid? must stay a SUPERSET of what they accepted before
+  # 2026-09-19, so LEGACY_STRING_VALUE is the pre-existing pattern verbatim -
+  # mismatched delimiters included. #evaluate/#parse were never affected
+  # either way: the legacy fallback has always read this shape the same way,
+  # both before and after. Verified against 2efe44db with a corpus
+  # comparison script.
+  test "complete? still accepts mismatched delimiters, exactly as it did before this branch" do
     assert ConditionEvaluator.complete?(%(light == 'yes"))
     assert ConditionEvaluator.complete?(%(light == "yes'))
     assert ConditionEvaluator.valid?(%(light == 'yes"))
@@ -271,7 +271,7 @@ class ConditionEvaluatorTest < ActiveSupport::TestCase
   # path has always read correctly for #evaluate/#parse - has no valid close
   # under STRING_VALUE's escape rule (the trailing backslash consumes the
   # closing quote as an "escaped" character), so it depends on the same
-  # PRE_TASK_STRING_VALUE alternative as the mismatched-delimiters case above.
+  # LEGACY_STRING_VALUE alternative as the mismatched-delimiters case above.
   test "complete? accepts a value ending in a bare backslash, for both delimiters" do
     backslash = "\\"
     single = "path == 'C:#{backslash}'" # ONE literal backslash, single-quoted
@@ -313,7 +313,7 @@ class ConditionEvaluatorTest < ActiveSupport::TestCase
     assert_not ConditionEvaluator.evaluate("x = 'yes'", { "x" => "yes" }), "single equals is not an operator"
     assert ConditionEvaluator.evaluate("my-var == 'x'", { "my-var" => "x" }), "a hyphenated name is not \\w+, so this falls to the legacy split"
     assert ConditionEvaluator.evaluate("x == ''", { "x" => "" }), "an empty quoted value matches an empty answer"
-    # The panel has never escaped a backslash (that starts with this task, going
+    # The panel has never escaped a backslash (that starts with this branch, going
     # forward only): a value ending in one, like a Windows path, was written
     # bare. The trailing backslash swallows the closing quote as an "escaped"
     # character, so the tokenizer can't close the string and declines - the
@@ -331,7 +331,7 @@ class ConditionEvaluatorTest < ActiveSupport::TestCase
   # count) rather than typed out, and checked with `.count("\\")`, so the
   # number of literal backslashes in each condition/answer is never in doubt.
   #
-  # A condition written before this task escaped a quote but never a
+  # A condition written before 2026-09-19 escaped a quote but never a
   # backslash (Step::Doors#condition_for and the panel's writer both only
   # ever did), so a STORED value with a bare "\" - a Windows path, a
   # DOMAIN\user - is a literal backslash, not the start of an escape. The
@@ -376,7 +376,7 @@ class ConditionEvaluatorTest < ActiveSupport::TestCase
   end
 
   # Concern raised in review, accepted as a second deliberate exception:
-  # before this task, `light == 'a!=b'` was read by evaluate_inequality (the
+  # before 2026-09-19, `light == 'a!=b'` was read by evaluate_inequality (the
   # condition CONTAINS '!=', so the equality branch was skipped), which
   # splits the whole condition on the first '!=' - landing inside the quoted
   # value, not on the real operator. That produced a nonsense key and a nil
