@@ -57,6 +57,23 @@ class StepsControllerRefusalsTest < ActionDispatch::IntegrationTest
     assert_equal "lamp == 'blinking'", extra.reload.condition
   end
 
+  # A save refused by a model validation used to answer with
+  # turbo_stream.replace(dom_id(step, :form)) - a target the builder does not
+  # render, so the stream replaced nothing and the author saw no error at all.
+  # Whatever this branch answers with has to name an element that is on the
+  # page while the panel is open.
+  test "a save refused by a validation answers into an element the builder renders" do
+    patch workflow_step_path(@workflow, @step),
+          params: { step: { reference_url: "javascript:alert(1)" } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :unprocessable_content
+    assert_select "turbo-stream[target='#{dom_id(@step, :form)}']", false,
+                  "answered into a target the builder does not render"
+    assert_includes response.body, "must use http, https, tel, or mailto protocol"
+    assert_nil @step.reload.reference_url
+  end
+
   # The step's own fields DID save, so the row that shows them - here and in
   # every other editor's list - has to follow, whatever happened to the
   # connections.
