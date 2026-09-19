@@ -32,7 +32,6 @@ class StrictImportValidator
   ].freeze
 
   CONDITION_VARIABLE = /\A\s*(\w+)\s*(?:>=|<=|==|!=|>|<)/
-  CONDITION_STRING_VALUE = /(?:==|!=)\s*['"]([^'"]*)['"]/
 
   # id, type and transitions have their own codes, so they are reported by their
   # own checks rather than as a generic missing field.
@@ -329,7 +328,8 @@ class StrictImportValidator
     unless supported_condition?(condition)
       return add_error(path, "invalid_condition_syntax", condition,
                        "#{condition.inspect} is not a supported condition. One comparison " \
-                       "only — no && or ||, string values quoted, numbers whole and positive.",
+                       "only — no && or ||, string values quoted, numbers whole and positive; " \
+                       "a quote inside a value is escaped as \\'.",
                        expected: CONDITION_FORMS)
     end
 
@@ -346,13 +346,35 @@ class StrictImportValidator
                          "on it unless the scenario supplies it.")
     end
 
-    value = condition[CONDITION_STRING_VALUE, 1]
-    values = options[name]
-    return if value.nil? || values.nil? || values.include?(value)
+    check_option_value(condition, path, name, options)
+  end
 
-    add_warning(path, "unmatched_option_value", value,
-                "#{name} never takes the value #{value.inspect}. Its question offers: " \
-                "#{values.join(', ')}.")
+  # Reads the value through the same tokenizer the runner uses, rather than a
+  # second regex of its own — that second regex is the defect this replaced:
+  # it could not read an ESCAPED quote or backslash, so `choice == 'Don\'t
+  # know'` extracted "Don\" and warned against a real option. A well-formed
+  # comparison has two readings (see ConditionEvaluator's own comment), and the
+  # runner takes an answer matching either, so this checks both — an
+  # old-style `path == 'C:\temp'` against the option `C:\temp` must not warn.
+  # The warning quotes `literal_value`, the text as the author wrote it, not
+  # the unescaped reading.
+  #
+  # Skipped when the value reads as a bare integer: `options[name]` comes
+  # straight from the JSON file's `value` key with no type coercion, so a
+  # numeric-looking option written as a JSON number (the published schema
+  # asks for a string, but nothing here enforces that) would never `==` the
+  # String `parsed[:value]` — a false "unmatched" warning purely from JSON's
+  # number/string split, not a real mismatch.
+  def check_option_value(condition, path, name, options)
+    parsed = ConditionEvaluator.new(condition).parse
+    return unless parsed && %w[== !=].include?(parsed[:operator]) && !parsed[:is_numeric]
+
+    values = options[name]
+    return if values.nil? || values.include?(parsed[:value]) || values.include?(parsed[:literal_value])
+
+    add_warning(path, "unmatched_option_value", parsed[:literal_value],
+                "#{name} never takes the value #{parsed[:literal_value].inspect}. Its question " \
+                "offers: #{values.join(', ')}.")
   end
 
   def supported_condition?(condition)

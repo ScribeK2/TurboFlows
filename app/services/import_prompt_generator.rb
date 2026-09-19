@@ -210,6 +210,7 @@ class ImportPromptGenerator
       **Conditions are one comparison.** No `&&` or `||`, string values quoted,
       numbers whole and positive. Supported forms:
       #{StrictImportValidator::CONDITION_FORMS.map { |f| "`#{f}`" }.join(', ')}.
+      A quote inside a value is escaped as `\\'` — `choice == 'Don\\'t know'`.
       A condition outside these silently never fires, so the import refuses it.
 
       **Variables.** `variable_name` on a question stores the answer; refer to it

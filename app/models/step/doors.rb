@@ -107,7 +107,11 @@ class Step
           parsed = parse(text)
           next unless parsed && parsed[:operator] == "==" && own_variable?(parsed[:variable])
 
-          [transition, parsed[:value]] unless answers.any? { |_, value| operator_match?(parsed, value) }
+          # Reported as the author wrote it, not the unescaped reading -
+          # otherwise a stale OLD-style backslash condition ("path ==
+          # 'D:\gone'") read as checking "D:gone", dropping the backslash the
+          # author actually typed.
+          [transition, parsed[:literal_value]] unless answers.any? { |_, value| operator_match?(parsed, value) }
         else
           [transition, text] unless answers.any? { |_, value| bare_match?(text, value) }
         end

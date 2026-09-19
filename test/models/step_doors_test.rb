@@ -297,4 +297,14 @@ class StepDoorsTest < ActiveSupport::TestCase
 
     assert_empty doors(@a).unmatched_extras
   end
+
+  # unmatched_extras used to report the UNESCAPED reading (parsed[:value]),
+  # which drops the backslash the author actually typed - "D:\gone" was
+  # reported as "D:gone", a value that was never really the stale option.
+  test "a stale connection with a backslash is reported as the author wrote it, not unescaped" do
+    step = question(answer_type: "dropdown", options: [{ "label" => "Router", "value" => "router" }])
+    stale = Transition.create!(step: step, target_step: @a, condition: "light == 'D:\\gone'")
+
+    assert_equal [[stale, "D:\\gone"]], doors(step).unmatched_extras
+  end
 end

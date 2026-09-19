@@ -16,6 +16,16 @@ class ImportPromptGeneratorTest < ActiveSupport::TestCase
     assert_includes @prompt, "var == 'value'"
   end
 
+  # The strict validator now reads a condition's value through
+  # ConditionEvaluator#parse, which understands an escaped quote — the prompt
+  # has to say so, or an agent has nowhere to learn it (2026-09-19).
+  test "the prompt says a quote inside a value is escaped, with exactly one backslash rendered" do
+    line = @prompt.lines.find { |l| l.include?("A quote inside a value") }
+    assert_not_nil line, "the prompt is missing the escaping rule"
+    assert_includes line, "\\'"
+    assert_equal 2, line.count("\\"), "one backslash in the rule, one in the worked example"
+  end
+
   test "the prompt says loops are allowed and what makes one invalid" do
     assert_match(/Loops are allowed/i, @prompt)
     assert_match(/reach a `resolve` step/i, @prompt)

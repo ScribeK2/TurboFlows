@@ -163,6 +163,48 @@ class WorkflowExportImportRoundTripTest < ActionDispatch::IntegrationTest
     assert_predicate report, :valid?, report.errors.inspect
   end
 
+  # A dropdown option can contain a quote or a backslash (2026-09-19), and the
+  # panel — via Step::Doors#condition_for, the same string a grown door writes —
+  # has always escaped one. The strict validator used to read a condition's
+  # value with its own regex, which could not follow that escaping and warned
+  # against a real option (see the strict_import_validator_test cases next to
+  # this one). This is the acceptance criterion that matters: build the
+  # workflow the way the builder actually would (grow each door, don't
+  # hand-write JSON), export it, and feed the export back to the strict path.
+  test "a workflow wired via Step::Doors' own condition strings exports and re-imports clean" do
+    workflow = Workflow.create!(title: "Doors Round Trip #{SecureRandom.hex(2)}", user: @user, status: "draft")
+    question = Steps::Question.create!(
+      workflow: workflow, position: 0, title: "Which option?", question: "Which option?",
+      answer_type: "dropdown", variable_name: "choice",
+      options: [
+        { "label" => "Don't know", "value" => "Don't know" },
+        { "label" => "C Drive", "value" => 'C:\temp' },
+        { "label" => "Router", "value" => "router" }
+      ]
+    )
+    resolve = Steps::Resolve.create!(workflow: workflow, position: 1, title: "Done", resolution_type: "success")
+    workflow.update!(start_step: question)
+
+    # The exact strings a grown door wires with — not hand-built JSON.
+    Step::Doors.for(question).doors.each_with_index do |door, index|
+      next unless door.kind == :answer
+
+      Transition.create!(step: question, target_step: resolve, condition: door.condition, position: index)
+    end
+
+    get workflow_export_path(workflow)
+    assert_response :success
+
+    report = StrictImportValidator.new(user: @user, content: response.body).validate
+    assert_predicate report, :valid?, report.errors.inspect
+    assert_not_includes report.errors.pluck(:code), "invalid_condition_syntax"
+    assert_not_includes report.warnings.pluck(:code), "unmatched_option_value"
+
+    reimported = WorkflowImporter.new(@user, format: :json, content: response.body,
+                                             strict_report: report).call
+    assert_predicate reimported, :success?
+  end
+
   test "export, import, export produces an identical document" do
     workflow = import_fixture
 

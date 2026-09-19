@@ -89,6 +89,51 @@ module Steps
       assert_equal "Wrong password", step.options.first["value"]
     end
 
+    # 2026-09-19 (decision A5): padded label and value are trimmed on save, so
+    # a condition built from the value round-trips against a runner answer that
+    # is never padded.
+    test "a padded label and value are both trimmed" do
+      step = build_question([{ "label" => " Router ", "value" => " router " }])
+      step.save!
+
+      assert_equal "Router", step.options.first["label"]
+      assert_equal "router", step.options.first["value"]
+    end
+
+    # The fallback reads the ALREADY-trimmed label, so a padded label-only
+    # option derives a value with no padding of its own.
+    test "a padded label-only option derives a trimmed value from the trimmed label" do
+      step = build_question([{ "label" => " Modem " }])
+      step.save!
+
+      assert_equal "Modem", step.options.first["label"]
+      assert_equal "Modem", step.options.first["value"]
+    end
+
+    test "a whitespace-only label is left exactly as blank as it always was" do
+      step = build_question([{ "label" => "   ", "value" => "" }])
+      step.save!
+
+      assert_equal "", step.options.first["label"].to_s.strip
+      assert_equal "", step.options.first["value"].to_s
+    end
+
+    # Reassigning `options` on every save is a no-op for dirty tracking once the
+    # data is already clean: ActiveRecord's `json` type compares the cast value,
+    # not object identity, so a save that touches only some other field must not
+    # also register `options` as changed (and so must not bump lock_version for
+    # no reason).
+    test "resaving already-trimmed options does not register options as changed" do
+      step = build_question([{ "label" => "Router", "value" => "router" }])
+      step.save!
+      version_before = step.lock_version
+
+      step.update!(title: "Which sign-in error? (edited)")
+
+      assert_not step.saved_changes.key?("options")
+      assert_equal version_before + 1, step.lock_version
+    end
+
     private
 
     def build_question(options)
