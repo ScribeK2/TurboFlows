@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import Sortable from "sortablejs"
 import { deferSubmitUntilPanelSaved } from "services/pending_panel_saves"
+import { focusWhenReplaced } from "services/focus"
 
 // Manages the step list: SortableJS drag-and-drop and type picker popover.
 export default class extends Controller {
@@ -84,6 +85,18 @@ export default class extends Controller {
   // services/pending_panel_saves for the whole story.
   growAfterPendingSave(event) {
     deferSubmitUntilPanelSaved(this.application, event)
+  }
+
+  // The grow replaced the panel, and the type-picker button that was pressed is
+  // now inside a hidden menu - so focus is either lost to <body> or sitting on
+  // something nobody can see. The new step's title is where the author is going
+  // anyway: a grown step arrives called "Untitled Action".
+  grown(event) {
+    if (!event.detail.success) return
+
+    // Selected, not just focused: the field holds "Untitled Action", which is
+    // the thing the author is there to replace.
+    focusWhenReplaced('#builder-panel input[name="step[title]"]').then(field => field?.select())
   }
 
   openForDoor(trigger) {

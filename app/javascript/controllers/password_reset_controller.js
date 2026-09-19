@@ -23,13 +23,13 @@ export default class extends Controller {
 
   open() {
     this.showStep("confirm")
-    this.errorTarget.classList.add("is-hidden")
+    this.clearError()
     this.dialogTarget.showModal()
   }
 
   async generate() {
     this.generateButtonTarget.disabled = true
-    this.errorTarget.classList.add("is-hidden")
+    this.clearError()
 
     try {
       const token = document.querySelector('meta[name="csrf-token"]')?.content
@@ -45,10 +45,16 @@ export default class extends Controller {
       this.showStep("result")
     } catch (error) {
       this.errorTarget.textContent = error.message
-      this.errorTarget.classList.remove("is-hidden")
     } finally {
       this.generateButtonTarget.disabled = false
     }
+  }
+
+  // Emptying it is what hides it (.form-error:empty). NOT .is-hidden, which is
+  // display: none - this carries role="alert", and a live region has to be in
+  // the accessibility tree before its text arrives.
+  clearError() {
+    this.errorTarget.textContent = ""
   }
 
   async copy() {

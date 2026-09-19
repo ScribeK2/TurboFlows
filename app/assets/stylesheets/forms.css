@@ -82,10 +82,17 @@
 }
 
 /* An always-rendered .form-error (filled in later by a Turbo Stream, e.g. the
-   target-picker dialog's) otherwise reserves a line's height and margin with
-   nothing in it. */
+   target-picker dialog's) otherwise reserves a line's margin with nothing in
+   it. Only the margin: an empty block has no line box, so it is already zero
+   pixels tall.
+
+   NOT display: none. These carry role="alert", and a live region has to be in
+   the accessibility tree BEFORE its text arrives - an element that appears and
+   fills in the same breath is exactly the case assistive technologies are
+   unreliable about. Hiding it while empty put it out of the tree until the
+   moment it mattered. */
 .form-error:empty {
-  display: none;
+  margin-top: 0;
 }
 
 .form-error__list {

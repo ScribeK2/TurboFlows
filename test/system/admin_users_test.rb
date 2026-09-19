@@ -29,6 +29,29 @@ class AdminUsersTest < ApplicationSystemTestCase
     assert_no_selector "dialog[open]"
   end
 
+  # Same rule as the builder's target picker (test/system/builder_focus_test.rb):
+  # this error carries role="alert", and a live region has to be in the
+  # accessibility tree before its text arrives. It was hidden with .is-hidden -
+  # display: none - so it appeared and filled in the same breath, the case
+  # assistive technologies are unreliable about.
+  test "the password dialog's error region is present and costs nothing while empty" do
+    visit admin_user_path(@agent)
+    click_on "Reset Password"
+    assert_selector "dialog[open]", wait: 3
+
+    box = page.evaluate_script(<<~JS)
+      (() => {
+        const el = document.querySelector("dialog[open] [data-password-reset-target='error']")
+        const cs = getComputedStyle(el)
+        return { display: cs.display, height: el.getBoundingClientRect().height, text: el.textContent.trim() }
+      })()
+    JS
+
+    assert_equal "", box["text"]
+    assert_not_equal "none", box["display"], "an empty alert region is out of the accessibility tree"
+    assert_equal 0, box["height"].to_i, "an empty alert region reserves space"
+  end
+
   # Turbo snapshots the page as you leave it, and a modal does not stop every way
   # of leaving — a scripted visit (the session-timeout redirect) or history.back().
   # Without turbo:before-cache handling the snapshot holds the open dialog, restored
