@@ -222,6 +222,35 @@ class TransitionSyncTest < ActiveSupport::TestCase
     end
   end
 
+  # Array() used to wrap the stray scalar into a one-element list, so a lone
+  # string beside a real Array was read as a uuid this editor minted.
+  test "a scalar minted beside an Array rendered is malformed, not wrapped into a list" do
+    uuid = SecureRandom.uuid
+
+    assert_raises(TransitionSync::Malformed) do
+      TransitionSync.call(@question, {
+        rendered: [], minted: uuid,
+        rows: [{ uuid: uuid, target_uuid: @a.uuid, condition: "", label: "" }]
+      }.to_json)
+    end
+    assert_not Transition.exists?(uuid: uuid)
+  end
+
+  test "a scalar rendered beside an Array minted is malformed" do
+    assert_raises(TransitionSync::Malformed) do
+      TransitionSync.call(@question, { rendered: "x", minted: [], rows: [] }.to_json)
+    end
+  end
+
+  test "one of rendered and minted may be absent when the other is an Array" do
+    uuid = SecureRandom.uuid
+    TransitionSync.call(@question, {
+      minted: [uuid], rows: [{ uuid: uuid, target_uuid: @a.uuid, condition: "", label: "" }]
+    }.to_json)
+
+    assert Transition.exists?(uuid: uuid)
+  end
+
   test "when both known and rendered/minted are present, the new shape wins and known is ignored" do
     known_uuid = SecureRandom.uuid
     result = TransitionSync.call(@question, {

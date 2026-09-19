@@ -482,9 +482,11 @@ class StepsController < ApplicationController
   # "Shown" is what the browser says this editor displayed: `rendered +
   # minted` under the current shape, or `known` under the legacy one - the
   # same either-shape read TransitionSync does, kept independent of it since
-  # this runs whether or not a sync happened at all. No transitions_json, or
-  # JSON that doesn't parse, "knows nothing" - both come back as empty arrays,
-  # same as #editor_row_became_door? used to treat them.
+  # this runs whether or not a sync happened at all. No transitions_json, JSON
+  # that doesn't parse, or a payload that is not the shape this page sends (an
+  # Array, a scalar where a list belongs) "knows nothing" - each comes back as
+  # empty arrays, same as #editor_row_became_door? used to treat them. A row
+  # that is not an object is dropped, as TransitionSync#rows drops it.
   def shown_and_sent_row_uuids
     return [[], []] if step_params[:transitions_json].blank?
 
@@ -495,8 +497,8 @@ class StepsController < ApplicationController
               payload["known"].to_a.map(&:to_s)
             end
 
-    [shown, payload["rows"].to_a.pluck("uuid")]
-  rescue JSON::ParserError, NoMethodError
+    [shown, payload["rows"].to_a.grep(Hash).pluck("uuid")]
+  rescue JSON::ParserError, NoMethodError, TypeError
     [[], []]
   end
 

@@ -274,7 +274,9 @@ The SERVER still reads a payload sending the legacy `{known, rows}` shape
 exactly as it always did: `known` never actually gated creation even before
 this change (only the delete set), so under this shape a missing row is still
 created outright and nothing is ever reported skipped. `rendered`/`minted`
-win outright whenever either key is present as an Array, even an empty one,
+win outright whenever either key is present as an Array, even an empty one
+(the other may be absent, but a scalar there is refused as `Malformed` rather
+than wrapped into a list),
 and `known` is then ignored for both the delete set and the row loop; only
 when neither is an Array does the payload fall back to `known`. A payload
 that is none of those shapes — an Array, say — is **refused**, never read as
@@ -299,7 +301,7 @@ it — any pre-existing connection, which `this.known` never held to begin with
 backward check (reading the same empty `known` through
 `shown_and_sent_row_uuids`) then re-streams the whole fragment on that very
 save, showing the still-there row right back. `known` is TRANSITIONAL: every
-current reader (`TransitionSync#parse`,
+current reader (`TransitionSync#shape_of`,
 `StepsController#shown_and_sent_row_uuids`, the current JS's own `loadState`)
 already prefers `rendered`/`minted` outright whenever either is present, and
 the current JS's `saveTransitions` never echoes `known` back — so nothing
@@ -348,7 +350,7 @@ the editor has never heard of); otherwise a save that touched `answer_type`,
 `options` or `transitions_json` gets the doors list alone. One stream per
 target, never both. That decision reads the payload's shape through its own
 method, `StepsController#shown_and_sent_row_uuids` — a SECOND, independent
-reader of `rendered`/`minted`/`known`, kept apart from `TransitionSync#parse`
+reader of `rendered`/`minted`/`known`, kept apart from `TransitionSync#shape_of`
 because it has to answer even when no sync ran at all (no `transitions_json`
 submitted, say). Anyone changing what the payload's keys mean has two readers
 to update, not one.
