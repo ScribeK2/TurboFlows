@@ -6,12 +6,13 @@
   step[<attribute>] and autosaves on change; a caller's own action runs first,
   so it can stopImmediatePropagation() to veto the save (question-form does).
 
-  `hints` is an optional { value => short marker } map. A new step arrives with
-  NOTHING selected here, deliberately: a Question silently defaulted to "Text
+  `hints` is an optional { value => short marker } map. A control may arrive
+  with NOTHING selected: a Question silently defaulted to "Text
   Input" runs and is wrong, which is far harder to notice than one that is
   obviously unset — and WorkflowHealthCheck now reports the unset case. The
   marker exists so "pick one" is still steered rather than left blank, which is
-  how Zingtree labels its own most-used node type.
+  how Zingtree labels its own most-used node type. A builder-made Question is
+  the exception — GrowStep starts it as Yes / No.
 %>
 <% hints ||= {} %>
 <% data = input_data.merge(action: [input_data[:action], "change->inline-autosave#schedule"].compact.join(" ")) %>

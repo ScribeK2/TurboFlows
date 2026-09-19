@@ -7,15 +7,22 @@
 <div class="dropdown__menu builder__type-picker is-hidden"
      hidden
      data-step-list-target="typePicker">
+  <%# Says which step and which answer the new step will hang from. Empty when
+      the picker was opened from "Add unconnected step". %>
+  <p class="dropdown__header" data-step-list-target="pickerContext" hidden></p>
   <% step_type_options.each do |st| %>
-    <%= button_to workflow_steps_path(workflow),
-        method: :post,
-        params: { step_type: st[:type] },
-        data: { turbo_stream: true, action: "click->step-list#closeTypePicker" },
-        class: "dropdown__item builder__type-option" do %>
-      <span class="builder__type-dot builder__type-dot--<%= st[:type] %>"></span>
-      <span class="builder__type-name"><%= st[:name] %></span>
-      <span class="builder__type-desc"><%= st[:desc] %></span>
+    <%= form_with url: workflow_steps_path(workflow), method: :post, class: "button_to",
+          data: { turbo_stream: true } do %>
+      <%= hidden_field_tag :step_type, st[:type], id: nil %>
+      <%= hidden_field_tag :from_step_id, nil, id: nil, data: { step_list_target: "fromStepId" } %>
+      <%= hidden_field_tag :label, nil, id: nil, data: { step_list_target: "doorLabel" } %>
+      <%= hidden_field_tag :condition, nil, id: nil, data: { step_list_target: "doorCondition" } %>
+      <button type="submit" class="dropdown__item builder__type-option"
+              data-action="click->step-list#closeTypePicker">
+        <span class="builder__type-dot builder__type-dot--<%= st[:type] %>"></span>
+        <span class="builder__type-name"><%= st[:name] %></span>
+        <span class="builder__type-desc"><%= st[:desc] %></span>
+      </button>
     <% end %>
   <% end %>
 </div>

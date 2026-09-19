@@ -84,6 +84,7 @@ class WorkflowHealthCheck
     message_body_required action_instructions_required escalate_target_required
     answer_type_required option_value_missing placeholder_title
     undefined_variable undefined_interpolation
+    missing_expected_door unmatched_option_value
   ].freeze
 
   # The second signal. Validity asks "can this run?"; readiness asks "is this
@@ -382,6 +383,10 @@ class WorkflowHealthCheck
       # ordinary sub-flow. `add_resolve_after` stopped firing for free once
       # GraphValidator learned the flag, but this check is independent of the
       # validator and had to be told separately.
+      # Built once and reused below for the missing-door and unmatched-value
+      # checks too, so a step with several doors pays for Doors.for(step) once.
+      doors = Step::Doors.for(step)
+
       if step.transitions.empty? && !handoff?(step)
         # An error, not a warning: a non-Resolve step with no outgoing
         # transitions is a terminal that is not a Resolve, which is exactly what
@@ -392,8 +397,31 @@ class WorkflowHealthCheck
         # there is no next step to connect to — `connect_next` answers that with
         # "No next step to connect to." `add_resolve_after` wires the step to a
         # Resolve that already exists, or creates one, so it is right either way.
-        add_issue(issues, step.uuid, :error, "No outgoing connections — the run ends here without resolving",
-                  fixable: true, fix_type: "add_resolve_after", code: :no_outgoing_transitions)
+        #
+        # A step with several doors has no single right edge to add: the old Fix
+        # wrote one blank-condition connection to a Resolve, which catches every
+        # answer and let a Yes/No Question pass without anyone looking at No.
+        if doors.doors.size > 1
+          add_issue(issues, step.uuid, :error, "No answers lead anywhere yet",
+                    fixable: false, code: :no_outgoing_transitions)
+        else
+          add_issue(issues, step.uuid, :error, "No outgoing connections — the run ends here without resolving",
+                    fixable: true, fix_type: "add_resolve_after", code: :no_outgoing_transitions)
+        end
+      end
+
+      # Warnings, not publish refusals: the runner treats an answer with no
+      # connection as a gap (StepResolver::NoMatch), and an author may have
+      # routed it with a connection of their own that this cannot read.
+      doors.missing.each do |door|
+        add_issue(issues, step.uuid, :warning, "“#{door.label}” has no step yet",
+                  fixable: false, code: :missing_expected_door)
+      end
+
+      doors.unmatched_extras.each do |(_transition, value)|
+        add_issue(issues, step.uuid, :warning,
+                  "This connection checks for “#{value}”, which is no longer an option",
+                  fixable: false, code: :unmatched_option_value)
       end
 
       # Both are warnings, not publish refusals, but the import schema requires

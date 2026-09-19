@@ -4,6 +4,11 @@
   Local variables:
   - workflow: Workflow object
   - steps: ordered step collection (preloaded with transitions)
+
+  Rows always render unselected. Which row is selected is a client-side fact
+  read from the open panel (builder_controller#syncSelectedRow) — see that
+  controller for why: a server-picked selected_step here raced the same
+  subtree's Action Cable rebroadcast in a solo editor's own browser.
 %>
 <div class="builder__list"
      id="step-list"
@@ -29,8 +34,14 @@
     </div>
   </div>
 
-  <%# Add Step (edit mode only) — outside the scroll area so the popover is not
-      clipped. A trailing row that invites an action, per .list-row--prompt. %>
+  <%# The unconnected add (edit mode only) — outside the scroll area so the
+      popover is not clipped. A trailing row that invites an action, per
+      .list-row--prompt.
+
+      It says "unconnected" because that is what it makes: a step nothing leads
+      to, which the author then has to wire. A step that FOLLOWS another is
+      grown from that step's own row (its door stubs) or from its panel, and
+      arrives already connected — see AGENTS.md § Growing a workflow. %>
   <div class="builder__list-add-wrapper builder__edit-only">
     <button type="button"
             class="list-row list-row--compact list-row--prompt builder__list-add"
@@ -39,7 +50,7 @@
         <%= icon "plus", class: "icon icon--sm" %>
       </span>
       <span class="list-row__body">
-        <span class="list-row__title">Add a step</span>
+        <span class="list-row__title">Add unconnected step</span>
       </span>
     </button>
     <%= render "workflows/type_picker", workflow: workflow %>

@@ -12,6 +12,24 @@ export default class extends Controller {
     this.boundKeydown = this.handleKeydown.bind(this)
     document.addEventListener("keydown", this.boundKeydown)
 
+    // Which row is selected is decided here, once, from the open panel — not
+    // by the server. A Turbo Stream response (create, a broadcast, a health
+    // fix) can repaint #steps-list at any time, including moments after this
+    // controller's own request painted a row selected; re-deriving it after
+    // every render is what keeps the two from racing. Two paths repaint the
+    // panel: a Turbo Stream response replacing #builder-panel (wrapped here),
+    // and turbo-frame navigation via loadPanel setting .src (caught below).
+    this.boundWrapStreamRender = this.wrapStreamRender.bind(this)
+    document.addEventListener("turbo:before-stream-render", this.boundWrapStreamRender)
+
+    // Bound on document, not the panel target: StepsController#create's
+    // grown_streams REPLACES #builder-panel wholesale (a fresh <turbo-frame>
+    // from steps/panel_edit), so a listener attached to the target node at
+    // connect() time ends up on a detached element after the first grow.
+    // Filtering by event.target.id keeps this scoped to the one frame.
+    this.boundOnPanelFrameLoad = this.onPanelFrameLoad.bind(this)
+    document.addEventListener("turbo:frame-load", this.boundOnPanelFrameLoad)
+
     const params = new URLSearchParams(window.location.search)
     if (params.get("health") === "true") {
       requestAnimationFrame(() => this.openHealth())
@@ -20,6 +38,57 @@ export default class extends Controller {
 
   disconnect() {
     document.removeEventListener("keydown", this.boundKeydown)
+    document.removeEventListener("turbo:before-stream-render", this.boundWrapStreamRender)
+    document.removeEventListener("turbo:frame-load", this.boundOnPanelFrameLoad)
+  }
+
+  // See the connect() comment above: this stays a document listener so it
+  // survives #builder-panel being replaced wholesale.
+  onPanelFrameLoad(event) {
+    if (event.target.id === "builder-panel") this.syncSelectedRow()
+  }
+
+  // Composes with any other turbo:before-stream-render listener (e.g.
+  // step-warnings#onStreamRender, which only reads the event and never
+  // touches event.detail.render): each wrapper must call the render it
+  // found, never replace it with a fresh one. The render can be async, so
+  // this awaits it before re-deriving selection from the panel it just drew.
+  wrapStreamRender(event) {
+    const original = event.detail.render
+    event.detail.render = async streamElement => {
+      await original(streamElement)
+      this.syncSelectedRow()
+    }
+  }
+
+  // The one place selection is read back: clear every row, then look at
+  // whichever step panel is currently open (its body carries data-step-id —
+  // see steps/_panel_edit.html.erb) and select that row. A non-step panel
+  // (health, settings, flow diagram) has no such element, so nothing is
+  // selected, which is right.
+  //
+  // Finding 4: an open step panel whose step has no row any more - deleted
+  // from the list, by this author or a collaborator - closes rather than
+  // sitting on a dead step. Its autosave form targets _top, so its next PATCH
+  // would 404 the WHOLE page rather than answer inside the frame. This runs
+  // after every stream that can replace the list, so it is also what notices
+  // the deletion: destroy's own response never mentions the panel unless
+  // deleting the step emptied the list entirely (destroy_streams clears it
+  // itself then) - this covers the ordinary case, where other steps remain.
+  syncSelectedRow() {
+    this.clearSelectedRow()
+
+    const panelBody = this.hasPanelTarget
+      ? this.panelTarget.querySelector(".builder__panel-body[data-step-id]")
+      : null
+    if (!panelBody) return
+
+    const row = this.element.querySelector(`.builder__step[data-step-id="${panelBody.dataset.stepId}"]`)
+    if (!row) {
+      this.closePanel()
+      return
+    }
+    row.classList.add("builder__step--selected")
   }
 
   openStep(event) {
@@ -34,6 +103,23 @@ export default class extends Controller {
     })
     event.currentTarget.classList.add("builder__step--selected")
 
+    this.loadPanel(url)
+  }
+
+  // A row with more doors than fit on one line: open its panel at the doors.
+  openStepAtDoors(event) {
+    const row = event.currentTarget.closest(".builder__step")
+    const url = event.currentTarget.dataset.builderUrlParam
+    if (!row || !url) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    this.clearSelectedRow()
+    row.classList.add("builder__step--selected")
+
+    this.panelTarget.addEventListener("turbo:frame-load", () => {
+      this.panelTarget.querySelector(".step-doors")?.scrollIntoView({ block: "center" })
+    }, { once: true })
     this.loadPanel(url)
   }
 

@@ -3,15 +3,23 @@
   flips "Come back to this workflow" can re-render it in place
   (StepsController#update).
 
-  A handoff takes no connections: it ends this workflow by handing the run on,
-  and the Sub-Flow fields say so right above. Offering Add Connection there
-  invited a state the strict import refuses. One that still carries a
-  connection keeps the editor, or there would be no way to remove it.
+  Doors come first: the ways out of THIS step, worked out from the step
+  itself (Step::Doors) and rendered whether or not anyone has wired them.
+  Below that, "Other connections" is the editor, narrowed to the transitions
+  Step::Doors did not claim — numeric ranges, other variables, anything a
+  door does not describe.
+
+  A handoff takes no doors: it ends this workflow by handing the run on, and
+  the Sub-Flow fields say so right above. One that still carries a connection
+  keeps the editor, or there would be no way to remove it.
 
   Local variables:
   - step: AR Step object
   - workflow: Workflow object
+  - readonly: boolean (default false)
 %>
-<% if !step.hands_off? || step.transitions.any? %>
+<% readonly = local_assigns.fetch(:readonly, false) %>
+<%= render "steps/doors", step: step, workflow: workflow, readonly: readonly %>
+<% if !readonly && (!step.hands_off? || step.transitions.any?) %>
   <%= render "steps/transitions_editor", step: step, workflow: workflow %>
 <% end %>

@@ -14,12 +14,8 @@ require "application_system_test_case"
 # test written against already-passing code proves nothing until you have seen
 # it fail.
 class WorkflowBuilderTest < ApplicationSystemTestCase
-  # Two elements per step carry data-step-uuid: the row itself and the warning
-  # icon, which step_warnings_controller un-hides when the step has issues. A
-  # bare [data-step-uuid] therefore counts double for any step with a warning,
-  # which makes the count depend on when the async health fetch lands. Scope to
-  # the row's list semantics instead.
-  STEP_ROW = "[role='listitem'][data-step-uuid]".freeze
+  # STEP_ROW, open_step, assert_panel_settled and panel_body_width live in
+  # ApplicationSystemTestCase — all three builder files need them.
 
   setup do
     @user = User.create!(
@@ -43,11 +39,55 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
 
     assert_step_count 1
 
-    click_on "Add a step"
+    click_on "Add unconnected step"
     click_on "Question"
 
     assert_step_count 2
     assert_equal 1, @workflow.steps.where(type: "Steps::Question").count
+  end
+
+  # Regression: the picker used to be anchored to the bottom prompt, so on a
+  # 40-step workflow it opened ~650px below a stub pressed on row 1. Door
+  # stubs make the picker's own trigger the main gesture, so it has to open
+  # beside whatever was pressed, wherever that row sits in the list.
+  test "the type picker opens beside a door stub pressed high in a long list" do
+    @resolve.update!(position: 30)
+    steps = Array.new(25) { |i| Steps::Action.create!(workflow: @workflow, position: i, title: "Step #{i + 1}") }
+    @workflow.update!(start_step: steps.first)
+
+    visit_builder_in_edit_mode
+    assert_step_count 26
+
+    page.execute_script("document.querySelector('.builder__list-scroll').scrollTop = 0")
+
+    step_row(steps.first.uuid).find(".builder__door-stub").click
+    assert_selector "[data-step-list-target='typePicker']:not(.is-hidden)", wait: 5
+
+    rects = page.evaluate_script(<<~JS)
+      (() => {
+        const stub = document.querySelector("[data-step-uuid='#{steps.first.uuid}'] .builder__door-stub");
+        const menu = document.querySelector("[data-step-list-target='typePicker']");
+        const s = stub.getBoundingClientRect();
+        const m = menu.getBoundingClientRect();
+        return { gap: m.top - s.bottom, top: m.top, bottom: m.bottom, left: m.left, right: m.right,
+                 winW: window.innerWidth, winH: window.innerHeight };
+      })()
+    JS
+
+    assert_operator rects["gap"].abs, :<=, 60,
+                    "the picker should open within ~60px of the stub it belongs to, not the bottom prompt"
+    assert_operator rects["top"], :>=, 0, "the picker must not open above the viewport"
+    assert_operator rects["bottom"], :<=, rects["winH"], "the picker must not open below the viewport"
+    assert_operator rects["left"], :>=, 0, "the picker must not open left of the viewport"
+    assert_operator rects["right"], :<=, rects["winW"], "the picker must not open right of the viewport"
+
+    click_on "Action"
+
+    assert_eventually(timeout: 10) { @workflow.steps.reload.count == 26 + 1 }
+    new_step = @workflow.steps.order(:position).second
+    assert_equal "Untitled Action", new_step.title
+    assert_equal [new_step], steps.first.reload.transitions.map(&:target_step),
+                 "the new step should land directly after row 1 and be connected from it"
   end
 
   test "each type in the picker creates that type of step" do
@@ -62,7 +102,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
       "Form" => "Steps::Form",
       "Escalate" => "Steps::Escalate"
     }.each do |label, klass|
-      click_on "Add a step"
+      click_on "Add unconnected step"
       click_on label
       # Scoped to the list. `data-step-type` is carried by the row *and* by the
       # editor panel, and creating a step now opens that panel — so an unscoped
@@ -109,7 +149,12 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
     end
   end
 
-  test "a yes/no condition restores as the Yes preset, not Custom" do
+  # Used to assert this restored as the "Yes" preset in the freeform editor.
+  # Step::Doors#reads_as? and condition_preset_controller.js#buildPresets are
+  # the same matching, so a condition the preset dropdown would recognise is
+  # now claimed as a door before the editor ever sees it - it shows as the
+  # wired door row instead, with no dropdown at all.
+  test "a yes/no condition is shown as its door, not in Other connections" do
     question = Steps::Question.create!(
       workflow: @workflow, title: "Did it work?", position: 1,
       question: "Did it work?", answer_type: "yes_no", variable_name: "verified"
@@ -120,15 +165,16 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
     step_row(question.uuid).click
 
     within "turbo-frame#builder-panel" do
-      assert_selector "select[data-condition-preset-target='presetDropdown']", wait: 5
-      assert_eventually do
-        preset_dropdown.value == "yes"
-      end
-      assert_selector "[data-condition-preset-target='sentenceContainer'].is-hidden", visible: :all
+      assert_selector ".step-doors__row", text: /Yes.*All done/m, wait: 5
+      find("summary", text: "Other connections").click
+      assert_text "No other connections."
     end
   end
 
-  test "an option condition restores as that option, not Custom" do
+  # See the comment above "a yes/no condition is shown as its door...": the
+  # same door-matching now claims an option condition before it ever reaches
+  # the freeform editor's preset dropdown.
+  test "an option condition is shown as its door, not in Other connections" do
     question = Steps::Question.create!(
       workflow: @workflow, title: "What product?", position: 1,
       question: "What product?", answer_type: "dropdown", variable_name: "what",
@@ -140,11 +186,48 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
     step_row(question.uuid).click
 
     within "turbo-frame#builder-panel" do
-      assert_selector "select[data-condition-preset-target='presetDropdown']", wait: 5
-      assert_eventually do
-        preset_dropdown.value == "option_0"
+      assert_selector ".step-doors__row", text: /Hosting.*All done/m, wait: 5
+      find("summary", text: "Other connections").click
+      assert_text "No other connections."
+    end
+  end
+
+  # What this pins: a stored condition comes back as its preset, not as
+  # Custom. The two tests above moved that claim onto the door row for the
+  # transition Step::Doors claims; this is the same claim for a transition it
+  # does not - Step::Doors claims only the first matching transition per door
+  # (position order), so a second "verified == 'yes'" transition, on a
+  # different target, stays an "extra" the freeform editor still has to
+  # restore correctly rather than falling back to Custom. Without this, no
+  # test anywhere - controller or system - exercises
+  # condition_preset_controller.js's known-preset restore branch at all, since
+  # every condition it would recognise is now claimed by a door before the
+  # editor ever renders it.
+  test "a second transition sharing a door's condition still restores as that preset" do
+    question = Steps::Question.create!(
+      workflow: @workflow, title: "Did it work?", position: 1,
+      question: "Did it work?", answer_type: "yes_no", variable_name: "verified"
+    )
+    also_yes = Steps::Action.create!(workflow: @workflow, position: 2, title: "Also yes")
+    Transition.create!(step: question, target_step: @resolve, position: 0, condition: "verified == 'yes'")
+    Transition.create!(step: question, target_step: also_yes, position: 1, condition: "verified == 'yes'")
+
+    visit_builder_in_edit_mode
+    step_row(question.uuid).click
+
+    within "turbo-frame#builder-panel" do
+      assert_selector ".step-doors__row", text: /Yes.*All done/m, wait: 5
+      # Already open: the disclosure starts open whenever it has a row to show
+      # (editor_transitions.any?), unlike the empty-state tests above, which
+      # open it themselves.
+      assert_text "1 connection"
+
+      within all(".transition-item", minimum: 1, wait: 5).last do
+        assert_eventually do
+          preset_dropdown.value == "yes"
+        end
+        assert_selector "[data-condition-preset-target='sentenceContainer'].is-hidden", visible: :all
       end
-      assert_selector "[data-condition-preset-target='sentenceContainer'].is-hidden", visible: :all
     end
   end
 
@@ -169,27 +252,38 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
     end
   end
 
+  # There is no longer a pre-existing transition to load this against: a
+  # blank condition on a Yes/No question is the "Anything else" door
+  # (Step::Doors), so it would be claimed before ever reaching this editor.
+  # "Add Connection" builds the same freeform row from scratch instead.
   test "choosing Custom shows the sentence, not a raw condition field" do
     question = Steps::Question.create!(
       workflow: @workflow, title: "Did it work?", position: 1,
       question: "Did it work?", answer_type: "yes_no", variable_name: "verified"
     )
-    Transition.create!(step: question, target_step: @resolve, position: 0)
 
     visit_builder_in_edit_mode
     step_row(question.uuid).click
+    assert_panel_settled
 
     within "turbo-frame#builder-panel" do
-      assert_selector "select[data-condition-preset-target='presetDropdown']", wait: 5
-      find("select[data-condition-preset-target='presetDropdown'] option[value='__custom__']").select_option
+      find("summary", text: "Other connections").click
+      click_on "Add Connection"
 
-      assert_selector "[data-condition-preset-target='sentenceContainer']:not(.is-hidden)", wait: 5
-      assert_selector "select[data-condition-preset-target='sentenceVariable']"
-      assert_no_selector "[data-condition-preset-target='customInput']"
-      assert_no_text "e.g., answer =="
+      within all(".transition-item", minimum: 1, wait: 5).last do
+        find("select[data-condition-preset-target='presetDropdown'] option[value='__custom__']").select_option
+
+        assert_selector "[data-condition-preset-target='sentenceContainer']:not(.is-hidden)", wait: 5
+        assert_selector "select[data-condition-preset-target='sentenceVariable']"
+        assert_no_selector "[data-condition-preset-target='customInput']"
+        assert_no_text "e.g., answer =="
+      end
     end
   end
 
+  # Same reason as "choosing Custom shows the sentence" above: no pre-existing
+  # transition, since a blank one on `later` would be its own "Anything else"
+  # door rather than reaching this editor.
   test "Custom can point at another question's Yes" do
     Steps::Question.create!(
       workflow: @workflow, title: "Already verified?", position: 1,
@@ -199,17 +293,22 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
       workflow: @workflow, title: "Did it work?", position: 2,
       question: "Work?", answer_type: "yes_no", variable_name: "verified"
     )
-    Transition.create!(step: later, target_step: @resolve, position: 0)
 
     visit_builder_in_edit_mode
     step_row(later.uuid).click
+    assert_panel_settled
 
     within "turbo-frame#builder-panel" do
-      find("select[data-condition-preset-target='presetDropdown'] option[value='__custom__']", wait: 5).select_option
-      assert_selector "select[data-condition-preset-target='sentenceVariable']", wait: 5
-      sentence_variable.find("option[value='already_verified']").select_option
-      sentence_operator.find("option[value='==']").select_option
-      find("[data-condition-preset-target='sentenceValue'] select option[value='yes']").select_option
+      find("summary", text: "Other connections").click
+      click_on "Add Connection"
+
+      within all(".transition-item", minimum: 1, wait: 5).last do
+        find("select[data-condition-preset-target='presetDropdown'] option[value='__custom__']").select_option
+        assert_selector "select[data-condition-preset-target='sentenceVariable']", wait: 5
+        sentence_variable.find("option[value='already_verified']").select_option
+        sentence_operator.find("option[value='==']").select_option
+        find("[data-condition-preset-target='sentenceValue'] select option[value='yes']").select_option
+      end
 
       assert_eventually do
         condition_hidden.value == "already_verified == 'yes'"
@@ -274,6 +373,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
     assert_panel_settled
 
     within "turbo-frame#builder-panel" do
+      find("summary", text: "Other connections").click
       click_on "Add Connection"
       assert_selector "[data-condition-preset-target='sentenceContainer']", visible: :all, wait: 5
       within all(".transition-item", minimum: 1).last do
@@ -297,7 +397,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
   test "adding a step opens its editor, not merely loads it" do
     visit_builder_in_edit_mode
 
-    click_on "Add a step"
+    click_on "Add unconnected step"
     click_on "Question"
 
     within "turbo-frame#builder-panel" do
@@ -305,6 +405,45 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
     end
 
     assert_panel_width(:>, 200, "the editor loaded but the panel never opened")
+  end
+
+  # Selection used to be painted server-side (a selected_step local on the
+  # new row), and #create rebroadcasts the same #steps-list subtree over
+  # Action Cable right after responding — with no such local — so a solo
+  # editor's own browser raced its own two renders of the row it had just
+  # opened. Selection is now derived client-side, from the open panel
+  # (builder_controller#syncSelectedRow), so a re-render from elsewhere must
+  # not disturb it.
+  #
+  # The config/cable.yml test adapter does deliver a real broadcast to the
+  # browser (it subclasses Async) — confirmed against the pre-fix code, where
+  # a real Turbo::StreamsChannel.broadcast_update_to call here did strip the
+  # row's selected class. But its delivery latency is real network time: the
+  # same broadcast, run in isolation rather than inside the full suite, did
+  # not land within this test's 5s wait at all, so a test built on it would
+  # pass or fail depending on what else the suite is doing at the time.
+  # Injecting the same stream via Turbo.renderStreamMessage happens
+  # synchronously in the browser, so it exercises the identical client-side
+  # path (turbo:before-stream-render → syncSelectedRow) without that variance.
+  test "a grown step's selection survives a list re-render from elsewhere" do
+    visit_builder_in_edit_mode
+
+    click_on "Add unconnected step"
+    click_on "Action"
+
+    # Wait on the DOM, not the database directly: the click only fires the
+    # request, and querying the row before the response lands races it.
+    assert_selector "[data-step-type='action'].builder__step--selected", wait: 5
+    grown = @workflow.steps.reload.find_by!(type: "Steps::Action")
+
+    html = ApplicationController.render(
+      partial: "workflows/steps_list_items",
+      locals: { workflow: @workflow.reload, steps: @workflow.steps.reload.ordered.includes(transitions: :target_step) }
+    )
+    stream = %(<turbo-stream action="update" target="steps-list"><template>#{html}</template></turbo-stream>)
+    page.execute_script("Turbo.renderStreamMessage(#{stream.to_json})")
+
+    assert_selector "[data-step-id='#{grown.id}'].builder__step--selected", wait: 5
   end
 
   test "closing the panel collapses it again" do
@@ -452,7 +591,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
   # empty field, and the title was never sent, not even when the panel closed.
   test "a new question's title saves before its question text is typed" do
     visit_builder_in_edit_mode
-    click_on "Add a step"
+    click_on "Add unconnected step"
     click_on "Question"
 
     within "turbo-frame#builder-panel" do
@@ -469,7 +608,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
   # "+ Add Field" appends a row whose name and label are empty and `required`.
   test "a form step's title still saves after a field is added" do
     visit_builder_in_edit_mode
-    click_on "Add a step"
+    click_on "Add unconnected step"
     click_on "Form"
 
     within "turbo-frame#builder-panel" do
@@ -488,7 +627,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
   # title was gone after a reload.
   test "the workflow still renames while a new sub-flow has no target" do
     visit_builder_in_edit_mode
-    click_on "Add a step"
+    click_on "Add unconnected step"
     click_on "Sub-Flow"
     within("#steps-list") { assert_selector step_row_selector_for("Steps::SubFlow"), wait: 5 }
 
@@ -542,34 +681,6 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
     end
 
     assert width.public_send(operator, expected), "#{message} (#{width}px wide)"
-  end
-
-  # The panel animates open over 250ms and the fields in it re-wrap as it widens,
-  # so a button found mid-animation moves before the click lands and the click
-  # hits whatever slid under the old spot — about one run in seven. "Wider than
-  # 200px" is not enough: the width has to stop changing.
-  def assert_panel_settled(timeout: 5)
-    deadline = Time.current + timeout
-    previous = nil
-    loop do
-      width = panel_body_width
-      return if width > 200 && width == previous
-
-      flunk "the panel never settled open (#{width}px wide)" if Time.current > deadline
-      previous = width
-      sleep 0.1
-    end
-  end
-
-  # Width of the panel's content box. 0 when closed, ~62% of the builder when
-  # open, and 32px in the bug this guards against.
-  def panel_body_width
-    page.evaluate_script(<<~JS)
-      (() => {
-        const b = document.querySelector('#builder-panel .builder__panel-body');
-        return b ? Math.round(b.getBoundingClientRect().width) : 0;
-      })()
-    JS
   end
 
   def visit_builder_in_edit_mode

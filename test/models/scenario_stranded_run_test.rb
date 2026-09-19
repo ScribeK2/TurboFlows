@@ -4,11 +4,13 @@ require "test_helper"
 # matched none of them.
 #
 # This was recorded as `outcome: "completed"`, which is a member of
-# COMPLETED_OUTCOMES, so Analytics counted it as a success. The workflow that
-# produces it is not exotic: renaming a Question's variable_name in the step
-# panel leaves every condition pointing at the old name, and the health check
-# reports zero errors, so a manager can build one in a minute and see nothing
-# wrong with it.
+# COMPLETED_OUTCOMES, so Analytics counted it as a success. Renaming a
+# Question's variable_name in the step panel now carries that step's OWN
+# conditions with it (Question#carry_conditions_to_new_variable), so the
+# single-step case below no longer strands a run. The gap survives everywhere
+# that rewrite does not reach: a sub-flow child's rename does not touch the
+# parent's branches (below), and a hand-typed condition can simply name a
+# variable nothing ever set.
 class ScenarioStrandedRunTest < ActiveSupport::TestCase
   def setup
     @user = User.create!(
@@ -19,9 +21,11 @@ class ScenarioStrandedRunTest < ActiveSupport::TestCase
     )
   end
 
-  # The bug as a manager reaches it: build a branching question, then rename the
-  # variable the branches were written against.
-  test "renaming a question's variable strands the run instead of completing it" do
+  # The bug as a manager used to reach it: build a branching question, then
+  # rename the variable the branches were written against.
+  # Question#carry_conditions_to_new_variable now rewrites those branches in
+  # the same save, so this exact move no longer strands the run.
+  test "renaming a question's own variable no longer strands the run" do
     wf = Workflow.create!(title: "Renamed Variable", user: @user, graph_mode: true, status: "published")
     q  = Steps::Question.create!(workflow: wf, position: 0, title: "Why are they calling?",
                                  question: "Why are they calling?", variable_name: "call_reason",
@@ -35,19 +39,18 @@ class ScenarioStrandedRunTest < ActiveSupport::TestCase
     Transition.create!(step: q, target_step: tech, condition: "call_reason == 'tech'", position: 1)
     wf.update_column(:start_step_id, q.id)
 
-    # The rename. Nothing rewrites the conditions, and nothing refuses the save.
+    # The rename. This step's own conditions above follow it in the same save.
     q.update!(variable_name: "reason_for_call")
 
     scenario = Scenario.create!(workflow: wf, user: @user, current_node_uuid: q.uuid,
                                 inputs: {}, purpose: "live")
     scenario.process_step("billing")
     scenario.reload
+    scenario.process_step
+    scenario.reload
 
-    assert_equal "completed", scenario.status, "the frame is finished either way"
-    assert_equal "stranded", scenario.outcome
-    assert_predicate scenario, :stranded?
-    assert_not_includes Scenario::COMPLETED_OUTCOMES, scenario.outcome,
-                        "a call nobody could finish must not count toward the completion rate"
+    assert_equal "resolved", scenario.outcome
+    assert_not_predicate scenario, :stranded?
   end
 
   # The trace is the point: the common case is an agent going back and answering
@@ -144,6 +147,8 @@ class ScenarioStrandedRunTest < ActiveSupport::TestCase
 
     assert_equal "stranded", run.outcome,
                  "the parent came back from the sub-flow with nowhere to go"
+    assert_not_includes Scenario::COMPLETED_OUTCOMES, run.outcome,
+                        "a call nobody could finish must not count toward the completion rate"
     entry = run.execution_path.rfind { |e| e["step_uuid"] == sub.uuid }
     assert entry["no_matching_transition"], "the gap is traced on the sub-flow step's own entry"
     assert_equal 2, entry["transition_count"]

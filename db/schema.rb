@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_15_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_18_120000) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -270,9 +270,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_15_120000) do
     t.integer "step_id", null: false
     t.integer "target_step_id", null: false
     t.datetime "updated_at", null: false
+    t.string "uuid", null: false
     t.index ["step_id", "target_step_id", "condition"], name: "index_transitions_on_step_id_and_target_step_id_and_condition", unique: true
     t.index ["step_id"], name: "index_transitions_on_step_id"
     t.index ["target_step_id"], name: "index_transitions_on_target_step_id"
+    t.index ["uuid"], name: "index_transitions_on_uuid", unique: true
   end
 
   create_table "user_groups", force: :cascade do |t|

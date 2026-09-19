@@ -1,0 +1,54 @@
+<%# locals: (step:, workflow:) %>
+<%#
+  "Use existing…": point one of this step's doors at a step that already exists -
+  how two branches meet at one Resolve. One dialog per panel, outside the
+  autosave form because it holds a real form. step-target-picker fills in which
+  door it is for. A flat, filterable list: at thirty steps typing beats scrolling.
+%>
+<dialog class="dialog dialog--sm" id="<%= dom_id(step, :target_picker) %>"
+        aria-labelledby="<%= dom_id(step, :target_picker_heading) %>"
+        data-step-target-picker-target="dialog"
+        data-action="click->step-target-picker#backdropClose keydown.esc->step-target-picker#stopEscape">
+  <%#
+    method: :post, no explicit CSRF handling: Rails 8.1's load_defaults turns
+    on per-form CSRF tokens, so the hidden token this form embeds is bound to
+    POST and this create path only. step-target-picker#open flips both the
+    method to PATCH and the action to another step's transition path when
+    retargeting a wired door - a request that per-form token was never issued
+    for. It works anyway only because Turbo also sends the page's own GLOBAL
+    token in the X-CSRF-Token header on every request it makes, and Rails
+    accepts either token. Losing Turbo (or that header) on this form would
+    fail the retarget silently.
+  %>
+  <%= form_with url: workflow_step_transitions_path(workflow, step), method: :post,
+        data: { turbo_stream: true, step_target_picker_target: "form",
+                create_url: workflow_step_transitions_path(workflow, step),
+                action: "turbo:submit-end->step-target-picker#submitEnded" } do %>
+    <input type="hidden" name="_method" value="post" data-step-target-picker-target="method">
+    <input type="hidden" name="label" data-step-target-picker-target="label">
+    <input type="hidden" name="condition" data-step-target-picker-target="condition">
+
+    <div class="dialog__header">
+      <h2 class="font-semibold" id="<%= dom_id(step, :target_picker_heading) %>"
+          data-step-target-picker-target="heading">Use an existing step</h2>
+    </div>
+    <div class="dialog__body">
+      <%# showModal() puts this dialog in the browser's top layer, so #flash
+          (fixed position, an ordinary stacking context) renders BEHIND it -
+          a refusal has to answer here too, or it answers nowhere the author
+          can see. Empty and hidden until a refusal fills it in; cleared again
+          on the next #open so a stale message never greets a fresh attempt. %>
+      <p class="form-error" role="alert" id="<%= dom_id(step, :target_picker_error) %>"
+         data-step-target-picker-target="error"></p>
+      <label class="form-label" for="<%= dom_id(step, :target_filter) %>">Find a step</label>
+      <input type="search" class="form-input" id="<%= dom_id(step, :target_filter) %>" autocomplete="off"
+             data-step-target-picker-target="filter"
+             data-action="input->step-target-picker#filter">
+      <%= render "steps/target_picker_options", step: step, workflow: workflow %>
+      <p class="form-hint is-hidden" data-step-target-picker-target="empty">No step matches.</p>
+    </div>
+    <div class="dialog__footer">
+      <button type="button" class="btn btn--plain" data-action="click->step-target-picker#close">Cancel</button>
+    </div>
+  <% end %>
+</dialog>

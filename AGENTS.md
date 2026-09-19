@@ -47,7 +47,32 @@ bin/rails test                                              # full suite
 bin/rails test test/models/workflow_test.rb                 # single file
 bin/rails test test/models/workflow_test.rb:42              # single test by line
 bin/rails test -v                                           # verbose output
+bin/rails test test/system/builder_grow_test.rb             # ONE system file
+bin/rails test:system                                       # every system test
 ```
+
+Four things that have each cost someone an afternoon:
+- **`bin/rails test:system TEST=…` ignores the file here** and runs the whole
+  directory (several minutes). To run one system file, name it to
+  `bin/rails test` as above.
+- **Never kill a system run mid-flight.** System tests commit their records
+  (`use_transactional_tests = false`), so an interrupted run leaves rows behind
+  and later runs fail with fixture foreign-key violations that look exactly like
+  a regression. Reload the test DB — `RAILS_ENV=test bin/rails db:drop db:create
+  db:schema:load` — rather than debugging the diff.
+- **Bullet writes to `log/bullet.log` in the test environment**, not to
+  `log/test.log` (`Bullet.bullet_logger = true`, `Bullet.raise = false`); a grep
+  of the wrong file finds nothing and proves nothing.
+- **A test that clicks inside the builder's step panel must wait for it to
+  settle.** The panel animates open over 250ms and its fields re-wrap as it
+  widens, so a button found mid-animation moves before the click lands and the
+  click hits whatever slid under the old spot — about one run in seven.
+  `open_step` / `assert_panel_settled` in `test/application_system_test_case.rb`
+  are that wait; `builder_grow_test.rb`'s autosave-race test is the one place a
+  wait must NOT be added (between typing the title and pressing "New step" is
+  the race), and its mutation check is to make `TransitionSync#call` start with
+  `@step.transitions.destroy_all` and confirm the failure lands on the
+  transitions assertion, not the title one.
 
 **Database & Utils**
 ```bash
@@ -82,6 +107,8 @@ The unified builder lives at `workflows/:id` — one URL for both viewing and ed
 - `_builder.html.erb` — main layout, renders step list + empty Turbo Frame panel
 - `_step_list.html.erb` / `_step_row.html.erb` — compact step rows with SortableJS drag-and-drop
 - `steps/_panel_edit.html.erb` — step editor loaded via Turbo Frame into the panel
+- `steps/_doors.html.erb` — the ways out of the open step, one row each, wired or a stub. Inside the autosave form, so it holds no `<form>`
+- `steps/_target_picker.html.erb` — the "Use existing…" `<dialog>`, rendered outside that form because it holds one
 - `_flow_diagram_panel.html.erb` — read-only BFS flow diagram in the panel
 - `_settings_panel.html.erb` — workflow metadata (description, who can see it, tags, sharing)
 - `_health_panel.html.erb` — health validation results (errors, warnings, passing checks with Fix buttons)
@@ -89,7 +116,8 @@ The unified builder lives at `workflows/:id` — one URL for both viewing and ed
 
 **Key Stimulus controllers:**
 - `builder_controller.js` — panel open/close, step selection, title autosave, Escape to close, `openHealth` action, auto-opens health panel when `?health=true` URL param is present
-- `step_list_controller.js` — SortableJS reorder + type picker popover
+- `step_list_controller.js` — SortableJS reorder + the type picker: opening it for a door (from a row's stub or the panel's "New step"), writing the `data-grow-*` fields, and floating it beside its trigger
+- `step_target_picker_controller.js` — the "Use existing…" dialog on a door row: which door it is for, the filter, Escape (`stopPropagation`, or the whole panel closes behind it), and closing on `turbo:before-cache`
 - `inline_autosave_controller.js` — debounced autosave (2s), listens for `lexxy:change` events, flushes pending saves on disconnect via `FormData` + `fetch`, dispatches `health:check-needed` after disconnect saves
 - `step_warnings_controller.js` — async health check fetch, renders inline warning icons on step rows, toolbar issue count, click-to-open popover with Fix buttons. Listens for `turbo:submit-end`, `health:check-needed`, `turbo:before-stream-render`
 - `template_picker_controller.js` — template popover in toolbar, applies workflow archetypes
@@ -102,6 +130,200 @@ bytes. A chosen file is direct-uploaded and attached by
 Every other control must autosave — `test/integration/step_panel_autosave_coverage_test.rb`
 renders each step type's panel and refuses one that does not.
 
+**Growing a workflow.** A step is added **from the step it follows**, not
+appended and then bound to one in a `<select>`. `GrowStep.create`
+(`app/services/grow_step.rb`) writes the step and its incoming edge in one
+transaction: it lands at `from_step.position + 1` and everything below shifts
+down, so it reads where it runs. A builder-made Question starts as
+`answer_type: "yes_no"` with a `variable_name` made unique against the
+workflow's other Questions (`untitled_question`, `untitled_question_2`, …)
+*before* the save — the model's callback names every "Untitled Question" the
+same thing and never renames, so two picker-made Questions shared one variable.
+The builder used to select no answer type at all, because a silent default to
+Text Input ran and was wrong with nothing on screen saying so; Yes/No is safe
+in a way that default was not, because a wrong guess appears at once as two
+doors on the row. `GrowStep` is **not** `StepBuilder` — that bulk-writes an
+import or a template and demands a Resolve in the payload — and import never
+calls it. `GrowStep.connect` wires a door to a step that already exists,
+retargeting that door's own edge rather than adding a second one that could
+never fire (first match wins). The one `update_column` here is
+`assign_start_step`, moved from `StepsController` unchanged: a full save would
+bump the workflow's `lock_version` under whatever the title or Details autosave
+is holding and be refused as stale. Every grow replaces the **whole** step list
+and broadcasts it, because a mid-list insert moves every later ordinal and every
+"→ Title · 4" that names one.
+
+**The ways out of a step are computed, never stored.** `Step::Doors`
+(`app/models/step/doors.rb`) derives them from the step itself — Yes and No for
+a Yes/No Question, one per option for Multiple Choice and Dropdown, a single
+"Next" for any other step, and none at all for a Resolve or a handoff, which
+nothing can follow — and pairs each with the transition that serves it,
+or with nothing, which is a **stub**. A stub is not a row and nothing writes
+one. A door is wired only when `StepResolver` would take that transition for
+that answer and **no more loosely than that**: two review rounds each found a
+looser version — the first stripped backslashes `ConditionEvaluator` does not
+strip, so an option containing an apostrophe read as wired though the runner can
+never match it; the second stripped quote characters from the door's own value,
+which the runner compares raw. Read a condition the way the runtime reads it, or
+a stub is a lie. What no door claims is an **extra** (`#extras`); a wired
+blank-condition edge is the `fallback`, rendered last as "Anything else", which
+is why a stub above it reads `follows “Anything else”` and not "nothing yet".
+`#missing` is the answers a run could give that lead nowhere: empty while
+the step has no transitions at all, since `:no_outgoing_transitions` already
+says that once, and empty again once a fallback is catching them. `#unmatched_extras` is an extra whose condition names a value the
+step no longer offers, bare conditions included, because `StepResolver` honours
+a bare `modem` too. It **reuses a loaded `transitions` association** when the
+caller preloaded one (`includes(transitions: :target_step)`), since `.includes`
+on a proxy always re-queries and one `Doors` per row made that a query per step
+on every list render. So build it on a fresh or reloaded step after writing
+transitions — `@step.reload` — never on one whose association was loaded before
+the write.
+
+**`TransitionSync` + `transitions.uuid` replaced a save that deleted
+everything.** The panel's connection editor used to `destroy_all` a step's
+transitions and rebuild them from the JSON the browser held, so an edge written
+on the server while the panel was open — one a grow made, one a health fix
+added — was wiped by that panel's next autosave, including the flush
+`inline-autosave#disconnect` sends as the panel is replaced. Growing from a door
+*is* replacing the panel, so the feature deleted its own work. The payload is
+now `{known, rows}` keyed by `transitions.uuid` (`crypto.randomUUID()` in the
+browser — with a `getRandomValues` fallback for non-secure contexts (plain-http
+internal hostnames) — generated by the model for every other writer,
+`attr_readonly`, unique): `known` is every uuid the editor has ever shown, `rows` is what it
+shows now, a known uuid missing from rows was removed by the author, and a
+transition outside `known` was never the editor's to judge. A payload that is
+not that shape — an Array, say — is **refused**, never read as "delete
+everything": `TransitionSync::Malformed` answers through the refusal path,
+which says the truth, that the step's fields saved and its connections did not.
+The editor itself now holds only `Step::Doors#extras`, with one exception: a
+handoff has no doors at all, so it keeps every transition it has, or there would
+be no way to remove one. `Transition.settle_positions` keeps a blank condition
+sorted after every conditional one on the same step, since a default edge above
+a conditional swallows it.
+
+**The panel submits the whole step on every change, which is the trap here.**
+One PATCH can carry a renamed `variable_name` *and* a `transitions_json`
+snapshot taken before the rename, so saving the step's own conditions and then
+writing the snapshot put the stale ones straight back.
+`Steps::Question.rewrite_condition_variable` is therefore applied twice from one
+public method — by the model callback to the rows, and by `TransitionSync` to
+the incoming payload — and the `[old, new]` pair is captured in
+`StepsController#update` **before** anything reloads `@step` and clears its
+saved-change tracking. The same save re-streams the Connections fragment so the
+editor's snapshot is rebuilt rather than left naming the old identifier. Which
+fragment a save streams is decided in one place (`connections_or_doors_stream`):
+a rename gets the whole `dom_id(step, :connections)`; so does a save that moved
+a transition between doors and extras **in either direction** (a row the editor
+was showing became a door, or a door stopped being claimed and became an extra
+the editor has never heard of); otherwise a save that touched `answer_type`,
+`options` or `transitions_json` gets the doors list alone. One stream per
+target, never both.
+
+**`Steps::TransitionsController`** (`app/controllers/steps/transitions_controller.rb`,
+routed `resources :transitions, only: %i[create update destroy], controller:
+"steps/transitions"` nested under steps — it is not a `Workflows::` controller)
+acts on a single connection from a door row: `create` goes through
+`GrowStep.connect`, which retargets the door's own edge if that condition
+already has one rather than adding a second the runner could never reach;
+`update` retargets one edge by id (what "Change" on a wired door sends); and
+`destroy` removes one. Every one of them re-renders the
+whole Connections section, not just the row: the editor beside the doors holds a
+snapshot, and one still listing a removed connection would save it back on its
+next autosave. A refusal is streamed to **both** `#flash` and the dialog's own
+error element, because `showModal()` puts the dialog in the browser's top layer,
+where a fixed-position `#flash` renders behind it whatever its z-index — the
+author would see a dialog that did nothing. A stream aimed at a target that is
+not on the page is a no-op, so it need not know which asked. Note
+`turbo_stream.update(target, plain_string)` marks the string `html_safe` without
+escaping it, so that message is escaped by hand. `create` and `update` also
+rescue `ActiveRecord::RecordNotFound` — `target_step_id` (or, for `update`,
+the edge id) naming a step or connection that is no longer there, deleted by
+this author or a collaborator since the dialog's candidate list was rendered,
+or never in this workflow at all — through the same refusal path, with the
+candidate list itself (`steps/_target_picker_options`, its own partial so it
+can be replaced without closing the `<dialog>` around it) re-streamed when the
+stale thing was a target step. `steps/_target_picker` renders **outside**
+`:connections`, so only this controller ever re-renders it; its candidate
+list otherwise stays honest through the browser's own check
+(`step_target_picker_controller#markGoneOptions`, comparing against the
+builder's live rows every time the dialog opens, which is what actually keeps
+a deleted OTHER step off the list before anyone tries to pick it).
+
+**Which row is selected is decided in the browser**, by
+`builder_controller#syncSelectedRow`, from whichever step panel is open, after
+every stream render and every panel frame load. Never pass a `selected_step:`
+local to the list or row partials: the builder subscribes to its own Action
+Cable channel, so a server-painted selection is immediately overwritten by the
+same editor's own broadcast of the same subtree.
+
+**Deleting a step answers the way a grow does.** `StepsController#destroy`
+replaces the **whole** step list — ordinals shift, and every row that pointed
+at the deleted step loses its target and gets its stub back — and separately
+streams each parent's own `dom_id(parent, :connections)` fragment; a stream
+aimed at a target not on the page is a no-op, so this does not need to know
+whether that parent's panel is even open. It also closes a panel left open on
+the deleted step **itself**, in the browser: that panel's autosave form
+targets `_top`, so its next PATCH would 404 the WHOLE page rather than answer
+inside the frame, and `destroy`'s own response only clears the panel when
+deleting the step emptied the entire list (`destroy_streams`'
+`steps.empty?` branch). `syncSelectedRow` — already the one place that reruns
+after every stream capable of replacing the list, to decide which row reads
+as selected — closes the panel instead whenever the open step's own row is
+gone, which covers both this author's delete and a collaborator's.
+
+**The grow protocol is four data attributes.** A trigger carries
+`data-grow-from` (the parent step id), `data-grow-label`, `data-grow-condition`
+and `data-grow-context` (what the picker says it is growing from);
+`step_list_controller` reads them from a row's stub (`#growFromDoor`) or, for
+the panel's own "New step" buttons, from a document-level click handler, and
+copies them into the type picker's hidden fields. There is one type picker, and
+its door fields are written **when it opens, never when it closes** — choosing a
+type closes the picker before the form submits, so clearing on close sent the
+grow with no parent. It floats beside whatever was pressed (`position: fixed`,
+escaping the list's `overflow-y` clipping) because anchored to the bottom prompt
+it opened ~650px from a stub on row 1 of a long list; it is measured with
+`offsetWidth`/`offsetHeight`, not `getBoundingClientRect`, which reads a
+scaled-down size during the `@starting-style` entrance and threw the clamp off
+by that margin. A fixed menu does not move with its row, so scrolling the list
+or resizing the window closes it. The bottom prompt keeps the plain anchored
+menu.
+
+**At ≤640px with a panel open, `.builder__list` is `visibility: hidden` with
+zeroed flex/width, never `display: none`.** The type picker above is rendered
+INSIDE that list and reached from outside it too — the panel's own "New step"
+buttons, picked up by `step_list_controller`'s document-level click handler —
+so a `display: none` ancestor would drop the picker from the render tree
+along with everything else, leaving those buttons open a menu that sits at
+0×0 with no way to reach it. `visibility` takes the list out of the
+accessibility tree and tab order the same way `display: none` would, and the
+floating picker overrides it back to `visible` on itself (a descendant's own
+value always wins over an inherited one). `test/system/narrow_viewport_test.rb`
+guards this.
+
+**No `<form>` inside the panel's autosave form** — nested forms are invalid HTML
+and the parser drops the inner one — so each door action avoids one its own way:
+"New step" is `<button type="button">` handing off to the type picker, "Remove"
+is a `link_to` with `data-turbo-method`, and the target-picker dialog (which
+does hold a real form) is rendered **outside** the autosave form, after its
+`end`.
+
+**Two known limits, neither closed.** First, an option value containing an
+apostrophe can never match at runtime: the door condition is written
+`light == 'Don\'t know'` (the escaping the panel has always used), and
+`ConditionEvaluator` unescapes that to `Don\t know` — a literal backslash-t —
+so the runner never takes the edge. `Step::Doors` reports this honestly rather
+than papering over it: the door reads as a **stub** and the dead edge shows up
+in `#unmatched_extras`, which is what the `:unmatched_option_value` warning
+reads. Fixing it means agreeing on one escaping across the panel, `Step::Doors`
+and the evaluator, and changing the evaluator changes how live runs match, so
+it is the owner's call. Second, two panels open on the same step still race:
+panel B was rendered knowing edge `e1`, panel A deletes it, and B's next
+autosave carries `e1` in both `known` and `rows`, so `find_or_initialize_by`
+re-creates it — the payload cannot tell "the server rendered this and it has
+since been deleted" from "this was minted here and never saved". Far narrower
+than the `destroy_all` it replaced, which wiped a stranger's work wholesale,
+but not closed. Both carry a fix sketch in the (gitignored, local) `TODOS.md`.
+
 **Mode:** `data-builder-mode-value="view|edit"` on the builder container. CSS hides drag handles, add/delete buttons, and edit-only elements in view mode. View mode is a preview: `builder_controller#loadPanel` asks for `readonly=1`, and `StepsController#panel_edit` and `Workflows::SettingsController#show` render the readonly branch for that or for a viewer who may not edit. Nothing in view mode saves.
 
 **Inline Validation + Health Panel:**
@@ -109,7 +331,7 @@ renders each step type's panel and refuses one that does not.
 - Warning icons appear inline on step rows with issue counts; clicking opens a popover with issue details and Fix buttons
 - Toolbar shows aggregate issue count next to step count; clicking opens the Health panel in the slide-in panel
 - Health panel (`_health_panel.html.erb`) shows categorized Errors/Warnings/Passing sections with clickable step links and Fix buttons
-- Fix buttons (`connect_next`, `add_resolve_after`) are deterministic, additive autocorrects that respond with Turbo Streams to update both the step list and health panel
+- Fix buttons (`connect_next`, `add_resolve_after`) are deterministic, additive autocorrects that respond with Turbo Streams to update both the step list and health panel. A step with more than one door gets **no** Fix for `:no_outgoing_transitions`: both fixes write a blank-condition edge, which on a Yes/No Question catches every answer, so one click let a workflow ship with nobody having looked at No. That issue reads "No answers lead anywhere yet" and opens the step's panel instead
 - Import handoff: imports with issues redirect to `?health=true` which auto-opens the health panel on builder connect
 - Health fetch is separate from autosave because autosave responds with Turbo Streams (HTML), not JSON
 
@@ -127,6 +349,11 @@ renders each step type's panel and refuses one that does not.
 - `Workflows::HealthFixesController` — deterministic autocorrect actions (`connect_next`, `add_resolve_after`). Responds with Turbo Streams to refresh both step list and health panel
 - `Workflows::ExecutionsController` — start landing page (`new`) + scenario creation (`create`)
 - Plus existing: `Exports`, `Imports`, `Shares`, `Publishings`, `Taggings`, `Pins`
+
+One controller is nested under steps rather than workflows: `Steps::TransitionsController`
+(`create`/`update`/`destroy`), which acts on one connection from a door row in
+the step panel. Builder UI § Growing a workflow says what it answers with and
+why a refusal has to render inside the dialog.
 
 **Admin area.** Every `Admin::` controller inherits `Admin::BaseController`, which
 overrides `resolve_layout` to `"admin"` — a nested layout adding the section
@@ -290,6 +517,8 @@ All workflows are graphs. There is no separate "linear mode" — a sequential fl
 
 **Key services:**
 - `StepResolver` — graph traversal engine. Evaluates transitions in position order, handles conditional branching (via `ConditionEvaluator`), simple value matching for Question answers, SubFlow markers, and jump evaluation (`check_jumps`).
+- `GrowStep` — the builder's own writer: one step plus the edge that reaches it, in one transaction, inserted after its parent. Never called from import, and deliberately not part of `StepBuilder`. See **Builder UI § Growing a workflow**, which also covers `Step::Doors` (a model, `app/models/step/doors.rb`, not a service) and `TransitionSync`.
+- `TransitionSync` — saves the step panel's connection editor by uuid (`{known, rows}`), touching only the transitions that editor was rendered with. It replaced a `destroy_all`-and-rebuild that deleted edges written while the panel was open.
 - `StepBuilder` — creates AR steps from hash data. Auto-creates sequential transitions when no explicit transitions provided. Validates at least one Resolve step exists. Also provides `StepBuilder.normalize` (class method), its own helper, which `WorkflowImporter` borrows.
 - `ScenarioStepProcessor` — extracted step-processing logic for Scenario. Calls public methods on Scenario (`advance_to_next_step`, `resolve_at_current_step`, `record_completion`).
 - `GraphValidator` — graph validation: reachability from start_step, terminal nodes must be Resolve steps, and **escapability** — from every step reachable from the start, some path must reach a terminal Resolve (`:no_path_to_resolve`). It does **not** reject cycles: a retry loop is a normal call-centre shape, and what is refused is a loop with no way out. This replaced an acyclic check; for an acyclic graph the rule asserts nothing new, since every node in a finite DAG already reaches a terminal and terminals must be Resolve steps.
@@ -297,7 +526,7 @@ All workflows are graphs. There is no separate "linear mode" — a sequential fl
 - `WorkflowSetPublisher` — publishes a workflow together with every draft it transitively depends on, in one all-or-nothing transaction, so workflows that reference each other can go live at all. `closure_for(root)` previews the set without writing. Checks `can_be_edited_by?` across the **whole** closure, not just the root — publishing your own workflow must not publish someone else's draft that yours happens to reference.
 - `StrictImportValidator` — validates a strict-dialect file without writing: envelope, structure, graph (same `GraphValidator` publish runs), semantics (condition syntax, undefined variables, unmatched option values), and external references (groups via `WorkflowPlacement`, sub-flow targets scoped to `Workflow.visible_to`). Returns a `Report` of errors and warnings; `WorkflowImporter` takes a valid one via `strict_report:` and only writes.
 - `ImportSchemaGenerator` / `ImportPromptGenerator` — the published JSON Schema and the agent prompt, both generated from the models so neither can drift from what the app accepts.
-- `WorkflowHealthCheck` — aggregates GraphValidator + SubflowValidator + step-level checks into a per-step issue map. Returns `Data.define` Result with issues keyed by step UUID, severity levels, fixable flags, and summary counts. Used by both the health panel (HTML) and async JS fetch (JSON).
+- `WorkflowHealthCheck` — aggregates GraphValidator + SubflowValidator + step-level checks into a per-step issue map. Returns `Data.define` Result with issues keyed by step UUID, severity levels, fixable flags, and summary counts. Used by both the health panel (HTML) and async JS fetch (JSON). Two codes read `Step::Doors`: `:missing_expected_door` (an answer with no step of its own — "“No” has no step yet", suppressed by a blank-condition edge, which catches it) and `:unmatched_option_value` (a connection checking for a value the step no longer offers). Both are warnings and both are in `NON_BLOCKING_CODES`; neither is in `READINESS_CODES`, which asks whether a step's *content* is filled in, and these are routing findings. `:no_outgoing_transitions` stays an error but loses its Fix on a multi-door step (see Builder UI).
 - `WorkflowPublisher` — publishes workflow versions with full graph validation. Uses `Workflow#validation_graph_hash`.
 - `FlowDiagramService` — BFS layout for the builder's flow diagram panel.
 
@@ -567,3 +796,4 @@ Playwright MCP (for UI/system testing). Point agent to running app at `http://lo
 - Pre-deploy: RuboCop + full test suite (run locally before deploy)
 - The `20260911120000_add_self_join_to_groups` migration makes every existing group self-joinable (`admins_add_members` defaults to `false`), and sign-up is open — right after deploying, an administrator should mark sensitive groups "Only administrators add people" before the feature is announced
 - The `20260915120000_backfill_step_defaults` migration writes `resolution_type = 'success'` on Resolve steps and `priority = 'medium'` on Escalate steps that had a blank; it runs unattended and needs no operator step
+- The `20260918120000_add_uuid_to_transitions` migration backfills every transition, then adds `NOT NULL` and a unique index, all in one DDL transaction — on PostgreSQL the table is locked for the duration. Seconds for thousands of rows; check `Transition.count` first if the install is large. There is also a cutover hazard: while the previous container is still serving requests against the already-migrated schema, its step-panel autosave deletes a step's transitions and then fails to re-create them (the old code has no uuid to key on, no `NOT NULL` default, and no transaction) — the deletes stay, the re-creates don't. Deploy this migration when nobody is in the builder, or stop the old container before `db:prepare` runs against the new schema

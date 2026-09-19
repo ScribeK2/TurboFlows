@@ -22,6 +22,15 @@ class StepsController < ApplicationController
   SAVE_CONFLICT_MESSAGE = "Someone else saved this step at the same moment, so your change wasn't saved. " \
                           "Reload to see the latest version, then make your change again.".freeze
 
+  # Which fields, when this save touches them, change what Step::Doors would
+  # read off this step — so the open panel's doors list is now stale.
+  #
+  # variable_name is deliberately absent: a save that actually renames it sets
+  # rename_pair, which #connections_or_doors_stream answers first (the whole
+  # fragment, not just the doors) - this list only needs to cover the fields a
+  # doors-only replace has to answer for.
+  DOOR_DECIDING_PARAMS = %i[answer_type options transitions_json].freeze
+
   include ActionView::RecordIdentifier
 
   before_action :set_workflow
@@ -70,55 +79,43 @@ class StepsController < ApplicationController
   end
 
   # POST /workflows/:workflow_id/steps
+  #
+  # from_step_id (with label and condition, from a named door) grows the new
+  # step from that one: it lands directly after it, already connected.
   def create
     step_type = step_params[:type] || params[:step_type] || "action"
-    step_class = step_class_for(step_type)
-    position = @workflow.steps.maximum(:position).to_i + 1
+    @step = GrowStep.create(workflow: @workflow, step_type: step_type, from_step: grow_from_step,
+                            attrs: permitted_step_params, label: params[:label], condition: params[:condition])
 
-    attrs = permitted_step_params.merge(workflow: @workflow, position: position)
-    attrs[:title] = "Untitled #{step_type.titleize}" if attrs[:title].blank?
-
-    @step = step_class.new(attrs)
-
-    if @step.save
-      ensure_start_step_assigned
-
-      respond_to do |format|
-        format.turbo_stream do
-          streams = [
-            turbo_stream.append("steps-list",
-                                partial: "workflows/step_row",
-                                locals: { step: @step, workflow: @workflow }),
-            turbo_stream.remove("builder-empty-state"),
-            turbo_stream.replace("builder-panel",
-                                 partial: "steps/panel_edit",
-                                 locals: { step: @step, workflow: @workflow, readonly: false }),
-            turbo_stream.update("step-count-text",
-                                helpers.pluralize(@workflow.steps.count, "step"))
-          ]
-          render turbo_stream: streams
-        end
-        format.html { redirect_to workflow_path(@workflow, edit: true), notice: "Step added." }
-        format.json { render json: step_json(@step), status: :created }
-      end
-
-      broadcast_step_row(@step)
-    else
-      respond_to do |format|
-        format.turbo_stream do
-          render turbo_stream: turbo_stream.update("steps-list",
-                                                   html: helpers.tag.div(@step.errors.full_messages.join(", "), class: "alert alert--warning mb-4")), status: :unprocessable_content
-        end
-        format.html { redirect_to workflow_path(@workflow, edit: true), alert: @step.errors.full_messages.join(", ") }
-        format.json { render json: { errors: @step.errors.full_messages }, status: :unprocessable_content }
-      end
+    respond_to do |format|
+      format.turbo_stream { render turbo_stream: grown_streams(@step) }
+      format.html { redirect_to workflow_path(@workflow, edit: true), notice: "Step added." }
+      format.json { render json: step_json(@step), status: :created }
     end
+
+    broadcast_step_list
+  rescue ActiveRecord::RecordInvalid => e
+    respond_to_refusal(e.record.errors.full_messages.to_sentence)
+  rescue GrowStep::Refused => e
+    respond_to_refusal(e.message)
   end
 
   # PATCH /workflows/:workflow_id/steps/:id
   def update
     if @step.update(permitted_step_params)
-      sync_transitions_from_json if step_params[:transitions_json].present?
+      # Captured now, before anything below reloads @step and clears its
+      # saved-change tracking: nil unless this save renamed a Question's own
+      # variable_name, else [old_name, new_name].
+      rename_pair = @step.try(:renamed_variable_pair)
+
+      if step_params[:transitions_json].present?
+        refusal = sync_transitions(rename_pair)
+        # The step's own fields are already saved by the time this runs —
+        # @step.update returned true before sync_transitions was ever called.
+        # So this answers the existing refusal path rather than the success
+        # one, and says the truth: the step was saved, its connections were not.
+        return respond_to_refusal(refusal) if refusal
+      end
 
       respond_to do |format|
         format.turbo_stream do
@@ -138,6 +135,8 @@ class StepsController < ApplicationController
             )
           end
 
+          connections_streamed = false
+
           # Come back decides whether the step takes connections at all, so the
           # open panel's Connections section has to follow it.
           if @step.is_a?(Steps::SubFlow) && step_params.key?(:sub_flow_returns)
@@ -146,6 +145,20 @@ class StepsController < ApplicationController
               partial: "steps/connections",
               locals: { step: @step, workflow: @workflow }
             )
+            connections_streamed = true
+          end
+
+          # A rename leaves the editor's own snapshot - what it sends on the
+          # NEXT autosave of any field - still naming the old identifier. A
+          # save that instead touched what decides the doors (answer_type,
+          # options, variable_name, transitions_json) only needs the doors
+          # list replaced - unless it just turned one of the editor's own rows
+          # into a door, which would then show in both places at once.
+          # #connections_or_doors_stream is the one place that decides which,
+          # if either, this save needs.
+          unless connections_streamed
+            stream = connections_or_doors_stream(rename_pair)
+            streams << stream if stream
           end
 
           # The "Default for X" card describes the chosen type; the panel is
@@ -178,41 +191,33 @@ class StepsController < ApplicationController
     end
   rescue ActiveRecord::StaleObjectError
     respond_to_save_conflict
+  rescue ActiveRecord::RecordInvalid => e
+    # Raised from inside an after_update callback - Question#carry_conditions_to_new_variable
+    # calling transition.update! and hitting Transition's own uniqueness
+    # validation when a rename collides two conditions onto one target. That
+    # callback runs in the same transaction as @step's own save, so the whole
+    # thing - the rename included - rolls back; nothing here was saved.
+    respond_to_refusal("This step was not saved: #{e.record.errors.full_messages.to_sentence}.")
   end
 
   # DELETE /workflows/:workflow_id/steps/:id
   def destroy
+    parent_steps = incoming_parent_steps(@step)
+
     if @workflow.start_step_id == @step.id
       @workflow.update_column(:start_step_id, nil)
     end
     @step.destroy
     ensure_start_step_assigned
     Step.rebalance_positions(@workflow)
-    remaining_steps = @workflow.steps.reload.count
 
     respond_to do |format|
-      format.turbo_stream do
-        streams = [
-          turbo_stream.remove(dom_id(@step)),
-          turbo_stream.update("step-count-text",
-                              helpers.pluralize(remaining_steps, "step"))
-        ]
-        if remaining_steps.zero?
-          streams << turbo_stream.append("steps-list",
-                                         partial: "workflows/empty_state",
-                                         locals: { workflow: @workflow })
-          streams << turbo_stream.update("builder-panel", "")
-        end
-        render turbo_stream: streams
-      end
+      format.turbo_stream { render turbo_stream: destroy_streams(parent_steps) }
       format.html { redirect_to workflow_path(@workflow, edit: true), notice: "Step removed." }
       format.json { head :no_content }
     end
 
-    Turbo::StreamsChannel.broadcast_remove_to(
-      "workflow_#{@workflow.id}",
-      target: dom_id(@step)
-    )
+    broadcast_step_list
   end
 
   # POST /workflows/:workflow_id/steps/apply_template
@@ -229,7 +234,7 @@ class StepsController < ApplicationController
     end
 
     @workflow.reload
-    steps = @workflow.steps.order(:position).includes(:transitions, :incoming_transitions)
+    steps = @workflow.steps.order(:position).includes(:incoming_transitions, transitions: :target_step)
 
     respond_to do |format|
       format.turbo_stream do
@@ -249,14 +254,7 @@ class StepsController < ApplicationController
   # PATCH /workflows/:workflow_id/steps/:id/reorder
   def reorder
     StepReorderer.call(@workflow, @step, params[:position])
-
-    # Broadcast updated list to all collaborators (update = replace inner HTML, preserving container attributes)
-    Turbo::StreamsChannel.broadcast_update_to(
-      "workflow_#{@workflow.id}",
-      target: "steps-list",
-      partial: "workflows/steps_list_items",
-      locals: { workflow: @workflow.reload, steps: @workflow.steps.reload.includes(:transitions, :incoming_transitions) }
-    )
+    broadcast_step_list
 
     head :ok
   end
@@ -265,6 +263,73 @@ class StepsController < ApplicationController
 
   def set_workflow
     @workflow = Workflow.find(params[:workflow_id])
+  end
+
+  def grow_from_step
+    @workflow.steps.find(params[:from_step_id]) if params[:from_step_id].present?
+  end
+
+  # The whole list, not the one row: a step inserted mid-list moves the number
+  # of every step after it, and every "→ Title · 4" that points at one.
+  #
+  # Rows always render unselected — the panel is the one source of truth for
+  # which row is selected, and builder_controller#syncSelectedRow reads it
+  # client-side after this (and every other) stream renders. A selected_step
+  # local here used to paint the new row directly, but the very next line
+  # broadcasts the same #steps-list subtree over Action Cable with no such
+  # local, so a solo editor's own browser raced its own two renders.
+  def grown_streams(step)
+    [
+      turbo_stream.replace("step-list", partial: "workflows/step_list",
+                                        locals: { workflow: @workflow, steps: list_steps }),
+      turbo_stream.replace("builder-panel", partial: "steps/panel_edit",
+                                            locals: { step: step, workflow: @workflow, readonly: false }),
+      turbo_stream.update("step-count-text", helpers.pluralize(@workflow.steps.count, "step"))
+    ]
+  end
+
+  def list_steps
+    @workflow.steps.reload.ordered.includes(transitions: :target_step)
+  end
+
+  # The source steps of @step's own incoming transitions, captured before
+  # @step.destroy cascades those transitions away - their rows still show the
+  # door @step used to fill until #destroy_streams refreshes them. A step
+  # whose own edge loops back to itself is excluded: it is being removed too,
+  # so there is nothing to refresh it with.
+  def incoming_parent_steps(step)
+    step.incoming_transitions.includes(:step).map(&:step).uniq.reject { |parent| parent.id == step.id }
+  end
+
+  # destroy answers the way a grow does: the whole list (already empty-state
+  # aware), the count, and - since a delete can free a door on a step whose
+  # panel happens to be open - that parent's Connections fragment. A stream at
+  # a target not on the page is a no-op, so this does not need to know which
+  # panel, if any, is open.
+  def destroy_streams(parent_steps)
+    steps = list_steps.to_a
+    streams = [
+      turbo_stream.replace("step-list", partial: "workflows/step_list",
+                                        locals: { workflow: @workflow, steps: steps }),
+      turbo_stream.update("step-count-text", helpers.pluralize(steps.size, "step"))
+    ]
+    streams << turbo_stream.update("builder-panel", "") if steps.empty?
+
+    parent_steps.each do |parent|
+      streams << turbo_stream.update(dom_id(parent, :connections), partial: "steps/connections",
+                                                                   locals: { step: parent, workflow: @workflow })
+    end
+
+    streams
+  end
+
+  def broadcast_step_list
+    Turbo::StreamsChannel.broadcast_update_to(
+      "workflow_#{@workflow.id}",
+      target: "steps-list",
+      partial: "workflows/steps_list_items",
+      locals: { workflow: @workflow.reload, steps: list_steps }
+    )
   end
 
   def set_step
@@ -289,16 +354,26 @@ class StepsController < ApplicationController
   # sends lock_version, so this only fires when both saves overlap in the
   # database; saves seconds apart still go through, the later one winning.
   def respond_to_save_conflict
-    respond_to do |format|
-      format.turbo_stream { render_refusal(SAVE_CONFLICT_MESSAGE, status: :conflict) }
-      format.html { redirect_to workflow_path(@workflow, edit: true), alert: SAVE_CONFLICT_MESSAGE }
-      format.json { render json: { errors: [SAVE_CONFLICT_MESSAGE] }, status: :conflict }
-    end
+    respond_to_refusal(SAVE_CONFLICT_MESSAGE, status: :conflict)
   end
 
   def render_refusal(message, status:)
     flash.now[:alert] = message
     render turbo_stream: turbo_stream.update("flash", partial: "shared/flash_messages"), status: status
+  end
+
+  # The one shape every refusal in this controller shares: a turbo-stream flash,
+  # an HTML redirect back to the builder with the same alert, and a JSON body
+  # naming the single message. update's own validation-failure branch stays
+  # separate — its JSON body is @step.errors.full_messages (every individual
+  # error), not this message wrapped in a one-element array, so folding it in
+  # would change that response's shape.
+  def respond_to_refusal(message, status: :unprocessable_content)
+    respond_to do |format|
+      format.turbo_stream { render_refusal(message, status: status) }
+      format.html { redirect_to workflow_path(@workflow, edit: true), alert: message }
+      format.json { render json: { errors: [message] }, status: status }
+    end
   end
 
   def step_params
@@ -329,31 +404,86 @@ class StepsController < ApplicationController
     @workflow.update_column(:start_step_id, first_step.id) if first_step
   end
 
-  def sync_transitions_from_json
-    parsed = JSON.parse(step_params[:transitions_json])
-    return unless parsed.is_a?(Array)
+  # Returns nil on success, or the message to refuse the response with.
+  #
+  # RecordNotUnique is two overlapping saves of the same newly minted row -
+  # Turbo aborts the earlier fetch, not the server work behind it, so a
+  # closing flush can still overlap an in-flight submit - and the loser hits
+  # the unique index on transitions.uuid. Unlike RecordInvalid it carries no
+  # #record, so the message reads straight off the exception.
+  def sync_transitions(rename_pair)
+    TransitionSync.call(@step, step_params[:transitions_json], renamed_variable: rename_pair)
+    nil
+  rescue TransitionSync::Malformed, ActiveRecord::RecordInvalid => e
+    "This step was saved, but its connections were not: #{e.message}"
+  rescue ActiveRecord::RecordNotUnique
+    "This step was saved, but its connections were not: another save landed on the same connection " \
+    "at the same moment. Reload and try again."
+  end
 
-    steps_by_uuid = @workflow.steps.index_by(&:uuid)
+  def doors_changed?
+    DOOR_DECIDING_PARAMS.any? { |key| step_params.key?(key) }
+  end
 
-    @step.transitions.destroy_all
+  # True when this save changed the doors list in a way the editor's own
+  # snapshot cannot show on its own - checked in both directions against the
+  # transitions as saved (not as sent), since a rewritten condition is what
+  # can make either one true:
+  #
+  # - forward: a row the editor was showing as an ordinary connection just
+  #   became one of the doors Step::Doors now finds - it would otherwise
+  #   render twice, once as a door and once still sitting in the editor below.
+  # - backward: a door the editor was NOT showing (it wasn't a connection
+  #   row - it was a door) just stopped being claimed and became an extra.
+  #   Nothing about it is in the browser's `known` list, so a doors-only
+  #   replace would leave it invisible even though the transition is still
+  #   live in the database.
+  #
+  # `doors` is computed once by the caller and passed in, so this and the
+  # forward check it used to make alone share one query.
+  def door_shape_changed?(doors)
+    sent_known, sent_rows = known_and_sent_row_uuids
 
-    parsed.each_with_index do |t, pos|
-      target_uuid = t["target_uuid"]
-      next if target_uuid.blank?
+    return true if doors.doors.filter_map(&:transition).any? { |t| sent_rows.include?(t.uuid) }
 
-      target = steps_by_uuid[target_uuid]
-      next unless target
+    doors.extras.any? { |t| sent_known.exclude?(t.uuid) }
+  end
 
-      Transition.create!(
-        step: @step,
-        target_step: target,
-        condition: t["condition"].presence,
-        label: t["label"].presence,
-        position: pos
-      )
-    end
-  rescue JSON::ParserError => e
-    @step.errors.add(:base, "Invalid transitions JSON: #{e.message}")
+  # [known_uuids, row_uuids] from the transitions_json the browser just sent.
+  # No transitions_json, or JSON that doesn't parse, "knows nothing" - both
+  # come back as empty arrays, same as #editor_row_became_door? used to treat
+  # them.
+  def known_and_sent_row_uuids
+    return [[], []] if step_params[:transitions_json].blank?
+
+    payload = JSON.parse(step_params[:transitions_json])
+    [payload["known"].to_a.map(&:to_s), payload["rows"].to_a.pluck("uuid")]
+  rescue JSON::ParserError, NoMethodError
+    [[], []]
+  end
+
+  # The one place that decides which, if either, of the doors list and the
+  # whole Connections fragment this save needs re-rendered. A rename always
+  # needs the whole fragment - the editor's own snapshot still names the old
+  # variable, and #door_shape_changed? cannot help with that since a renamed
+  # condition does not change which uuids are doors. Otherwise, a save that
+  # changed what decides the doors gets the doors list alone, unless the
+  # doors list itself changed shape underneath the editor's snapshot.
+  def connections_or_doors_stream(rename_pair)
+    return full_connections_stream if rename_pair
+    return nil unless doors_changed?
+
+    door_shape_changed?(Step::Doors.for(@step.reload)) ? full_connections_stream : doors_stream
+  end
+
+  def full_connections_stream
+    turbo_stream.update(dom_id(@step, :connections), partial: "steps/connections",
+                                                     locals: { step: @step, workflow: @workflow })
+  end
+
+  def doors_stream
+    turbo_stream.replace(dom_id(@step, :doors), partial: "steps/doors",
+                                                locals: { step: @step, workflow: @workflow })
   end
 
   def broadcast_step_row(step)

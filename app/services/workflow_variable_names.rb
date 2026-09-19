@@ -14,7 +14,8 @@ module WorkflowVariableNames
   Row = Data.define(:title, :variable_name, :form_fields, :output_fields, :mapping)
 
   # ConditionEvaluator#lookup_value resolves this as the last value given. It is
-  # what condition_presets.js writes for a Question with no variable_name, so
+  # what condition_preset_controller.js#buildPresets writes for a Question with
+  # no variable_name, so
   # reporting it would be reporting the builder's own default output.
   LEGACY_ANSWER = "answer".freeze
 

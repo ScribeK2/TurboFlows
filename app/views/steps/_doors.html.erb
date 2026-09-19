@@ -1,0 +1,67 @@
+<%# locals: (step:, workflow:, readonly: false) %>
+<%#
+  The ways out of this step (Step::Doors), one row each: wired, or a stub that
+  offers to be filled. Rendered by the server so a Turbo replace stays honest.
+
+  This sits INSIDE the panel's autosave form, so it holds no <form>: New step is
+  a plain button the step list's type picker answers, Remove is a Turbo link.
+%>
+<% doors = Step::Doors.for(step) %>
+<% ordinals = step_ordinals(workflow) %>
+<% title = step.title.presence || "Untitled #{step.step_type.titleize}" %>
+<div id="<%= dom_id(step, :doors) %>" class="step-doors">
+  <% if doors.growable? %>
+    <span class="form-label">Where this goes next</span>
+    <ul class="step-doors__list" role="list">
+      <% doors.doors.each do |door| %>
+        <li class="step-doors__row">
+          <span class="step-doors__label"><%= door.label %></span>
+          <% if door.stub? %>
+            <span class="step-doors__target step-doors__target--stub">
+              <%= doors.fallback ? "follows “Anything else” for now" : "nothing yet" %>
+            </span>
+            <% unless readonly %>
+              <button type="button" class="btn btn--secondary btn--sm"
+                      aria-label="<%= door_action_aria_label(door, :new_step) %>"
+                      data-grow-from="<%= step.id %>"
+                      data-grow-label="<%= door.label unless door.kind == :next %>"
+                      data-grow-condition="<%= door.condition %>"
+                      data-grow-context="<%= door.kind == :next ? "After “#{title}”" : "“#{title}” — #{door.label}" %>">
+                New step
+              </button>
+              <button type="button" class="btn btn--plain btn--sm"
+                      aria-label="<%= door_action_aria_label(door, :use_existing) %>"
+                      data-action="click->step-target-picker#open"
+                      data-label="<%= door.label unless door.kind == :next %>"
+                      data-condition="<%= door.condition %>">
+                Use existing…
+              </button>
+            <% end %>
+          <% else %>
+            <% target = door.target_step %>
+            <span class="step-doors__target">
+              → <%= target.title.presence || "Untitled" %><% if ordinals[target.uuid] %> · <%= ordinals[target.uuid] %><% end %>
+            </span>
+            <% unless readonly %>
+              <button type="button" class="btn btn--plain btn--sm"
+                      aria-label="<%= door_action_aria_label(door, :change) %>"
+                      data-action="click->step-target-picker#open"
+                      data-label="<%= door.label unless door.kind == :next %>"
+                      data-condition="<%= door.condition %>"
+                      data-transition-url="<%= workflow_step_transition_path(workflow, step, door.transition) %>">
+                Change
+              </button>
+              <%= link_to "Remove", workflow_step_transition_path(workflow, step, door.transition),
+                    class: "btn btn--plain btn--sm",
+                    aria: { label: door_action_aria_label(door, :remove) },
+                    data: { turbo_method: :delete, turbo_stream: true } %>
+            <% end %>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+    <% if doors.needs_options? %>
+      <p class="form-hint">Add options to branch on each answer.</p>
+    <% end %>
+  <% end %>
+</div>

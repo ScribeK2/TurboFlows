@@ -245,6 +245,41 @@
     font-variant-numeric: tabular-nums;
   }
 
+  .builder__step-doors {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  /* A stub reads as quiet text that can be pressed: no fill, a dashed hairline.
+     Not a warning colour - an unwired answer on a draft is work in progress. */
+  .builder__door-stub {
+    padding: 0 var(--space-2);
+    border: 1px dashed var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    font-size: var(--text-xs);
+    color: var(--color-primary-text);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .builder__door-stub:hover {
+    border-style: solid;
+    color: var(--color-primary-text-hover);
+  }
+
+  .builder__door-stub:focus-visible {
+    outline: var(--focus-ring);
+  }
+
+  .builder__door-stub-text {
+    font-size: var(--text-xs);
+    color: var(--color-ink-muted);
+    white-space: nowrap;
+  }
+
   .builder__step:not(:last-child) {
     border-bottom: 1px solid var(--color-border);
   }
@@ -349,6 +384,48 @@
     display: none;
   }
 
+  /* A row with stubs, while a panel is open (the state after EVERY grow): the
+     list has narrowed to 38%, and .builder__step-doors (flex: 0 0 auto, never
+     shrinking) left .list-row__body only what was left over, which a long
+     title does not stay inside - it wraps within its own shrunk box and
+     visually runs under the stubs. .builder__step-doors stays visible
+     (unlike .builder__step-meta above) because the remaining stub has to be
+     findable right after a grow - so it takes its own line under the title
+     instead of competing with it. Scoped to :has(.builder__step-doors): a
+     row with no stubs has nothing to wrap and stays one line tall, exactly
+     as before. */
+  .builder:has(#builder-panel > *) .builder__step:has(.builder__step-doors) {
+    flex-wrap: wrap;
+  }
+
+  .builder:has(#builder-panel > *) .builder__step:has(.builder__step-doors) .list-row__body {
+    min-width: var(--space-16);
+  }
+
+  /* flex: 1 1 100% (not flex-basis alone) so the item can shrink by its own
+     margin-left - a plain 100% basis plus a margin would spill past the
+     row's right edge, clipped by #steps-list's overflow: hidden. The inset
+     lines the stubs up under the title, past the drag handle and the number
+     badge: handle (1rem) + gap + badge (var(--space-6), the badge's own
+     width) + gap = var(--space-16). View mode carries no drag handle
+     (builder.css hides it entirely, not just dims it), so its inset drops
+     that first icon + gap. */
+  .builder:has(#builder-panel > *) .builder__step-doors {
+    flex: 1 1 100%;
+    min-width: 0;
+    margin-left: var(--space-16);
+    /* Placed after every other child regardless of source order, so the
+       warning icon and Remove (after it in the markup) fill out line 1
+       beside the title instead of being pushed to a third line of their
+       own - a flex-basis:100% item always starts a fresh line no matter
+       where `order` puts it, so this costs the doors nothing. */
+    order: 1;
+  }
+
+  .builder[data-builder-mode-value="view"]:has(#builder-panel > *) .builder__step-doors {
+    margin-left: calc(var(--space-6) + var(--space-3));
+  }
+
   .builder__step-delete {
     opacity: 0;
     transition: opacity var(--duration-fast) var(--ease-out);
@@ -406,6 +483,25 @@
       opacity: 0;
       transform: scale(0.95);
     }
+  }
+
+  /* Set by step_list_controller#positionPickerNear when the picker is opened
+     from a row's own door stub (or the panel's "New step" buttons), rather
+     than the bottom prompt: it needs to sit beside whatever was pressed,
+     escaping .builder__list-scroll's clipping, not anchored to the trailing
+     row. The coordinates themselves (top/left) are set inline as one-off
+     layout values; this class switches the positioning MODE and gives the
+     menu a fixed width, since it can no longer span the trigger the way the
+     bottom-anchored picker spans the prompt row. Declared after
+     .builder__type-picker so it wins at equal specificity. */
+  .builder__type-picker--floating {
+    position: fixed;
+    top: auto;
+    bottom: auto;
+    left: auto;
+    right: auto;
+    width: 16rem;
+    margin: 0;
   }
 
   .builder__type-option {
@@ -770,6 +866,10 @@
     display: none;
   }
 
+  .builder[data-builder-mode-value="edit"] .builder__view-only {
+    display: none;
+  }
+
   /* ===== Step Type Hue Badges =====
      Each modifier publishes --step-hue; the fill comes from the composed
      --step-solid / --step-on-solid pair, which swap per theme. */
@@ -1107,9 +1207,35 @@
     }
 
     /* One column at a phone's width: the open panel is the page, and Close
-       brings the list back. Side by side, the list squeezed to a letter a line. */
+       brings the list back. Side by side, the list squeezed to a letter a
+       line. Not display:none: the type picker is rendered INSIDE this list
+       and floats beside a door via position:fixed when opened from a row's
+       stub or the panel's own "New step" buttons - a display:none ancestor
+       drops it (and everything else) from the render tree too, so the
+       picker sat at 0x0 until reload with no way to reach it. visibility
+       keeps the list itself out of the accessibility tree and tab order
+       (the same as display:none did), and the zeroed flex/width takes it
+       out of the row so the panel still gets the full width; overflow keeps
+       its (invisible) content from adding scroll. The floating picker
+       overrides visibility back to visible below - a descendant's own
+       value always wins over an inherited one, no matter what the
+       ancestor's is. */
     .builder:has(#builder-panel > *) .builder__list {
-      display: none;
+      visibility: hidden;
+      flex: 0 0 0;
+      width: 0;
+      min-width: 0;
+      padding: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    /* The one exception: reachable from the panel's door rows (outside this
+       list entirely) as well as a row's own stub, so it must stay usable
+       while the list around it is hidden. */
+    .builder:has(#builder-panel > *) .builder__type-picker--floating {
+      visibility: visible;
+      pointer-events: auto;
     }
 
     /* No slide at this width: transition: none stops the desktop animation,

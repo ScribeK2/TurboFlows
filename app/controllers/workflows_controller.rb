@@ -53,7 +53,7 @@ class WorkflowsController < ApplicationController
     eager_load_steps
     preload_subflow_targets
 
-    @steps = @workflow.steps.includes(:transitions, :incoming_transitions).order(:position)
+    @steps = @workflow.steps.includes(:incoming_transitions, transitions: :target_step).order(:position)
     @mode = if params[:edit].present? && @workflow.can_be_edited_by?(current_user)
               "edit"
             else

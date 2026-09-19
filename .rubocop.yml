@@ -110,10 +110,14 @@ Rails/I18nLocaleTexts:
 Rails/StrongParametersExpect:
   Enabled: false
 
-# WorkflowTemplate is a plain Ruby class, not AR — .each is correct
+# WorkflowTemplate is a plain Ruby class, not AR — .each is correct.
+# Steps::Question#carry_conditions_to_new_variable rewrites a handful of one
+# step's own transitions after a rename, not a batch scan, and find_each would
+# ignore the has_many's own :position order.
 Rails/FindEach:
   Exclude:
     - "test/models/workflow_template_test.rb"
+    - "app/models/steps/question.rb"
 
 # WorkflowTemplate delegates to a constant, not a method
 Rails/Delegate:

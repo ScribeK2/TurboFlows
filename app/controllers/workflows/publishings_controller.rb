@@ -70,7 +70,7 @@ module Workflows
       else
         # Back to the builder in edit mode. Redirecting to @workflow dropped
         # `edit=true`, so a failed publish silently swapped the header for
-        # Edit/Run Scenario/Export and took "Add a step" away — the user is told
+        # Edit/Run Scenario/Export and took the add-step control away — the user is told
         # to fix something and simultaneously loses the tools to fix it.
         redirect_to workflow_path(@workflow, edit: true), alert: "Failed to publish: #{result.error}"
       end

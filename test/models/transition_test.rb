@@ -69,4 +69,49 @@ class TransitionTest < ActiveSupport::TestCase
     assert Steps::Question.exists?(@step1.id)
     assert Steps::Action.exists?(@step2.id)
   end
+
+  test "gets a uuid when none is given" do
+    t = Transition.create!(step: @step1, target_step: @step2)
+    assert_match(/\A[0-9a-f-]{36}\z/, t.uuid)
+  end
+
+  test "keeps a uuid it is given" do
+    uuid = SecureRandom.uuid
+    t = Transition.create!(step: @step1, target_step: @step2, uuid: uuid)
+    assert_equal uuid, t.reload.uuid
+  end
+
+  test "refuses a malformed uuid" do
+    t = Transition.new(step: @step1, target_step: @step2, uuid: "nope")
+    assert_not t.valid?
+    assert_predicate t.errors[:uuid], :any?
+  end
+
+  test "refuses a uuid another transition holds" do
+    first = Transition.create!(step: @step1, target_step: @step2)
+    dup = Transition.new(step: @step2, target_step: @step1, uuid: first.uuid)
+    assert_not dup.valid?
+  end
+
+  test "settle_positions puts every blank condition after every conditional" do
+    step3 = Steps::Action.create!(workflow: @workflow, title: "A2", position: 2)
+    default = Transition.create!(step: @step1, target_step: @step2, position: 0)
+    yes = Transition.create!(step: @step1, target_step: step3, condition: "q1 == 'yes'", position: 1)
+
+    Transition.settle_positions(@step1)
+
+    assert_equal [yes.id, default.id], @step1.transitions.reload.map(&:id)
+    assert_equal [0, 1], @step1.transitions.map(&:position)
+  end
+
+  test "settle_positions keeps the order of conditionals among themselves" do
+    step3 = Steps::Action.create!(workflow: @workflow, title: "A2", position: 2)
+    a = Transition.create!(step: @step1, target_step: @step2, condition: "q1 == 'a'", position: 0)
+    b = Transition.create!(step: @step1, target_step: step3, condition: "q1 == 'b'", position: 5)
+
+    Transition.settle_positions(@step1)
+
+    assert_equal [a.id, b.id], @step1.transitions.reload.map(&:id)
+    assert_equal [0, 1], @step1.transitions.map(&:position)
+  end
 end

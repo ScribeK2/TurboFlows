@@ -4,8 +4,6 @@ require "application_system_test_case"
 # behaviours here was found broken in the 2026-09-15 audit: the value saved but
 # the control never showed it, or the control showed it and nothing saved.
 class BuilderStepPanelTest < ApplicationSystemTestCase
-  STEP_ROW = "[role='listitem'][data-step-uuid]".freeze
-
   setup do
     @user = User.create!(
       email: "wf-system-test-panel-#{SecureRandom.hex(4)}@example.com",
@@ -61,6 +59,35 @@ class BuilderStepPanelTest < ApplicationSystemTestCase
     assert_eventually(timeout: 10) { question.reload.answer_type == "number" }
   end
 
+  # The real path the controller/service tests only simulate: the panel's
+  # Connections editor holds a hidden transitions_json snapshot in the SAME
+  # autosave form as every other field, taken when the panel opened. Renaming
+  # the variable used to have the very next autosave - even one touching an
+  # unrelated field - ship that stale snapshot back over the rename.
+  test "renaming a question's variable through the panel keeps its own doors renamed" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", position: 1,
+                                       question: "Light green?", answer_type: "yes_no",
+                                       variable_name: "light_green")
+    action = Steps::Action.create!(workflow: @workflow, position: 2, title: "Continue")
+    edge = Transition.create!(step: question, target_step: action, condition: "light_green == 'yes'")
+
+    visit_builder_in_edit_mode
+    open_step question
+
+    within "turbo-frame#builder-panel" do
+      find("summary", text: "Variable name").click
+      fill_in "step[variable_name]", with: "verified"
+    end
+    assert_eventually(timeout: 10) { question.reload.variable_name == "verified" }
+
+    within "turbo-frame#builder-panel" do
+      fill_in "step[title]", with: "Is it verified?"
+    end
+    assert_eventually(timeout: 10) { question.reload.title == "Is it verified?" }
+
+    assert_equal "verified == 'yes'", edge.reload.condition
+  end
+
   test "cancelling the options warning keeps the answer type and saves nothing" do
     question = Steps::Question.create!(workflow: @workflow, title: "Contact channel?", position: 1,
                                        question: "How did they reach us?", answer_type: "multiple_choice",
@@ -106,10 +133,11 @@ class BuilderStepPanelTest < ApplicationSystemTestCase
                                        question: "Is the site down?", answer_type: "yes_no")
     Steps::Escalate.create!(workflow: @workflow, title: "Escalate to network", position: 2)
     visit_builder_in_edit_mode
-    assert_selector ".badge", text: "No connections"
+    assert_selector ".builder__door-stub", text: /add step/
     open_step question
 
     within "turbo-frame#builder-panel" do
+      find("summary", text: "Other connections").click
       click_on "Add Connection"
       within all(".transition-item", minimum: 1, wait: 5).last do
         options = all("select[data-transition-field='target_uuid'] option").map { |option| option.text.strip }
@@ -135,7 +163,7 @@ class BuilderStepPanelTest < ApplicationSystemTestCase
     visit_builder_in_edit_mode
     open_step @resolve
 
-    click_on "Add a step"
+    click_on "Add unconnected step"
     assert_selector "[data-step-list-target='typePicker']:not([hidden])"
 
     page.send_keys :escape
@@ -156,37 +184,5 @@ class BuilderStepPanelTest < ApplicationSystemTestCase
   def visit_builder_in_edit_mode
     visit workflow_path(@workflow, edit: true)
     assert_selector "[data-builder-mode-value='edit']", wait: 5
-  end
-
-  def open_step(step)
-    find("#{STEP_ROW}[data-step-uuid='#{step.uuid}']").click
-    assert_selector "turbo-frame#builder-panel form", wait: 5
-    assert_panel_settled
-  end
-
-  # The panel animates open over 250ms and the fields in it re-wrap as it
-  # widens, so a button found mid-animation moves before the click lands and
-  # the click hits whatever slid under the old spot. See the identical helper
-  # (and its comment) in workflow_builder_test.rb, where this was diagnosed.
-  def assert_panel_settled(timeout: 5)
-    deadline = Time.current + timeout
-    previous = nil
-    loop do
-      width = panel_body_width
-      return if width > 200 && width == previous
-
-      flunk "the panel never settled open (#{width}px wide)" if Time.current > deadline
-      previous = width
-      sleep 0.1
-    end
-  end
-
-  def panel_body_width
-    page.evaluate_script(<<~JS)
-      (() => {
-        const b = document.querySelector('#builder-panel .builder__panel-body');
-        return b ? Math.round(b.getBoundingClientRect().width) : 0;
-      })()
-    JS
   end
 end

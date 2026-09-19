@@ -2,10 +2,12 @@ require "test_helper"
 
 # Branches that can never fire, and step copy that shows an agent raw braces.
 #
-# The shape both come from is one move in the step panel: rename a Question's
-# variable_name and every condition written against the old name keeps it.
-# Nothing rewrites them and nothing refuses the save, so until this check ran
-# the health panel reported zero errors on a workflow nobody could finish.
+# Renaming a Question's variable_name now carries that step's OWN outgoing
+# conditions with it (Question#carry_conditions_to_new_variable) — but nothing
+# else. A condition on ANOTHER step that reads the old name, a sub-flow
+# child's rename reaching its parent, and a hand-typed condition that never
+# matched any variable at all: none of those are rewritten, and until this
+# check ran the health panel reported zero errors on all three.
 class WorkflowVariableCheckTest < ActiveSupport::TestCase
   setup do
     @user = User.create!(email: "varcheck-#{SecureRandom.hex(4)}@example.com",
@@ -137,10 +139,10 @@ class WorkflowVariableCheckTest < ActiveSupport::TestCase
 
   # --- found in review: three ways this warned on a branch that fires --------
 
-  # condition_presets.js writes `step.variable_name || "answer"`, so a Question
-  # with no variable_name gets `answer == 'yes'` from the builder's OWN preset
-  # picker, and ConditionEvaluator#lookup_value resolves "answer" as the last
-  # value given. Warning on that is warning on the product's default output.
+  # condition_preset_controller.js#buildPresets writes `step.variable_name || "answer"`,
+  # so a Question with no variable_name gets `answer == 'yes'` from the builder's
+  # OWN preset picker, and ConditionEvaluator#lookup_value resolves "answer" as
+  # the last value given. Warning on that is warning on the product's default output.
   test "the legacy name `answer` is never reported" do
     q = question(variable_name: nil)
     Transition.create!(step: q, target_step: resolve, condition: "answer == 'billing'", position: 0)
@@ -370,23 +372,26 @@ class WorkflowVariableCheckTest < ActiveSupport::TestCase
     assert_empty check, "a bare condition still matches through results[title]"
   end
 
-  # The path that IS exposed. The builder's condition editor has a sentence
-  # builder (see WorkflowsHelper#condition_sentence_variables) that writes the
-  # expression form, so a manager who uses it and later renames the variable
-  # gets branches that cannot fire — with no other signal than this one.
-  test "a sentence-built condition on a template is broken by a rename, and is reported" do
+  # The builder's condition editor has a sentence builder (see
+  # WorkflowsHelper#condition_sentence_variables) that writes the expression
+  # form. It used to be the path this check existed to expose: a manager who
+  # used it and later renamed the variable got branches that could not fire,
+  # with no other signal. Question#carry_conditions_to_new_variable now
+  # rewrites this step's own branch in the same save, so the rename stays
+  # sound.
+  test "a sentence-built condition on a template follows a rename, and stays sound" do
     apply_template("guided_decision")
     question = @workflow.reload.steps.find { |s| s.is_a?(Steps::Question) && s.variable_name.present? }
     branch = question.transitions.first
-    branch.update!(condition: "#{question.variable_name} == '#{branch.condition}'")
+    bare_value = branch.condition
+    branch.update!(condition: "#{question.variable_name} == '#{bare_value}'")
 
     assert_empty check, "precondition: sound while the names agree"
 
     question.update!(variable_name: "why_they_called")
-    findings = check.select { |f| f.code == :undefined_variable }
 
-    assert_equal [question.uuid], findings.map(&:step_uuid)
-    assert_includes findings.first.variables, "call_reason"
+    assert_equal "why_they_called == '#{bare_value}'", branch.reload.condition
+    assert_empty check, "the rename carried this step's own condition with it"
   end
 
   # Copy is read by someone who is already unsure whether they broke something,

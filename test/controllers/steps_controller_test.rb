@@ -1,6 +1,8 @@
 require "test_helper"
 
 class StepsControllerTest < ActionDispatch::IntegrationTest
+  include ActionView::RecordIdentifier
+
   setup do
     @editor = User.create!(
       email: "editor-steps-#{SecureRandom.hex(4)}@example.com",
@@ -93,8 +95,8 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 0, extra.reload.position
   end
 
-  # 7. create step via Turbo Stream appends to steps-list
-  test "create step via turbo stream appends card" do
+  # 7. create step via Turbo Stream replaces the list and opens the new step
+  test "create via turbo stream replaces the list and opens the new step" do
     assert_difference("Step.count", 1) do
       post workflow_steps_path(@workflow),
            params: { step_type: "action", step: { title: "Action via Turbo" } },
@@ -102,8 +104,58 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :ok
-    assert_includes response.body, "turbo-stream"
-    assert_includes response.body, "append"
+    assert_select "turbo-stream[action='replace'][target='step-list']"
+    assert_select "turbo-stream[action='replace'][target='builder-panel']"
+    assert_select "turbo-stream[action='update'][target='step-count-text']"
+  end
+
+  # The panel is opened client-side (builder_controller#syncSelectedRow), not
+  # by the server — a selected_step local here used to race the same
+  # #steps-list subtree's Action Cable rebroadcast in a solo editor's own
+  # browser. Every row in this response renders unselected.
+  test "create via turbo stream renders every row unselected" do
+    post workflow_steps_path(@workflow),
+         params: { step_type: "action", step: { title: "Action via Turbo" } },
+         headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :ok
+    assert_no_match "builder__step--selected", response.body
+  end
+
+  test "create with from_step_id lands after the parent and connects it" do
+    later = Steps::Resolve.create!(workflow: @workflow, position: 1, title: "Done")
+
+    assert_difference("Transition.count", 1) do
+      post workflow_steps_path(@workflow),
+           params: { step_type: "message", from_step_id: @step.id, label: "No", condition: "answer == 'no'" },
+           headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+
+    grown = @workflow.steps.find_by!(type: "Steps::Message")
+    assert_equal [@step.id, grown.id, later.id], @workflow.steps.order(:position).map(&:id)
+    edge = @step.transitions.sole
+    assert_equal [grown.id, "No", "answer == 'no'"], [edge.target_step_id, edge.label, edge.condition]
+  end
+
+  test "create from a Resolve is refused with a message" do
+    resolve = Steps::Resolve.create!(workflow: @workflow, position: 1, title: "Done")
+
+    assert_no_difference("Step.count") do
+      post workflow_steps_path(@workflow),
+           params: { step_type: "action", from_step_id: resolve.id },
+           headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+
+    assert_response :unprocessable_content
+    assert_select "turbo-stream[target='flash']"
+  end
+
+  test "create with another workflow's step id is not found" do
+    other = Workflow.create!(title: "Other", user: @editor)
+    foreign = Steps::Action.create!(workflow: other, position: 0, title: "Foreign")
+
+    post workflow_steps_path(@workflow), params: { step_type: "action", from_step_id: foreign.id }, as: :json
+    assert_response :not_found
   end
 
   # 9. requires authentication — unauthenticated POST redirects
@@ -159,19 +211,21 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_equal empty_workflow.steps.first.id, empty_workflow.start_step_id
   end
 
-  # 13. malformed transitions_json returns error (not silently swallowed)
-  test "malformed transitions_json surfaces error" do
+  # 13. malformed transitions_json refuses the response, but the step's own
+  # fields were already saved and no transition was written or removed.
+  test "malformed transitions_json refuses the response without dropping the field save" do
+    before_count = Transition.count
+
     patch workflow_step_path(@workflow, @step),
-          params: { step: { transitions_json: "not valid json{{{" } },
+          params: { step: { title: "Renamed despite bad json", transitions_json: "not valid json{{{" } },
           as: :json
 
-    # The update itself succeeds (title etc.), but the JSON parse error
-    # is added to step.errors. Since step.update already passed,
-    # the response is 200 but the error is recorded on the model.
-    # The key assertion: it does NOT silently swallow the error.
-    assert_response :ok
-    # Verify the step has the error recorded (it was added to step.errors)
-    # The sync_transitions_from_json now adds an error instead of silently ignoring
+    assert_response :unprocessable_content
+    json = response.parsed_body
+    assert json["errors"].any? { |e| e.include?("connections") },
+           "expected an error mentioning connections, got #{json['errors'].inspect}"
+    assert_equal "Renamed despite bad json", @step.reload.title
+    assert_equal before_count, Transition.count
   end
 
   # 14. regular user cannot create steps
@@ -330,5 +384,370 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     patch workflow_step_path(@workflow, @step), params: { step: { title: "Changed" } }
     assert_redirected_to workflows_path
     assert_equal "Existing Step", @step.reload.title
+  end
+
+  test "a panel save with a stale snapshot leaves a server-made edge alone" do
+    target = Steps::Resolve.create!(workflow: @workflow, position: 1, title: "Done")
+    grown = Transition.create!(step: @step, target_step: target)
+
+    patch workflow_step_path(@workflow, @step),
+          params: { step: { title: "Renamed", transitions_json: { known: [], rows: [] }.to_json } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :ok
+    assert Transition.exists?(grown.id)
+    assert_equal "Renamed", @step.reload.title
+  end
+
+  test "a save that reaches another step's transition by uuid is refused as a turbo stream" do
+    target = Steps::Resolve.create!(workflow: @workflow, position: 1, title: "Done")
+    other_step = Steps::Action.create!(workflow: @workflow, position: 2, title: "Other")
+    other_transition = Transition.create!(step: other_step, target_step: target)
+
+    patch workflow_step_path(@workflow, @step),
+          params: { step: { transitions_json: { known: [other_transition.uuid], rows: [
+            { uuid: other_transition.uuid, target_uuid: target.uuid, condition: "", label: "" }
+          ] }.to_json } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :unprocessable_content
+    assert_select "turbo-stream[target='flash']"
+    assert_equal other_step.id, other_transition.reload.step_id
+  end
+
+  # The panel's transitions_json hidden field is rendered inside the same
+  # autosave form as every other step field, and holds a snapshot of each
+  # transition's condition as of when the panel opened. Renaming a Question's
+  # own variable_name in the same PATCH must not have that stale snapshot
+  # write the old name straight back over what
+  # Steps::Question#carry_conditions_to_new_variable just fixed.
+  test "a variable_name save rewrites its own stale transitions_json payload, and streams the connections editor" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", position: 1,
+                                       answer_type: "yes_no", variable_name: "untitled_question")
+    target = Steps::Action.create!(workflow: @workflow, position: 2, title: "Target")
+    edge = Transition.create!(step: question, target_step: target, condition: "untitled_question == 'yes'")
+
+    stale_transitions_json = {
+      known: [edge.uuid],
+      rows: [{ uuid: edge.uuid, target_uuid: target.uuid, condition: edge.condition, label: nil }]
+    }.to_json
+
+    patch workflow_step_path(@workflow, question),
+          params: { step: { variable_name: "light_green", transitions_json: stale_transitions_json } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    assert_equal "light_green == 'yes'", edge.reload.condition
+    assert_select "turbo-stream[action='update'][target='#{dom_id(question, :connections)}']"
+
+    # The second save: just the title, carrying the payload the freshly
+    # streamed editor would now hold (built the way the view does, from the
+    # step's current transitions).
+    fresh_transitions_json = {
+      known: question.transitions.reload.map(&:uuid),
+      rows: question.transitions.map do |t|
+        { uuid: t.uuid, target_uuid: t.target_step&.uuid,
+          condition: t.condition, label: t.label }
+      end
+    }.to_json
+
+    patch workflow_step_path(@workflow, question),
+          params: { step: { title: "Renamed title", transitions_json: fresh_transitions_json } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    assert_equal "light_green == 'yes'", edge.reload.condition
+  end
+
+  test "the panel shows a Yes/No Question's doors, stubs with a New step button" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light green?",
+                                       answer_type: "yes_no", variable_name: "light")
+    Transition.create!(step: question, target_step: @step, condition: "light == 'yes'", label: "Yes")
+
+    get panel_edit_workflow_step_path(@workflow, question)
+
+    assert_select "##{dom_id(question, :doors)} .step-doors__row", 2
+    assert_select ".step-doors__row", text: /Yes.*Existing Step/m
+    assert_select ".step-doors__row button[data-grow-from='#{question.id}'][data-grow-condition=\"light == 'no'\"]", text: "New step"
+    assert_select "form form", false, "a form was nested inside the panel's autosave form"
+  end
+
+  # Finding 2a/2b: "New step", "Use existing…", "Change" and "Remove" repeat
+  # once per door with only a sibling span telling them apart - a name a
+  # screen reader can't hear. Each button's accessible name has to say WHICH
+  # door, without changing the visible text a sighted, mouse-driven test
+  # still clicks by.
+  test "each door action names which door it acts on" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light green?",
+                                       answer_type: "yes_no", variable_name: "light")
+    edge = Transition.create!(step: question, target_step: @step, condition: "light == 'yes'", label: "Yes")
+
+    get panel_edit_workflow_step_path(@workflow, question)
+
+    assert_select "##{dom_id(question, :doors)}" do
+      assert_select "button[aria-label='New step for “No”']", text: "New step"
+      assert_select "button[aria-label='Use an existing step for “No”']", text: "Use existing…"
+      assert_select "button[aria-label='Change where “Yes” leads']", text: "Change"
+      assert_select "a[aria-label='Remove the “Yes” connection']", text: "Remove"
+    end
+    assert_select "dialog##{dom_id(question, :target_picker)}[aria-labelledby='#{dom_id(question, :target_picker_heading)}']"
+    assert_select "##{dom_id(question, :target_picker_heading)}", text: "Use an existing step"
+
+    edge.destroy!
+  end
+
+  # A step with only the single, unlabelled "Next" door reads naturally
+  # ("after this one"), not by quoting the literal word "Next".
+  test "the unlabelled Next door reads naturally, not by quoting “Next”" do
+    action = Steps::Action.create!(workflow: @workflow, position: 1, title: "Untitled Action")
+
+    get panel_edit_workflow_step_path(@workflow, action)
+
+    assert_select "##{dom_id(action, :doors)}" do
+      assert_select "button[aria-label='New step after this one']", text: "New step"
+      assert_select "button[aria-label='Use an existing step after this one']", text: "Use existing…"
+    end
+  end
+
+  test "the readonly panel shows doors with nothing to press" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light green?",
+                                       answer_type: "yes_no", variable_name: "light")
+
+    get panel_edit_workflow_step_path(@workflow, question, readonly: 1)
+
+    assert_select "##{dom_id(question, :doors)} .step-doors__row", 2
+    assert_select "##{dom_id(question, :doors)} button", false
+    assert_select "##{dom_id(question, :doors)} a", false
+    assert_select ".step-doors__row", text: /No.*nothing yet/m
+  end
+
+  test "the editor lists only connections that are not doors" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light green?",
+                                       answer_type: "yes_no", variable_name: "light")
+    Transition.create!(step: question, target_step: @step, condition: "light == 'yes'")
+    extra = Transition.create!(step: question, target_step: @step, condition: "tier == 'gold'")
+
+    get panel_edit_workflow_step_path(@workflow, question)
+
+    payload = JSON.parse(css_select("input[name='step[transitions_json]']").first["value"])
+    assert_equal [extra.uuid], payload["known"]
+    assert_equal [extra.uuid], payload["rows"].pluck("uuid")
+  end
+
+  test "changing the answer type streams the doors" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Q", answer_type: "yes_no")
+
+    patch workflow_step_path(@workflow, question),
+          params: { step: { answer_type: "text" } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_select "turbo-stream[action='replace'][target='#{dom_id(question, :doors)}']"
+  end
+
+  # A handoff has no doors (Step::Doors#growable? is false for one), so its own
+  # connection, if it has one, must still show up in the "Other connections"
+  # editor - and _transitions_editor.html.erb reads it via step.transitions
+  # directly rather than Step::Doors.for(step).extras. This is the claim that
+  # makes the two interchangeable there.
+  test "a handoff's extras are exactly its own transitions" do
+    target_workflow = Workflow.create!(title: "Handoff Target", user: @editor)
+    Steps::Resolve.create!(workflow: target_workflow, position: 0, title: "Done", resolution_type: "success")
+    handoff = Steps::SubFlow.create!(workflow: @workflow, position: 1, title: "Continue elsewhere",
+                                     sub_flow_workflow_id: target_workflow.id, sub_flow_returns: false)
+    edge = Transition.create!(step: handoff, target_step: @step)
+
+    assert_equal [edge], Step::Doors.for(handoff).extras
+  end
+
+  # Two connections from one Question to the same target, one condition
+  # naming each variable. Renaming the old variable to the new one rewrites
+  # the first condition onto the second's, which Transition's own uniqueness
+  # validation refuses from inside Question#carry_conditions_to_new_variable's
+  # after_update callback - the whole save, rename included, rolls back.
+  test "a rename that collides two conditions onto one target is refused, not a 500" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Q",
+                                       answer_type: "yes_no", variable_name: "old")
+    first = Transition.create!(step: question, target_step: @step, condition: "old == 'yes'")
+    Transition.create!(step: question, target_step: @step, condition: "new == 'yes'")
+
+    patch workflow_step_path(@workflow, question),
+          params: { step: { variable_name: "new" } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :unprocessable_content
+    assert_select "turbo-stream[target='flash']"
+    assert_equal "old", question.reload.variable_name
+    assert_equal "old == 'yes'", first.reload.condition,
+                 "the whole transaction must roll back, not just the variable_name"
+  end
+
+  # connections_or_doors_stream has three outcomes; the two above (rename,
+  # doors_changed? false) are covered elsewhere. This is the third: a save
+  # whose transitions_json turns one of the editor's own rows into a door -
+  # the row's condition now reads as the No door - so the whole Connections
+  # fragment has to come back, not just the doors list, or the row would show
+  # twice: once as a door, once still sitting in the editor below it.
+  test "a save that turns an editor row into a door streams the whole connections fragment" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light green?",
+                                       answer_type: "yes_no", variable_name: "light")
+    new_uuid = SecureRandom.uuid
+    transitions_json = {
+      known: [new_uuid],
+      rows: [{ uuid: new_uuid, target_uuid: @step.uuid, condition: "light == 'no'", label: "No" }]
+    }.to_json
+
+    patch workflow_step_path(@workflow, question),
+          params: { step: { transitions_json: transitions_json } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    transition = question.transitions.reload.sole
+    assert_equal transition, Step::Doors.for(question.reload).door_for("light == 'no'").transition
+
+    assert_select "turbo-stream[action='update'][target='#{dom_id(question, :connections)}']"
+    assert_select "turbo-stream[action='replace'][target='#{dom_id(question, :doors)}']", false
+  end
+
+  # The contrast case: the same shape of save, but the sent row's condition
+  # names a variable no door of this step reads at all, so it stays an
+  # "extra" - editor_row_became_door? is false, and only the doors list (not
+  # the whole fragment) needs replacing.
+  test "a save whose new row is not a door streams only the doors list" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light green?",
+                                       answer_type: "yes_no", variable_name: "light")
+    new_uuid = SecureRandom.uuid
+    transitions_json = {
+      known: [new_uuid],
+      rows: [{ uuid: new_uuid, target_uuid: @step.uuid, condition: "tier == 'gold'", label: nil }]
+    }.to_json
+
+    patch workflow_step_path(@workflow, question),
+          params: { step: { transitions_json: transitions_json } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    transition = question.transitions.reload.sole
+    assert_includes Step::Doors.for(question.reload).extras, transition
+
+    assert_select "turbo-stream[action='replace'][target='#{dom_id(question, :doors)}']"
+    assert_select "turbo-stream[action='update'][target='#{dom_id(question, :connections)}']", false
+  end
+
+  # Finding 1: a door that becomes an extra is never shown to the editor.
+  # A Yes/No Question has its No door wired. Switching to Text means
+  # Step::Doors no longer claims that transition - it becomes an extra - but
+  # the editor's own snapshot (sent as empty known/rows, exactly what it held
+  # before this save) never contained that uuid. The whole fragment must come
+  # back, or the panel would show "No other connections" while the edge is
+  # still live in the database.
+  test "a door that becomes an extra streams the whole connections fragment" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light green?",
+                                       answer_type: "yes_no", variable_name: "light")
+    no_edge = Transition.create!(step: question, target_step: @step, condition: "light == 'no'", label: "No")
+    transitions_json = { known: [], rows: [] }.to_json
+
+    patch workflow_step_path(@workflow, question),
+          params: { step: { answer_type: "text", transitions_json: transitions_json } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    assert_select "turbo-stream[action='update'][target='#{dom_id(question, :connections)}']"
+    assert_select "turbo-stream[action='replace'][target='#{dom_id(question, :doors)}']", false
+    assert_equal "light == 'no'", no_edge.reload.condition
+  end
+
+  # Contrast: the same shape of save, but the extra was already sitting in the
+  # editor's own known/rows before this PATCH - so the editor already shows
+  # it, and only the doors list needs replacing.
+  test "an extra the editor already knew about streams only the doors list" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light green?",
+                                       answer_type: "yes_no", variable_name: "light")
+    extra = Transition.create!(step: question, target_step: @step, condition: "tier == 'gold'")
+    transitions_json = {
+      known: [extra.uuid],
+      rows: [{ uuid: extra.uuid, target_uuid: @step.uuid, condition: "tier == 'gold'", label: nil }]
+    }.to_json
+
+    patch workflow_step_path(@workflow, question),
+          params: { step: { answer_type: "text", transitions_json: transitions_json } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    assert_select "turbo-stream[action='replace'][target='#{dom_id(question, :doors)}']"
+    assert_select "turbo-stream[action='update'][target='#{dom_id(question, :connections)}']", false
+  end
+
+  # Finding 2: sync_transitions did not rescue ActiveRecord::RecordNotUnique.
+  # Two overlapping saves of the same newly minted row (Turbo aborts the
+  # earlier fetch, not the server work) can hit the unique index on
+  # transitions.uuid; the loser must answer through the refusal path, not a
+  # 500. RecordNotUnique carries no #record, unlike RecordInvalid.
+  test "a duplicate transition uuid race answers with the refusal path, not a 500" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Q", answer_type: "text")
+    transitions_json = {
+      known: [SecureRandom.uuid],
+      rows: [{ uuid: SecureRandom.uuid, target_uuid: @step.uuid, condition: nil, label: nil }]
+    }.to_json
+
+    original_call = TransitionSync.method(:call)
+    TransitionSync.define_singleton_method(:call) { |*, **| raise ActiveRecord::RecordNotUnique, "dup" }
+    begin
+      patch workflow_step_path(@workflow, question),
+            params: { step: { transitions_json: transitions_json } },
+            headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    ensure
+      TransitionSync.define_singleton_method(:call, original_call)
+    end
+
+    assert_response :unprocessable_content
+    assert_select "turbo-stream[target='flash']"
+  end
+
+  test "the panel offers every other step as an existing target, outside the autosave form" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light green?",
+                                       answer_type: "yes_no", variable_name: "light")
+
+    get panel_edit_workflow_step_path(@workflow, question)
+
+    assert_select "dialog##{dom_id(question, :target_picker)} button[name='target_step_id'][value='#{@step.id}']"
+    assert_select "dialog button[name='target_step_id'][value='#{question.id}']", false
+    assert_select "form[data-controller~='inline-autosave'] dialog", false
+    assert_select ".step-doors__row button", text: "Use existing…"
+    # form_with method: :post renders no _method field of its own - the
+    # dialog's hidden field (flipped to "patch" by JS for a retarget) must be
+    # the only one, or Rails would read whichever one comes first. (No
+    # authenticity_token field to check alongside it: config/environments/test.rb
+    # sets allow_forgery_protection false, so no form embeds one in this
+    # environment - not something specific to this dialog's form.)
+    assert_select "dialog form input[name='_method']", count: 1
+  end
+
+  test "the readonly panel offers no way to point a door at an existing step" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light green?",
+                                       answer_type: "yes_no", variable_name: "light")
+
+    get panel_edit_workflow_step_path(@workflow, question, readonly: 1)
+
+    assert_select "dialog", false
+    assert_select "button", text: "Use existing…", count: 0
+    assert_select "button", text: "Change", count: 0
+  end
+
+  test "a Resolve step's panel renders no target picker dialog" do
+    resolve = Steps::Resolve.create!(workflow: @workflow, position: 1, title: "Done")
+
+    get panel_edit_workflow_step_path(@workflow, resolve)
+
+    assert_select "dialog##{dom_id(resolve, :target_picker)}", false
+  end
+
+  test "a handoff Sub-Flow's panel renders no target picker dialog" do
+    published = Workflow.create!(title: "Handoff target", user: @editor).tap { |w| w.update_columns(status: "published") }
+    handoff = Steps::SubFlow.create!(workflow: @workflow, position: 1, title: "Hand off",
+                                     sub_flow_workflow_id: published.id, sub_flow_returns: false)
+
+    get panel_edit_workflow_step_path(@workflow, handoff)
+
+    assert_select "dialog##{dom_id(handoff, :target_picker)}", false
   end
 end

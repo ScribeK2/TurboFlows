@@ -65,6 +65,9 @@ Rails.application.routes.draw do
       # A file chosen in the step panel is direct-uploaded to Active Storage and
       # then attached here; Remove detaches. Both answer with the one list.
       resources :media_attachments, only: %i[create destroy], controller: "steps/media_attachments"
+      # One connection at a time, from a door row in the step panel. The panel's
+      # editor saves the connections that are not doors, through steps#update.
+      resources :transitions, only: %i[create update destroy], controller: "steps/transitions"
     end
   end
 

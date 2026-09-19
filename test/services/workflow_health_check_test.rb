@@ -422,6 +422,113 @@ class WorkflowHealthCheckTest < ActiveSupport::TestCase
     assert_includes issue[:message], "Callback number"
   end
 
+  test "a Yes/No Question with one answer wired warns about the other" do
+    user = User.create!(email: "hc-#{SecureRandom.hex(4)}@example.com", password: "password123456")
+    wf = Workflow.create!(title: "HC doors", user: user)
+    q = Steps::Question.create!(workflow: wf, title: "Light green?", question: "Light green?", position: 0,
+                                answer_type: "yes_no", variable_name: "light")
+    done = Steps::Resolve.create!(workflow: wf, title: "Done", position: 1, resolution_type: "success")
+    wf.update!(start_step: q)
+    Transition.create!(step: q, target_step: done, condition: "light == 'yes'")
+
+    issue = WorkflowHealthCheck.call(wf).issues[q.uuid].find { |i| i[:code] == :missing_expected_door }
+
+    assert_equal :warning, issue[:severity]
+    assert_equal "“No” has no step yet", issue[:message]
+    assert_not issue[:fixable]
+  end
+
+  test "an Anything else connection silences the missing-door warning" do
+    user = User.create!(email: "hc-#{SecureRandom.hex(4)}@example.com", password: "password123456")
+    wf = Workflow.create!(title: "HC default", user: user)
+    q = Steps::Question.create!(workflow: wf, title: "Q", question: "Q", position: 0, answer_type: "yes_no", variable_name: "q")
+    done = Steps::Resolve.create!(workflow: wf, title: "Done", position: 1, resolution_type: "success")
+    other = Steps::Resolve.create!(workflow: wf, title: "Other", position: 2, resolution_type: "success")
+    wf.update!(start_step: q)
+    Transition.create!(step: q, target_step: done, condition: "q == 'yes'", position: 0)
+    Transition.create!(step: q, target_step: other, position: 1)
+
+    codes = WorkflowHealthCheck.call(wf).issues.fetch(q.uuid, []).pluck(:code)
+    assert_not_includes codes, :missing_expected_door
+  end
+
+  test "a multi-door step with nothing wired says so once, with no one-click fix" do
+    user = User.create!(email: "hc-#{SecureRandom.hex(4)}@example.com", password: "password123456")
+    wf = Workflow.create!(title: "HC none", user: user)
+    q = Steps::Question.create!(workflow: wf, title: "Q", question: "Q", position: 0, answer_type: "yes_no", variable_name: "q")
+    Steps::Resolve.create!(workflow: wf, title: "Done", position: 1, resolution_type: "success")
+    wf.update!(start_step: q)
+
+    issues = WorkflowHealthCheck.call(wf).issues[q.uuid]
+    none = issues.find { |i| i[:code] == :no_outgoing_transitions }
+
+    assert_equal "No answers lead anywhere yet", none[:message]
+    assert_not none[:fixable]
+    assert_nil none[:fix_type]
+    assert_not_includes issues.pluck(:code), :missing_expected_door
+  end
+
+  test "a single-door step keeps its one-click fix" do
+    user = User.create!(email: "hc-#{SecureRandom.hex(4)}@example.com", password: "password123456")
+    wf = Workflow.create!(title: "HC single", user: user)
+    a = Steps::Action.create!(workflow: wf, title: "Do it", position: 0)
+    wf.update!(start_step: a)
+
+    none = WorkflowHealthCheck.call(wf).issues[a.uuid].find { |i| i[:code] == :no_outgoing_transitions }
+    assert none[:fixable]
+    assert_equal "add_resolve_after", none[:fix_type]
+  end
+
+  test "a connection checking for a value the step no longer offers is reported" do
+    user = User.create!(email: "hc-#{SecureRandom.hex(4)}@example.com", password: "password123456")
+    wf = Workflow.create!(title: "HC stale", user: user)
+    q = Steps::Question.create!(workflow: wf, title: "Device?", question: "Device?", position: 0, variable_name: "device",
+                                answer_type: "dropdown", options: [{ "label" => "Router", "value" => "router" }])
+    done = Steps::Resolve.create!(workflow: wf, title: "Done", position: 1, resolution_type: "success")
+    wf.update!(start_step: q)
+    Transition.create!(step: q, target_step: done, condition: "device == 'router'", position: 0)
+    Transition.create!(step: q, target_step: done, condition: "device == 'modem'", position: 1)
+
+    issue = WorkflowHealthCheck.call(wf).issues[q.uuid].find { |i| i[:code] == :unmatched_option_value }
+    assert_equal :warning, issue[:severity]
+    assert_equal "This connection checks for “modem”, which is no longer an option", issue[:message]
+  end
+
+  # A hand-made duplicate of a wired door's own condition is an "extra" (only
+  # the first transition claims the door), but its value is still a real
+  # answer - it must not be reported as though the step stopped offering it.
+  test "a duplicate connection sharing a wired door's condition is not reported as unmatched" do
+    user = User.create!(email: "hc-#{SecureRandom.hex(4)}@example.com", password: "password123456")
+    wf = Workflow.create!(title: "HC duplicate", user: user)
+    q = Steps::Question.create!(workflow: wf, title: "Q", question: "Q", position: 0, answer_type: "yes_no", variable_name: "q")
+    done = Steps::Resolve.create!(workflow: wf, title: "Done", position: 1, resolution_type: "success")
+    also = Steps::Resolve.create!(workflow: wf, title: "Also", position: 2, resolution_type: "success")
+    wf.update!(start_step: q)
+    Transition.create!(step: q, target_step: done, condition: "q == 'yes'", position: 0)
+    Transition.create!(step: q, target_step: also, condition: "q == 'yes'", position: 1)
+
+    codes = WorkflowHealthCheck.call(wf).issues.fetch(q.uuid, []).pluck(:code)
+    assert_not_includes codes, :unmatched_option_value
+  end
+
+  # Same as above, but the stale connection is a bare value with no operator -
+  # the shape #Step::Doors#unmatched_extras learned to catch alongside the
+  # operator form (see test/models/step_doors_test.rb).
+  test "a bare stale connection value is reported too" do
+    user = User.create!(email: "hc-#{SecureRandom.hex(4)}@example.com", password: "password123456")
+    wf = Workflow.create!(title: "HC bare stale", user: user)
+    q = Steps::Question.create!(workflow: wf, title: "Device?", question: "Device?", position: 0, variable_name: "device",
+                                answer_type: "dropdown", options: [{ "label" => "Router", "value" => "router" }])
+    done = Steps::Resolve.create!(workflow: wf, title: "Done", position: 1, resolution_type: "success")
+    wf.update!(start_step: q)
+    Transition.create!(step: q, target_step: done, condition: "router", position: 0)
+    Transition.create!(step: q, target_step: done, condition: "modem", position: 1)
+
+    issue = WorkflowHealthCheck.call(wf).issues[q.uuid].find { |i| i[:code] == :unmatched_option_value }
+    assert_equal :warning, issue[:severity]
+    assert_equal "This connection checks for “modem”, which is no longer an option", issue[:message]
+  end
+
   private
 
   # One step wired to a Resolve and set as the start, so the only findings on
