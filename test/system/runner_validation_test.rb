@@ -61,4 +61,67 @@ class RunnerValidationTest < ApplicationSystemTestCase
     # A refused attempt is not a visited step: nothing lands in the trail.
     assert_empty Scenario.where(workflow: wf).last.execution_path
   end
+
+  # The refusal reaches a screen reader, or it reaches nobody who cannot see the
+  # red outline. The card is REPLACED by the answer's stream, so the markup
+  # carrying the message is a new element every time and cannot be a live region
+  # on its own - it is the card's own aria-live region, filled by
+  # scenario-step#connect after the card is in the document, that does the work.
+  #
+  # This asserts the text is routed there. It does NOT assert any screen reader
+  # speaks it: that needs a real one, and no test here can stand in for it.
+  test "a refused form step announces why, and focuses the field that was refused" do
+    blocked_form_scenario
+
+    fill_in "answer[customer_name]", with: " "
+    check "answer[identity_confirmed]"
+    click_on "Submit Form"
+
+    assert_selector "input[name='answer[customer_name]'].is-invalid", wait: 5
+
+    announced = find("[data-scenario-step-target='announce']", visible: :all).text
+    assert_match(/not submitted/i, announced)
+    assert_match(/Customer name is required/, announced)
+
+    # Focus goes to the refused field, not the first input: the focus change
+    # itself names the field and its invalid state, which is the half a live
+    # region cannot carry.
+    assert_equal "answer[customer_name]", page.evaluate_script("document.activeElement?.name")
+  end
+
+  # And a step that was NOT refused still announces itself, which is what the
+  # region was built for.
+  test "an ordinary step announces its own title, not a refusal" do
+    blocked_form_scenario
+
+    announced = find("[data-scenario-step-target='announce']", visible: :all).text
+    assert_match(/Verify the caller/, announced)
+    assert_no_match(/not submitted/i, announced)
+  end
+
+  private
+
+  def blocked_form_scenario
+    u = User.create!(email: "wf-system-test-#{SecureRandom.hex(4)}@example.com",
+                     password: "password123!", password_confirmation: "password123!", role: "editor")
+    wf = Workflow.create!(title: "Identity Check", user: u, status: "published")
+    form = Steps::Form.create!(
+      workflow: wf, title: "Verify the caller", position: 0,
+      options: [
+        { "name" => "customer_name", "label" => "Customer name",
+          "field_type" => "text", "required" => true, "position" => 0 },
+        { "name" => "identity_confirmed", "label" => "Confirmed identity",
+          "field_type" => "checkbox", "required" => true, "position" => 1 }
+      ]
+    )
+    done = Steps::Resolve.create!(workflow: wf, title: "Done", position: 1, resolution_type: "success")
+    Transition.create!(step: form, target_step: done, position: 0)
+    wf.update!(start_step: form)
+
+    sign_in_as u
+    visit workflow_path(wf)
+    click_on "Run Scenario"
+    assert_current_step "Verify the caller"
+    form
+  end
 end
