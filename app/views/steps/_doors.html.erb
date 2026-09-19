@@ -9,7 +9,10 @@
 <% doors = Step::Doors.for(step) %>
 <% ordinals = step_ordinals(workflow) %>
 <% title = step.title.presence || "Untitled #{step.step_type.titleize}" %>
-<div id="<%= dom_id(step, :doors) %>" class="step-doors">
+<%# tabindex="-1": a successful pick replaces this whole section, taking the
+    button that had focus with it, and step-target-picker#submitEnded puts
+    focus back here rather than letting it fall to <body>. %>
+<div id="<%= dom_id(step, :doors) %>" class="step-doors" tabindex="-1">
   <% if doors.growable? %>
     <span class="form-label">Where this goes next</span>
     <ul class="step-doors__list" role="list">
