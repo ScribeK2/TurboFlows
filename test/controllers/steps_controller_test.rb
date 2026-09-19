@@ -553,7 +553,11 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_equal [extra.uuid], payload["rendered"]
     assert_equal [], payload["minted"]
     assert_equal [extra.uuid], payload["rows"].pluck("uuid")
-    assert_not payload.key?("known")
+    # `known` is the TRANSITIONAL duplicate of `rendered` (see
+    # _transitions_editor.html.erb's comment): a tab still running the
+    # pre-2026-09-19 controller reads only this key, so it has to carry a
+    # real, usable delete set - not be absent, and not merely present-but-empty.
+    assert_equal payload["rendered"], payload["known"]
   end
 
   test "changing the answer type streams the doors" do
