@@ -190,6 +190,35 @@ class BuilderGrowTest < ApplicationSystemTestCase
     assert_equal 0, question.transitions.reload.count
   end
 
+  # Finding 3. steps/_target_picker is only re-rendered by a connection made
+  # from THIS step (see AGENTS.md), so deleting a DIFFERENT step while this
+  # panel stays open never reaches this dialog's own candidate list - it
+  # would otherwise keep offering a step that no longer exists until the
+  # panel is closed and reopened. The list still updates by the ordinary
+  # route (a broadcast repaints the row list), so
+  # step_target_picker#markGoneOptions can tell a live step from a gone one
+  # by checking the builder's own rows, fresh, every time the dialog opens.
+  test "deleting another step while a panel is open removes it from that panel's Use existing list" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", question: "Light green?",
+                                       position: 1, answer_type: "yes_no", variable_name: "light")
+    other = Steps::Action.create!(workflow: @workflow, title: "Power cycle the modem", position: 2)
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    open_step(question)
+
+    other_row = row(other)
+    other_row.hover
+    accept_confirm { other_row.find("button[title='Remove step']").click }
+    assert_no_selector "#{STEP_ROW}[data-step-uuid='#{other.uuid}']", wait: 5
+
+    open_target_picker("Yes", "Use existing…")
+    within("dialog[open]") do
+      assert_no_selector ".step-target-list__option", text: "Power cycle the modem"
+      fill_in "Find a step", with: "power"
+      assert_selector ".form-hint", text: "No step matches.", visible: true
+    end
+  end
+
   # The test above only shows the dialog closes on a successful submit - by
   # then it is already closed, so leaving and coming back would prove nothing
   # about the turbo:before-cache handler. This leaves the dialog OPEN instead,

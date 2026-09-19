@@ -32,6 +32,7 @@ export default class extends Controller {
     this.errorTarget.textContent = ""
 
     this.filterTarget.value = ""
+    this.markGoneOptions()
     this.filter()
     this.dialogTarget.showModal()
     this.filterTarget.focus()
@@ -63,10 +64,37 @@ export default class extends Controller {
     event.stopPropagation()
   }
 
+  // A step this dialog's candidate list was rendered with can be gone by the
+  // time it opens - this author deleted another step from the list while a
+  // different door's panel state persisted, or a collaborator did. The
+  // builder's own rows (data-step-id on .builder__step) are the live truth,
+  // updated by every delete's broadcast well before it would ever reach this
+  // dialog's own re-render (steps/_target_picker is only re-rendered by
+  // Steps::TransitionsController, on a connection made from THIS step - see
+  // AGENTS.md). So hide any option whose step no longer has a row, rather
+  // than trust this dialog's own copy.
+  //
+  // This can't help with a step ADDED since the panel rendered: a grow
+  // replaces the whole panel, rebuilding this dialog fresh with it, so that
+  // gap is only reachable through a collaborator's grow while THIS panel
+  // stays open - left for TODOS.md.
+  markGoneOptions() {
+    this.optionTargets.forEach(option => {
+      const gone = !document.querySelector(`.builder__step[data-step-id="${option.dataset.stepId}"]`)
+      option.dataset.gone = gone ? "true" : "false"
+      option.classList.toggle("is-hidden", gone)
+    })
+  }
+
+  // A gone option stays hidden regardless of what's typed - and out of the
+  // "No step matches." count - rather than reappearing the moment the filter
+  // text no longer excludes it.
   filter() {
     const query = this.filterTarget.value.trim().toLowerCase()
     let shown = 0
     this.optionTargets.forEach(option => {
+      if (option.dataset.gone === "true") return
+
       const match = !query || option.dataset.search.includes(query)
       option.classList.toggle("is-hidden", !match)
       if (match) shown++
