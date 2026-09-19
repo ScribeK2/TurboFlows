@@ -22,6 +22,11 @@ class StepsController < ApplicationController
   SAVE_CONFLICT_MESSAGE = "Someone else saved this step at the same moment, so your change wasn't saved. " \
                           "Reload to see the latest version, then make your change again.".freeze
 
+  # TransitionSync skipped a row this save's payload claimed was rendered but
+  # that had already been deleted elsewhere - the stale-panel case. The save
+  # itself still succeeded; only that one connection did not come back.
+  STALE_PANEL_NOTICE = "A connection you had open was removed elsewhere, so it wasn't saved.".freeze
+
   # Which fields, when this save touches them, change what Step::Doors would
   # read off this step — so the open panel's doors list is now stale.
   #
@@ -155,9 +160,13 @@ class StepsController < ApplicationController
           # list replaced - unless it just turned one of the editor's own rows
           # into a door, which would then show in both places at once.
           # #connections_or_doors_stream is the one place that decides which,
-          # if either, this save needs.
+          # if either, this save needs. A skipped row (TransitionSync found a
+          # rendered-but-gone uuid) always needs the whole fragment: the
+          # editor's own snapshot is now wrong in a way neither the rename nor
+          # the doors-shape check can see, and re-rendering it whole is what
+          # resets the editor's `minted` list too.
           unless connections_streamed
-            stream = connections_or_doors_stream(rename_pair)
+            stream = healing_stale_panel? ? full_connections_stream : connections_or_doors_stream(rename_pair)
             streams << stream if stream
           end
 
@@ -172,10 +181,15 @@ class StepsController < ApplicationController
             )
           end
 
+          streams << stale_panel_flash_stream if healing_stale_panel?
+
           render turbo_stream: streams
         end
-        format.html { redirect_to workflow_path(@workflow, edit: true), notice: "Step updated." }
-        format.json { render json: step_json(@step) }
+        format.html do
+          redirect_to workflow_path(@workflow, edit: true),
+                      notice: healing_stale_panel? ? STALE_PANEL_NOTICE : "Step updated."
+        end
+        format.json { render json: step_json(@step, notice: healing_stale_panel? ? STALE_PANEL_NOTICE : nil) }
       end
 
       broadcast_step_row(@step)
@@ -404,7 +418,10 @@ class StepsController < ApplicationController
     @workflow.update_column(:start_step_id, first_step.id) if first_step
   end
 
-  # Returns nil on success, or the message to refuse the response with.
+  # Returns nil on success, or the message to refuse the response with. On
+  # success the result is stashed in @sync_result so the stream/notice
+  # decisions below can read whether TransitionSync skipped a stale row,
+  # without sync_transitions itself growing any response-shaping logic.
   #
   # RecordNotUnique is two overlapping saves of the same newly minted row -
   # Turbo aborts the earlier fetch, not the server work behind it, so a
@@ -412,13 +429,25 @@ class StepsController < ApplicationController
   # the unique index on transitions.uuid. Unlike RecordInvalid it carries no
   # #record, so the message reads straight off the exception.
   def sync_transitions(rename_pair)
-    TransitionSync.call(@step, step_params[:transitions_json], renamed_variable: rename_pair)
+    @sync_result = TransitionSync.call(@step, step_params[:transitions_json], renamed_variable: rename_pair)
     nil
   rescue TransitionSync::Malformed, ActiveRecord::RecordInvalid => e
     "This step was saved, but its connections were not: #{e.message}"
   rescue ActiveRecord::RecordNotUnique
     "This step was saved, but its connections were not: another save landed on the same connection " \
     "at the same moment. Reload and try again."
+  end
+
+  # True when this save's TransitionSync run skipped a rendered-but-gone row -
+  # a connection this panel's snapshot claimed to have shown, but that had
+  # already been deleted elsewhere. nil when transitions weren't synced at all.
+  def healing_stale_panel?
+    @sync_result&.skipped&.any? || false
+  end
+
+  def stale_panel_flash_stream
+    flash.now[:notice] = STALE_PANEL_NOTICE
+    turbo_stream.update("flash", partial: "shared/flash_messages")
   end
 
   def doors_changed?
@@ -442,22 +471,31 @@ class StepsController < ApplicationController
   # `doors` is computed once by the caller and passed in, so this and the
   # forward check it used to make alone share one query.
   def door_shape_changed?(doors)
-    sent_known, sent_rows = known_and_sent_row_uuids
+    sent_shown, sent_rows = shown_and_sent_row_uuids
 
     return true if doors.doors.filter_map(&:transition).any? { |t| sent_rows.include?(t.uuid) }
 
-    doors.extras.any? { |t| sent_known.exclude?(t.uuid) }
+    doors.extras.any? { |t| sent_shown.exclude?(t.uuid) }
   end
 
-  # [known_uuids, row_uuids] from the transitions_json the browser just sent.
-  # No transitions_json, or JSON that doesn't parse, "knows nothing" - both
-  # come back as empty arrays, same as #editor_row_became_door? used to treat
-  # them.
-  def known_and_sent_row_uuids
+  # [shown_uuids, row_uuids] from the transitions_json the browser just sent.
+  # "Shown" is what the browser says this editor displayed: `rendered +
+  # minted` under the current shape, or `known` under the legacy one - the
+  # same either-shape read TransitionSync does, kept independent of it since
+  # this runs whether or not a sync happened at all. No transitions_json, or
+  # JSON that doesn't parse, "knows nothing" - both come back as empty arrays,
+  # same as #editor_row_became_door? used to treat them.
+  def shown_and_sent_row_uuids
     return [[], []] if step_params[:transitions_json].blank?
 
     payload = JSON.parse(step_params[:transitions_json])
-    [payload["known"].to_a.map(&:to_s), payload["rows"].to_a.pluck("uuid")]
+    shown = if payload["rendered"].is_a?(Array) || payload["minted"].is_a?(Array)
+              (payload["rendered"].to_a + payload["minted"].to_a).map(&:to_s)
+            else
+              payload["known"].to_a.map(&:to_s)
+            end
+
+    [shown, payload["rows"].to_a.pluck("uuid")]
   rescue JSON::ParserError, NoMethodError
     [[], []]
   end
@@ -495,14 +533,14 @@ class StepsController < ApplicationController
     )
   end
 
-  def step_json(step)
+  def step_json(step, notice: nil)
     {
       id: step.id,
       uuid: step.uuid,
       type: step.type.demodulize.underscore,
       title: step.title,
       position: step.position
-    }
+    }.tap { |json| json[:notice] = notice if notice }
   end
 
   # Templates lead the builder's empty state, so an applied template is the first
