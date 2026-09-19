@@ -16,9 +16,22 @@ class ConditionEvaluator
   # captures it to unescape).
   STRING_VALUE = /'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"/
 
+  # The OLD string value: no escape understanding at all, just "no quote
+  # characters inside" - matched delimiters only, same as STRING_VALUE
+  # requires. Added as a second alternative to VALID_PATTERNS/COMPLETE_PATTERNS
+  # (not to the tokenizer) because a value ending in a bare, un-escaped
+  # backslash - written that way before this task, since Step::Doors and the
+  # panel never escaped a backslash - has no valid close under STRING_VALUE's
+  # escape rule (the trailing "\" consumes the closing quote as an "escaped"
+  # character). #evaluate and #parse already read that shape correctly
+  # through the legacy fallback; without this, complete?/valid? refused it,
+  # which would make an exportable workflow un-importable and would misread
+  # an existing Markdown transition as a label.
+  OLD_STRING_VALUE = /'[^'"]*'|"[^'"]*"/
+
   VALID_PATTERNS = [
-    /^\w+\s*==\s*(?:#{STRING_VALUE.source})/, # variable == 'value' (escapes allowed)
-    /^\w+\s*!=\s*(?:#{STRING_VALUE.source})/, # variable != 'value' (escapes allowed)
+    /^\w+\s*==\s*(?:#{STRING_VALUE.source}|#{OLD_STRING_VALUE.source})/, # variable == 'value'
+    /^\w+\s*!=\s*(?:#{STRING_VALUE.source}|#{OLD_STRING_VALUE.source})/, # variable != 'value'
     /^\w+\s*>\s*\d+/,              # variable > 10
     /^\w+\s*<\s*\d+/,              # variable < 10
     /^\w+\s*>=\s*\d+/,             # variable >= 10
@@ -176,13 +189,14 @@ class ConditionEvaluator
   # legacy reader always compared for such a value, and is what keeps a
   # workflow with e.g. a Windows path option routing the way it always has. A
   # condition written after this change escapes both, so its two readings
-  # agree and this is exactly #compare_values. Same nil rule as
-  # #compare_values: for ==, nil is false; for !=, nil is true.
+  # agree and this is exactly #compare_values applied once. The nil rule and
+  # the comparison itself both live in #compare_values, called here with '=='
+  # so it never returns early on the nil check (already handled above) - this
+  # only restates "either reading", not the rule underneath it.
   def value_matches?(operator, result_value, value, literal_value)
     return operator == '!=' if result_value.nil?
 
-    answer = result_value.to_s.downcase
-    matches = answer == value.to_s.downcase || answer == literal_value.to_s.downcase
+    matches = compare_values('==', result_value, value) || compare_values('==', result_value, literal_value)
     operator == '==' ? matches : !matches
   end
 

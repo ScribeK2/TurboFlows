@@ -246,6 +246,44 @@ class ConditionEvaluatorTest < ActiveSupport::TestCase
     assert_not ConditionEvaluator.complete?("light == 'Don't know'")
   end
 
+  # Review finding (2026-09-19): a value ending in a bare backslash - what
+  # Step::Doors#condition_for wrote for such a value before writers escaped
+  # backslashes, and what the legacy path has always read correctly for
+  # #evaluate/#parse - was newly REFUSED by complete?/valid?, because the
+  # trailing backslash consumes the closing quote as an "escape" and
+  # STRING_VALUE never finds a close. Refusing it would make an exportable
+  # workflow un-importable (strict_import_validator) and would misread an
+  # existing Markdown transition as a label instead of a condition. Ruling:
+  # VALID_PATTERNS also accepts the OLD quote-free form with matched
+  # delimiters (no escape understanding at all, just "no quote characters
+  # inside"), so this shape is complete through that path while a value with
+  # an unescaped inner quote, or mismatched delimiters, still is not.
+  test "complete? accepts a value ending in a bare backslash, for both delimiters" do
+    backslash = "\\"
+    single = "path == 'C:#{backslash}'" # ONE literal backslash, single-quoted
+    double = %(path == "C:#{backslash}") # ONE literal backslash, double-quoted
+    answer = "C:#{backslash}"
+
+    assert_equal 1, single.count(backslash), "precondition: exactly one backslash"
+    assert_equal 1, double.count(backslash), "precondition: exactly one backslash"
+
+    assert ConditionEvaluator.complete?(single)
+    assert ConditionEvaluator.complete?(double)
+    assert ConditionEvaluator.valid?(single)
+
+    assert ConditionEvaluator.evaluate(single, { "path" => answer })
+    parsed = ConditionEvaluator.new(single).parse
+    assert_equal answer, parsed[:value]
+    assert_equal answer, parsed[:literal_value]
+  end
+
+  test "complete? still refuses what it always refused, with the wider grammar in place" do
+    assert_not ConditionEvaluator.complete?(%(light == 'yes")), "mismatched delimiters"
+    assert_not ConditionEvaluator.complete?(%(light == "yes')), "mismatched delimiters, reversed"
+    assert_not ConditionEvaluator.complete?("light == 'Don't know'"), "unescaped inner quote"
+    assert_not ConditionEvaluator.complete?("a == 'x' && b == 'y'"), "a compound condition"
+  end
+
   # A live workflow must not change routing because the parser got better: each
   # of these shapes takes the code path it took before, and answers as it did.
   test "legacy shapes evaluate exactly as they did" do
@@ -269,16 +307,21 @@ class ConditionEvaluatorTest < ActiveSupport::TestCase
 
   # --- two readings of a value (pre-review ruling, 2026-09-19) ---
   #
+  # A note on Ruby string-literal escaping, since it is easy to lose count
+  # here: `"x == 'Don\\'t'"` in Ruby SOURCE is the condition TEXT
+  # `x == 'Don\'t'` - one backslash, not two - because `\\` in a Ruby
+  # double-quoted literal is itself an escape for a single backslash
+  # character. Every fixture below is built with `"\\" * n` (one call per
+  # count) rather than typed out, and checked with `.count("\\")`, so the
+  # number of literal backslashes in each condition/answer is never in doubt.
+  #
   # A condition written before this task escaped a quote but never a
   # backslash (Step::Doors#condition_for and the panel's writer both only
   # ever did), so a STORED value with a bare "\" - a Windows path, a
   # DOMAIN\user - is a literal backslash, not the start of an escape. The
   # unescaped-only tokenizer above would silently stop matching such a value.
   # `==`/`!=` now compare against EITHER reading: unescaped, or literal (the
-  # text between the delimiters exactly as written). A backslash pair `\\` is
-  # built with `"\\" * n`, one call, so the count of literal backslashes in
-  # each fixture is never in question - see the file header note about the
-  # classic Ruby string-literal escaping trap.
+  # text between the delimiters exactly as written).
 
   test "a stored value with a bare backslash still matches (both readings)" do
     backslash = "\\"
