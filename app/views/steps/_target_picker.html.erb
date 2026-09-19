@@ -5,7 +5,6 @@
   autosave form because it holds a real form. step-target-picker fills in which
   door it is for. A flat, filterable list: at thirty steps typing beats scrolling.
 %>
-<% ordinals = step_ordinals(workflow) %>
 <dialog class="dialog dialog--sm" id="<%= dom_id(step, :target_picker) %>"
         data-step-target-picker-target="dialog"
         data-action="click->step-target-picker#backdropClose keydown.esc->step-target-picker#stopEscape">
@@ -32,18 +31,7 @@
       <input type="search" class="form-input" id="<%= dom_id(step, :target_filter) %>" autocomplete="off"
              data-step-target-picker-target="filter"
              data-action="input->step-target-picker#filter">
-      <ul class="step-target-list" role="list">
-        <% workflow.steps.ordered.each do |candidate| %>
-          <% next if candidate == step %>
-          <li data-step-target-picker-target="option"
-              data-search="<%= "#{candidate.title} #{step_type_label(candidate.step_type)}".downcase %>">
-            <button type="submit" name="target_step_id" value="<%= candidate.id %>" class="step-target-list__option">
-              <span class="step-target-list__title"><%= candidate.title.presence || "Untitled #{candidate.step_type.titleize}" %></span>
-              <span class="step-target-list__meta"><%= step_type_label(candidate.step_type) %> · <%= ordinals[candidate.uuid] %></span>
-            </button>
-          </li>
-        <% end %>
-      </ul>
+      <%= render "steps/target_picker_options", step: step, workflow: workflow %>
       <p class="form-hint is-hidden" data-step-target-picker-target="empty">No step matches.</p>
     </div>
     <div class="dialog__footer">

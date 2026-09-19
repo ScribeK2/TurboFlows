@@ -87,7 +87,65 @@ module Steps
              params: { target_step_id: foreign.id, label: "Yes", condition: "light == 'yes'" },
              headers: { "Accept" => "text/vnd.turbo-stream.html" }
       end
-      assert_response :not_found
+      assert_response :unprocessable_content
+      assert_select "turbo-stream[action='update'][target='#{dom_id(@question, :target_picker_error)}']"
+      assert_match "no longer in this workflow", response.body
+    end
+
+    # Finding 1: a stale target_step_id used to raise ActiveRecord::RecordNotFound
+    # straight out of the action - uncaught, it became a 404 HTML page, which
+    # Turbo (the dialog's form has no data-turbo-frame and sits inside
+    # #builder-panel) reads as that FRAME's response and wipes the panel to
+    # "Content missing". This is the same lookup as the foreign-workflow test
+    # above, reached the way a real author hits it: the step WAS in this
+    # workflow when the dialog's candidate list was rendered, and is gone now.
+    test "create refuses a target step destroyed since the dialog was rendered, and re-streams the options" do
+      resolve = Steps::Resolve.create!(workflow: @workflow, position: 2, title: "Done")
+      stale_id = resolve.id
+      resolve.destroy!
+
+      assert_no_difference("Transition.count") do
+        post workflow_step_transitions_path(@workflow, @question),
+             params: { target_step_id: stale_id, label: "Yes", condition: "light == 'yes'" },
+             headers: { "Accept" => "text/vnd.turbo-stream.html" }
+      end
+
+      assert_response :unprocessable_content
+      assert_select "turbo-stream[action='update'][target='#{dom_id(@question, :target_picker_error)}']"
+      assert_select "turbo-stream[action='replace'][target='#{dom_id(@question, :target_picker_options)}']"
+      assert_no_match "value=\"#{stale_id}\"", response.body
+      assert_match "no longer in this workflow", response.body
+    end
+
+    test "update refuses a stale target_step_id the same way create does" do
+      other_target = Steps::Resolve.create!(workflow: @workflow, position: 2, title: "Other target")
+      stale_id = other_target.id
+      other_target.destroy!
+
+      patch workflow_step_transition_path(@workflow, @question, @edge),
+            params: { target_step_id: stale_id },
+            headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+      assert_response :unprocessable_content
+      assert_select "turbo-stream[action='update'][target='#{dom_id(@question, :target_picker_error)}']"
+      assert_select "turbo-stream[action='replace'][target='#{dom_id(@question, :target_picker_options)}']"
+      assert_equal @action.id, @edge.reload.target_step_id
+    end
+
+    test "update refuses a stale edge id and says the connection is gone" do
+      stale_id = @edge.id
+      @edge.destroy!
+
+      patch workflow_step_transition_path(@workflow, @question, stale_id),
+            params: { target_step_id: @action.id },
+            headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+      assert_response :unprocessable_content
+      assert_select "turbo-stream[action='update'][target='#{dom_id(@question, :target_picker_error)}']"
+      assert_match "no longer exists", response.body
+      # The edge is gone, not the target step, so the dialog's own candidate
+      # list needs no correction.
+      assert_select "turbo-stream[action='replace'][target='#{dom_id(@question, :target_picker_options)}']", false
     end
 
     test "update refuses a collision and changes nothing" do

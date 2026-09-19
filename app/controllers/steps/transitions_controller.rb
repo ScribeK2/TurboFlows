@@ -19,14 +19,25 @@ module Steps
       render_refusal(e.message)
     rescue ActiveRecord::RecordInvalid => e
       render_refusal(e.record.errors.full_messages.to_sentence)
+    # target_step_id named a step no longer in @workflow - deleted (by this
+    # author from the list behind the dialog, or by a collaborator) since the
+    # dialog's candidate list was rendered, or never in this workflow at all
+    # (a foreign id). Both read the same way from here: the pick was stale.
+    rescue ActiveRecord::RecordNotFound
+      render_refusal("That step is no longer in this workflow. Pick another.", refresh_options: true)
     end
 
     # PATCH /workflows/:workflow_id/steps/:step_id/transitions/:id
     def update
-      @step.transitions.find(params[:id]).update!(target_step: target_step)
+      edge = @step.transitions.find_by(id: params[:id])
+      return render_refusal("That connection no longer exists. Close this and look again.") unless edge
+
+      edge.update!(target_step: target_step)
       render_connections
     rescue ActiveRecord::RecordInvalid => e
       render_refusal(e.record.errors.full_messages.to_sentence)
+    rescue ActiveRecord::RecordNotFound
+      render_refusal("That step is no longer in this workflow. Pick another.", refresh_options: true)
     end
 
     # DELETE /workflows/:workflow_id/steps/:step_id/transitions/:id
@@ -54,12 +65,24 @@ module Steps
     # with `template.to_s.html_safe`, not an auto-escaping `<%= %>`), so the
     # message is escaped by hand here - a step title or condition value
     # containing `<` or `&` would otherwise land in the page as raw markup.
-    def render_refusal(message)
+    #
+    # refresh_options: a stale target_step_id means the candidate list itself
+    # named a step that is no longer there - re-stream it (never the whole
+    # dialog; replacing the <dialog> element closes it, losing the message
+    # this same response just wrote into it) so the dialog corrects itself
+    # rather than offering the same dead pick again.
+    def render_refusal(message, refresh_options: false)
       flash.now[:alert] = "That connection was not saved: #{message}"
-      render turbo_stream: [
+      streams = [
         turbo_stream.update("flash", partial: "shared/flash_messages"),
         turbo_stream.update(dom_id(@step, :target_picker_error), ERB::Util.html_escape(message))
-      ], status: :unprocessable_content
+      ]
+      if refresh_options
+        streams << turbo_stream.replace(dom_id(@step, :target_picker_options),
+                                        partial: "steps/target_picker_options",
+                                        locals: { step: @step, workflow: @workflow })
+      end
+      render turbo_stream: streams, status: :unprocessable_content
     end
 
     def set_workflow

@@ -153,6 +153,43 @@ class BuilderGrowTest < ApplicationSystemTestCase
     assert_no_selector "dialog[open]", visible: :all
   end
 
+  # Finding 1, the server path. The dialog's candidate list is rendered with
+  # the panel and not touched again until a connection is made from THIS
+  # step, so a step destroyed after the dialog opened - directly, the way a
+  # request from another tab or another editor would land, with no broadcast
+  # reaching this page - still shows its (now stale) option. Picking it used
+  # to raise ActiveRecord::RecordNotFound uncaught: the dialog's form has no
+  # data-turbo-frame and sits inside #builder-panel, so Turbo read the
+  # resulting 404 HTML page as that FRAME's own response and wiped the panel
+  # to "Content missing". The fix answers inside the still-open dialog
+  # instead, the way any other refusal does.
+  test "picking a step the server has already lost answers inside the dialog, not Content missing" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", question: "Light green?",
+                                       position: 1, answer_type: "yes_no", variable_name: "light")
+    gone = Steps::Resolve.create!(workflow: @workflow, title: "About to vanish", position: 2)
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    open_step(question)
+
+    open_target_picker("Yes", "Use existing…")
+    within("dialog[open]") { assert_selector ".step-target-list__option", text: "About to vanish", wait: 5 }
+
+    # Bypasses the controller (and so its broadcast) on purpose: this is what
+    # the dialog's own stale copy looks like, not what a live collaborator's
+    # delete looks like (that path is finding 3, covered elsewhere).
+    Step.find(gone.id).destroy
+
+    within("dialog[open]") { click_on "About to vanish" }
+
+    assert_selector "turbo-frame#builder-panel form", wait: 5
+    assert_selector "dialog[open]", wait: 5
+    within("dialog[open]") do
+      assert_selector ".form-error", text: /no longer in this workflow/i, wait: 5
+    end
+    assert_no_text "Content missing"
+    assert_equal 0, question.transitions.reload.count
+  end
+
   # The test above only shows the dialog closes on a successful submit - by
   # then it is already closed, so leaving and coming back would prove nothing
   # about the turbo:before-cache handler. This leaves the dialog OPEN instead,
