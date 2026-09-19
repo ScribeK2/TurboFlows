@@ -68,11 +68,15 @@ Four things that have each cost someone an afternoon:
   widens, so a button found mid-animation moves before the click lands and the
   click hits whatever slid under the old spot — about one run in seven.
   `open_step` / `assert_panel_settled` in `test/application_system_test_case.rb`
-  are that wait; `builder_grow_test.rb`'s autosave-race test is the one place a
-  wait must NOT be added (between typing the title and pressing "New step" is
-  the race), and its mutation check is to make `TransitionSync#call` start with
-  `@step.transitions.destroy_all` and confirm the failure lands on the
-  transitions assertion, not the title one.
+  are that wait; `builder_grow_test.rb` has two places a wait must NOT be added,
+  because the gap is the race: between typing the title and pressing "New step"
+  ("growing inside the autosave window…"), and between choosing an answer type
+  and pressing a door ("a door pressed before the answer-type save lands…").
+  The mutation check — make `TransitionSync#call` start its transaction with
+  `@step.transitions.destroy_all` — belongs to a THIRD test since 2026-09-19,
+  "a connection written elsewhere while the panel is open…": a grow now waits
+  for the panel's pending save, so the first test passes under that mutation
+  and only the third fails, on its transitions assertion.
 
 **Database & Utils**
 ```bash
@@ -118,7 +122,7 @@ The unified builder lives at `workflows/:id` — one URL for both viewing and ed
 - `builder_controller.js` — panel open/close, step selection, title autosave, Escape to close, `openHealth` action, auto-opens health panel when `?health=true` URL param is present
 - `step_list_controller.js` — SortableJS reorder + the type picker: opening it for a door (from a row's stub or the panel's "New step"), writing the `data-grow-*` fields, and floating it beside its trigger
 - `step_target_picker_controller.js` — the "Use existing…" dialog on a door row: which door it is for, the filter, Escape (`stopPropagation`, or the whole panel closes behind it), and closing on `turbo:before-cache`
-- `inline_autosave_controller.js` — debounced autosave (2s), listens for `lexxy:change` events, flushes pending saves on disconnect via `FormData` + `fetch`, dispatches `health:check-needed` after disconnect saves
+- `inline_autosave_controller.js` — debounced autosave (2s), `flush()` for whoever must act after the pending save (it returns a promise that resolves once nothing is in flight), listens for `lexxy:change` events, flushes pending saves on disconnect via `FormData` + `fetch`, dispatches `health:check-needed` after disconnect saves
 - `step_warnings_controller.js` — async health check fetch, renders inline warning icons on step rows, toolbar issue count, click-to-open popover with Fix buttons. Listens for `turbo:submit-end`, `health:check-needed`, `turbo:before-stream-render`
 - `template_picker_controller.js` — template popover in toolbar, applies workflow archetypes
 
@@ -146,7 +150,17 @@ doors on the row. `GrowStep` is **not** `StepBuilder` — that bulk-writes an
 import or a template and demands a Resolve in the payload — and import never
 calls it. `GrowStep.connect` wires a door to a step that already exists,
 retargeting that door's own edge rather than adding a second one that could
-never fire (first match wins). `GrowStep.create` meets the same collision
+never fire (first match wins). **A grow goes after the panel's pending
+save, never ahead of it.** The panel's doors are server-rendered, so inside the
+autosave debounce they show the step as it WAS; a grow landing first wrote the
+old door's connection and the flush behind it then changed the step under it —
+a Text question's blank "Next" edge on what was about to be a Yes/No question,
+catching both answers with the health check silent. `step-list#growAfterPendingSave`
+(a `submit` action on the type picker's forms) awaits `inline-autosave#flush`,
+which saves anything dirty and resolves once nothing is in flight, then
+resubmits. And because the press may name a door the step no longer has,
+`GrowStep.create` **refuses a door `Step::Doors` does not list** — no button
+offers one, so only a stale press is refused. `GrowStep.create` meets the wired-door collision
 the other way: it **refuses** (`GrowStep::Refused`) a door that is already
 wired rather than retargeting it, because a grow only ever starts from a stub —
 so a wired door there means the stub was stale (another editor wired it, or a

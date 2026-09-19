@@ -122,19 +122,22 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_no_match "builder__step--selected", response.body
   end
 
+  # From a door the parent really has: GrowStep refuses one it does not.
   test "create with from_step_id lands after the parent and connects it" do
-    later = Steps::Resolve.create!(workflow: @workflow, position: 1, title: "Done")
+    parent = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light?", question: "Light?",
+                                     answer_type: "yes_no", variable_name: "light")
+    later = Steps::Resolve.create!(workflow: @workflow, position: 2, title: "Done")
 
     assert_difference("Transition.count", 1) do
       post workflow_steps_path(@workflow),
-           params: { step_type: "message", from_step_id: @step.id, label: "No", condition: "answer == 'no'" },
+           params: { step_type: "message", from_step_id: parent.id, label: "No", condition: "light == 'no'" },
            headers: { "Accept" => "text/vnd.turbo-stream.html" }
     end
 
     grown = @workflow.steps.find_by!(type: "Steps::Message")
-    assert_equal [@step.id, grown.id, later.id], @workflow.steps.order(:position).map(&:id)
-    edge = @step.transitions.sole
-    assert_equal [grown.id, "No", "answer == 'no'"], [edge.target_step_id, edge.label, edge.condition]
+    assert_equal [@step.id, parent.id, grown.id, later.id], @workflow.steps.order(:position).map(&:id)
+    edge = parent.transitions.sole
+    assert_equal [grown.id, "No", "light == 'no'"], [edge.target_step_id, edge.label, edge.condition]
   end
 
   test "create from a Resolve is refused with a message" do

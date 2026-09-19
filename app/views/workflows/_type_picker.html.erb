@@ -12,7 +12,7 @@
   <p class="dropdown__header" data-step-list-target="pickerContext" hidden></p>
   <% step_type_options.each do |st| %>
     <%= form_with url: workflow_steps_path(workflow), method: :post, class: "button_to",
-          data: { turbo_stream: true } do %>
+          data: { turbo_stream: true, action: "submit->step-list#growAfterPendingSave" } do %>
       <%= hidden_field_tag :step_type, st[:type], id: nil %>
       <%= hidden_field_tag :from_step_id, nil, id: nil, data: { step_list_target: "fromStepId" } %>
       <%= hidden_field_tag :label, nil, id: nil, data: { step_list_target: "doorLabel" } %>

@@ -66,6 +66,10 @@ class BuilderGrowTest < ApplicationSystemTestCase
   # would not do, because the No door it creates is server-rendered and only
   # appears once that autosave has landed - by which time the panel is clean
   # and its closing flush sends nothing.
+  #
+  # Since 2026-09-19 the grow WAITS for that pending save instead of racing it,
+  # so what this holds is the order - the title saved, then the grow, one edge -
+  # and no longer TransitionSync's keyed save; the next test holds that.
   test "growing inside the autosave window keeps the new connection" do
     question = Steps::Question.create!(workflow: @workflow, title: "Untitled Question", question: "Light green?",
                                        position: 1, answer_type: "yes_no", variable_name: "light")
@@ -82,6 +86,32 @@ class BuilderGrowTest < ApplicationSystemTestCase
     assert_selector STEP_ROW, count: 2
     # The title arriving proves the closing panel's flush was sent. Without this
     # the test passes whenever no flush fires, which is the hollow version.
+    assert_eventually(timeout: 10) { question.reload.title == "Is the light green?" }
+    assert_equal ["light == 'no'"], question.transitions.reload.map(&:condition)
+  end
+
+  # What the test above used to prove, by a road that is still open. Since a
+  # grow waits for the panel's pending save (step-list#growAfterPendingSave),
+  # this author's own grow can no longer land ahead of their own flush - so
+  # that test passes even if TransitionSync goes back to deleting everything.
+  # An edge written by SOMEONE ELSE while this panel sits open still can: a
+  # health Fix, another editor's grow. The panel's next save carries a snapshot
+  # taken before that edge existed, and must leave it alone.
+  #
+  # Mutation check: make TransitionSync#call start its transaction with
+  # `@step.transitions.destroy_all`. This test must fail on the last assertion.
+  test "a connection written elsewhere while the panel is open survives the panel's next save" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Untitled Question", question: "Light green?",
+                                       position: 1, answer_type: "yes_no", variable_name: "light")
+    target = Steps::Resolve.create!(workflow: @workflow, title: "Done", position: 2)
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    open_step(question)
+
+    Transition.create!(step: question, target_step: target, condition: "light == 'no'", label: "No")
+
+    within("turbo-frame#builder-panel") { fill_in "step[title]", with: "Is the light green?" }
+
     assert_eventually(timeout: 10) { question.reload.title == "Is the light green?" }
     assert_equal ["light == 'no'"], question.transitions.reload.map(&:condition)
   end
@@ -471,6 +501,40 @@ class BuilderGrowTest < ApplicationSystemTestCase
     open_target_picker("Yes", "Change")
     within "dialog[open]" do
       assert_no_selector ".form-error", text: /already has a transition/i
+    end
+  end
+
+  # The panel's doors are rendered by the server, so for the two seconds after
+  # the answer type changes they still show the step as it WAS: a Text question's
+  # single "Next". Pressed then, the grow used to land first and write that
+  # door's blank-condition edge; the flush behind it then made the step Yes/No,
+  # and the edge caught both answers with nobody having looked at No.
+  #
+  # NO wait between choosing the type and pressing the door - that gap is the
+  # race. The grow now waits for the pending save, and the server refuses a door
+  # the step no longer has.
+  test "a door pressed before the answer-type save lands does not write a catch-all connection" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", question: "Light green?",
+                                       position: 1, answer_type: "text", variable_name: "light")
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    open_step(question)
+
+    within "turbo-frame#builder-panel" do
+      find(".choice-card", text: "Yes / No").click
+      find(".step-doors__row", text: "Next").click_on "New step"
+    end
+    pick_type "Action"
+
+    assert_eventually(timeout: 10) { question.reload.answer_type == "yes_no" }
+    assert_text "answers have changed", wait: 10
+    assert_empty question.transitions.reload, "a connection was written from a door the step no longer has"
+    assert_equal 1, @workflow.steps.reload.count
+
+    # And the panel now offers the doors the step really has.
+    within "turbo-frame#builder-panel" do
+      assert_selector ".step-doors__row", text: "Yes", wait: 5
+      assert_selector ".step-doors__row", text: "No"
     end
   end
 

@@ -29,6 +29,7 @@ export default class extends Controller {
 
     // If the form is still in the DOM, use requestSubmit (Turbo-aware)
     if (this.element.isConnected) {
+      this.trackSubmission()
       this.element.requestSubmit()
       return
     }
@@ -56,6 +57,40 @@ export default class extends Controller {
         document.dispatchEvent(new CustomEvent("health:check-needed"))
       })
     }
+  }
+
+  // Saves now if anything is waiting on the debounce, and resolves once no save
+  // of this form is in flight - including one that was already on its way.
+  //
+  // For whoever is about to act on what the SERVER believes about this step.
+  // A grow is the case: the panel's doors are server-rendered, so inside the
+  // debounce they still show the step as it was, and a grow that lands before
+  // this save writes a connection for a door the step is about to stop having
+  // (step_list_controller#growAfterPendingSave).
+  flush() {
+    if (this.dirty && this.element.isConnected) {
+      clearTimeout(this.timeout)
+      this.save()
+    }
+    return this.inFlight || Promise.resolve()
+  }
+
+  // Started here, not on turbo:submit-start: Turbo dispatches that a tick or
+  // two after requestSubmit(), and a flush() in between would see nothing in
+  // flight. The timer is a floor under a submit that never reports an end, so
+  // nothing that waits on this can wait for ever.
+  trackSubmission() {
+    const form = this.element
+    this.inFlight = new Promise(resolve => {
+      const done = () => {
+        clearTimeout(timer)
+        form.removeEventListener("turbo:submit-end", done)
+        this.inFlight = null
+        resolve()
+      }
+      const timer = setTimeout(done, 8000)
+      form.addEventListener("turbo:submit-end", done)
+    })
   }
 
   disconnect() {
