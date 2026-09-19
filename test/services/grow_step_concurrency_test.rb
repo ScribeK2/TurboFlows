@@ -15,7 +15,14 @@ require "test_helper"
 #   bin/rails test test/services/grow_step_concurrency_test.rb
 #
 # Real threads on real connections, so nothing here can run inside the usual
-# test transaction: records are committed and removed in teardown.
+# test transaction: records are committed and removed in teardown - which has
+# to find the workflow FRESH, because a grow on another thread assigned its
+# start step and this test's own copy never heard, so destroying the stale
+# copy skips Workflow#nullify_start_step and trips the foreign key.
+#
+# Not covered: a grow from a door SHADOWED by a default edge. GrowStep settles
+# the order before it takes the lock; the settle is idempotent and its sort is
+# deterministic, so two at once converge, but nothing here proves it.
 class GrowStepConcurrencyTest < ActiveSupport::TestCase
   self.use_transactional_tests = false
 

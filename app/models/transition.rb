@@ -15,6 +15,22 @@ class Transition < ApplicationRecord
 
   scope :ordered, -> { order(:position) }
 
+  # The order StepResolver tries a step's transitions in, spelled out. position
+  # is nullable, and ORDER BY position alone puts a NULL first on SQLite and
+  # last on PostgreSQL - the same rows routed differently here and in
+  # production - while rows sharing a position came back in whatever order the
+  # database liked. This is what production (PostgreSQL) already did: NULL
+  # last, and id, the order they were made in, breaking a tie.
+  # Step::Doors sorts loaded rows by .runner_sort_key, the same rule in Ruby.
+  #
+  # reorder, not order: Step's own `has_many :transitions` already says
+  # order(:position), and a second order would only append after it.
+  scope :in_runner_order, -> { reorder(Arel.sql("transitions.position IS NULL"), :position, :id) }
+
+  def runner_sort_key
+    [position.nil? ? 1 : 0, position || 0, id || 0]
+  end
+
   validate :steps_belong_to_same_workflow
 
   # StepResolver takes the first transition that matches, and a blank condition

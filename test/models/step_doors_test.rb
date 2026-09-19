@@ -190,6 +190,20 @@ class StepDoorsTest < ActiveSupport::TestCase
     assert_empty d.shadowed
   end
 
+  # Doors has to read the order exactly as StepResolver does, or "the runner
+  # never reaches it" is a guess: a default edge with no position is tried
+  # LAST, so it shadows nothing.
+  test "a default edge with no position shadows nothing, because the runner tries it last" do
+    step = question(answer_type: "yes_no")
+    Transition.create!(step: step, target_step: @a, position: nil)
+    live = Transition.create!(step: step, target_step: @b, condition: "light == 'no'", position: 0)
+
+    d = doors(step)
+    assert_equal live, d.doors.find { |door| door.label == "No" }.transition
+    assert_empty d.shadowed
+    assert_equal @b, StepResolver.new(@workflow).resolve_next(step, { "light" => "no" })
+  end
+
   test "a second default edge is not reported as shadowed: re-sorting cannot fix it" do
     Transition.create!(step: @a, target_step: @b, position: 0)
     other = Steps::Action.create!(workflow: @workflow, title: "C", position: 12)

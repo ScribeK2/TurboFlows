@@ -48,7 +48,10 @@ class Step
       # free too) when there is one, and only query here for a single step
       # (the panel, a lone row re-render) that never preloaded anything.
       transitions = step.transitions.loaded? ? step.transitions : step.transitions.includes(:target_step)
-      @transitions = transitions.to_a.sort_by { |t| [t.position || 0, t.id || 0] }
+      # The runner's own order (Transition.in_runner_order), in Ruby because the
+      # rows may be a caller's preload: #reachable is only true if this agrees
+      # with StepResolver about which transition is tried first.
+      @transitions = transitions.to_a.sort_by(&:runner_sort_key)
     end
 
     def growable?
