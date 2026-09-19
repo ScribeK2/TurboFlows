@@ -16,22 +16,29 @@ class ConditionEvaluator
   # captures it to unescape).
   STRING_VALUE = /'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"/
 
-  # The OLD string value: no escape understanding at all, just "no quote
-  # characters inside" - matched delimiters only, same as STRING_VALUE
-  # requires. Added as a second alternative to VALID_PATTERNS/COMPLETE_PATTERNS
-  # (not to the tokenizer) because a value ending in a bare, un-escaped
-  # backslash - written that way before this task, since Step::Doors and the
-  # panel never escaped a backslash - has no valid close under STRING_VALUE's
-  # escape rule (the trailing "\" consumes the closing quote as an "escaped"
-  # character). #evaluate and #parse already read that shape correctly
-  # through the legacy fallback; without this, complete?/valid? refused it,
-  # which would make an exportable workflow un-importable and would misread
-  # an existing Markdown transition as a label.
-  OLD_STRING_VALUE = /'[^'"]*'|"[^'"]*"/
+  # The pre-2026-09-19 string value, verbatim: no escape understanding, and -
+  # unlike STRING_VALUE - the open and close delimiter need NOT match
+  # ('[^'"]*" is fine). Kept as a second alternative to
+  # VALID_PATTERNS/COMPLETE_PATTERNS (never to the tokenizer) so that
+  # complete?/valid? stay a SUPERSET of what they accepted before this task -
+  # nothing they used to accept may become refused. Two shapes depend on this
+  # specifically: a value ending in a bare, un-escaped backslash (written that
+  # way before this task, since Step::Doors and the panel never escaped a
+  # backslash - the trailing "\" consumes the closing quote as an "escaped"
+  # character under STRING_VALUE's rule, so only this alternative closes it),
+  # and mismatched delimiters (`'yes"`) - always accepted by the original
+  # `['"][^'"]*['"]` pattern, since it never required the same quote at both
+  # ends. #evaluate and #parse already read both shapes through the legacy
+  # fallback; narrowing complete?/valid? to refuse either would make an
+  # exportable workflow un-importable and would misread an existing Markdown
+  # transition as a label. See the "complete? stays a superset" section of
+  # the task report for the corpus comparison that caught the first, narrower
+  # version of this constant only requiring matched delimiters.
+  PRE_TASK_STRING_VALUE = /['"][^'"]*['"]/
 
   VALID_PATTERNS = [
-    /^\w+\s*==\s*(?:#{STRING_VALUE.source}|#{OLD_STRING_VALUE.source})/, # variable == 'value'
-    /^\w+\s*!=\s*(?:#{STRING_VALUE.source}|#{OLD_STRING_VALUE.source})/, # variable != 'value'
+    /^\w+\s*==\s*(?:#{STRING_VALUE.source}|#{PRE_TASK_STRING_VALUE.source})/, # variable == 'value'
+    /^\w+\s*!=\s*(?:#{STRING_VALUE.source}|#{PRE_TASK_STRING_VALUE.source})/, # variable != 'value'
     /^\w+\s*>\s*\d+/,              # variable > 10
     /^\w+\s*<\s*\d+/,              # variable < 10
     /^\w+\s*>=\s*\d+/,             # variable >= 10

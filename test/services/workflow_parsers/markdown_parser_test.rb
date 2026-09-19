@@ -207,8 +207,10 @@ module WorkflowParsers
     # Review finding (2026-09-19): complete? used to refuse a value ending in
     # a bare backslash (the trailing "\" swallows the closing quote as an
     # "escape"), which would have misread this transition as a label instead
-    # of a condition. Now that complete? also accepts the old quote-free form
-    # with matched delimiters, this shape reads as a condition again, exactly
+    # of a condition. complete? accepts this shape through
+    # ConditionEvaluator::PRE_TASK_STRING_VALUE - the base grammar's value
+    # pattern, kept as an alternative so complete? never refuses less than it
+    # did before this task - and this reads as a condition again, exactly
     # like the apostrophe-free case above.
     test "a parenthesised condition ending in a bare backslash is still a condition" do
       parser = WorkflowParsers::MarkdownParser.new(branching_markdown("Step 2 (path == 'C:\\'), Step 3"))
@@ -219,6 +221,24 @@ module WorkflowParsers
 
       assert_not_nil branch, "the branch must survive the import"
       assert_equal "path == 'C:\\'", branch["condition"]
+      assert_nil branch["label"], "and must not ALSO become a label"
+    end
+
+    # Correction (2026-09-19): mismatched delimiters (`'yes"`) were ALWAYS
+    # complete? at base (2efe44db) - the original pattern never required the
+    # same quote at both ends. A first draft of this task's grammar tightened
+    # that requirement, which would have misread an existing transition
+    # written this way as a label instead of a condition. Same
+    # PRE_TASK_STRING_VALUE fix as the bare-backslash case above.
+    test "a parenthesised condition with mismatched delimiters is still a condition" do
+      parser = WorkflowParsers::MarkdownParser.new(branching_markdown(%(Step 2 (light == 'yes"), Step 3)))
+      result = parser.parse
+
+      first = result[:steps].find { |s| s["title"]&.include?("Question") }
+      branch = first["transitions"].find { |t| t["condition"].present? }
+
+      assert_not_nil branch, "the branch must survive the import"
+      assert_equal %(light == 'yes"), branch["condition"]
       assert_nil branch["label"], "and must not ALSO become a label"
     end
 

@@ -95,18 +95,47 @@ class StrictImportConditionValueTest < ActiveSupport::TestCase
     assert_includes warning[:message], literal_as_written.inspect
   end
 
-  test "mismatched delimiters are refused as an invalid condition, not read as a value" do
+  # Correction (2026-09-19): mismatched delimiters (`'yes"`) were ALWAYS
+  # accepted by ConditionEvaluator.complete? before this task's grammar work -
+  # #supported_condition? (this method) is a direct pass-through to it, so a
+  # first draft that tightened complete? to require matched delimiters
+  # silently made this an invalid_condition_syntax error where before it was
+  # none. A stored mismatched-delimiter condition, reachable through the
+  # lenient (non-strict) import path, would have exported to a file the
+  # strict importer refused to re-import - a new export/import exception
+  # AGENTS.md never documents. complete?/valid? were corrected back to a
+  # superset of what they accepted before this task (see the report's
+  # "complete? stays a superset" section), so the file validates and the
+  # option check runs through #parse's legacy fallback exactly as it would
+  # for any other unescaped value.
+  test "mismatched delimiters are accepted, and the option check reads the value the legacy way" do
     report = validate(document_with(steps: [
                                       { id: "q", type: "question", title: "Known?", question: "Is it known?",
                                         answer_type: "dropdown", variable_name: "choice",
-                                        options: [{ label: "Yes", value: "yes" }],
+                                        options: [{ label: "Yes", value: "yes" }, { label: "No", value: "no" }],
                                         transitions: [{ target_id: "done", condition: %(choice == 'yes") }] },
                                       resolve_step
                                     ]))
 
-    error = report.errors.find { |e| e[:code] == "invalid_condition_syntax" }
-    assert_not_nil error
-    assert_includes error[:message], "a quote inside a value is escaped as \\'"
+    assert_predicate report, :valid?, report.errors.inspect
+    assert_not_includes report.errors.pluck(:code), "invalid_condition_syntax"
+    assert_not_includes report.warnings.pluck(:code), "unmatched_option_value"
+  end
+
+  test "mismatched delimiters against an option that doesn't match still warn" do
+    report = validate(document_with(steps: [
+                                      { id: "q", type: "question", title: "Known?", question: "Is it known?",
+                                        answer_type: "dropdown", variable_name: "choice",
+                                        options: [{ label: "A", value: "a" }, { label: "B", value: "b" }],
+                                        transitions: [{ target_id: "done", condition: %(choice == 'yes") }] },
+                                      resolve_step
+                                    ]))
+
+    assert_predicate report, :valid?, report.errors.inspect
+    warning = report.warnings.find { |w| w[:code] == "unmatched_option_value" }
+    assert_not_nil warning
+    assert_equal "yes", warning[:value]
+    assert_includes warning[:message], '"yes"'
   end
 
   # --- fix round 1 (2026-09-19): a numeric-looking value must still be

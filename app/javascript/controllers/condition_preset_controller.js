@@ -767,10 +767,13 @@ export default class extends Controller {
     }
     // A value ending in a bare, un-escaped backslash ('C:\') has no valid
     // close under the escape-aware pattern above - the trailing backslash
-    // consumes the closing quote as an "escaped" character. Mirrors
-    // ConditionEvaluator::OLD_STRING_VALUE: matched here with no escape
-    // understanding at all, so a condition written before backslashes were
-    // escaped still restores to its preset instead of falling to Custom.
+    // consumes the closing quote as an "escaped" character. Matched-delimiter
+    // subset of ConditionEvaluator::PRE_TASK_STRING_VALUE (which also accepts
+    // mismatched delimiters, so complete?/valid? stay a superset of what they
+    // always accepted; a mismatched-delimiter condition can safely fall to
+    // Custom here instead), with no escape understanding at all, so a
+    // condition written before backslashes were escaped still restores to
+    // its preset instead of falling to Custom.
     const legacyMatch = trimmed.match(/^(\w+)\s*(==|!=)\s*(?:'([^'"]*)'|"([^'"]*)")\s*$/)
     if (legacyMatch) {
       const raw = legacyMatch[3] ?? legacyMatch[4]

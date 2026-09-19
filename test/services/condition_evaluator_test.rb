@@ -239,25 +239,39 @@ class ConditionEvaluatorTest < ActiveSupport::TestCase
     assert ConditionEvaluator.new("count == ' 5 '").parse[:is_numeric]
   end
 
-  test "complete? accepts an escaped quote and refuses mismatched delimiters" do
+  test "complete? accepts an escaped quote, and still refuses an unescaped one" do
     assert ConditionEvaluator.complete?("light == 'Don\\'t know'")
     assert ConditionEvaluator.complete?(%(light == "Don't know"))
-    assert_not ConditionEvaluator.complete?(%(light == 'yes"))
     assert_not ConditionEvaluator.complete?("light == 'Don't know'")
   end
 
-  # Review finding (2026-09-19): a value ending in a bare backslash - what
-  # Step::Doors#condition_for wrote for such a value before writers escaped
-  # backslashes, and what the legacy path has always read correctly for
-  # #evaluate/#parse - was newly REFUSED by complete?/valid?, because the
-  # trailing backslash consumes the closing quote as an "escape" and
-  # STRING_VALUE never finds a close. Refusing it would make an exportable
-  # workflow un-importable (strict_import_validator) and would misread an
-  # existing Markdown transition as a label instead of a condition. Ruling:
-  # VALID_PATTERNS also accepts the OLD quote-free form with matched
-  # delimiters (no escape understanding at all, just "no quote characters
-  # inside"), so this shape is complete through that path while a value with
-  # an unescaped inner quote, or mismatched delimiters, still is not.
+  # Correction (2026-09-19): mismatched delimiters (`'yes"`) were ALWAYS
+  # accepted by complete?/valid? before this task - the base pattern
+  # `['"][^'"]*['"]` never required the same quote at both ends, only "no
+  # quote characters inside". A first draft of this task's grammar tightened
+  # PRE_TASK_STRING_VALUE to require matched delimiters, which silently
+  # NARROWED complete?/valid? below what they accepted before: a stored
+  # mismatched-delimiter condition (reachable through the lenient import
+  # path) would export to a file the strict importer refused, and the
+  # Markdown parser would misread it as a label instead of a condition.
+  # complete?/valid? must stay a SUPERSET of what they accepted before this
+  # task, so PRE_TASK_STRING_VALUE is base's pattern verbatim - mismatched
+  # delimiters included. #evaluate/#parse were never affected either way:
+  # the legacy fallback has always read this shape the same way, both
+  # before and after. Verified against 2efe44db with a corpus comparison
+  # script - see the report's "complete? stays a superset" section.
+  test "complete? still accepts mismatched delimiters, exactly as it did before this task" do
+    assert ConditionEvaluator.complete?(%(light == 'yes"))
+    assert ConditionEvaluator.complete?(%(light == "yes'))
+    assert ConditionEvaluator.valid?(%(light == 'yes"))
+  end
+
+  # A value ending in a bare backslash - what Step::Doors#condition_for wrote
+  # for such a value before writers escaped backslashes, and what the legacy
+  # path has always read correctly for #evaluate/#parse - has no valid close
+  # under STRING_VALUE's escape rule (the trailing backslash consumes the
+  # closing quote as an "escaped" character), so it depends on the same
+  # PRE_TASK_STRING_VALUE alternative as the mismatched-delimiters case above.
   test "complete? accepts a value ending in a bare backslash, for both delimiters" do
     backslash = "\\"
     single = "path == 'C:#{backslash}'" # ONE literal backslash, single-quoted
@@ -277,9 +291,11 @@ class ConditionEvaluatorTest < ActiveSupport::TestCase
     assert_equal answer, parsed[:literal_value]
   end
 
-  test "complete? still refuses what it always refused, with the wider grammar in place" do
-    assert_not ConditionEvaluator.complete?(%(light == 'yes")), "mismatched delimiters"
-    assert_not ConditionEvaluator.complete?(%(light == "yes')), "mismatched delimiters, reversed"
+  # An unescaped inner quote and a compound condition were refused by
+  # complete? at 2efe44db too (verified in the same corpus comparison
+  # script), so keeping them refused here is not a narrowing - unlike
+  # mismatched delimiters above, which base always accepted.
+  test "complete? still refuses an unescaped inner quote and a compound condition" do
     assert_not ConditionEvaluator.complete?("light == 'Don't know'"), "unescaped inner quote"
     assert_not ConditionEvaluator.complete?("a == 'x' && b == 'y'"), "a compound condition"
   end

@@ -69,10 +69,12 @@ module Steps
     # agent reads. Runs on every save, so blanking a value re-derives it rather
     # than leaving the option unmatchable.
     #
-    # Also strips both fields, so " Router " saves as "Router" — a condition
-    # built from an untrimmed value could never match a runner's (already
-    # trimmed) answer. The fallback reads the TRIMMED label, so a label-only
-    # " Modem " derives the value "Modem", not " Modem ".
+    # Also strips both fields, so " Router " saves as "Router" — ConditionEvaluator
+    # strips the CONDITION's value when it reads one, but compares the ANSWER
+    # raw. The runner submits an option's saved value, padding included, as
+    # that raw answer, so an untrimmed value could never match its own
+    # (stripped) condition. The fallback reads the TRIMMED label, so a
+    # label-only " Modem " derives the value "Modem", not " Modem ".
     #
     # An option with no label has nothing to fall back to and is left alone —
     # WorkflowHealthCheck reports that one. A whitespace-only label trims to ""

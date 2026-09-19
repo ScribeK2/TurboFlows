@@ -89,9 +89,11 @@ module Steps
       assert_equal "Wrong password", step.options.first["value"]
     end
 
-    # 2026-09-19 (decision A5): padded label and value are trimmed on save, so
-    # a condition built from the value round-trips against a runner answer that
-    # is never padded.
+    # 2026-09-19 (decision A5): padded label and value are trimmed on save.
+    # ConditionEvaluator strips the CONDITION's value when it reads one, but
+    # compares the ANSWER raw — and the runner submits an option's saved
+    # value, padding included, as that raw answer. Trimming at save is what
+    # keeps a condition built from the value matching its own answer.
     test "a padded label and value are both trimmed" do
       step = build_question([{ "label" => " Router ", "value" => " router " }])
       step.save!
