@@ -52,8 +52,8 @@ class ConditionEvaluator
     return false if condition.blank? || !results.is_a?(Hash)
 
     if (tokens = string_comparison)
-      variable, operator, value = tokens
-      return compare_values(operator, lookup_value(variable, results), value)
+      variable, operator, value, literal_value = tokens
+      return value_matches?(operator, lookup_value(variable, results), value, literal_value)
     end
 
     if condition.include?('==') && condition.exclude?('!=')
@@ -79,11 +79,12 @@ class ConditionEvaluator
     return nil if condition.blank?
 
     if (tokens = string_comparison)
-      variable, operator, value = tokens
+      variable, operator, value, literal_value = tokens
       return {
         variable: variable,
         operator: operator,
         value: value,
+        literal_value: literal_value,
         is_numeric: value.match?(/^\d+$/)
       }
     end
@@ -102,6 +103,7 @@ class ConditionEvaluator
         variable: variable,
         operator: op,
         value: value,
+        literal_value: value,
         is_numeric: value.match?(/^\d+$/)
       }
     end
@@ -164,20 +166,42 @@ class ConditionEvaluator
     operator == '==' ? values_equal : !values_equal
   end
 
-  # [variable, operator, unescaped, stripped value] when the WHOLE condition is
-  # one well-formed string comparison; nil otherwise, and the caller falls back
-  # to the reader this class has always had. That fallback is deliberate: it
-  # strips every quote character and tolerates mismatched delimiters and
-  # unquoted values, and live workflows route on it. It could never match a
-  # value that contains a quote - which is the one thing this tokenizer adds.
-  # The value is stripped here, once, so both #evaluate and #parse agree on it
-  # the same way the legacy reader's two halves always have.
+  # The tokenizer's == / != comparison. An answer matches if it equals EITHER
+  # reading of the value #string_comparison found: the unescaped one, or the
+  # literal one - the text between the delimiters exactly as written,
+  # backslashes kept. A condition written before 2026-09-19 escaped a quote
+  # but never a backslash (Step::Doors#condition_for and the panel's own
+  # writer both only ever did), so a bare "\" in a STORED value is a literal
+  # backslash, not the start of an escape - the literal reading is what the
+  # legacy reader always compared for such a value, and is what keeps a
+  # workflow with e.g. a Windows path option routing the way it always has. A
+  # condition written after this change escapes both, so its two readings
+  # agree and this is exactly #compare_values. Same nil rule as
+  # #compare_values: for ==, nil is false; for !=, nil is true.
+  def value_matches?(operator, result_value, value, literal_value)
+    return operator == '!=' if result_value.nil?
+
+    answer = result_value.to_s.downcase
+    matches = answer == value.to_s.downcase || answer == literal_value.to_s.downcase
+    operator == '==' ? matches : !matches
+  end
+
+  # [variable, operator, unescaped value, literal value] when the WHOLE
+  # condition is one well-formed string comparison; nil otherwise, and the
+  # caller falls back to the reader this class has always had. That fallback
+  # is deliberate: it strips every quote character and tolerates mismatched
+  # delimiters and unquoted values, and live workflows route on it. It could
+  # never match a value that contains a quote - which is the one thing this
+  # tokenizer adds. Both readings are stripped here, once, so every caller
+  # agrees on them the same way the legacy reader's two halves always have.
   def string_comparison
     match = WHOLE_STRING_COMPARISON.match(condition)
     return unless match
 
-    value = (match[3] || match[4]).gsub(/\\(.)/m) { Regexp.last_match(1) }
-    [match[1], match[2], value.strip]
+    raw = match[3] || match[4]
+    value = raw.gsub(/\\(.)/m) { Regexp.last_match(1) }.strip
+    literal_value = raw.strip
+    [match[1], match[2], value, literal_value]
   end
 
   def evaluate_numeric(operator, results)

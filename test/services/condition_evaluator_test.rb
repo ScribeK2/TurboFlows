@@ -266,4 +266,68 @@ class ConditionEvaluatorTest < ActiveSupport::TestCase
     # legacy path reads it exactly as it always has.
     assert ConditionEvaluator.evaluate("path == 'C:\\'", { "path" => "C:\\" }), "a value ending in a bare backslash"
   end
+
+  # --- two readings of a value (pre-review ruling, 2026-09-19) ---
+  #
+  # A condition written before this task escaped a quote but never a
+  # backslash (Step::Doors#condition_for and the panel's writer both only
+  # ever did), so a STORED value with a bare "\" - a Windows path, a
+  # DOMAIN\user - is a literal backslash, not the start of an escape. The
+  # unescaped-only tokenizer above would silently stop matching such a value.
+  # `==`/`!=` now compare against EITHER reading: unescaped, or literal (the
+  # text between the delimiters exactly as written). A backslash pair `\\` is
+  # built with `"\\" * n`, one call, so the count of literal backslashes in
+  # each fixture is never in question - see the file header note about the
+  # classic Ruby string-literal escaping trap.
+
+  test "a stored value with a bare backslash still matches (both readings)" do
+    backslash = "\\"
+    condition = "path == 'C:#{backslash}temp'" # ONE literal backslash in the condition text
+    answer = "C:#{backslash}temp"
+
+    assert_equal 1, condition.count(backslash), "precondition: exactly one backslash in the condition"
+    assert ConditionEvaluator.evaluate(condition, { "path" => answer })
+    assert_not ConditionEvaluator.evaluate(condition.sub("==", "!="), { "path" => answer })
+    assert ConditionEvaluator.evaluate(condition.sub("==", "!="), { "path" => "something else" })
+  end
+
+  test "an escaped value and its bare form both match the same real answer" do
+    backslash = "\\"
+    # The real value is a UNC path: two leading backslashes, one separator -
+    # three literal backslashes total.
+    real_value = "#{backslash * 2}server#{backslash}docs"
+    bare_condition = "share == '#{real_value}'" # written exactly as typed, unescaped
+    escaped_condition = "share == '#{backslash * 4}server#{backslash * 2}docs'" # every backslash doubled
+
+    assert_equal 3, real_value.count(backslash), "precondition: three backslashes in the real value"
+    assert ConditionEvaluator.evaluate(bare_condition, { "share" => real_value }), "the literal reading matches"
+    assert ConditionEvaluator.evaluate(escaped_condition, { "share" => real_value }), "the unescaped reading matches"
+  end
+
+  test "parse returns both the unescaped and the literal reading of the value" do
+    backslash = "\\"
+    parsed = ConditionEvaluator.new("path == 'C:#{backslash * 2}temp'").parse # escaped: 2 backslashes written for 1 real one
+
+    assert_equal "C:#{backslash}temp", parsed[:value]
+    assert_equal "C:#{backslash * 2}temp", parsed[:literal_value]
+
+    # No backslash in the value: the two readings are the same string.
+    plain = ConditionEvaluator.new("light == 'yes'").parse
+    assert_equal plain[:value], plain[:literal_value]
+  end
+
+  # Concern raised in review, accepted as a second deliberate exception:
+  # before this task, `light == 'a!=b'` was read by evaluate_inequality (the
+  # condition CONTAINS '!=', so the equality branch was skipped), which
+  # splits the whole condition on the first '!=' - landing inside the quoted
+  # value, not on the real operator. That produced a nonsense key and a nil
+  # lookup, and the != branch's nil rule returns true unconditionally: this
+  # condition matched EVERY answer, not just the one it named. That was never
+  # something a workflow could rely on being "no". The tokenizer parses the
+  # whole condition as one well-formed == comparison instead, so it now
+  # compares for real.
+  test "a value containing '!=' under == no longer always matches" do
+    assert ConditionEvaluator.evaluate("light == 'a!=b'", { "light" => "a!=b" })
+    assert_not ConditionEvaluator.evaluate("light == 'a!=b'", { "light" => "something else" })
+  end
 end
