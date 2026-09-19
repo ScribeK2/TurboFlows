@@ -339,6 +339,8 @@ export default class extends Controller {
       message = `Connect "${stepTitle}" to the next step?`
     } else if (fixType === "add_resolve_after") {
       message = `Add a new Resolve step after "${stepTitle}"?`
+    } else if (fixType === "settle_connections") {
+      message = `Move "Anything else" below the other connections on "${stepTitle}"?`
     } else {
       return
     }

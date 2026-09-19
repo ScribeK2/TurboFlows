@@ -66,6 +66,15 @@ class Step
       @transitions.reject { |t| claimed.include?(t) }
     end
 
+    # Conditional connections sorted after a default edge, which the runner
+    # therefore never reaches. They land in +extras+ too - nothing claims them -
+    # but unlike any other extra they are dead, and re-sorting fixes that
+    # (Transition.settle_positions). A SECOND default edge is dead as well, but
+    # no re-sort can revive it, so it is not reported here.
+    def shadowed
+      @transitions.drop(reachable.size).select { |t| t.condition.present? }
+    end
+
     # The wired blank-condition door: where an answer with no door of its own goes.
     def fallback
       doors.find { |door| door.kind != :answer && !door.stub? }
@@ -124,13 +133,23 @@ class Step
 
       claimed = []
       built = answers.map do |label, value|
-        transition = @transitions.find { |t| claimed.exclude?(t) && reads_as?(t.condition, value) }
+        transition = reachable.find { |t| claimed.exclude?(t) && reads_as?(t.condition, value) }
         claimed << transition if transition
         Door.new(kind: :answer, label: label, value: value, condition: condition_for(value), transition: transition)
       end
 
       default = blank_door(:anything_else, "Anything else")
       default.stub? ? built : built + [default]
+    end
+
+    # The transitions the runner can actually reach: StepResolver takes the
+    # first match in position order and a blank condition always matches, so
+    # everything sorted after the first default edge is dead, whatever it says.
+    # Transition.settle_positions keeps a default last for every builder write;
+    # an import can still write one first. @transitions is already in position
+    # order.
+    def reachable
+      @reachable ||= @transitions.take_while { |t| t.condition.present? }
     end
 
     def blank_door(kind, label)

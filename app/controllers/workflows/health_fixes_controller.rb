@@ -14,6 +14,8 @@ module Workflows
         connect_to_next_step(step)
       when "add_resolve_after"
         add_resolve_after(step)
+      when "settle_connections"
+        settle_connections(step)
       else
         head :unprocessable_content
         nil
@@ -61,6 +63,16 @@ module Workflows
       )
 
       connect_to(step, resolve_step)
+    end
+
+    # A default connection sorted above a conditional one catches every answer
+    # before the runner reaches it (:shadowed_connection). Every builder write
+    # already keeps a default last; an import can still write one first. This
+    # adds and removes nothing - it only puts the order back.
+    def settle_connections(step)
+      Transition.settle_positions(step)
+
+      respond_with_updated_steps
     end
 
     def connect_to(step, target)

@@ -84,7 +84,7 @@ class WorkflowHealthCheck
     message_body_required action_instructions_required escalate_target_required
     answer_type_required option_value_missing placeholder_title
     undefined_variable undefined_interpolation
-    missing_expected_door unmatched_option_value
+    missing_expected_door unmatched_option_value shadowed_connection
   ].freeze
 
   # The second signal. Validity asks "can this run?"; readiness asks "is this
@@ -416,6 +416,18 @@ class WorkflowHealthCheck
       doors.missing.each do |door|
         add_issue(issues, step.uuid, :warning, "“#{door.label}” has no step yet",
                   fixable: false, code: :missing_expected_door)
+      end
+
+      # One issue for the step, not one per connection: the cause is a single
+      # default edge sitting too high, and the Fix moves it once. It IS a Fix,
+      # unlike the two above: Transition.settle_positions is deterministic and
+      # changes no connection, only the order the runner tries them in - back
+      # to the order every builder write already keeps.
+      if doors.shadowed.any?
+        add_issue(issues, step.uuid, :warning,
+                  "“Anything else” is checked first, so " \
+                  "#{doors.shadowed.size} #{'connection'.pluralize(doors.shadowed.size)} below it can never run",
+                  fixable: true, fix_type: "settle_connections", code: :shadowed_connection)
       end
 
       doors.unmatched_extras.each do |(_transition, value)|

@@ -22,6 +22,7 @@ class GrowStep
 
   def create(step_type:, from_step:, attrs:, label:, condition:)
     check_source!(from_step) if from_step
+    settle_before_reading_doors(from_step) if from_step
 
     Step.transaction do
       check_door_is_free!(from_step, condition) if from_step
@@ -41,6 +42,7 @@ class GrowStep
   # than given a second connection that could never fire (first match wins).
   def connect(from_step:, target_step:, label:, condition:)
     check_source!(from_step)
+    settle_before_reading_doors(from_step)
 
     Step.transaction do
       existing = Step::Doors.for(from_step).door_for(condition)&.transition
@@ -59,6 +61,20 @@ class GrowStep
     raise Refused, "That step belongs to another workflow." if from_step.workflow_id != @workflow.id
     raise Refused, "A Resolve step ends the workflow, so nothing can follow it." if from_step.is_a?(Steps::Resolve)
     raise Refused, "This step hands the run to another workflow, so nothing can follow it." if from_step.hands_off?
+  end
+
+  # Step::Doors reads a door whose own edge sits below a default edge as a stub,
+  # because the runner never reaches it (an import can write that order; no
+  # builder write does). Adding a second edge for that door would be the wrong
+  # repair: the next thing to settle the order would hand the door back to the
+  # OLD edge, and the new one would be the edge nothing reaches. So the order
+  # is put right first and the doors are read after.
+  #
+  # Outside the transaction below on purpose: a grow that is then refused must
+  # not roll the repair back, or the response re-renders the same stale stub.
+  def settle_before_reading_doors(from_step)
+    Transition.settle_positions(from_step)
+    from_step.transitions.reset
   end
 
   # A door takes one step. The buttons that grow only ever sit on a stub, but a

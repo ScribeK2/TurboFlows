@@ -158,6 +158,46 @@ class StepDoorsTest < ActiveSupport::TestCase
     end
   end
 
+  # StepResolver takes the first transition that matches, in position order,
+  # and a blank condition always matches. Transition.settle_positions keeps a
+  # default edge last for every builder write, but an import can write one
+  # first - and then the runner never reaches the edges below it, whatever
+  # they say. A door that read as wired there was the lie.
+  test "an answer whose own edge sits below a default edge is a stub, because the runner never reaches it" do
+    step = question(answer_type: "yes_no")
+    default = Transition.create!(step: step, target_step: @a, position: 0)
+    dead = Transition.create!(step: step, target_step: @b, condition: "light == 'no'", position: 1)
+
+    d = doors(step)
+    no_door = d.doors.find { |door| door.label == "No" }
+
+    assert_predicate no_door, :stub?
+    assert_equal default, d.fallback.transition
+    assert_equal [dead], d.extras
+    assert_equal [dead], d.shadowed
+    assert_empty d.missing, "the default edge catches No, so it leads somewhere"
+    assert_equal @a, StepResolver.new(@workflow).resolve_next(step, { "light" => "no" }),
+                 "the runner itself takes the default edge for No"
+  end
+
+  test "an edge above the default edge still claims its door, and nothing is shadowed" do
+    step = question(answer_type: "yes_no")
+    live = Transition.create!(step: step, target_step: @b, condition: "light == 'no'", position: 0)
+    Transition.create!(step: step, target_step: @a, position: 1)
+
+    d = doors(step)
+    assert_equal live, d.doors.find { |door| door.label == "No" }.transition
+    assert_empty d.shadowed
+  end
+
+  test "a second default edge is not reported as shadowed: re-sorting cannot fix it" do
+    Transition.create!(step: @a, target_step: @b, position: 0)
+    other = Steps::Action.create!(workflow: @workflow, title: "C", position: 12)
+    Transition.create!(step: @a, target_step: other, position: 1)
+
+    assert_empty doors(@a).shadowed
+  end
+
   test "door_for finds a door by any spelling of its condition" do
     step = question(answer_type: "yes_no")
     assert_equal "No", doors(step).door_for("light=='NO'").label
