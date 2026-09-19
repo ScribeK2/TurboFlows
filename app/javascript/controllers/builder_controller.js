@@ -66,6 +66,15 @@ export default class extends Controller {
   // see steps/_panel_edit.html.erb) and select that row. A non-step panel
   // (health, settings, flow diagram) has no such element, so nothing is
   // selected, which is right.
+  //
+  // Finding 4: an open step panel whose step has no row any more - deleted
+  // from the list, by this author or a collaborator - closes rather than
+  // sitting on a dead step. Its autosave form targets _top, so its next PATCH
+  // would 404 the WHOLE page rather than answer inside the frame. This runs
+  // after every stream that can replace the list, so it is also what notices
+  // the deletion: destroy's own response never mentions the panel unless
+  // deleting the step emptied the list entirely (destroy_streams clears it
+  // itself then) - this covers the ordinary case, where other steps remain.
   syncSelectedRow() {
     this.clearSelectedRow()
 
@@ -75,7 +84,11 @@ export default class extends Controller {
     if (!panelBody) return
 
     const row = this.element.querySelector(`.builder__step[data-step-id="${panelBody.dataset.stepId}"]`)
-    row?.classList.add("builder__step--selected")
+    if (!row) {
+      this.closePanel()
+      return
+    }
+    row.classList.add("builder__step--selected")
   }
 
   openStep(event) {

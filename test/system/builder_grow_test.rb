@@ -373,6 +373,51 @@ class BuilderGrowTest < ApplicationSystemTestCase
     within(row(question)) { assert_selector ".builder__door-stub", text: "No → add step", wait: 5 }
   end
 
+  # Finding 4. Deleting the step whose OWN panel is open used to leave that
+  # panel open on a step that no longer exists: its autosave form targets
+  # _top, so its next PATCH 404'd the whole page.
+  # builder_controller#syncSelectedRow - which already runs after every
+  # stream render to decide which row is selected - now closes the panel
+  # when the open step has no row left. Asserted after a few seconds so a
+  # genuinely-quiet dangling autosave (see AGENTS.md and
+  # test/system/builder_grow_test.rb browser QA notes for the pending-save
+  # case, checked by hand against the dev server - a system test dirtying
+  # the title and racing a delete against the 2s debounce is itself flaky)
+  # would have had time to misbehave if it were going to.
+  test "deleting the open step's own row closes the panel without navigating away" do
+    visit workflow_path(@workflow, edit: true)
+    click_on "Add unconnected step"
+    pick_type "Question"
+    assert_panel_settled
+
+    question = @workflow.steps.reload.sole
+    within(row(question)) { click_on "No → add step" }
+    pick_type "Action"
+    assert_selector STEP_ROW, count: 2
+    assert_panel_settled
+
+    action = @workflow.steps.reload.find_by!(type: "Steps::Action")
+    # The panel opens on the new Action after that grow; switch it to the
+    # Question instead, so the list is NOT empty once the Question is gone
+    # (the Action row survives) - destroy_streams only clears the panel
+    # itself when the whole list is empty, so closing it here is this fix's
+    # job alone, not the server's existing empty-list branch.
+    open_step(question)
+
+    question_row = row(question)
+    question_row.hover
+    accept_confirm { question_row.find("button[title='Remove step']").click }
+
+    assert_no_selector "turbo-frame#builder-panel form", wait: 5
+    assert_no_selector "#{STEP_ROW}[data-step-uuid='#{question.uuid}']"
+    assert_selector "#{STEP_ROW}[data-step-uuid='#{action.uuid}']"
+
+    sleep 3
+    assert_selector ".builder__list", visible: true
+    assert_no_selector ".flash--alert"
+    assert_no_text "Content missing"
+  end
+
   # Every grow leaves the panel open, which narrows the list to 38% - exactly
   # where a two-stub row's title used to wrap inside its own shrunk box and
   # visually run under the stub buttons. The stubs now take their own line
