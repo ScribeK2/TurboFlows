@@ -24,6 +24,8 @@ class GrowStep
     check_source!(from_step) if from_step
 
     Step.transaction do
+      check_door_is_free!(from_step, condition) if from_step
+
       step = Step.class_for_type(step_type).new(attrs.to_h.merge(workflow: @workflow, position: claim_position(from_step)))
       step.title = "Untitled #{step_type.to_s.titleize}" if step.title.blank?
       prepare_question(step) if step.is_a?(Steps::Question)
@@ -57,6 +59,20 @@ class GrowStep
     raise Refused, "That step belongs to another workflow." if from_step.workflow_id != @workflow.id
     raise Refused, "A Resolve step ends the workflow, so nothing can follow it." if from_step.is_a?(Steps::Resolve)
     raise Refused, "This step hands the run to another workflow, so nothing can follow it." if from_step.hands_off?
+  end
+
+  # A door takes one step. The buttons that grow only ever sit on a stub, but a
+  # stub's data-grow-* attributes go stale the moment someone else wires that
+  # door - or a second click races the first - and a second edge on it could
+  # never fire (first match wins), so the step it reached would be one nothing
+  # points at. #connect retargets instead, because there the author has just
+  # chosen where the door should go; here they were told it went nowhere.
+  def check_door_is_free!(from_step, condition)
+    door = Step::Doors.for(from_step).door_for(condition)
+    return if door.nil? || door.stub?
+
+    target = door.target_step.title.presence || "another step"
+    raise Refused, "“#{door.label}” already leads to “#{target}”. Change it from the step's panel instead."
   end
 
   # Directly after the parent, using whatever numbering the workflow already

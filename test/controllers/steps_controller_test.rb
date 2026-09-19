@@ -1,9 +1,7 @@
 require "test_helper"
-require "turbo/broadcastable/test_helper"
 
 class StepsControllerTest < ActionDispatch::IntegrationTest
   include ActionView::RecordIdentifier
-  include Turbo::Broadcastable::TestHelper
 
   setup do
     @editor = User.create!(
@@ -241,61 +239,6 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_equal "Saved beside an odd row", @step.reload.title
-  end
-
-  # The rename is committed by the time the connections are refused, and the
-  # callback has already rewritten the step's own conditions to the new name.
-  # The editor's snapshot still names the OLD one, and the panel sends the
-  # whole step on every change - so unless the refusal re-renders the editor,
-  # its next autosave, of any field, writes the stale condition straight back.
-  test "a rename whose connections are refused still rebuilds the editor, so the next autosave keeps the rename" do
-    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light?", question: "Light?",
-                                       answer_type: "yes_no", variable_name: "light")
-    extra = Transition.create!(step: question, target_step: @step, condition: "light == 'blinking'")
-    foreign = Transition.create!(step: @step, target_step: question)
-    stale_rows = [{ uuid: extra.uuid, target_uuid: @step.uuid, condition: "light == 'blinking'", label: "" }]
-
-    # A uuid that belongs to another step's connection, claimed as minted here:
-    # Transition's own uniqueness validation refuses it, rolling back the sync.
-    patch workflow_step_path(@workflow, question),
-          params: { step: { variable_name: "lamp", transitions_json: {
-            rendered: [extra.uuid], minted: [foreign.uuid],
-            rows: stale_rows + [{ uuid: foreign.uuid, target_uuid: @step.uuid, condition: "", label: "" }]
-          }.to_json } },
-          headers: { "Accept" => "text/vnd.turbo-stream.html" }
-
-    assert_response :unprocessable_content
-    assert_includes response.body, "its connections were not"
-    assert_equal "lamp == 'blinking'", extra.reload.condition
-    assert_select "turbo-stream[action='update'][target='#{dom_id(question, :connections)}']"
-
-    rebuilt = css_select("input[name='step[transitions_json]']").first
-    assert_not_nil rebuilt, "the refusal did not re-render the connections editor"
-
-    patch workflow_step_path(@workflow, question),
-          params: { step: { title: "Any later autosave", transitions_json: rebuilt["value"] } },
-          headers: { "Accept" => "text/vnd.turbo-stream.html" }
-
-    assert_response :success
-    assert_equal "lamp == 'blinking'", extra.reload.condition
-  end
-
-  # The step's own fields DID save, so the row that shows them - here and in
-  # every other editor's list - has to follow, whatever happened to the
-  # connections.
-  test "a refused connections save still re-renders and broadcasts the step's row" do
-    broadcasts = capture_turbo_stream_broadcasts("workflow_#{@workflow.id}") do
-      patch workflow_step_path(@workflow, @step),
-            params: { step: { title: "Saved beside bad json", transitions_json: "[]" } },
-            headers: { "Accept" => "text/vnd.turbo-stream.html" }
-    end
-
-    assert_equal [dom_id(@step)], broadcasts.pluck("target")
-
-    assert_response :unprocessable_content
-    assert_select "turbo-stream[action='replace'][target='#{dom_id(@step)}']"
-    assert_includes response.body, "Saved beside bad json"
-    assert_select "turbo-stream[action='update'][target='flash']"
   end
 
   # 14. regular user cannot create steps

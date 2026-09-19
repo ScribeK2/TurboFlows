@@ -146,7 +146,13 @@ doors on the row. `GrowStep` is **not** `StepBuilder` — that bulk-writes an
 import or a template and demands a Resolve in the payload — and import never
 calls it. `GrowStep.connect` wires a door to a step that already exists,
 retargeting that door's own edge rather than adding a second one that could
-never fire (first match wins). The one `update_column` here is
+never fire (first match wins). `GrowStep.create` meets the same collision
+the other way: it **refuses** (`GrowStep::Refused`) a door that is already
+wired rather than retargeting it, because a grow only ever starts from a stub —
+so a wired door there means the stub was stale (another editor wired it, or a
+second click raced the first), and retargeting would silently strand the step
+the door already led to. `StepsController#respond_to_refused_grow` answers with
+the whole list and the parent's Connections fragment, so the stale stub goes. The one `update_column` here is
 `assign_start_step`, moved from `StepsController` unchanged: a full save would
 bump the workflow's `lock_version` under whatever the title or Details autosave
 is holding and be refused as stale. Every grow replaces the **whole** step list

@@ -102,7 +102,7 @@ class StepsController < ApplicationController
   rescue ActiveRecord::RecordInvalid => e
     respond_to_refusal(e.record.errors.full_messages.to_sentence)
   rescue GrowStep::Refused => e
-    respond_to_refusal(e.message)
+    respond_to_refused_grow(e.message)
   end
 
   # PATCH /workflows/:workflow_id/steps/:id
@@ -277,6 +277,30 @@ class StepsController < ApplicationController
 
   def set_workflow
     @workflow = Workflow.find(params[:workflow_id])
+  end
+
+  # What the author pressed is what was stale - a stub for a door that has
+  # since been wired - so the refusal replaces the list that holds it and the
+  # parent's own Connections fragment (a no-op unless that panel is open),
+  # rather than leaving the same stub there to be pressed again.
+  def respond_to_refused_grow(message)
+    respond_to do |format|
+      format.turbo_stream do
+        flash.now[:alert] = message
+        parent = grow_from_step
+        streams = [turbo_stream.replace("step-list", partial: "workflows/step_list",
+                                                     locals: { workflow: @workflow, steps: list_steps })]
+        if parent
+          streams << turbo_stream.update(dom_id(parent, :connections), partial: "steps/connections",
+                                                                       locals: { step: parent, workflow: @workflow })
+        end
+        streams << turbo_stream.update("flash", partial: "shared/flash_messages")
+
+        render turbo_stream: streams, status: :unprocessable_content
+      end
+      format.html { redirect_to workflow_path(@workflow, edit: true), alert: message }
+      format.json { render json: { errors: [message] }, status: :unprocessable_content }
+    end
   end
 
   def grow_from_step
