@@ -89,6 +89,25 @@ class RunnerValidationTest < ApplicationSystemTestCase
     assert_equal "answer[customer_name]", page.evaluate_script("document.activeElement?.name")
   end
 
+  # A form step arrives with the cursor in its first field, the way a question
+  # always has. The scenario-step "input" target is only on question controls,
+  # so a form step focused nothing at all and a keyboard agent had to tab in
+  # from the top of the page on every one.
+  test "a form step arrives with its first field focused" do
+    blocked_form_scenario
+
+    assert_equal "answer[customer_name]", page.evaluate_script("document.activeElement?.name")
+  end
+
+  # The hidden fields form_with emits come first in the DOM, and focusing one
+  # silently does nothing - which would leave focus on <body>, exactly the bug
+  # this fixes.
+  test "the focused field is a real one, not the form's hidden inputs" do
+    blocked_form_scenario
+
+    assert_equal "text", page.evaluate_script("document.activeElement?.type")
+  end
+
   # And a step that was NOT refused still announces itself, which is what the
   # region was built for.
   test "an ordinary step announces its own title, not a refusal" do

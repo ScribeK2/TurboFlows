@@ -62,14 +62,33 @@ export default class extends Controller {
     this.element.addEventListener("keydown", this.handleKeydown)
   }
 
-  // The refused control, when there is one: its own focus announcement names
-  // the field and says it is invalid, which is the half a live region off to
-  // the side cannot carry. Otherwise the first input, as before.
+  // Where the agent should be typing.
+  //
+  // The refused control first, when there is one: its own focus announcement
+  // names the field and says it is invalid, which is the half a live region off
+  // to the side cannot carry.
+  //
+  // Then the "input" target - a question's single answer control. A FORM step
+  // has no such target (it renders its fields from the step's own definition),
+  // so this used to focus nothing at all and a keyboard agent tabbed in from
+  // the top of the page on every form. Hence the last resort: the first real
+  // control in the form. `:not([type=hidden])` is load-bearing - form_with
+  // emits its authenticity token first, and focusing a hidden input silently
+  // does nothing, which leaves focus on <body>.
   focusFirstControl() {
-    const invalid = this.element.querySelector(".is-invalid")
-    const target = invalid || (this.hasInputTarget ? this.inputTarget : null)
+    const target = this.element.querySelector(".is-invalid") ||
+                   (this.hasInputTarget ? this.inputTarget : null) ||
+                   this.firstFormControl()
 
     target?.focus()
+  }
+
+  firstFormControl() {
+    const scope = this.hasFormTarget ? this.formTarget : this.element
+
+    return scope.querySelector(
+      "input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled])"
+    )
   }
 
   // Why the answer did not land, or which step this is - never both, since the
