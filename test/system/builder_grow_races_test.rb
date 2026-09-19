@@ -81,6 +81,39 @@ class BuilderGrowRacesTest < ApplicationSystemTestCase
     end
   end
 
+  # The same race through the other button. "Use existing…" names a door the
+  # same way a stub does, so a pick made inside the autosave debounce used to
+  # land ahead of the save and point the OLD door - a Text question's single
+  # "Next" - at a step; the save behind it then made the question Yes/No, and
+  # that blank-condition connection caught both answers.
+  #
+  # NO wait between choosing the type and picking: that gap is the race.
+  test "a target picked before the answer-type save lands does not write a catch-all connection" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", question: "Light green?",
+                                       position: 1, answer_type: "text", variable_name: "light")
+    target = Steps::Resolve.create!(workflow: @workflow, title: "All done", position: 2)
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    open_step(question)
+
+    within "turbo-frame#builder-panel" do
+      find(".choice-card", text: "Yes / No").click
+      find(".step-doors__row", text: "Next").click_on "Use existing…"
+    end
+    within("dialog[open]") { click_on target.title }
+
+    assert_eventually(timeout: 10) { question.reload.answer_type == "yes_no" }
+
+    # Wait for the pick to have ANSWERED, either way - a connection written, or
+    # the refusal in the dialog - so the assertion below cannot pass merely
+    # because nothing has happened yet.
+    assert_eventually(timeout: 10) do
+      question.transitions.reload.any? ||
+        page.has_css?("dialog[open] .form-error", text: /answers have changed/, wait: 0)
+    end
+    assert_empty question.transitions, "a connection was written from a door the step no longer has"
+  end
+
   # flush() is what a grow waits on, so it must not report "nothing in flight"
   # while a save is. Turbo dispatches turbo:submit-end from a `finally`, so a
   # submission ABORTED because a newer save superseded it fires one too - with

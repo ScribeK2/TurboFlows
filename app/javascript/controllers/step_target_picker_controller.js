@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { deferSubmitUntilPanelSaved } from "services/pending_panel_saves"
 
 // "Use existing…" on a door row: a native <dialog> listing the workflow's other
 // steps. One dialog serves every door on the panel; opening it writes which door
@@ -40,6 +41,12 @@ export default class extends Controller {
 
   close() {
     if (this.hasDialogTarget && this.dialogTarget.open) this.dialogTarget.close()
+  }
+
+  // The same wait a grow makes: this dialog names a door the panel's pending
+  // save may be about to remove. See services/pending_panel_saves.
+  pickAfterPendingSave(event) {
+    deferSubmitUntilPanelSaved(this.application, event)
   }
 
   // The request landed. A success means the connection was made and the panel's

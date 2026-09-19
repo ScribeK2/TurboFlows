@@ -123,7 +123,7 @@ The unified builder lives at `workflows/:id` — one URL for both viewing and ed
 **Key Stimulus controllers:**
 - `builder_controller.js` — panel open/close, step selection, title autosave, Escape to close, `openHealth` action, auto-opens health panel when `?health=true` URL param is present
 - `step_list_controller.js` — SortableJS reorder + the type picker: opening it for a door (from a row's stub or the panel's "New step"), writing the `data-grow-*` fields, and floating it beside its trigger
-- `step_target_picker_controller.js` — the "Use existing…" dialog on a door row: which door it is for, the filter, Escape (`stopPropagation`, or the whole panel closes behind it), and closing on `turbo:before-cache`
+- `step_target_picker_controller.js` — the "Use existing…" dialog on a door row: which door it is for, waiting for the panel's pending save before the pick is sent, the filter, Escape (`stopPropagation`, or the whole panel closes behind it), and closing on `turbo:before-cache`
 - `inline_autosave_controller.js` — debounced autosave (2s), `flush()` for whoever must act after the pending save (it returns a promise that resolves once nothing is in flight), listens for `lexxy:change` events, flushes pending saves on disconnect via `FormData` + `fetch`, dispatches `health:check-needed` after disconnect saves
 - `step_warnings_controller.js` — async health check fetch, renders inline warning icons on step rows, toolbar issue count, click-to-open popover with Fix buttons. Listens for `turbo:submit-end`, `health:check-needed`, `turbo:before-stream-render`
 - `template_picker_controller.js` — template popover in toolbar, applies workflow archetypes
@@ -157,10 +157,13 @@ save, never ahead of it.** The panel's doors are server-rendered, so inside the
 autosave debounce they show the step as it WAS; a grow landing first wrote the
 old door's connection and the flush behind it then changed the step under it —
 a Text question's blank "Next" edge on what was about to be a Yes/No question,
-catching both answers with the health check silent. `step-list#growAfterPendingSave`
-(a `submit` action on the type picker's forms) awaits `inline-autosave#flush`,
-which saves anything dirty and resolves once nothing is in flight, then
-resubmits. And because the press may name a door the step no longer has,
+catching both answers with the health check silent. `services/pending_panel_saves`
+(`deferSubmitUntilPanelSaved`) awaits `inline-autosave#flush`, which saves
+anything dirty and resolves once nothing is in flight, then resubmits. **Both**
+buttons that act on a door use it, through a `submit` action on their form:
+the type picker's (`step-list#growAfterPendingSave`) and the "Use existing…"
+dialog's (`step-target-picker#pickAfterPendingSave`) — a pick names a door
+exactly as a stub does and was as stale. And because the press may name a door the step no longer has,
 `GrowStep.create` **refuses a door `Step::Doors` does not list** — no button
 offers one, so only a stale press is refused. `GrowStep.create` meets the wired-door collision
 the other way: it **refuses** (`GrowStep::Refused`) a door that is already

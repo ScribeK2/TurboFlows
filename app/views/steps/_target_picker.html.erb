@@ -23,7 +23,8 @@
   <%= form_with url: workflow_step_transitions_path(workflow, step), method: :post,
         data: { turbo_stream: true, step_target_picker_target: "form",
                 create_url: workflow_step_transitions_path(workflow, step),
-                action: "turbo:submit-end->step-target-picker#submitEnded" } do %>
+                action: "submit->step-target-picker#pickAfterPendingSave " \
+                        "turbo:submit-end->step-target-picker#submitEnded" } do %>
     <input type="hidden" name="_method" value="post" data-step-target-picker-target="method">
     <input type="hidden" name="label" data-step-target-picker-target="label">
     <input type="hidden" name="condition" data-step-target-picker-target="condition">
