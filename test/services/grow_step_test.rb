@@ -295,6 +295,22 @@ class GrowStepTest < ActiveSupport::TestCase
     assert_equal existing.id, action.transitions.first.id
   end
 
+  # The "Use existing…" dialog names a door the same way a stub does, and can be
+  # just as stale.
+  test "connect refuses a door the step no longer has, and writes nothing" do
+    question = step(Steps::Question, "Light green?", 1, answer_type: "yes_no", variable_name: "light")
+    target = step(Steps::Action, "Target", 2)
+
+    assert_raises(GrowStep::Refused) do
+      GrowStep.connect(workflow: @workflow, from_step: question, target_step: target)
+    end
+    assert_raises(GrowStep::Refused) do
+      GrowStep.connect(workflow: @workflow, from_step: question, target_step: target,
+                       label: "Maybe", condition: "light == 'maybe'")
+    end
+    assert_empty question.transitions.reload
+  end
+
   test "connect refuses a Resolve source and a target in another workflow" do
     resolve = step(Steps::Resolve, "Done", 1)
     action = step(Steps::Action, "A", 2)

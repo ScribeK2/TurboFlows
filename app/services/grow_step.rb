@@ -8,6 +8,8 @@
 class GrowStep
   class Refused < StandardError; end
 
+  GONE_DOOR = "This step's answers have changed, so that way out is gone. Pick from the answers it has now.".freeze
+
   def self.create(workflow:, step_type:, from_step: nil, attrs: {}, label: nil, condition: nil)
     new(workflow).create(step_type:, from_step:, attrs:, label:, condition:)
   end
@@ -47,7 +49,10 @@ class GrowStep
 
     Step.transaction do
       lock_workflow!
-      existing = Step::Doors.for(from_step).door_for(condition)&.transition
+      door = Step::Doors.for(from_step).door_for(condition)
+      raise Refused, GONE_DOOR if door.nil?
+
+      existing = door.transition
       if existing
         existing.update!(target_step: target_step)
         existing
@@ -110,7 +115,7 @@ class GrowStep
   # offers a door Step::Doors does not list, so nothing honest is refused here.
   def check_door_is_free!(from_step, condition)
     door = Step::Doors.for(from_step).door_for(condition)
-    raise Refused, "This step's answers have changed, so that way out is gone. Pick from the answers it has now." if door.nil?
+    raise Refused, GONE_DOOR if door.nil?
     return if door.stub?
 
     target = door.target_step.title.presence || "another step"
