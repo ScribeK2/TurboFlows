@@ -68,15 +68,17 @@ Four things that have each cost someone an afternoon:
   widens, so a button found mid-animation moves before the click lands and the
   click hits whatever slid under the old spot — about one run in seven.
   `open_step` / `assert_panel_settled` in `test/application_system_test_case.rb`
-  are that wait; `builder_grow_test.rb` has two places a wait must NOT be added,
-  because the gap is the race: between typing the title and pressing "New step"
-  ("growing inside the autosave window…"), and between choosing an answer type
-  and pressing a door ("a door pressed before the answer-type save lands…").
-  The mutation check — make `TransitionSync#call` start its transaction with
-  `@step.transitions.destroy_all` — belongs to a THIRD test since 2026-09-19,
-  "a connection written elsewhere while the panel is open…": a grow now waits
-  for the panel's pending save, so the first test passes under that mutation
-  and only the third fails, on its transitions assertion.
+  are that wait. There are two places a wait must NOT be added, because the gap
+  is the race: in `builder_grow_test.rb`, between typing the title and pressing
+  "New step" ("growing inside the autosave window…"); and in
+  `builder_grow_races_test.rb`, between choosing an answer type and pressing a
+  door ("a door pressed before the answer-type save lands…"). The mutation
+  check — make `TransitionSync#call` start its transaction with
+  `@step.transitions.destroy_all` — belongs since 2026-09-19 to a third test,
+  also in the races file, "a connection written elsewhere while the panel is
+  open…": a grow now waits for the panel's pending save, so the first test
+  passes under that mutation and only that one fails, on its transitions
+  assertion.
 
 **Database & Utils**
 ```bash
