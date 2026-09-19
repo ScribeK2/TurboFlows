@@ -22,6 +22,12 @@ class Step
       def stub? = transition.nil?
     end
 
+    # One condition as the runner reads it - see #reading_of.
+    Reading = Data.define(:as_written, :matcher) do
+      def matches?(value) = matcher.call(value)
+    end
+    private_constant :Reading
+
     LEGACY_VARIABLE = WorkflowVariableNames::LEGACY_ANSWER
     OPTION_TYPES = %w[multiple_choice dropdown].freeze
 
@@ -86,35 +92,24 @@ class Step
     # value DOES match a current answer is not stale - a hand-made duplicate
     # of a wired door's own condition (see "a hand-made duplicate of a wired
     # door is an extra" in the test) is a repeat, not a value the step stopped
-    # offering, so both branches below exclude it the same way #build claims a
+    # offering, so either form of condition excludes it the same way #build claims a
     # door: by checking the value against every current answer, not merely
     # against whichever answer the same condition happened to claim first.
     #
-    # A bare condition (no [=!<>]) is checked the same way #reads_as? checks
-    # one: ConditionEvaluator#parse returns nil for it, so the operator-form
-    # branch below never saw it, yet StepResolver's simple-value match honours
-    # it at runtime. A bare value that DOES equal an answer is already claimed
+    # A bare condition (no [=!<>]) is read by the same #reading_of that wires
+    # a door: ConditionEvaluator#parse returns nil for it, so an operator-only
+    # check never saw it, yet StepResolver's simple-value match honours it at
+    # runtime. A bare value that DOES equal an answer is already claimed
     # as that door by #build, so it never reaches +extras+ at all - only a
     # bare value matching no answer lands here.
     def unmatched_extras
       return [] if answers.empty?
 
       extras.filter_map do |transition|
-        text = transition.condition.to_s.strip
-        next if text.blank?
+        reading = reading_of(transition.condition)
+        next if reading.nil?
 
-        if text.match?(/[=!<>]/)
-          parsed = parse(text)
-          next unless parsed && parsed[:operator] == "==" && own_variable?(parsed[:variable])
-
-          # Reported as the author wrote it, not the unescaped reading -
-          # otherwise a stale OLD-style backslash condition ("path ==
-          # 'D:\gone'") read as checking "D:gone", dropping the backslash the
-          # author actually typed.
-          [transition, parsed[:literal_value]] unless answers.any? { |_, value| operator_match?(parsed, value) }
-        else
-          [transition, text] unless answers.any? { |_, value| bare_match?(text, value) }
-        end
+        [transition, reading.as_written] unless answers.any? { |_, value| reading.matches?(value) }
       end
     end
 
@@ -180,13 +175,28 @@ class Step
     end
 
     def reads_as?(condition, value)
+      reading_of(condition)&.matches?(value) || false
+    end
+
+    # The one place a condition is sorted into the two forms the runner reads -
+    # bare (StepResolver's simple-value match) or an `==` check on this step's
+    # own answer (ConditionEvaluator) - so wiring a door and reporting a stale
+    # extra cannot come to read one differently. nil for anything else: blank,
+    # another operator, another step's variable, or text that does not parse.
+    #
+    # `as_written` is what #unmatched_extras reports: the author's own text,
+    # not the unescaped reading - otherwise a stale OLD-style backslash
+    # condition ("path == 'D:\gone'") read as checking "D:gone", dropping the
+    # backslash the author actually typed.
+    def reading_of(condition)
       text = condition.to_s.strip
-      return false if text.blank?
-      return bare_match?(text, value) unless text.match?(/[=!<>]/)
+      return if text.blank?
+      return Reading.new(text, ->(value) { bare_match?(text, value) }) unless text.match?(/[=!<>]/)
 
       parsed = parse(text)
-      parsed.present? && parsed[:operator] == "==" && own_variable?(parsed[:variable]) &&
-        operator_match?(parsed, value)
+      return unless parsed && parsed[:operator] == "==" && own_variable?(parsed[:variable])
+
+      Reading.new(parsed[:literal_value], ->(value) { operator_match?(parsed, value) })
     end
 
     def parse(condition)

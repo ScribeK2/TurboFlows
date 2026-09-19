@@ -135,6 +135,29 @@ class StepDoorsTest < ActiveSupport::TestCase
     assert_empty d.unmatched_extras
   end
 
+  # The same rule under BOTH readings of a value: the old writer's spelling
+  # (backslash kept literally) and the new one's (backslash escaped) name one
+  # answer, so whichever is the repeat is a repeat - not a value the step
+  # stopped offering. #unmatched_extras has to read a condition exactly as
+  # wiring a door reads it, or the health panel disagrees with the row.
+  test "a duplicate spelled with the other backslash escaping is not unmatched either" do
+    value = %q(C:\temp)
+    spellings = ["path == 'C:\\temp'", "path == 'C:\\\\temp'"]
+    assert_equal([1, 2], spellings.map { |c| c.count("\\") })
+
+    [spellings, spellings.reverse].each do |first, second|
+      step = question(answer_type: "dropdown", variable_name: "path",
+                      options: [{ "label" => "Path", "value" => value }])
+      Transition.create!(step: step, target_step: @a, condition: first, position: 0)
+      duplicate = Transition.create!(step: step, target_step: @b, condition: second, position: 1)
+
+      d = doors(step)
+      assert_equal [duplicate], d.extras
+      assert_empty d.unmatched_extras, "#{second.inspect} was reported as unmatched"
+      step.destroy
+    end
+  end
+
   test "door_for finds a door by any spelling of its condition" do
     step = question(answer_type: "yes_no")
     assert_equal "No", doors(step).door_for("light=='NO'").label
