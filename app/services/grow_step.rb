@@ -25,6 +25,7 @@ class GrowStep
     settle_before_reading_doors(from_step) if from_step
 
     Step.transaction do
+      lock_workflow!
       check_door_is_free!(from_step, condition) if from_step
 
       step = Step.class_for_type(step_type).new(attrs.to_h.merge(workflow: @workflow, position: claim_position(from_step)))
@@ -45,6 +46,7 @@ class GrowStep
     settle_before_reading_doors(from_step)
 
     Step.transaction do
+      lock_workflow!
       existing = Step::Doors.for(from_step).door_for(condition)&.transition
       if existing
         existing.update!(target_step: target_step)
@@ -56,6 +58,21 @@ class GrowStep
   end
 
   private
+
+  # One grow at a time per workflow. Everything below reads before it writes -
+  # which door is free, which position comes next - and two grows landing
+  # together each read what the other had not yet committed: both inserted at
+  # parent.position + 1, and two presses of one door both found it a stub.
+  #
+  # A row lock, not a save: it holds other grows off until this transaction
+  # ends and bumps no lock_version, so the title and Details autosaves are not
+  # refused as stale (see #assign_start_step). Queried fresh rather than
+  # @workflow.lock!, which would reload the caller's object under it. SQLite
+  # ignores FOR UPDATE and serialises writers anyway, so only
+  # test/services/grow_step_concurrency_test.rb, on PostgreSQL, can show this.
+  def lock_workflow!
+    Workflow.lock.find(@workflow.id)
+  end
 
   def check_source!(from_step)
     raise Refused, "That step belongs to another workflow." if from_step.workflow_id != @workflow.id

@@ -155,7 +155,13 @@ the door already led to. `StepsController#respond_to_refused_grow` answers with
 the whole list and the parent's Connections fragment, so the stale stub goes. The one `update_column` here is
 `assign_start_step`, moved from `StepsController` unchanged: a full save would
 bump the workflow's `lock_version` under whatever the title or Details autosave
-is holding and be refused as stale. Every grow replaces the **whole** step list
+is holding and be refused as stale. Both `GrowStep` entry points hold a **row lock on the workflow**
+(`Workflow.lock.find`, no `lock_version` bump) for their transaction, because
+everything they do reads before it writes: on PostgreSQL four grows at once gave
+positions `[1, 2, 2, 2, 3]`, and one door pressed four times grew three steps.
+SQLite ignores `FOR UPDATE`, so only `test/services/grow_step_concurrency_test.rb`
+can show it, on PostgreSQL — it skips itself locally and its header says how to
+run it. Every grow replaces the **whole** step list
 and broadcasts it, because a mid-list insert moves every later ordinal and every
 "→ Title · 4" that names one.
 
