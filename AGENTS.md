@@ -395,9 +395,11 @@ does hold a real form) is rendered **outside** the autosave form, after its
 deleted — the `rendered`/`minted` split above closed that 2026-09-19.** What
 is left is a narrower, accepted residual: a row minted AND saved in panel B,
 then deleted in panel A while B stays open, is still `minted` to B — B never
-re-reads it as merely `rendered`, and only a heal (see above) or reopening the
-panel clears that — so B's own next save re-creates it exactly as it always
-could. It needs two people editing the SAME step's custom connections inside
+re-reads it as merely `rendered` until its own Connections fragment is
+re-rendered whole, whether by a heal (see above), a rename, a door-shape
+change, a SubFlow `sub_flow_returns` toggle, or reopening the panel — so short
+of one of those, B's own next save re-creates it exactly as it always could.
+It needs two people editing the SAME step's custom connections inside
 one panel session, not merely one stale tab; a tombstone table of deleted
 uuids, pruned by a job, would close this case too but was rejected as more
 machinery than the risk earns. The other limit this section used to name
