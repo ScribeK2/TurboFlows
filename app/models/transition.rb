@@ -20,10 +20,17 @@ class Transition < ApplicationRecord
   # StepResolver takes the first transition that matches, and a blank condition
   # always matches - so a default edge sitting above a conditional one swallows
   # it. Conditionals first, in the order they already had; defaults last.
+  #
+  # Every row moves or none does. requires_new, because both callers already
+  # hold a transaction open and a plain nested one would just join it: a
+  # caller that rescued the failure would then keep the rows renumbered so far.
   def self.settle_positions(step)
     rows = step.transitions.includes(:target_step, :step).to_a
     ordered = rows.each_with_index.sort_by { |t, i| [t.condition.blank? ? 1 : 0, t.position || i, i] }.map(&:first)
-    ordered.each_with_index { |t, i| t.update!(position: i) unless t.position == i }
+
+    transaction(requires_new: true) do
+      ordered.each_with_index { |t, i| t.update!(position: i) unless t.position == i }
+    end
   end
 
   private

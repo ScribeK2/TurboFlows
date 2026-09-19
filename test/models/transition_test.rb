@@ -114,4 +114,21 @@ class TransitionTest < ActiveSupport::TestCase
     assert_equal [a.id, b.id], @step1.transitions.reload.map(&:id)
     assert_equal [0, 1], @step1.transitions.map(&:position)
   end
+
+  # Both callers wrap it in their own transaction; a third must not have to
+  # know that. One row that cannot be saved must not leave the rows before it
+  # renumbered and the rows after it not.
+  test "settle_positions moves every row or none" do
+    step3 = Steps::Action.create!(workflow: @workflow, title: "A2", position: 2)
+    elsewhere = Steps::Action.create!(workflow: Workflow.create!(title: "Elsewhere", user: @user),
+                                      title: "Foreign", position: 0)
+    Transition.create!(step: @step1, target_step: @step2, position: 0)
+    Transition.create!(step: @step1, target_step: @step2, condition: "q1 == 'a'", position: 1)
+    broken = Transition.create!(step: @step1, target_step: step3, condition: "q1 == 'b'", position: 2)
+    broken.update_columns(target_step_id: elsewhere.id)
+
+    assert_raises(ActiveRecord::RecordInvalid) { Transition.settle_positions(@step1) }
+
+    assert_equal [0, 1, 2], @step1.transitions.reload.order(:id).map(&:position)
+  end
 end
