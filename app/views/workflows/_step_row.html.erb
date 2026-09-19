@@ -89,7 +89,13 @@
       <% if doors.doors.size <= 2 %>
         <% stubs.each do |door| %>
           <% stub_label = door.kind == :next ? "→" : "#{door.label} →" %>
+          <%# Same fact as data-grow-context, worded as what the button does
+              rather than where it's growing from - a row-by-row reader hears
+              which Question this stub belongs to, not just "→ add step"
+              repeated once per row. %>
+          <% stub_aria = door.kind == :next ? "Add a step after “#{row_title}”" : "“#{row_title}” — #{door.label}: add step" %>
           <button type="button" class="builder__door-stub builder__edit-only"
+                  aria-label="<%= stub_aria %>"
                   data-action="click->step-list#growFromDoor"
                   data-grow-from="<%= step.id %>"
                   data-grow-label="<%= door.label unless door.kind == :next %>"

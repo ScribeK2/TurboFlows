@@ -472,6 +472,43 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_select "form form", false, "a form was nested inside the panel's autosave form"
   end
 
+  # Finding 2a/2b: "New step", "Use existing…", "Change" and "Remove" repeat
+  # once per door with only a sibling span telling them apart - a name a
+  # screen reader can't hear. Each button's accessible name has to say WHICH
+  # door, without changing the visible text a sighted, mouse-driven test
+  # still clicks by.
+  test "each door action names which door it acts on" do
+    question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light green?",
+                                       answer_type: "yes_no", variable_name: "light")
+    edge = Transition.create!(step: question, target_step: @step, condition: "light == 'yes'", label: "Yes")
+
+    get panel_edit_workflow_step_path(@workflow, question)
+
+    assert_select "##{dom_id(question, :doors)}" do
+      assert_select "button[aria-label='New step for “No”']", text: "New step"
+      assert_select "button[aria-label='Use an existing step for “No”']", text: "Use existing…"
+      assert_select "button[aria-label='Change where “Yes” leads']", text: "Change"
+      assert_select "a[aria-label='Remove the “Yes” connection']", text: "Remove"
+    end
+    assert_select "dialog##{dom_id(question, :target_picker)}[aria-labelledby='#{dom_id(question, :target_picker_heading)}']"
+    assert_select "##{dom_id(question, :target_picker_heading)}", text: "Use an existing step"
+
+    edge.destroy!
+  end
+
+  # A step with only the single, unlabelled "Next" door reads naturally
+  # ("after this one"), not by quoting the literal word "Next".
+  test "the unlabelled Next door reads naturally, not by quoting “Next”" do
+    action = Steps::Action.create!(workflow: @workflow, position: 1, title: "Untitled Action")
+
+    get panel_edit_workflow_step_path(@workflow, action)
+
+    assert_select "##{dom_id(action, :doors)}" do
+      assert_select "button[aria-label='New step after this one']", text: "New step"
+      assert_select "button[aria-label='Use an existing step after this one']", text: "Use existing…"
+    end
+  end
+
   test "the readonly panel shows doors with nothing to press" do
     question = Steps::Question.create!(workflow: @workflow, position: 1, title: "Light green?",
                                        answer_type: "yes_no", variable_name: "light")

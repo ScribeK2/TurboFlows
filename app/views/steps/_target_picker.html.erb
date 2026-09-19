@@ -6,6 +6,7 @@
   door it is for. A flat, filterable list: at thirty steps typing beats scrolling.
 %>
 <dialog class="dialog dialog--sm" id="<%= dom_id(step, :target_picker) %>"
+        aria-labelledby="<%= dom_id(step, :target_picker_heading) %>"
         data-step-target-picker-target="dialog"
         data-action="click->step-target-picker#backdropClose keydown.esc->step-target-picker#stopEscape">
   <%= form_with url: workflow_step_transitions_path(workflow, step), method: :post,
@@ -17,7 +18,8 @@
     <input type="hidden" name="condition" data-step-target-picker-target="condition">
 
     <div class="dialog__header">
-      <h2 class="font-semibold" data-step-target-picker-target="heading">Use an existing step</h2>
+      <h2 class="font-semibold" id="<%= dom_id(step, :target_picker_heading) %>"
+          data-step-target-picker-target="heading">Use an existing step</h2>
     </div>
     <div class="dialog__body">
       <%# showModal() puts this dialog in the browser's top layer, so #flash

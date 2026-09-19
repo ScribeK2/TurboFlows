@@ -22,6 +22,7 @@
             </span>
             <% unless readonly %>
               <button type="button" class="btn btn--secondary btn--sm"
+                      aria-label="<%= door_action_aria_label(door, :new_step) %>"
                       data-grow-from="<%= step.id %>"
                       data-grow-label="<%= door.label unless door.kind == :next %>"
                       data-grow-condition="<%= door.condition %>"
@@ -29,6 +30,7 @@
                 New step
               </button>
               <button type="button" class="btn btn--plain btn--sm"
+                      aria-label="<%= door_action_aria_label(door, :use_existing) %>"
                       data-action="click->step-target-picker#open"
                       data-label="<%= door.label unless door.kind == :next %>"
                       data-condition="<%= door.condition %>">
@@ -42,6 +44,7 @@
             </span>
             <% unless readonly %>
               <button type="button" class="btn btn--plain btn--sm"
+                      aria-label="<%= door_action_aria_label(door, :change) %>"
                       data-action="click->step-target-picker#open"
                       data-label="<%= door.label unless door.kind == :next %>"
                       data-condition="<%= door.condition %>"
@@ -50,6 +53,7 @@
               </button>
               <%= link_to "Remove", workflow_step_transition_path(workflow, step, door.transition),
                     class: "btn btn--plain btn--sm",
+                    aria: { label: door_action_aria_label(door, :remove) },
                     data: { turbo_method: :delete, turbo_stream: true } %>
             <% end %>
           <% end %>
