@@ -96,18 +96,18 @@ class StrictImportConditionValueTest < ActiveSupport::TestCase
   end
 
   # Correction (2026-09-19): mismatched delimiters (`'yes"`) were ALWAYS
-  # accepted by ConditionEvaluator.complete? before this task's grammar work -
-  # #supported_condition? (this method) is a direct pass-through to it, so a
-  # first draft that tightened complete? to require matched delimiters
+  # accepted by ConditionEvaluator.complete? before the escape-aware grammar -
+  # StrictImportValidator#supported_condition? is a direct pass-through to it,
+  # so a first draft that tightened complete? to require matched delimiters
   # silently made this an invalid_condition_syntax error where before it was
   # none. A stored mismatched-delimiter condition, reachable through the
   # lenient (non-strict) import path, would have exported to a file the
   # strict importer refused to re-import - a new export/import exception
   # AGENTS.md never documents. complete?/valid? were corrected back to a
-  # superset of what they accepted before this task (see the report's
-  # "complete? stays a superset" section), so the file validates and the
-  # option check runs through #parse's legacy fallback exactly as it would
-  # for any other unescaped value.
+  # superset of what they accepted before 2026-09-19 (see the
+  # LEGACY_STRING_VALUE comment in app/services/condition_evaluator.rb), so
+  # the file validates and the option check runs through #parse's legacy
+  # fallback exactly as it would for any other unescaped value.
   test "mismatched delimiters are accepted, and the option check reads the value the legacy way" do
     report = validate(document_with(steps: [
                                       { id: "q", type: "question", title: "Known?", question: "Is it known?",
@@ -138,8 +138,8 @@ class StrictImportConditionValueTest < ActiveSupport::TestCase
     assert_includes warning[:message], '"yes"'
   end
 
-  # --- fix round 1 (2026-09-19): a numeric-looking value must still be
-  # checked, not skipped wholesale. The first version of this fix returned
+  # --- Correction (2026-09-19): a numeric-looking value must still be
+  # checked, not skipped wholesale. An earlier version of this fix returned
   # early whenever parsed[:value] looked like a bare integer, which also
   # silenced a REAL mismatch — `plan == '9'` against options declared
   # ["3", "4"] warned at base commit 9fd5a6bf (the old CONDITION_STRING_VALUE
