@@ -474,6 +474,36 @@ class BuilderGrowTest < ApplicationSystemTestCase
     end
   end
 
+  # The floating picker is position: fixed beside whatever was pressed. It
+  # closed when the LIST scrolled or the window resized, but a door's "New
+  # step" lives in the PANEL, which scrolls on its own - so the menu stayed put
+  # while its trigger slid away underneath it.
+  test "scrolling the panel closes a type picker opened from one of its doors" do
+    options = (1..14).map { |n| { "label" => "Option #{n}", "value" => "option_#{n}" } }
+    question = Steps::Question.create!(workflow: @workflow, title: "Which one?", question: "Which one?",
+                                       position: 1, answer_type: "multiple_choice", variable_name: "which",
+                                       options: options)
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    open_step(question)
+
+    within "turbo-frame#builder-panel" do
+      find(".step-doors__row", text: "Option 1", exact_text: false, match: :first).click_on "New step"
+    end
+    assert_selector ".builder__type-picker--floating", wait: 5
+
+    scrolled = page.evaluate_script(<<~JS)
+      (() => {
+        const body = document.querySelector(".builder__panel-body")
+        body.scrollTop = body.scrollHeight
+        return body.scrollTop
+      })()
+    JS
+    assert_operator scrolled, :>, 0, "the panel did not scroll, so this proves nothing"
+
+    assert_no_selector ".builder__type-picker--floating", wait: 5
+  end
+
   # A pick refused because its step is gone re-streams the candidate list
   # fresh, and the filter used to run only when the dialog opened - so the
   # text the author had typed sat above a list it no longer described.

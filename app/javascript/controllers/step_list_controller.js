@@ -34,8 +34,9 @@ export default class extends Controller {
 
     // Closes a door-positioned picker rather than leaving it drift away from
     // the trigger it was placed beside. Bound once here, added/removed from
-    // the scroll container and window only while the picker is floating.
+    // the document and window only while the picker is floating.
     this.boundCloseFloatingPicker = this.closeTypePicker.bind(this)
+    this.boundCloseOnScroll = this.closeOnScroll.bind(this)
   }
 
   disconnect() {
@@ -122,22 +123,43 @@ export default class extends Controller {
     menu.style.top = `${top}px`
     menu.style.left = `${left}px`
 
+    this.floatingTrigger = trigger
+    this.floatingTriggerAt = { top: triggerRect.top, left: triggerRect.left }
     this.attachFloatingCloseListeners()
   }
 
-  // A fixed-position menu doesn't move with the row it was placed beside, so
-  // scrolling the list or resizing the window closes it rather than leaving
-  // it stranded over the wrong row.
+  // A fixed-position menu doesn't move with whatever it was placed beside, so
+  // scrolling or resizing the window closes it rather than leaving it
+  // stranded over the wrong thing. Its trigger is a row's stub (the list
+  // scrolls) OR a door in the step panel (the panel scrolls on its own, and is
+  // not inside this controller's element), so this listens on the document in
+  // the CAPTURE phase: scroll does not bubble, but it is captured, which
+  // catches every scroller without naming any of them.
   attachFloatingCloseListeners() {
-    this.floatingScrollContainer = this.element.querySelector(".builder__list-scroll")
-    this.floatingScrollContainer?.addEventListener("scroll", this.boundCloseFloatingPicker)
+    document.addEventListener("scroll", this.boundCloseOnScroll, true)
     window.addEventListener("resize", this.boundCloseFloatingPicker)
   }
 
   detachFloatingCloseListeners() {
-    this.floatingScrollContainer?.removeEventListener("scroll", this.boundCloseFloatingPicker)
+    document.removeEventListener("scroll", this.boundCloseOnScroll, true)
     window.removeEventListener("resize", this.boundCloseFloatingPicker)
-    this.floatingScrollContainer = null
+    this.floatingTrigger = null
+  }
+
+  // Closes only when the trigger has actually moved (or is gone). A scroll
+  // event alone says nothing: the menu's own contents scrolling fires one, and
+  // so does a scroll that ends where it began - at phone width the document
+  // fires several as a click lands, none of which move the door an inch.
+  closeOnScroll() {
+    const trigger = this.floatingTrigger
+    if (trigger?.isConnected) {
+      const rect = trigger.getBoundingClientRect()
+      const moved = Math.abs(rect.top - this.floatingTriggerAt.top) > 1 ||
+                    Math.abs(rect.left - this.floatingTriggerAt.left) > 1
+      if (!moved) return
+    }
+
+    this.closeTypePicker()
   }
 
   clearFloatingPosition() {

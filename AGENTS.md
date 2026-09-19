@@ -432,8 +432,13 @@ escaping the list's `overflow-y` clipping) because anchored to the bottom prompt
 it opened ~650px from a stub on row 1 of a long list; it is measured with
 `offsetWidth`/`offsetHeight`, not `getBoundingClientRect`, which reads a
 scaled-down size during the `@starting-style` entrance and threw the clamp off
-by that margin. A fixed menu does not move with its row, so scrolling the list
-or resizing the window closes it. The bottom prompt keeps the plain anchored
+by that margin. A fixed menu does not move with its trigger, so it closes
+once that trigger has moved — whichever scroller moved it, the list for a row's
+stub or the panel for a door (one capture-phase `scroll` listener on the
+document, since scroll does not bubble) — or the window is resized. It asks
+whether the trigger MOVED rather than whether something scrolled: at phone
+width the document fires scroll events as a click lands that move nothing,
+and closing on those shut the menu under the pointer. The bottom prompt keeps the plain anchored
 menu.
 
 **At ≤640px with a panel open, `.builder__list` is `visibility: hidden` with
