@@ -400,7 +400,11 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
   # collides with the foreign transition's uuid and raises RecordInvalid
   # (422); under `rendered` alone the same row would be skipped and the panel
   # healed (200) instead. The rest here are shape-agnostic: empty lists, a
-  # row that already exists, or a stubbed TransitionSync.call.
+  # row that already exists, a stubbed TransitionSync.call, or - "a save that
+  # turns an editor row into a door" and its contrast below - a brand-new
+  # uuid sent as `known`, which under `rendered`/`minted` would arrive as
+  # `minted` instead and behave the same way: both shapes create the row
+  # outright, so the door-shape outcome does not depend on which one sent it.
   test "a panel save with a stale snapshot leaves a server-made edge alone" do
     target = Steps::Resolve.create!(workflow: @workflow, position: 1, title: "Done")
     grown = Transition.create!(step: @step, target_step: target)
