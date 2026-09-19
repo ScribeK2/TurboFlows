@@ -474,6 +474,35 @@ class BuilderGrowTest < ApplicationSystemTestCase
     end
   end
 
+  # An import can write a default connection above a conditional one, which the
+  # runner then never reaches. The health panel says so and its Fix re-sorts -
+  # and the confirm it asks has to name the step, not "this step": it looked
+  # the title up by a class no row has carried since the chrome migration.
+  test "the health panel's Fix for a shadowed connection names the step and puts the default last" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", question: "Light green?",
+                                       position: 1, answer_type: "yes_no", variable_name: "light")
+    rest = Steps::Resolve.create!(workflow: @workflow, title: "Everything else", position: 2)
+    no_side = Steps::Resolve.create!(workflow: @workflow, title: "No side", position: 3)
+    Transition.create!(step: question, target_step: rest, position: 0)
+    Transition.create!(step: question, target_step: no_side, condition: "light == 'no'", position: 1)
+    @workflow.update!(start_step: question)
+
+    visit workflow_path(@workflow, edit: true, health: true)
+
+    # ?health=true slides the panel open like any other, so the Fix button is
+    # still moving when it first appears (see assert_panel_settled).
+    within("turbo-frame#builder-panel") { assert_text "“Anything else” is checked first", wait: 10 }
+    assert_panel_settled
+
+    message = within("turbo-frame#builder-panel") { accept_confirm { click_on "Fix" } }
+
+    assert_includes message, "Light green?"
+    assert_eventually(timeout: 10) do
+      question.transitions.reload.order(:position).map(&:condition) == ["light == 'no'", nil]
+    end
+    within("turbo-frame#builder-panel") { assert_no_text "“Anything else” is checked first", wait: 10 }
+  end
+
   # The floating picker is position: fixed beside whatever was pressed. It
   # closed when the LIST scrolled or the window resized, but a door's "New
   # step" lives in the PANEL, which scrolls on its own - so the menu stayed put
