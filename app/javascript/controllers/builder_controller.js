@@ -75,20 +75,52 @@ export default class extends Controller {
   // the deletion: destroy's own response never mentions the panel unless
   // deleting the step emptied the list entirely (destroy_streams clears it
   // itself then) - this covers the ordinary case, where other steps remain.
+  //
+  // A missing row does not always mean a deleted step. A list broadcast is
+  // rendered from a read taken when it is SENT, so one another editor's request
+  // rendered before this author's grow committed can arrive after the grow's
+  // own response - and for that moment the new step has no row. Nothing here
+  // can tell that from a delete, and guessing "stale" would leave a panel open
+  // on a dead step, so the panel still closes at once. What it does instead is
+  // remember which step it closed on: if a later render brings that row back
+  // while no other panel has been opened, the panel reopens. A deleted step's
+  // row never comes back, so for a delete this changes nothing.
   syncSelectedRow() {
     this.clearSelectedRow()
+    this.reopenPanelIfRowReturned()
 
     const panelBody = this.hasPanelTarget
       ? this.panelTarget.querySelector(".builder__panel-body[data-step-id]")
       : null
     if (!panelBody) return
 
-    const row = this.element.querySelector(`.builder__step[data-step-id="${panelBody.dataset.stepId}"]`)
+    const row = this.rowFor(panelBody.dataset.stepId)
     if (!row) {
       this.closePanel()
+      this.closedOnMissingRowOf = panelBody.dataset.stepId
       return
     }
     row.classList.add("builder__step--selected")
+  }
+
+  // Before the panel is looked at, so this render's own row can reopen it. The
+  // URL comes from the returned row - a grown step's panel arrived by stream,
+  // so the frame never had a src to remember.
+  reopenPanelIfRowReturned() {
+    const stepId = this.closedOnMissingRowOf
+    if (!stepId) return
+
+    if (this.panelOpen) {
+      this.closedOnMissingRowOf = null
+      return
+    }
+
+    const url = this.rowFor(stepId)?.dataset.builderUrlParam
+    if (url) this.loadPanel(url)
+  }
+
+  rowFor(stepId) {
+    return this.element.querySelector(`.builder__step[data-step-id="${stepId}"]`)
   }
 
   openStep(event) {
@@ -151,6 +183,9 @@ export default class extends Controller {
 
   closePanel() {
     this.clearSelectedRow()
+    // An author's own close is final; #syncSelectedRow sets this again AFTER
+    // calling here when the close was its own.
+    this.closedOnMissingRowOf = null
 
     if (this.hasPanelTarget) {
       this.panelTarget.removeAttribute("src")
@@ -209,6 +244,10 @@ export default class extends Controller {
   // rendered by a broadcast (which knows no mode) still opens as a preview.
   loadPanel(url) {
     if (!this.hasPanelTarget) return
+
+    // Whatever opens a panel - the author or the reopen itself - ends the wait
+    // for a row to come back (see #syncSelectedRow).
+    this.closedOnMissingRowOf = null
 
     this.panelTarget.src = this.modeValue === "edit" ? url : this.readonlyUrl(url)
   }

@@ -450,7 +450,18 @@ deleting the step emptied the entire list (`destroy_streams`'
 `steps.empty?` branch). `syncSelectedRow` — already the one place that reruns
 after every stream capable of replacing the list, to decide which row reads
 as selected — closes the panel instead whenever the open step's own row is
-gone, which covers both this author's delete and a collaborator's.
+gone, which covers both this author's delete and a collaborator's. A missing
+row is not always a delete, though: a list broadcast is rendered from a read
+taken when it is sent, so one rendered before this author's grow committed can
+arrive after the grow's response, and for that moment the new step has no row.
+Nothing in the browser can tell the two apart, and guessing "stale" would leave
+a panel open on a dead step — so the panel still closes at once, and
+`syncSelectedRow` remembers which step it closed on (`closedOnMissingRowOf`):
+if a later render brings that row back while no other panel has been opened, it
+reopens from the row's own URL. A deleted step's row never returns, so a delete
+is unchanged. (The TODO this closed proposed "close only after two consecutive
+renders without the row" — that regresses the 404: a collaborator's delete is
+exactly ONE render for everyone else.)
 
 **The grow protocol is four data attributes.** A trigger carries
 `data-grow-from` (the parent step id), `data-grow-label`, `data-grow-condition`

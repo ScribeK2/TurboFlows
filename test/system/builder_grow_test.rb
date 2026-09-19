@@ -690,6 +690,51 @@ class BuilderGrowTest < ApplicationSystemTestCase
     within(row(question)) { assert_selector ".builder__door-stub", text: "No → add step", wait: 5 }
   end
 
+  # A list broadcast is rendered from a read taken when it is sent. One that
+  # another editor's request rendered BEFORE this author's grow committed can
+  # reach this browser AFTER the grow's own response has rendered - and for that
+  # moment the new step has no row, so syncSelectedRow closes its panel (it must:
+  # a panel on a step with no row is what a DELETED step looks like, and its
+  # autosave would 404 the whole page). The next list render has the row again,
+  # and the panel used to stay closed. It reopens now, unless the author has
+  # opened something else meanwhile.
+  #
+  # Injected streams, not two real overlapping requests: see the note on
+  # "a grown step's selection survives…" in workflow_builder_test.rb.
+  test "a panel closed by a stale list render reopens when the row comes back" do
+    first = Steps::Action.create!(workflow: @workflow, title: "First", position: 1)
+    grown = Steps::Action.create!(workflow: @workflow, title: "Just grown", position: 2)
+    Transition.create!(step: first, target_step: grown)
+    @workflow.update!(start_step: first)
+    visit workflow_path(@workflow, edit: true)
+    open_step(grown)
+
+    render_list_stream(@workflow.steps.where.not(id: grown.id))
+    assert_no_selector "turbo-frame#builder-panel form", wait: 5
+
+    render_list_stream(@workflow.steps)
+    assert_selector "turbo-frame#builder-panel .builder__panel-body[data-step-id='#{grown.id}']", wait: 5
+    assert_selector "#{STEP_ROW}[data-step-id='#{grown.id}'].builder__step--selected", wait: 5
+  end
+
+  test "a panel closed by a stale list render stays closed once the author has opened another" do
+    first = Steps::Action.create!(workflow: @workflow, title: "First", position: 1)
+    grown = Steps::Action.create!(workflow: @workflow, title: "Just grown", position: 2)
+    Transition.create!(step: first, target_step: grown)
+    @workflow.update!(start_step: first)
+    visit workflow_path(@workflow, edit: true)
+    open_step(grown)
+
+    render_list_stream(@workflow.steps.where.not(id: grown.id))
+    assert_no_selector "turbo-frame#builder-panel form", wait: 5
+    open_step(first)
+
+    render_list_stream(@workflow.steps)
+    assert_selector "#{STEP_ROW}[data-step-id='#{grown.id}']", wait: 5
+    assert_selector "turbo-frame#builder-panel .builder__panel-body[data-step-id='#{first.id}']"
+    assert_no_selector "turbo-frame#builder-panel .builder__panel-body[data-step-id='#{grown.id}']"
+  end
+
   # Finding 4. Deleting the step whose OWN panel is open used to leave that
   # panel open on a step that no longer exists: its autosave form targets
   # _top, so its next PATCH 404'd the whole page.
@@ -951,6 +996,16 @@ class BuilderGrowTest < ApplicationSystemTestCase
   # the target-picker dialog it opens - the one interaction every test in
   # this file that touches the dialog shares, so they can't drift into
   # slightly different (and differently racy) open sequences.
+  # The same stream broadcast_step_list sends, rendered straight into the page.
+  def render_list_stream(steps)
+    html = ApplicationController.render(
+      partial: "workflows/steps_list_items",
+      locals: { workflow: @workflow.reload, steps: steps.ordered.includes(transitions: :target_step) }
+    )
+    stream = %(<turbo-stream action="update" target="steps-list"><template>#{html}</template></turbo-stream>)
+    page.execute_script("Turbo.renderStreamMessage(#{stream.to_json})")
+  end
+
   def open_target_picker(row_text, button_text)
     within "turbo-frame#builder-panel" do
       find(".step-doors__row", text: row_text).click_on button_text
