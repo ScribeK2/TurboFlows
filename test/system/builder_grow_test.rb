@@ -447,6 +447,132 @@ class BuilderGrowTest < ApplicationSystemTestCase
     assert_operator row_height(question), :>, row_height(resolve) + 10
   end
 
+  # A dropdown option containing an apostrophe used to write a condition the
+  # runner could never take (AGENTS.md's old "known limit" for Step::Doors).
+  # Growing from this door proves the whole path end to end: the stored
+  # condition, the door reading as wired, and a run answering the option
+  # landing on the grown step - not just Doors agreeing with itself.
+  test "growing from an apostrophe door writes a condition the runner takes" do
+    question = Steps::Question.create!(workflow: @workflow, title: "What blinks?", question: "What blinks?",
+                                       position: 1, answer_type: "dropdown", variable_name: "light",
+                                       options: [{ "label" => "Don't know", "value" => "Don't know" },
+                                                 { "label" => "Router", "value" => "router" }])
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    open_step(question)
+
+    within(row(question)) { click_on "Don't know → add step" }
+    pick_type "Action"
+    assert_selector STEP_ROW, count: 2
+    assert_panel_settled
+
+    action = @workflow.steps.reload.find_by!(type: "Steps::Action")
+    edge = question.transitions.reload.sole
+    assert_equal 1, edge.condition.count("\\")
+    assert_equal [action.id, "light == 'Don\\'t know'"], [edge.target_step_id, edge.condition]
+
+    door = Step::Doors.for(question.reload).doors.find { |d| d.label == "Don't know" }
+    assert_not door.stub?
+    assert_equal action, door.target_step
+
+    next_step = StepResolver.new(@workflow).resolve_next(question.reload, { "light" => "Don't know" })
+    assert_equal action, next_step
+  end
+
+  # With that edge present a second time (a hand-made duplicate, so
+  # Step::Doors reports it as an extra rather than the door itself), the
+  # "Other connections" editor must read the SAME condition text back to its
+  # option preset - not fall to Custom because a JS-side comparison stayed
+  # byte-for-byte. The `<details>` already renders open (extras.any?), so
+  # this asserts inside it rather than clicking the summary, which would
+  # close it.
+  test "an extra duplicate of an apostrophe door's edge restores to its option preset" do
+    question = Steps::Question.create!(workflow: @workflow, title: "What blinks?", question: "What blinks?",
+                                       position: 1, answer_type: "dropdown", variable_name: "light",
+                                       options: [{ "label" => "Don't know", "value" => "Don't know" },
+                                                 { "label" => "Router", "value" => "router" }])
+    target = Steps::Resolve.create!(workflow: @workflow, title: "Done", position: 2)
+    other_target = Steps::Action.create!(workflow: @workflow, title: "Somewhere else", position: 3)
+    condition = Step::Doors.for(question).doors.find { |d| d.label == "Don't know" }.condition
+
+    Transition.create!(step: question, target_step: target, condition: condition, label: "Don't know", position: 0)
+    Transition.create!(step: question, target_step: other_target, condition: condition, position: 1)
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    open_step(question)
+
+    within "turbo-frame#builder-panel" do
+      assert_selector "summary", text: /Other connections.*1 connection/m, wait: 5
+      assert_selector ".transition-item select[data-condition-preset-target='presetDropdown'] option[value='option_0']:checked",
+                      wait: 5
+    end
+  end
+
+  # The panel's own JS preset and a stored condition can now be escaped two
+  # different ways for the same backslash-carrying value - the OLD writer
+  # never escaped it (one backslash), the NEW writer does (two). This extra
+  # is the OLD style; the door's own edge (position 0, not shown here) is
+  # the NEW style. condition_preset_controller#conditionsMatch has to parse
+  # both sides and accept either reading, or this row would drop to Custom.
+  test "an extra duplicate whose backslash is escaped the old way still restores to its option preset" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Which drive?", question: "Which drive?",
+                                       position: 1, answer_type: "dropdown", variable_name: "path",
+                                       options: [{ "label" => "C Drive", "value" => 'C:\temp' },
+                                                 { "label" => "Router", "value" => "router" }])
+    target = Steps::Resolve.create!(workflow: @workflow, title: "Done", position: 2)
+    other_target = Steps::Action.create!(workflow: @workflow, title: "Somewhere else", position: 3)
+    new_style = Step::Doors.for(question).doors.find { |d| d.label == "C Drive" }.condition
+    assert_equal 2, new_style.count("\\")
+    old_style = "path == 'C:\\temp'"
+    assert_equal 1, old_style.count("\\")
+
+    Transition.create!(step: question, target_step: target, condition: new_style, label: "C Drive", position: 0)
+    Transition.create!(step: question, target_step: other_target, condition: old_style, position: 1)
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    open_step(question)
+
+    within "turbo-frame#builder-panel" do
+      assert_selector "summary", text: /Other connections.*1 connection/m, wait: 5
+      assert_selector ".transition-item select[data-condition-preset-target='presetDropdown'] option[value='option_0']:checked",
+                      wait: 5
+    end
+  end
+
+  # The three tests above all pin what a condition_preset_controller#escapeQuotes
+  # change looks like when it works; none of them writes a fresh edge through
+  # the browser's own escaping and checks what actually lands in the
+  # database. This does - the same pattern as "a connection made with the
+  # editor's No preset is read as the No door" above, but for a value that
+  # needs escaping. If escapeQuotes ever reverted to quotes-only, this is the
+  # test that would catch it: the stored condition would carry one backslash
+  # instead of two and the runner check below would fail.
+  test "a connection made through the editor's own preset writes the escaped condition the runner takes" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Which drive?", question: "Which drive?",
+                                       position: 1, answer_type: "dropdown", variable_name: "path",
+                                       options: [{ "label" => "C Drive", "value" => 'C:\temp' },
+                                                 { "label" => "Router", "value" => "router" }])
+    target = Steps::Resolve.create!(workflow: @workflow, title: "Done", position: 2)
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    open_step(question)
+
+    within "turbo-frame#builder-panel" do
+      find("summary", text: "Other connections").click
+      click_on "Add Connection"
+      find("select[data-transition-field='target_uuid']").select "Done"
+      find("select[data-condition-preset-target='presetDropdown']").select "C Drive"
+    end
+
+    assert_eventually(timeout: 10) { question.transitions.reload.any? }
+    edge = question.transitions.sole
+    assert_equal 2, edge.condition.count("\\")
+    assert ConditionEvaluator.evaluate(edge.condition, { "path" => 'C:\temp' })
+
+    door = Step::Doors.for(question.reload).doors.find { |d| d.label == "C Drive" }
+    assert_equal target, door.target_step
+  end
+
   private
 
   def row(step)

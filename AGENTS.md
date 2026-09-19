@@ -161,11 +161,17 @@ nothing can follow — and pairs each with the transition that serves it,
 or with nothing, which is a **stub**. A stub is not a row and nothing writes
 one. A door is wired only when `StepResolver` would take that transition for
 that answer and **no more loosely than that**: two review rounds each found a
-looser version — the first stripped backslashes `ConditionEvaluator` does not
-strip, so an option containing an apostrophe read as wired though the runner can
-never match it; the second stripped quote characters from the door's own value,
-which the runner compares raw. Read a condition the way the runtime reads it, or
-a stub is a lie. What no door claims is an **extra** (`#extras`); a wired
+looser version — the first stripped backslashes `ConditionEvaluator` did not
+then strip, so an option containing an apostrophe read as wired though the
+runner could not yet match it; the second stripped quote characters from the
+door's own value, which the runner compares raw. Read a condition the way the
+runtime reads it, or a stub is a lie. Since 2026-09-19 a well-formed string
+comparison's value has two readings — `ConditionEvaluator#parse`'s `:value`
+(unescaped) and `:literal_value` (the literal text between the delimiters,
+backslashes kept) — and the runner takes an answer matching either one, so
+`Doors#operator_match?` checks both too: still no more loosely than the
+runner, against a runner that itself grew less strict. What no door claims is
+an **extra** (`#extras`); a wired
 blank-condition edge is the `fallback`, rendered last as "Anything else", which
 is why a stub above it reads `follows “Anything else”` and not "nothing yet".
 `#missing` is the answers a run could give that lead nowhere: empty while
@@ -178,6 +184,19 @@ on a proxy always re-queries and one `Doors` per row made that a query per step
 on every list render. So build it on a fresh or reloaded step after writing
 transitions — `@step.reload` — never on one whose association was loaded before
 the write.
+
+**Option labels and values are trimmed on save.**
+`Steps::Question#default_option_values_to_labels` strips both fields every
+time, so a value typed as ` Router ` saves as `Router`. `ConditionEvaluator`
+strips the CONDITION's value when it reads one, but compares the ANSWER
+raw — and the runner submits an option's saved value, padding included, as
+that raw answer — so a padded option value could never equal its own
+(already-stripped) condition; see the `ConditionEvaluator` key-services
+entry for where that strip happens. No data migration: a value saved with
+padding before 2026-09-19 heals on that step's own next save, and
+reassigning `options` to a content-equal Array is a no-op for AR's
+JSON-column dirty tracking, so re-saving one that was never padded does not
+dirty it or bump `lock_version`.
 
 **`TransitionSync` + `transitions.uuid` replaced a save that deleted
 everything.** The panel's connection editor used to `destroy_all` a step's
@@ -307,22 +326,18 @@ is a `link_to` with `data-turbo-method`, and the target-picker dialog (which
 does hold a real form) is rendered **outside** the autosave form, after its
 `end`.
 
-**Two known limits, neither closed.** First, an option value containing an
-apostrophe can never match at runtime: the door condition is written
-`light == 'Don\'t know'` (the escaping the panel has always used), and
-`ConditionEvaluator` unescapes that to `Don\t know` — a literal backslash-t —
-so the runner never takes the edge. `Step::Doors` reports this honestly rather
-than papering over it: the door reads as a **stub** and the dead edge shows up
-in `#unmatched_extras`, which is what the `:unmatched_option_value` warning
-reads. Fixing it means agreeing on one escaping across the panel, `Step::Doors`
-and the evaluator, and changing the evaluator changes how live runs match, so
-it is the owner's call. Second, two panels open on the same step still race:
+**One known limit remains.** Two panels open on the same step still race:
 panel B was rendered knowing edge `e1`, panel A deletes it, and B's next
 autosave carries `e1` in both `known` and `rows`, so `find_or_initialize_by`
 re-creates it — the payload cannot tell "the server rendered this and it has
 since been deleted" from "this was minted here and never saved". Far narrower
 than the `destroy_all` it replaced, which wiped a stranger's work wholesale,
-but not closed. Both carry a fix sketch in the (gitignored, local) `TODOS.md`.
+but not closed. Carries a fix sketch in the (gitignored, local) `TODOS.md`.
+The limit this section used to name alongside it — an option value containing
+an apostrophe or a backslash never matching at runtime, because the door
+condition's escaping and `ConditionEvaluator`'s reading of it disagreed — was
+closed 2026-09-19: see the two-readings note above (`Step::Doors#operator_match?`
+and `ConditionEvaluator#parse`'s `:value`/`:literal_value`).
 
 **Mode:** `data-builder-mode-value="view|edit"` on the builder container. CSS hides drag handles, add/delete buttons, and edit-only elements in view mode. View mode is a preview: `builder_controller#loadPanel` asks for `readonly=1`, and `StepsController#panel_edit` and `Workflows::SettingsController#show` render the readonly branch for that or for a viewer who may not edit. Nothing in view mode saves.
 
@@ -524,7 +539,8 @@ All workflows are graphs. There is no separate "linear mode" — a sequential fl
 - `GraphValidator` — graph validation: reachability from start_step, terminal nodes must be Resolve steps, and **escapability** — from every step reachable from the start, some path must reach a terminal Resolve (`:no_path_to_resolve`). It does **not** reject cycles: a retry loop is a normal call-centre shape, and what is refused is a loop with no way out. This replaced an acyclic check; for an acyclic graph the rule asserts nothing new, since every node in a finite DAG already reaches a terminal and terminals must be Resolve steps.
 - `SubflowValidator` — sub-flow graph rules. Refuses an **all-returning** cycle (a handoff leaves no stack frame, so only a returning cycle nests), caps returning nesting at `MAX_DEPTH` (10), reports a target that no longer exists, and refuses a set of workflows from which no Resolve is reachable (`:no_resolve_across_workflows` — seeded from workflows that reach a Resolve unaided, spread backward along handoff edges, and skipped entirely when the graph has no handoff, where `GraphValidator` already answers it). `SAVE_BLOCKING_CODES` names which of these block an ordinary save.
 - `WorkflowSetPublisher` — publishes a workflow together with every draft it transitively depends on, in one all-or-nothing transaction, so workflows that reference each other can go live at all. `closure_for(root)` previews the set without writing. Checks `can_be_edited_by?` across the **whole** closure, not just the root — publishing your own workflow must not publish someone else's draft that yours happens to reference.
-- `StrictImportValidator` — validates a strict-dialect file without writing: envelope, structure, graph (same `GraphValidator` publish runs), semantics (condition syntax, undefined variables, unmatched option values), and external references (groups via `WorkflowPlacement`, sub-flow targets scoped to `Workflow.visible_to`). Returns a `Report` of errors and warnings; `WorkflowImporter` takes a valid one via `strict_report:` and only writes.
+- `StrictImportValidator` — validates a strict-dialect file without writing: envelope, structure, graph (same `GraphValidator` publish runs), semantics (condition syntax, undefined variables, unmatched option values), and external references (groups via `WorkflowPlacement`, sub-flow targets scoped to `Workflow.visible_to`). Returns a `Report` of errors and warnings; `WorkflowImporter` takes a valid one via `strict_report:` and only writes. The option-value check reads a condition through `ConditionEvaluator#parse` rather than its own regex, matching either of the value's two readings against the question's option values — coerced to strings, so a bare JSON number in an option does not false-positive against a quoted condition — and a genuinely numeric-looking mismatch (`plan == '9'` against `["3", "4"]`) still warns. An unquoted `plan == 9` never reaches this check: `#supported_condition?` refuses it earlier as `:invalid_condition_syntax`, since `==`/`!=` require a quoted value.
+- `ConditionEvaluator` — the grammar every reader of a condition shares: a string value is delimited by `'` or by `"`, the SAME one at both ends, and inside it a backslash escapes the next character. `#evaluate` and `#parse` read through one private tokenizer (`#string_comparison`); `#valid?` and `#complete?` never call it — they derive their patterns from the same string-value fragment, plus `LEGACY_STRING_VALUE`, the pre-2026-09-19 value pattern verbatim (its delimiters need NOT match). That keeps both a strict SUPERSET of what they accepted before this branch, not a narrower grammar: mismatched delimiters (`'yes"`) and a value ending in a bare backslash (`'C:\'`) are still accepted by both, exactly as they always were — a base-vs-current diff found zero conditions that were accepted before and are refused now by either. The WIDENING is visible at `#complete?` only: only a value containing a quote character — its own delimiter escaped, or the other delimiter unescaped, e.g. `'Say "OK"'` — is newly accepted there. `#valid?` accepts NOTHING new: its pattern is anchored at the start but not the end, so a mere prefix match is enough, and the pre-2026-09-19 pattern already supplied a quote-delimited prefix for any text with a quote character anywhere later in it — `light == 'Say "OK"'` already satisfied `#valid?` before this branch by matching only as far as `'Say "`, well short of the whole string, which is exactly why `#complete?` (anchored at both ends) needed the fix and `#valid?` never did. A bare backslash was never what the old pattern excluded either way, so it changes nothing about what `#complete?`/`#valid?` accept, only what `#evaluate`/`#parse` understand such a value to mean. `#complete?` is the one that matters in practice — it is what `StrictImportValidator#supported_condition?` and the Markdown parser ask, to refuse a compound condition and to tell a condition from a label respectively — and narrowing it below what it used to accept would make an exportable workflow un-importable, or misread an existing Markdown transition as a label. `#valid?` itself has no caller in `app/`; only `#complete?` is. `#parse` returns `:value` (unescaped) and `:literal_value` (the text between the delimiters exactly as written, backslashes kept) — both readings, never nil whenever `#parse` returns a hash at all: its own legacy fallback (splitting on the first supported operator, tried longest first, that appears ANYWHERE in the text — not the leftmost one, so `x == 'a>=b'` splits on `>=` — and stripping every quote character) sets both to the same stripped string. Both branches also return `:is_numeric`, which nothing in `app/` reads. Two DIFFERENT readings arise because a condition written before 2026-09-19 escaped a quote but never a backslash (`Step::Doors#condition_for` and the panel's writer both only ever did that), so a stored `path == 'C:\temp'` means a literal backslash, not an escape. `#evaluate`'s `==`/`!=` match an answer equal to EITHER reading, and every other reader that asks "does this condition mean this value" — `Step::Doors#operator_match?`, `StrictImportValidator#check_option_value`, the panel's `conditionsMatch` — has to check both, or re-create the bug this closed. When one of those checks fails, what gets reported is quoted AS WRITTEN, not unescaped: `StrictImportValidator#check_option_value`'s `unmatched_option_value` warning and `Step::Doors#unmatched_extras` (a separate Doors method from `#operator_match?`, feeding the health panel) both report `:literal_value`, so the author sees the backslash they actually typed. The cost: where the two readings differ (the value contains a backslash), `!=` is stricter exactly where `==` is looser — an answer matching either reading satisfies `==`, so it must fail to match BOTH before `!=` is true. The tokenizer only fires when the WHOLE condition is one well-formed string comparison; anything else — mismatched delimiters, an unquoted `x == 5`, trailing text — falls through to the reader this class has always had, unchanged: a live workflow must not change routing when the parser gets better. Verified by diffing old vs. new `#evaluate` over ~12.9M generated cases — every disagreement fell into three named, deliberate families: a value containing a quote (the fix), one containing a backslash (the two-readings rule above), and one containing the substring `!=` (the old reader split on it and matched every answer regardless; now it compares for real — nobody could have been relying on an always-true branch). Writers (`Step::Doors#condition_for`, the panel's `escapeQuotes`) escape a backslash before the delimiter — in that order, whether as one `gsub` over both characters or two chained replacements — so a value round-trips whatever QUOTE OR BACKSLASH it contains. Surrounding whitespace never does: both the tokenizer and the legacy reader strip the extracted value once they read it, while the answer side is compared raw — see "Option labels and values are trimmed on save" above for why that makes trimming an option at the source the only fix.
 - `ImportSchemaGenerator` / `ImportPromptGenerator` — the published JSON Schema and the agent prompt, both generated from the models so neither can drift from what the app accepts.
 - `WorkflowHealthCheck` — aggregates GraphValidator + SubflowValidator + step-level checks into a per-step issue map. Returns `Data.define` Result with issues keyed by step UUID, severity levels, fixable flags, and summary counts. Used by both the health panel (HTML) and async JS fetch (JSON). Two codes read `Step::Doors`: `:missing_expected_door` (an answer with no step of its own — "“No” has no step yet", suppressed by a blank-condition edge, which catches it) and `:unmatched_option_value` (a connection checking for a value the step no longer offers). Both are warnings and both are in `NON_BLOCKING_CODES`; neither is in `READINESS_CODES`, which asks whether a step's *content* is filled in, and these are routing findings. `:no_outgoing_transitions` stays an error but loses its Fix on a multi-door step (see Builder UI).
 - `WorkflowPublisher` — publishes workflow versions with full graph validation. Uses `Workflow#validation_graph_hash`.

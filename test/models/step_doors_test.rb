@@ -143,31 +143,99 @@ class StepDoorsTest < ActiveSupport::TestCase
     assert_equal :next, doors(@a).door_for(nil).kind
   end
 
-  # ConditionEvaluator strips quotes from the expected side of an operator
-  # condition but keeps a backslash literally, so no operator-form condition
-  # can ever match a value containing an apostrophe (a known runtime
-  # limitation tracked in TODOS.md). Doors must report what the runner does,
-  # not what the author meant by writing the door's own escaped condition
-  # back as a transition.
-  test "an apostrophe option's own condition is not read as wired, because the runner would not take it" do
+  # ConditionEvaluator now unescapes a well-formed string comparison's value
+  # (either reading: unescaped, or literal with backslashes kept - see its
+  # #value_matches? comment), so the door's own escaped condition - the same
+  # string condition_for writes - IS what the runner takes. Doors reports
+  # what the runner does, and the runner now takes this.
+  test "an apostrophe option's own condition IS read as wired, because the runner takes it" do
     step = question(answer_type: "dropdown",
                     options: [{ "label" => "Don't know", "value" => "Don't know" }, { "label" => "Router", "value" => "router" }])
     door = doors(step).doors.find { |d| d.label == "Don't know" }
-    stale = Transition.create!(step: step, target_step: @a, condition: door.condition)
+    wired = Transition.create!(step: step, target_step: @a, condition: door.condition)
 
     d = doors(step)
-    assert_predicate d.doors.find { |x| x.label == "Don't know" }, :stub?
-    assert_equal [stale], d.extras
-    assert_includes d.unmatched_extras.map(&:first), stale
+    found = d.doors.find { |x| x.label == "Don't know" }
+    assert_not found.stub?
+    assert_equal @a, found.target_step
+    assert_not_includes d.extras, wired
+    assert_empty d.unmatched_extras
   end
 
   # Proves the claim above against the runtime itself, not against Doors
   # agreeing with itself. The condition string below has exactly one
-  # backslash before the apostrophe - the same string condition_for writes.
-  test "the runner itself does not take an apostrophe operator-form condition" do
+  # backslash before the apostrophe - the same string condition_for writes -
+  # and its unescaped reading is exactly "Don't know".
+  test "the runner itself takes an apostrophe operator-form condition" do
     condition = "light == 'Don\\'t know'"
-    assert_not ConditionEvaluator.evaluate(condition, { "light" => "Don't know" })
+    assert_equal 1, condition.count("\\")
+    assert ConditionEvaluator.evaluate(condition, { "light" => "Don't know" })
     assert ConditionEvaluator.evaluate("light == 'router'", { "light" => "Router" })
+  end
+
+  # A value containing a backslash round-trips through condition_for however
+  # it was written: the NEW writer escapes the backslash (two backslash
+  # characters stored), so the runner's UNESCAPED reading matches the plain
+  # option value.
+  test "an option value containing a backslash round-trips through condition_for" do
+    value = 'C:\temp'
+    assert_equal 1, value.count("\\")
+    step = question(answer_type: "dropdown",
+                    options: [{ "label" => "C Drive", "value" => value }, { "label" => "Router", "value" => "router" }])
+    door = doors(step).doors.find { |d| d.label == "C Drive" }
+    assert_equal 2, door.condition.count("\\")
+    assert_equal "light == 'C:\\\\temp'", door.condition
+
+    wired = Transition.create!(step: step, target_step: @a, condition: door.condition)
+    found = doors(step).doors.find { |x| x.label == "C Drive" }
+    assert_not found.stub?
+    assert_equal @a, found.target_step
+    assert ConditionEvaluator.evaluate(wired.condition, { "light" => value })
+  end
+
+  # One row per shape a stored condition's backslash can already be in: the
+  # OLD writer (never escaped a backslash), the NEW writer (escapes it), and
+  # a value ending in a bare backslash (the legacy-split fallback, since it
+  # has no valid close under the tokenizer's escape rule). Each condition is
+  # built from `value` by simple interpolation (OLD writer's own shape) or by
+  # the same escaping `condition_for` uses (NEW writer's shape), and the
+  # backslash count is asserted so each case is provably the string its
+  # description says, not a guess about Ruby's own string escaping.
+  test "a door reads as wired under every backslash escaping the runner accepts" do
+    old_style = ->(value) { "path == '#{value}'" }
+    new_style = ->(value) { "path == '#{value.gsub(/[\\']/) { |char| "\\#{char}" }}'" }
+
+    cases = [
+      ["OLD writer, one backslash", %q(C:\temp), old_style.call(%q(C:\temp)), 1],
+      ["OLD writer, another shape", %q(DOMAIN\user), old_style.call(%q(DOMAIN\user)), 1],
+      ["OLD writer, two leading and one inner backslash", "\\\\server\\docs", old_style.call("\\\\server\\docs"), 3],
+      ["NEW writer, backslash escaped", %q(C:\temp), new_style.call(%q(C:\temp)), 2],
+      ["value ends in a bare backslash, the legacy path", "C:\\", old_style.call("C:\\"), 1]
+    ]
+
+    cases.each do |description, value, condition, backslash_count|
+      assert_equal backslash_count, condition.count("\\"), "#{description}: #{condition.inspect}"
+
+      step = question(answer_type: "dropdown", variable_name: "path",
+                      options: [{ "label" => "Path", "value" => value }, { "label" => "Other", "value" => "other" }])
+      Transition.create!(step: step, target_step: @a, condition: condition)
+
+      door = doors(step).doors.find { |d| d.label == "Path" }
+      assert_not door.stub?, "#{description}: #{condition.inspect} was not read as wired for #{value.inspect}"
+      assert_equal @a, door.target_step, description
+      assert ConditionEvaluator.evaluate(condition, { "path" => value }),
+             "#{description}: the runner itself does not take #{condition.inspect} for #{value.inspect}"
+    end
+  end
+
+  test "a door does not wire when the condition's two readings are something else entirely" do
+    step = question(answer_type: "dropdown", variable_name: "path",
+                    options: [{ "label" => "Router", "value" => "router" }])
+    stale = Transition.create!(step: step, target_step: @a, condition: %q(path == 'C:\temp'))
+
+    door = doors(step).doors.find { |d| d.label == "Router" }
+    assert_predicate door, :stub?
+    assert_equal [stale], doors(step).extras
   end
 
   test "a bare condition matches its literal text, quotes included, exactly as the runner's simple match does" do
@@ -184,20 +252,22 @@ class StepDoorsTest < ActiveSupport::TestCase
   end
 
   # The runner compares an ANSWER (the door's value) raw - no quote stripping.
-  # ConditionEvaluator#evaluate_comparison only strips '" from the CONDITION
-  # string's two halves; result_value.to_s.downcase is compared as-is. A door
-  # whose value contains a literal quote character must not be read as wired
-  # by its own displayed condition, because the runner never would take it.
-  test "a value containing a quote character is not read as wired by its own condition" do
+  # The CONDITION side is now read through the tokenizer's escape rule, and a
+  # double quote needs no escaping inside a single-quoted value, so this
+  # door's own condition is already a well-formed string comparison and the
+  # runner takes it.
+  test "a value containing a quote character IS read as wired by its own condition" do
     step = question(answer_type: "dropdown",
                     options: [{ "label" => 'Say "OK"', "value" => 'Say "OK"' }, { "label" => "Router", "value" => "router" }])
     door = doors(step).doors.find { |d| d.label == 'Say "OK"' }
-    stale = Transition.create!(step: step, target_step: @a, condition: door.condition)
+    wired = Transition.create!(step: step, target_step: @a, condition: door.condition)
 
     d = doors(step)
-    assert_predicate d.doors.find { |x| x.label == 'Say "OK"' }, :stub?
-    assert_equal [stale], d.extras
-    assert_not ConditionEvaluator.evaluate(door.condition, { "light" => 'Say "OK"' })
+    found = d.doors.find { |x| x.label == 'Say "OK"' }
+    assert_not found.stub?
+    assert_equal @a, found.target_step
+    assert_not_includes d.extras, wired
+    assert ConditionEvaluator.evaluate(door.condition, { "light" => 'Say "OK"' })
   end
 
   # ConditionEvaluator#parse returns nil for a bare value like "modem" (no
@@ -226,5 +296,15 @@ class StepDoorsTest < ActiveSupport::TestCase
     Transition.create!(step: @a, target_step: @b, condition: "modem")
 
     assert_empty doors(@a).unmatched_extras
+  end
+
+  # unmatched_extras used to report the UNESCAPED reading (parsed[:value]),
+  # which drops the backslash the author actually typed - "D:\gone" was
+  # reported as "D:gone", a value that was never really the stale option.
+  test "a stale connection with a backslash is reported as the author wrote it, not unescaped" do
+    step = question(answer_type: "dropdown", options: [{ "label" => "Router", "value" => "router" }])
+    stale = Transition.create!(step: step, target_step: @a, condition: "light == 'D:\\gone'")
+
+    assert_equal [[stale, "D:\\gone"]], doors(step).unmatched_extras
   end
 end

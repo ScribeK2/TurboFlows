@@ -89,6 +89,57 @@ module Steps
       assert_equal "Wrong password", step.options.first["value"]
     end
 
+    # 2026-09-19 (decision A5): padded label and value are trimmed on save.
+    # ConditionEvaluator strips the CONDITION's value when it reads one, but
+    # compares the ANSWER raw — and the runner submits an option's saved
+    # value, padding included, as that raw answer. Trimming at save is what
+    # keeps a condition built from the value matching its own answer.
+    test "a padded label and value are both trimmed" do
+      step = build_question([{ "label" => " Router ", "value" => " router " }])
+      step.save!
+
+      assert_equal "Router", step.options.first["label"]
+      assert_equal "router", step.options.first["value"]
+    end
+
+    # The fallback reads the ALREADY-trimmed label, so a padded label-only
+    # option derives a value with no padding of its own.
+    test "a padded label-only option derives a trimmed value from the trimmed label" do
+      step = build_question([{ "label" => " Modem " }])
+      step.save!
+
+      assert_equal "Modem", step.options.first["label"]
+      assert_equal "Modem", step.options.first["value"]
+    end
+
+    test "a whitespace-only label is left exactly as blank as it always was" do
+      step = build_question([{ "label" => "   ", "value" => "" }])
+      step.save!
+
+      assert_equal "", step.options.first["label"].to_s.strip
+      assert_equal "", step.options.first["value"].to_s
+    end
+
+    # Reassigning `options` on every save is a no-op for dirty tracking once the
+    # data is already clean: ActiveRecord's `json` type compares the cast value,
+    # not object identity, so a save that touches only some other field must not
+    # also register `options` as changed (and so must not bump lock_version for
+    # no reason).
+    test "resaving already-trimmed options does not register options as changed" do
+      step = build_question([{ "label" => "Router", "value" => "router" }])
+      step.save!
+      version_before = step.lock_version
+
+      # Reloaded, not the same in-memory record: the realistic path is a
+      # persisted step loaded fresh and one other field autosaved on it, not
+      # a record that never left memory since the first save.
+      reloaded = Steps::Question.find(step.id)
+      reloaded.update!(title: "Which sign-in error? (edited)")
+
+      assert_not reloaded.saved_changes.key?("options")
+      assert_equal version_before + 1, reloaded.lock_version
+    end
+
     private
 
     def build_question(options)

@@ -7,12 +7,15 @@ class Step
   # A door is wired when StepResolver would take that transition for that
   # answer, so matching reads a condition the way the runner does - case and
   # spacing ignored, either quote style on the CONDITION side, a bare value
-  # ("yes") accepted - and no more loosely than that. The door's own value
-  # stands in for the answer the runner would compare against, and the runner
-  # compares an answer raw: quote characters in a door's value are never
-  # stripped, only case and surrounding whitespace. So a value containing an
-  # apostrophe or a literal quote character is read as wired only when it
-  # would actually match at runtime - see #reads_as?.
+  # ("yes") accepted - and no more loosely than that. A well-formed string
+  # comparison's value has TWO readings (ConditionEvaluator#parse's `:value`
+  # and `:literal_value` - the unescaped reading and the literal text between
+  # the delimiters, backslashes kept), and the runner takes an answer that
+  # matches either one, so a door matches either reading too - see
+  # #operator_match?. The door's own value stands in for the answer the
+  # runner would compare against, and the runner compares an answer raw:
+  # quote characters in a door's value are never stripped, only case and
+  # surrounding whitespace - see #reads_as?.
   class Doors
     Door = Data.define(:kind, :label, :value, :condition, :transition) do
       def target_step = transition&.target_step
@@ -104,7 +107,11 @@ class Step
           parsed = parse(text)
           next unless parsed && parsed[:operator] == "==" && own_variable?(parsed[:variable])
 
-          [transition, parsed[:value]] unless answers.any? { |_, value| operator_match?(parsed[:value], value) }
+          # Reported as the author wrote it, not the unescaped reading -
+          # otherwise a stale OLD-style backslash condition ("path ==
+          # 'D:\gone'") read as checking "D:gone", dropping the backslash the
+          # author actually typed.
+          [transition, parsed[:literal_value]] unless answers.any? { |_, value| operator_match?(parsed, value) }
         else
           [transition, text] unless answers.any? { |_, value| bare_match?(text, value) }
         end
@@ -165,9 +172,11 @@ class Step
       [variable, LEGACY_VARIABLE].include?(name.to_s)
     end
 
-    # The string condition_preset_controller.js#buildPresets writes.
+    # The string condition_preset_controller.js#buildPresets writes: a
+    # backslash escaped before a quote, the same order ConditionEvaluator's
+    # tokenizer expects on the way back in.
     def condition_for(value)
-      "#{variable} == '#{value.to_s.gsub("'") { "\\'" }}'"
+      "#{variable} == '#{value.to_s.gsub(/[\\']/) { |char| "\\#{char}" }}'"
     end
 
     def reads_as?(condition, value)
@@ -177,7 +186,7 @@ class Step
 
       parsed = parse(text)
       parsed.present? && parsed[:operator] == "==" && own_variable?(parsed[:variable]) &&
-        operator_match?(parsed[:value], value)
+        operator_match?(parsed, value)
     end
 
     def parse(condition)
@@ -192,16 +201,19 @@ class Step
       text.strip.downcase == value.to_s.strip.downcase
     end
 
-    # ConditionEvaluator#evaluate_comparison strips '" only from the CONDITION
-    # string's own two halves (both #parse and #evaluate_comparison compute
-    # that the same way, so parsed_value already IS that stripped value - no
-    # further stripping belongs on this side). The ANSWER side - result_value
-    # in the evaluator, this door's value here - is compared raw:
-    # `result_value.to_s.downcase`, no quote stripping at all. A door's value
-    # containing a literal quote character must therefore keep it, or a door
-    # would read as wired for an answer the runner would never match.
-    def operator_match?(parsed_value, value)
-      parsed_value.to_s.downcase == value.to_s.strip.downcase
+    # ConditionEvaluator now unescapes a well-formed string comparison's
+    # value, and #value_matches? takes an answer equal to EITHER reading:
+    # `parsed[:value]` (unescaped - `\'` becomes `'`, `\\` becomes `\`) or
+    # `parsed[:literal_value]` (the text between the delimiters exactly as
+    # written, backslashes kept - what a condition written before this
+    # escaped a backslash meant literally). A door matches under the same
+    # rule. The ANSWER side - result_value in the evaluator, this door's
+    # value here - is compared raw: `result_value.to_s.downcase`, no quote or
+    # backslash handling at all, so the door's own value only gets
+    # `.strip.downcase` here, never unescaped or re-escaped.
+    def operator_match?(parsed, value)
+      target = value.to_s.strip.downcase
+      parsed[:value].to_s.downcase == target || parsed[:literal_value].to_s.downcase == target
     end
   end
 end

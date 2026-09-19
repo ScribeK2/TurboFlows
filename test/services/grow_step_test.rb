@@ -148,6 +148,33 @@ class GrowStepTest < ActiveSupport::TestCase
     assert_equal second.id, existing.reload.target_step_id
   end
 
+  # An option value containing a backslash: the stored edge here is what the
+  # OLD writer produced (the backslash never escaped, one backslash), and the
+  # condition the browser now posts is what door.condition renders - the NEW
+  # writer's escaping (two backslashes). Step::Doors#door_for still finds the
+  # OLD-style transition as the "C Drive" door's own edge (see
+  # test/models/step_doors_test.rb), so connect retargets it rather than
+  # adding a second edge the runner could never tell apart from the first.
+  test "connect retargets an old-style backslash edge instead of adding a second one" do
+    options = [{ "label" => "C Drive", "value" => 'C:\temp' }, { "label" => "Router", "value" => "router" }]
+    question = step(Steps::Question, "Q", 1, answer_type: "dropdown", variable_name: "path", options: options)
+    first = step(Steps::Action, "First", 2)
+    second = step(Steps::Action, "Second", 3)
+    old_style_condition = "path == 'C:\\temp'"
+    assert_equal 1, old_style_condition.count("\\")
+    existing = Transition.create!(step: question, target_step: first, condition: old_style_condition)
+
+    new_style_condition = Step::Doors.for(question).doors.find { |d| d.label == "C Drive" }.condition
+    assert_equal 2, new_style_condition.count("\\")
+
+    assert_no_difference("Transition.count") do
+      GrowStep.connect(workflow: @workflow, from_step: question, target_step: second,
+                       label: "C Drive", condition: new_style_condition)
+    end
+    assert_equal second.id, existing.reload.target_step_id
+    assert_equal old_style_condition, existing.condition
+  end
+
   test "connect on a Next door retargets the default edge" do
     action = step(Steps::Action, "A", 1)
     first = step(Steps::Action, "First", 2)

@@ -69,19 +69,45 @@ module Steps
     # agent reads. Runs on every save, so blanking a value re-derives it rather
     # than leaving the option unmatchable.
     #
+    # Also strips both fields, so " Router " saves as "Router" — ConditionEvaluator
+    # strips the CONDITION's value when it reads one, but compares the ANSWER
+    # raw. The runner submits an option's saved value, padding included, as
+    # that raw answer, so an untrimmed value could never match its own
+    # (stripped) condition. The fallback reads the TRIMMED label, so a
+    # label-only " Modem " derives the value "Modem", not " Modem ".
+    #
     # An option with no label has nothing to fall back to and is left alone —
-    # WorkflowHealthCheck reports that one.
+    # WorkflowHealthCheck reports that one. A whitespace-only label trims to ""
+    # and stays exactly as blank as it always semantically was; no new rule.
+    #
+    # Reassigning `options` to a content-equal Array is a no-op for dirty
+    # tracking on this `json` column — ActiveRecord's JSON type compares the
+    # cast value, not object identity, so a save where nothing here actually
+    # changed does not add `options` to saved_changes or bump lock_version.
     def default_option_values_to_labels
       return unless options.is_a?(Array)
 
       self.options = options.map do |option|
         next option unless option.is_a?(Hash)
 
+        option = trim_option_field(option, "label", :label)
+        option = trim_option_field(option, "value", :value)
+
         label = option["label"] || option[:label]
         value = option["value"] || option[:value]
         next option if value.to_s.strip.present? || label.to_s.strip.blank?
 
         option.merge(option.key?(:label) ? { value: label } : { "value" => label })
+      end
+    end
+
+    def trim_option_field(option, string_key, symbol_key)
+      if option[string_key].is_a?(String)
+        option.merge(string_key => option[string_key].strip)
+      elsif option[symbol_key].is_a?(String)
+        option.merge(symbol_key => option[symbol_key].strip)
+      else
+        option
       end
     end
 

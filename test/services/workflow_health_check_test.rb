@@ -529,6 +529,24 @@ class WorkflowHealthCheckTest < ActiveSupport::TestCase
     assert_equal "This connection checks for “modem”, which is no longer an option", issue[:message]
   end
 
+  # A stale value containing a backslash is reported as it was WRITTEN
+  # (Step::Doors#unmatched_extras now reports parsed[:literal_value]), not the
+  # unescaped reading, which would silently drop the backslash.
+  test "a stale connection value containing a backslash reports the value as written" do
+    user = User.create!(email: "hc-#{SecureRandom.hex(4)}@example.com", password: "password123456")
+    wf = Workflow.create!(title: "HC backslash stale", user: user)
+    q = Steps::Question.create!(workflow: wf, title: "Drive?", question: "Drive?", position: 0, variable_name: "path",
+                                answer_type: "dropdown", options: [{ "label" => "Router", "value" => "router" }])
+    done = Steps::Resolve.create!(workflow: wf, title: "Done", position: 1, resolution_type: "success")
+    wf.update!(start_step: q)
+    Transition.create!(step: q, target_step: done, condition: "path == 'router'", position: 0)
+    Transition.create!(step: q, target_step: done, condition: "path == 'D:\\gone'", position: 1)
+
+    issue = WorkflowHealthCheck.call(wf).issues[q.uuid].find { |i| i[:code] == :unmatched_option_value }
+    assert_equal :warning, issue[:severity]
+    assert_equal "This connection checks for “D:\\gone”, which is no longer an option", issue[:message]
+  end
+
   private
 
   # One step wired to a Resolve and set as the start, so the only findings on
