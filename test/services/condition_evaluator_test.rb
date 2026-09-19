@@ -389,4 +389,12 @@ class ConditionEvaluatorTest < ActiveSupport::TestCase
     assert ConditionEvaluator.evaluate("light == 'a!=b'", { "light" => "a!=b" })
     assert_not ConditionEvaluator.evaluate("light == 'a!=b'", { "light" => "something else" })
   end
+
+  # The tokenizer's two patterns are how this class reads a condition, not
+  # something another reader may match against: every other reader goes through
+  # #parse, which is what keeps the value's two readings in one place.
+  test "the tokenizer's patterns are not part of the public surface" do
+    assert_raises(NameError) { ConditionEvaluator::STRING_COMPARISON }
+    assert_raises(NameError) { ConditionEvaluator::WHOLE_STRING_COMPARISON }
+  end
 end
