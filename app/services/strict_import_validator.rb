@@ -359,15 +359,25 @@ class StrictImportValidator
   # The warning quotes `literal_value`, the text as the author wrote it, not
   # the unescaped reading.
   #
-  # Skipped when the value reads as a bare integer: `options[name]` comes
-  # straight from the JSON file's `value` key with no type coercion, so a
-  # numeric-looking option written as a JSON number (the published schema
-  # asks for a string, but nothing here enforces that) would never `==` the
-  # String `parsed[:value]` — a false "unmatched" warning purely from JSON's
-  # number/string split, not a real mismatch.
+  # Only ==/!= reach here with an actual value to check — a numeric comparison
+  # (>, <, >=, <=) never sets parsed[:operator] to either, so it never reaches
+  # this far. And ==/!= only reach here at all once #supported_condition? has
+  # already accepted the condition, which — unlike a numeric comparison —
+  # requires a QUOTED value for ==/!=; an unquoted `plan == 9` is refused as
+  # invalid_condition_syntax before this method is ever called, exactly as the
+  # old regex (which only matched `==`/`!=` followed by a quote) never saw one
+  # either. Nothing here special-cases that shape; there is nothing to reach.
+  #
+  # #options_by_variable already coerces every option value to a String
+  # (`.to_s`), so this compares like with like even when the source file wrote
+  # a numeric-looking option as a bare JSON number rather than the string the
+  # published schema asks for — a File difference the app doesn't otherwise
+  # enforce, not a reason to stop checking every numeric-looking value, which
+  # would silently let `plan == '9'` through against options declared as
+  # ["3", "4"].
   def check_option_value(condition, path, name, options)
     parsed = ConditionEvaluator.new(condition).parse
-    return unless parsed && %w[== !=].include?(parsed[:operator]) && !parsed[:is_numeric]
+    return unless parsed && %w[== !=].include?(parsed[:operator])
 
     values = options[name]
     return if values.nil? || values.include?(parsed[:value]) || values.include?(parsed[:literal_value])
@@ -475,12 +485,23 @@ class StrictImportValidator
     mapping.values.filter_map { |name| name.to_s.presence }.to_set
   end
 
+  # #check_option_value is the only reader of this map (grep confirms it), so
+  # coercing here is safe: nothing else sees the un-coerced values. A
+  # condition's value is always a String — ConditionEvaluator#parse produces
+  # one whichever reading is used — so an option value is coerced to a String
+  # too. Without this, an option written as a bare JSON number (the published
+  # schema asks for a string, but nothing here enforces that) would never `==`
+  # the parsed String, a false "unmatched" warning from JSON's number/string
+  # split rather than a real mismatch; WITH it, a genuinely unmatched
+  # numeric-looking value — `plan == '9'` against options ["3", "4"] — still
+  # warns, exactly as it did before ConditionEvaluator#parse replaced the old
+  # regex here.
   def options_by_variable(steps)
     steps.each_with_object({}) do |step, map|
       next unless step["type"] == "question" && step["variable_name"].present?
       next unless step["options"].is_a?(Array)
 
-      values = step["options"].filter_map { |o| o.is_a?(Hash) ? o["value"] : nil }
+      values = step["options"].filter_map { |o| o.is_a?(Hash) ? o["value"] : nil }.map(&:to_s)
       map[step["variable_name"]] = values if values.any?
     end
   end

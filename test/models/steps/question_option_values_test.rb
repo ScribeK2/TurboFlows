@@ -128,10 +128,14 @@ module Steps
       step.save!
       version_before = step.lock_version
 
-      step.update!(title: "Which sign-in error? (edited)")
+      # Reloaded, not the same in-memory record: the realistic path is a
+      # persisted step loaded fresh and one other field autosaved on it, not
+      # a record that never left memory since the first save.
+      reloaded = Steps::Question.find(step.id)
+      reloaded.update!(title: "Which sign-in error? (edited)")
 
-      assert_not step.saved_changes.key?("options")
-      assert_equal version_before + 1, step.lock_version
+      assert_not reloaded.saved_changes.key?("options")
+      assert_equal version_before + 1, reloaded.lock_version
     end
 
     private
