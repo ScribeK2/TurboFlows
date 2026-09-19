@@ -235,7 +235,19 @@ where a fixed-position `#flash` renders behind it whatever its z-index — the
 author would see a dialog that did nothing. A stream aimed at a target that is
 not on the page is a no-op, so it need not know which asked. Note
 `turbo_stream.update(target, plain_string)` marks the string `html_safe` without
-escaping it, so that message is escaped by hand.
+escaping it, so that message is escaped by hand. `create` and `update` also
+rescue `ActiveRecord::RecordNotFound` — `target_step_id` (or, for `update`,
+the edge id) naming a step or connection that is no longer there, deleted by
+this author or a collaborator since the dialog's candidate list was rendered,
+or never in this workflow at all — through the same refusal path, with the
+candidate list itself (`steps/_target_picker_options`, its own partial so it
+can be replaced without closing the `<dialog>` around it) re-streamed when the
+stale thing was a target step. `steps/_target_picker` renders **outside**
+`:connections`, so only this controller ever re-renders it; its candidate
+list otherwise stays honest through the browser's own check
+(`step_target_picker_controller#markGoneOptions`, comparing against the
+builder's live rows every time the dialog opens, which is what actually keeps
+a deleted OTHER step off the list before anyone tries to pick it).
 
 **Which row is selected is decided in the browser**, by
 `builder_controller#syncSelectedRow`, from whichever step panel is open, after
@@ -243,6 +255,21 @@ every stream render and every panel frame load. Never pass a `selected_step:`
 local to the list or row partials: the builder subscribes to its own Action
 Cable channel, so a server-painted selection is immediately overwritten by the
 same editor's own broadcast of the same subtree.
+
+**Deleting a step answers the way a grow does.** `StepsController#destroy`
+replaces the **whole** step list — ordinals shift, and every row that pointed
+at the deleted step loses its target and gets its stub back — and separately
+streams each parent's own `dom_id(parent, :connections)` fragment; a stream
+aimed at a target not on the page is a no-op, so this does not need to know
+whether that parent's panel is even open. It also closes a panel left open on
+the deleted step **itself**, in the browser: that panel's autosave form
+targets `_top`, so its next PATCH would 404 the WHOLE page rather than answer
+inside the frame, and `destroy`'s own response only clears the panel when
+deleting the step emptied the entire list (`destroy_streams`'
+`steps.empty?` branch). `syncSelectedRow` — already the one place that reruns
+after every stream capable of replacing the list, to decide which row reads
+as selected — closes the panel instead whenever the open step's own row is
+gone, which covers both this author's delete and a collaborator's.
 
 **The grow protocol is four data attributes.** A trigger carries
 `data-grow-from` (the parent step id), `data-grow-label`, `data-grow-condition`
@@ -260,6 +287,18 @@ scaled-down size during the `@starting-style` entrance and threw the clamp off
 by that margin. A fixed menu does not move with its row, so scrolling the list
 or resizing the window closes it. The bottom prompt keeps the plain anchored
 menu.
+
+**At ≤640px with a panel open, `.builder__list` is `visibility: hidden` with
+zeroed flex/width, never `display: none`.** The type picker above is rendered
+INSIDE that list and reached from outside it too — the panel's own "New step"
+buttons, picked up by `step_list_controller`'s document-level click handler —
+so a `display: none` ancestor would drop the picker from the render tree
+along with everything else, leaving those buttons open a menu that sits at
+0×0 with no way to reach it. `visibility` takes the list out of the
+accessibility tree and tab order the same way `display: none` would, and the
+floating picker overrides it back to `visible` on itself (a descendant's own
+value always wins over an inherited one). `test/system/narrow_viewport_test.rb`
+guards this.
 
 **No `<form>` inside the panel's autosave form** — nested forms are invalid HTML
 and the parser drops the inner one — so each door action avoids one its own way:

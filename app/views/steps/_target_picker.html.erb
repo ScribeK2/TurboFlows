@@ -9,6 +9,17 @@
         aria-labelledby="<%= dom_id(step, :target_picker_heading) %>"
         data-step-target-picker-target="dialog"
         data-action="click->step-target-picker#backdropClose keydown.esc->step-target-picker#stopEscape">
+  <%#
+    method: :post, no explicit CSRF handling: Rails 8.1's load_defaults turns
+    on per-form CSRF tokens, so the hidden token this form embeds is bound to
+    POST and this create path only. step-target-picker#open flips both the
+    method to PATCH and the action to another step's transition path when
+    retargeting a wired door - a request that per-form token was never issued
+    for. It works anyway only because Turbo also sends the page's own GLOBAL
+    token in the X-CSRF-Token header on every request it makes, and Rails
+    accepts either token. Losing Turbo (or that header) on this form would
+    fail the retarget silently.
+  %>
   <%= form_with url: workflow_step_transitions_path(workflow, step), method: :post,
         data: { turbo_stream: true, step_target_picker_target: "form",
                 create_url: workflow_step_transitions_path(workflow, step),
