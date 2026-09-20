@@ -983,18 +983,6 @@ For page types not covered by a recipe, read these exemplary views. They demonst
 | `animations.css` | utilities | Keyframes (fadeIn, slideIn, scaleIn, shimmer) |
 | `print.css` | utilities | Print styles |
 
-### @layer Order
-
-```
-@layer reset, base, components, modules, utilities;
-```
-
-- **reset** — browser normalization
-- **base** — element defaults + design tokens
-- **components** — reusable UI pieces (buttons, cards, forms, badges)
-- **modules** — page-specific compositions (builder, scenarios, navigation)
-- **utilities** — layout helpers, overrides (highest specificity in cascade)
-
 ### Class Naming Convention
 
 TurboFlows uses a BEM-inspired convention:
