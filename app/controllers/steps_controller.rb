@@ -444,11 +444,33 @@ class StepsController < ApplicationController
   end
 
   def step_params
-    params.fetch(:step, {}).permit(*PERMITTED_STEP_PARAMS, **PERMITTED_STEP_PARAM_SHAPES)
+    params.fetch(:step, {}).permit(*PERMITTED_STEP_PARAMS, **PERMITTED_STEP_PARAM_SHAPES,
+                                   dirty_fields: [])
   end
 
+  # The panel submits the whole step on every change, so a save carries fields
+  # the author never touched — including a copy that may be seconds out of date
+  # if someone else is in the same step. Writing only what was touched is what
+  # lets two editors work on one step without clobbering each other.
+  #
+  # An ABSENT dirty_fields key writes everything, exactly as before. That is not
+  # defensive coding: step_field_map_test.rb PATCHes every field of every type
+  # and is the codebase's publish/restore guarantee, and every other caller
+  # (imports, tests, any client that predates this) sends no such key.
   def permitted_step_params
-    step_params.except(:type, :transitions_json)
+    attributes = step_params.except(:type, :transitions_json, :dirty_fields)
+    return attributes if dirty_field_names.nil?
+
+    attributes.slice(*dirty_field_names)
+  end
+
+  # nil when the panel said nothing about which fields it touched; otherwise the
+  # touched field names, blanks dropped (a Rails array field posts a "" sentinel).
+  def dirty_field_names
+    raw = params.dig(:step, :dirty_fields)
+    return nil unless raw.is_a?(Array)
+
+    raw.map(&:to_s).compact_blank
   end
 
   def step_class_for(type)
