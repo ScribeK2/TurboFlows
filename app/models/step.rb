@@ -47,6 +47,27 @@ class Step < ApplicationRecord
     type.demodulize.underscore
   end
 
+  # Attaching is a read-modify-write on the attachment list, so two tabs doing it
+  # at the same instant both read the list as it was and one file is lost. The
+  # queue in media_attachments_controller.js serialises the files chosen in ONE
+  # panel and cannot see another tab.
+  #
+  # Measured on PostgreSQL before the lock existed: four concurrent attaches left
+  # three raising ActiveRecord::StaleObjectError, because `attach` saves the
+  # record and Step carries lock_version. So the file is not lost SILENTLY, as
+  # the TODO entry had it - the loser raises, nothing rescues StaleObjectError
+  # in Steps::MediaAttachmentsController, and the author gets a 500 with the
+  # file unattached. `with_lock` serialises them and each re-reads, so all four
+  # land.
+  #
+  # Here rather than in the controller so the race has a seam a test can drive:
+  # a concurrency test that took the lock itself would pass with the lock removed
+  # from production code, proving only that row locks work. Returns what `attach`
+  # returns - nil on a validation failure, with the errors on this record.
+  def attach_media(blob)
+    with_lock { media_attachments.attach(blob) }
+  end
+
   validate :validate_media_attachments
 
   # Check if this step is a terminal node (no outgoing transitions)
