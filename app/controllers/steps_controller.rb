@@ -22,6 +22,19 @@ class StepsController < ApplicationController
   SAVE_CONFLICT_MESSAGE = "Someone else saved this step at the same moment, so your change wasn't saved. " \
                           "Reload to see the latest version, then make your change again.".freeze
 
+  # There are TWO conflict messages here and they must stay different.
+  #
+  # SAVE_CONFLICT_MESSAGE above is for a lost optimistic-locking race: two writes
+  # overlapping IN THE DATABASE, caught by StaleObjectError. Reloading is the
+  # right advice there, because this request never held the current row.
+  #
+  # This one is for two edits SECONDS APART, where nothing overlaps and the
+  # database is perfectly happy. The author's typing is still in the field in
+  # front of them and their next keystroke retries against the fresh value — so
+  # telling them to reload would throw away the very text this exists to save.
+  FIELD_CONFLICT_MESSAGE = "This wasn't saved: someone else changed %<field>s while you were editing. " \
+                           "Your text is still here — change it again to save over theirs.".freeze
+
   # TransitionSync skipped a row this save's payload claimed was rendered but
   # that had already been deleted elsewhere - the stale-panel case. The save
   # itself still succeeded; only that one connection did not come back.
@@ -107,6 +120,15 @@ class StepsController < ApplicationController
 
   # PATCH /workflows/:workflow_id/steps/:id
   def update
+    # Before @step.update, never after: a check that ran afterwards would be
+    # reporting a conflict it had already caused. A save refused here writes
+    # NOTHING — not the step's own fields, and not its connections, since
+    # sync_transitions lives inside the success branch below.
+    if (stale_field = conflicting_field)
+      return respond_to_refusal(format(FIELD_CONFLICT_MESSAGE, field: stale_field.to_s.humanize.downcase),
+                                status: :conflict)
+    end
+
     if @step.update(permitted_step_params)
       # Captured now, before anything below reloads @step and clears its
       # saved-change tracking: nil unless this save renamed a Question's own
@@ -445,7 +467,7 @@ class StepsController < ApplicationController
 
   def step_params
     params.fetch(:step, {}).permit(*PERMITTED_STEP_PARAMS, **PERMITTED_STEP_PARAM_SHAPES,
-                                   dirty_fields: [])
+                                   dirty_fields: [], rendered: {})
   end
 
   # The panel submits the whole step on every change, so a save carries fields
@@ -458,10 +480,50 @@ class StepsController < ApplicationController
   # and is the codebase's publish/restore guarantee, and every other caller
   # (imports, tests, any client that predates this) sends no such key.
   def permitted_step_params
-    attributes = step_params.except(:type, :transitions_json, :dirty_fields)
+    attributes = step_params.except(:type, :transitions_json, :dirty_fields, :rendered)
     return attributes if dirty_field_names.nil?
 
     attributes.slice(*dirty_field_names)
+  end
+
+  # The first touched field whose value has changed since this panel rendered it,
+  # or nil. Compared through the attribute's own type: `options` is a JSON column
+  # whose rendered form is a JSON string and `can_resolve` is a boolean arriving
+  # as "0"/"1", so a raw == would report a conflict on every save of either.
+  #
+  # Rich text is compared as HTML, because ActionText::Content#to_s renders
+  # through the app's display layout and is not what is stored - see
+  # StepSerializer#rich_text_html. Do NOT swap this for to_plain_text to make it
+  # "simpler": that strips all markup, and a comparison that normalises away what
+  # it guards is not a guard. It is how an unbounded wrapper-nesting bug once
+  # passed step_field_map_test.
+  def conflicting_field
+    rendered = params.dig(:step, :rendered)
+    return nil unless rendered.respond_to?(:key?)
+    return nil if dirty_field_names.nil?
+
+    dirty_field_names.find do |field|
+      next false unless rendered.key?(field)
+
+      if rich_text_field?(field)
+        @step.public_send(field)&.body&.to_html.to_s != rendered[field].to_s
+      else
+        # deserialize on the rendered side, not cast: the panel sends a JSON
+        # column's value as a JSON STRING, and Type::Json#cast returns a String
+        # unchanged - it only parses in #deserialize. With cast on both sides
+        # every options save compared a string against an Array and reported a
+        # conflict that could never clear. deserialize is cast for every other
+        # type here, so this costs nothing elsewhere.
+        type = @step.class.type_for_attribute(field)
+        type.deserialize(rendered[field]) != type.cast(@step.read_attribute(field))
+      end
+    end
+  end
+
+  # `step_type` is the spelling every other StepFieldMap reader uses
+  # (WorkflowVariableCheck calls rich_text_fields(step.step_type)).
+  def rich_text_field?(field)
+    StepFieldMap.rich_text_fields(@step.step_type).include?(field.to_sym)
   end
 
   # nil when the panel said nothing about which fields it touched; otherwise the
