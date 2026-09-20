@@ -23,8 +23,8 @@ export default class extends Controller {
     // Lexxy rich text editors fire lexxy:change instead of input events.
     // Stimulus data-action descriptors don't reliably bind to custom element
     // events loaded via Turbo Frames, so we listen programmatically.
-    this.boundSchedule = this.schedule.bind(this)
-    this.element.addEventListener("lexxy:change", this.boundSchedule)
+    this.boundLexxyChange = this.lexxyChanged.bind(this)
+    this.element.addEventListener("lexxy:change", this.boundLexxyChange)
 
     this.boundSubmitEnded = this.submitEnded.bind(this)
     this.element.addEventListener("turbo:submit-end", this.boundSubmitEnded)
@@ -45,6 +45,13 @@ export default class extends Controller {
     // disconnect flush below answers, this form is detached and cannot reach
     // its own frame any more.
     this.statusElement = this.element.closest("turbo-frame")?.querySelector("[data-autosave-status]")
+  }
+
+  // Lexxy does not fire the input events markDirty listens for, so its change
+  // has to do both jobs.
+  lexxyChanged(event) {
+    this.markDirty(event)
+    this.schedule()
   }
 
   schedule() {
@@ -120,17 +127,42 @@ export default class extends Controller {
   }
 
   markDirty(event) {
-    const input = event.target
-    if (!this.tracked(input?.name)) return
+    const named = this.namedElementFor(event.target)
+    if (!named) return
 
-    const field = this.fieldNameOf(input)
+    const field = this.fieldNameOf(named)
     if (field) this.dirtyFields.add(field)
+  }
+
+  // A plain input is itself. Rich text arrives here too: <lexxy-editor> is
+  // form-associated and carries the same name= a plain input would, and an
+  // `input` event raised inside it is retargeted to that host as it leaves the
+  // shadow boundary — so the FIRST branch is what fires for typing. Verified by
+  // mutation: disabling it fails three of the field-scoped system tests.
+  //
+  // The closest() walk below is a guard for an event that is NOT retargeted
+  // (a toolbar action, say). Mutation shows nothing in the suite reaches it, so
+  // treat it as unproven rather than as covered — it is two lines against a
+  // third-party custom element's internals, which is why it stays.
+  namedElementFor(target) {
+    if (this.tracked(target?.name)) return target
+
+    const editor = target?.closest?.("lexxy-editor")
+    return this.tracked(editor?.name) ? editor : null
   }
 
   // Written into the form itself rather than appended to a FormData, so the
   // disconnect flush - which snapshots the form - carries them too.
   writeDirtyState() {
     this.element.querySelectorAll("[data-autosave-generated]").forEach(node => node.remove())
+
+    // The empty sentinel goes out ALWAYS, so this panel's saves always DECLARE
+    // which fields they touched. Without it a panel that marked nothing dirty
+    // sends no dirty_fields key at all, the server's absent-key fallback writes
+    // everything, and the whole mechanism silently reverts to clobbering with
+    // every test still green - which is exactly what two mutation checks caught.
+    // An absent key now means only "a client older than this code".
+    this.appendHidden("step[dirty_fields][]", "")
 
     this.dirtyFields.forEach(field => {
       this.appendHidden("step[dirty_fields][]", field)
@@ -148,6 +180,14 @@ export default class extends Controller {
   }
 
   renderedValueFor(field) {
+    // A rich-text field's baseline is rendered by the server (see
+    // steps/_panel_edit): the Lexxy editor is form-associated and holds its own
+    // normalisation of the body, not what the column stores, so snapshotting it
+    // would conflict with itself on the first edit. Leave that one alone.
+    if (this.element.querySelector(`input[data-autosave-rendered][name="step[rendered][${field}]"]`)) {
+      return undefined
+    }
+
     const input = this.singleInputFor(field)
     return input ? this.renderedValues.get(input.name) : undefined
   }
@@ -252,7 +292,7 @@ export default class extends Controller {
     // Snapshot form data while the form is still accessible
     this.lastFormData = new FormData(this.element)
     this.formAction = this.element.action
-    this.element.removeEventListener("lexxy:change", this.boundSchedule)
+    this.element.removeEventListener("lexxy:change", this.boundLexxyChange)
     this.element.removeEventListener("turbo:submit-end", this.boundSubmitEnded)
     this.element.removeEventListener("input", this.boundMarkDirty)
     this.element.removeEventListener("change", this.boundMarkDirty)

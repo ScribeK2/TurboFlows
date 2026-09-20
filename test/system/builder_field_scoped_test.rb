@@ -71,6 +71,39 @@ class BuilderFieldScopedTest < ApplicationSystemTestCase
     assert_equal "Second", @step.reload.title
   end
 
+  # Lexxy does not fire the input events markDirty listens for, and its editor
+  # is form-associated, so a lookup that failed would silently stop rich text
+  # saving altogether — worse than the clobbering this all replaces.
+  test "a rich text edit is marked dirty and saves" do
+    action = Steps::Action.create!(workflow: @workflow, position: 1, title: "Do the thing")
+    Transition.create!(step: @step, target_step: action, position: 0)
+
+    visit_builder_in_edit_mode
+    open_step(action)
+
+    find("lexxy-editor").click
+    send_keys("Typed instructions")
+    assert_selector "[data-autosave-status]", text: "Saved", wait: 10
+
+    assert_includes action.reload.instructions.body.to_html, "Typed instructions"
+  end
+
+  # The baseline for rich text is server-rendered, so an empty body must not
+  # conflict with the editor's own "<p><br></p>" reading of it.
+  test "a rich text field with an empty body saves on the first edit" do
+    message = Steps::Message.create!(workflow: @workflow, position: 2, title: "Say hello")
+    assert_predicate message.content.to_s, :blank?
+
+    visit_builder_in_edit_mode
+    open_step(message)
+
+    find("lexxy-editor").click
+    send_keys("First words")
+    assert_selector "[data-autosave-status]", text: "Saved", wait: 10
+
+    assert_includes message.reload.content.body.to_html, "First words"
+  end
+
   private
 
   def visit_builder_in_edit_mode
