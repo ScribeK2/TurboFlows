@@ -248,4 +248,69 @@ class WorkflowPublisherTest < ActiveSupport::TestCase
     assert_match(/no path to a Resolve step/i, result.error)
     assert_equal "draft", loop_wf.reload.status
   end
+
+  # A refused publish used to read "Failed to publish: Validation failed: Steps
+  # Sub-flow step 'Hand to billing' requires a target workflow" — Rails' own
+  # sentence, with the attribute name ("Steps") welded to the front of a message
+  # that already reads as one. The publisher rescues RecordInvalid and returned
+  # e.message verbatim.
+  test "a refused publish reports the validation message without Rails' prefix" do
+    sub_flow = Steps::SubFlow.create!(workflow: @workflow, position: 2, title: "Hand to billing")
+    Transition.find_by(step: @q_step, target_step: @r_step).update!(position: 1)
+    Transition.create!(step: @q_step, target_step: sub_flow, position: 0)
+    Transition.create!(step: sub_flow, target_step: @r_step, position: 0)
+
+    result = WorkflowPublisher.publish(@workflow.reload, @user)
+
+    assert_not result.success?
+    assert_equal "Sub-flow step 'Hand to billing' requires a target workflow", result.error
+  end
+
+  # Two errors at once: the join must not reintroduce a prefix, and neither
+  # message may be dropped. A :steps error and an attribute error together is the
+  # mixed case, since the two take different branches of validation_message.
+  #
+  # The sub-flow has to be WIRED even though its target is blank: an orphan step
+  # is unreachable and a non-Resolve terminal, so validate_ar_graph! raises first
+  # with its own custom message and never reaches the model's own errors. That is
+  # the fallback branch, and "a refused publish reports what the graph check
+  # found" below covers it.
+  test "a refused publish carrying two errors reports both" do
+    sub_flow = Steps::SubFlow.create!(workflow: @workflow, position: 2, title: "Hand to billing")
+    Transition.find_by(step: @q_step, target_step: @r_step).update!(position: 1)
+    Transition.create!(step: @q_step, target_step: sub_flow, position: 0)
+    Transition.create!(step: sub_flow, target_step: @r_step, position: 0)
+    @workflow.reload.title = "T" * 300
+
+    result = WorkflowPublisher.publish(@workflow, @user)
+
+    assert_not result.success?
+    assert_equal "Title is too long (maximum is 255 characters), " \
+                 "Sub-flow step 'Hand to billing' requires a target workflow",
+                 result.error
+  end
+
+  # The fallback the case above ruled out: the publisher's own raise passes a
+  # custom message and adds nothing to the record, so it must reach the flash
+  # whole rather than being rebuilt from an empty errors collection.
+  test "a refused publish reports what the graph check found" do
+    Steps::SubFlow.create!(workflow: @workflow, position: 2, title: "Hand to billing")
+
+    result = WorkflowPublisher.publish(@workflow.reload, @user)
+
+    assert_not result.success?
+    assert_match(/is not reachable from the start node/, result.error)
+    assert_not_includes result.error, "Validation failed"
+  end
+
+  # The other half of the same rule: an error filed on a real attribute keeps its
+  # subject, or "is too long (maximum is 255 characters)" names nothing.
+  test "a refused publish keeps the attribute name for an error that needs one" do
+    @workflow.title = "T" * 300
+
+    result = WorkflowPublisher.publish(@workflow, @user)
+
+    assert_not result.success?
+    assert_equal "Title is too long (maximum is 255 characters)", result.error
+  end
 end

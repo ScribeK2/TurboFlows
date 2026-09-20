@@ -43,10 +43,27 @@ class WorkflowPublisher
 
     Result.new(version:, error: nil)
   rescue ActiveRecord::RecordInvalid => e
-    Result.new(version: nil, error: e.message)
+    Result.new(version: nil, error: validation_message(e))
   end
 
   private
+
+  # RecordInvalid#message is "Validation failed: " followed by every error's FULL
+  # message, and `validate_subflow_steps` files on :steps — so a sentence that
+  # already reads as one arrived as "Validation failed: Steps Sub-flow step
+  # 'Hand to billing' requires a target workflow". An error on :steps is a whole
+  # sentence already; any other attribute still needs its name, or "is too long
+  # (maximum is 255 characters)" names nothing.
+  #
+  # The publisher's own raises (the graph check, :no_resolve_across_workflows)
+  # pass a custom message and add nothing to the record, so they fall through to
+  # that message untouched.
+  def validation_message(error)
+    errors = error.record&.errors
+    return error.message if errors.blank?
+
+    errors.map { |item| item.attribute == :steps ? item.message : item.full_message }.join(", ")
+  end
 
   # Republishing without editing anything is not a new version. The previous row
   # already records that exact content, and writing a byte-identical ~9.5KB
