@@ -16,6 +16,67 @@ export default class extends Controller {
 
   connect() {
     this.refresh()
+
+    // A collaborator's change to THIS step's connections arrives as a broadcast
+    // aimed at the section this controller lives inside. Applying it is right
+    // almost always - it is server truth - but it must not land on top of a row
+    // this author has typed and not saved. Only the browser knows that, so the
+    // decision is here.
+    this.boundDeclineWhileDirty = this.declineWhileDirty.bind(this)
+    document.addEventListener("turbo:before-stream-render", this.boundDeclineWhileDirty)
+  }
+
+  disconnect() {
+    document.removeEventListener("turbo:before-stream-render", this.boundDeclineWhileDirty)
+  }
+
+  // Cancels a re-render of this section while the author holds a row the server
+  // cannot possibly have, and says so where they are looking. Deliberately NOT
+  // a flash: a flash self-dismisses in five seconds and this is durable state,
+  // the panel being out of date until they reopen it. It does not stash the
+  // fragment to apply later either - applying HTML rendered minutes ago is the
+  // staleness this exists to cure.
+  //
+  // The test is the row's own content, NOT where the stream came from, and not
+  // a dirty flag. Nothing here can tell another editor's broadcast from the
+  // answer to this panel's own save: both land on this target. A flag said
+  // "dirty" for both and cancelled the author's own doors re-render, which a
+  // pre-existing grow test caught. And a flag drifts - clearing it on a
+  // successful save was wrong too, because a row with no target is written
+  // nowhere, so the save succeeded while this editor still held it.
+  //
+  // A row with no target chosen yet is exactly what TransitionSync writes
+  // nowhere, so it is the one thing no incoming render can contain. Every other
+  // row is saved within the debounce, which makes the incoming fragment server
+  // truth and worth taking.
+  declineWhileDirty(event) {
+    const target = event.detail?.newStream?.getAttribute("target")
+    if (!target || target !== this.sectionId()) return
+    if (!this.holdsUnwritableRow()) return
+
+    event.preventDefault()
+    this.showChangedElsewhere()
+  }
+
+  holdsUnwritableRow() {
+    this.syncFromDOM()
+    return this.transitions.some(row => !row.target_uuid)
+  }
+
+  // The panel's Connections section, which this controller renders inside.
+  sectionId() {
+    return this.element.closest("[id^='connections_']")?.id ?? null
+  }
+
+  showChangedElsewhere() {
+    if (this.noticeElement?.isConnected) return
+
+    const notice = document.createElement("p")
+    notice.className = "form-hint"
+    notice.dataset.connectionsNotice = ""
+    notice.textContent = "These connections changed elsewhere. Reopen this step to see them."
+    this.element.prepend(notice)
+    this.noticeElement = notice
   }
 
   refresh() {

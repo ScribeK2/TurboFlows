@@ -77,6 +77,29 @@ class StepsControllerRefusalsTest < ActionDispatch::IntegrationTest
   # The step's own fields DID save, so the row that shows them - here and in
   # every other editor's list - has to follow, whatever happened to the
   # connections.
+  # Deleting a step leaves every parent that pointed at it with a stale
+  # Connections section. destroy_streams answers the editor who deleted; without
+  # a broadcast, another editor's open panel went on naming a step that no
+  # longer exists.
+  #
+  # Asserted here rather than in a browser: the unique fact is what the SERVER
+  # sends. Whether a panel applies or declines it is shared with the
+  # Steps::TransitionsController path and covered by builder_collaboration_test.
+  test "destroying a step broadcasts each parent's connections" do
+    parent = Steps::Question.create!(workflow: @workflow, position: 1, title: "Which?",
+                                     question: "Which?", variable_name: "which", answer_type: "text")
+    doomed = Steps::Resolve.create!(workflow: @workflow, position: 2, title: "Gone soon",
+                                    resolution_type: "success")
+    Transition.create!(step: parent, target_step: doomed, position: 0)
+
+    broadcasts = capture_turbo_stream_broadcasts("workflow_#{@workflow.id}") do
+      delete workflow_step_path(@workflow, doomed), headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+
+    assert_includes broadcasts.pluck("target"), dom_id(parent, :connections),
+                    "a parent of the deleted step must have its Connections section broadcast"
+  end
+
   test "a refused connections save still re-renders and broadcasts the step's row" do
     broadcasts = capture_turbo_stream_broadcasts("workflow_#{@workflow.id}") do
       patch workflow_step_path(@workflow, @step),
