@@ -14,6 +14,8 @@ class HealthPanelOrderingTest < ActionDispatch::IntegrationTest
   # One string per rendered issue row. Split on the row container class, not on
   # "health-panel__issue" — that prefix also matches __issue-icon, __issue-step
   # and __issue-note, so a word-boundary match finds four fragments per row.
+  PASSING_HEADING = '<h4 class="health-panel__section-title">Passing</h4>'.freeze
+
   ROW_MARKER = 'class="list-row list-row--compact health-panel__issue"'.freeze
 
   setup do
@@ -101,6 +103,29 @@ class HealthPanelOrderingTest < ActionDispatch::IntegrationTest
 
       assert_not issue[:fixable], "#{issue[:code]} is fixable here and should not say it clears on its own"
     end
+  end
+
+  # The Passing section had two authors: the all-passing branch rendered each
+  # check as a .list-row--compact with a check icon and a __title, and the
+  # anything-failing branch rendered a bare `<li><%= check %></li>`. So
+  # builder.css's `.health-panel__checklist .list-row__title` rule matched
+  # nothing exactly when a reader has failures to read past, and the passing
+  # rows read as unpadded body text in a box.
+  test "a passing check renders as a row even while something is failing" do
+    body = panel
+    index = body.index(PASSING_HEADING)
+    assert index, "precondition: this workflow has failures AND passing checks"
+
+    list = body[index..][%r{<ul class="health-panel__checklist">(.*?)</ul>}m, 1]
+    rows = list.to_s.scan(/<li[^>]*>/)
+
+    assert_predicate rows, :any?, "precondition: the Passing section lists something"
+    rows.each do |row|
+      assert_includes row, "list-row list-row--compact",
+                      "a passing row must be a row, the way the all-passing branch renders one"
+    end
+    assert_includes list, "health-panel__check-icon"
+    assert_includes list, "list-row__title"
   end
 
   private
