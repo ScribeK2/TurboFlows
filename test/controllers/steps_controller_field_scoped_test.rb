@@ -128,6 +128,23 @@ class StepsControllerFieldScopedTest < ActionDispatch::IntegrationTest
     assert_includes action.reload.instructions.body.to_html, "Theirs"
   end
 
+  # An empty text input reads "" where its column holds nil. Without treating
+  # those as the same value, EVERY optional field the author had never filled in
+  # reported a conflict on its first save and could never be saved again — which
+  # is what two existing panel tests caught: a guidance note that never saved,
+  # and a validation refusal arriving as a conflict message.
+  test "an empty input over a nil column is not a conflict" do
+    assert_nil @step.help_text
+
+    patch workflow_step_path(@workflow, @step),
+          params: { step: { help_text: "Typed guidance", dirty_fields: ["help_text"],
+                            rendered: { help_text: "" } } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    assert_equal "Typed guidance", @step.reload.help_text
+  end
+
   # Without casting, a JSON column compares an Array against its own JSON string
   # and a boolean compares true against "1" — every such field would report a
   # conflict that never clears, and the panel would stop saving entirely.

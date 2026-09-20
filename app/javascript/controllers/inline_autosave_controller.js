@@ -29,6 +29,18 @@ export default class extends Controller {
     this.boundSubmitEnded = this.submitEnded.bind(this)
     this.element.addEventListener("turbo:submit-end", this.boundSubmitEnded)
 
+    // What the server rendered into each named input, captured before the author
+    // can change anything, and which fields they then actually touch. The panel
+    // submits the WHOLE step on every change, so without these two the server
+    // cannot tell an edit from a seconds-old copy of someone else's field.
+    this.renderedValues = new Map()
+    this.dirtyFields = new Set()
+    this.namedInputs().forEach(input => this.renderedValues.set(input.name, input.value))
+
+    this.boundMarkDirty = this.markDirty.bind(this)
+    this.element.addEventListener("input", this.boundMarkDirty)
+    this.element.addEventListener("change", this.boundMarkDirty)
+
     // Held from here, not looked up when it is needed: by the time the
     // disconnect flush below answers, this form is detached and cannot reach
     // its own frame any more.
@@ -48,6 +60,10 @@ export default class extends Controller {
 
     // If the form is still in the DOM, use requestSubmit (Turbo-aware)
     if (this.element.isConnected) {
+      // The detached path below does this in disconnect() instead, because its
+      // FormData snapshot is taken there.
+      this.writeDirtyState()
+      this.rememberSentValues()
       this.trackSubmission()
       this.element.requestSubmit()
       return
@@ -80,6 +96,87 @@ export default class extends Controller {
         document.dispatchEvent(new CustomEvent("health:check-needed"))
       })
     }
+  }
+
+  // Every input this form submits under step[...], minus the two keys this
+  // mechanism adds itself and transitions_json, which has its own staleness
+  // protocol (rendered/minted) and is deliberately left out of this one.
+  namedInputs() {
+    return Array.from(this.element.elements).filter(input => this.tracked(input.name))
+  }
+
+  tracked(name) {
+    return Boolean(name) &&
+      name.startsWith("step[") &&
+      !name.startsWith("step[dirty_fields") &&
+      !name.startsWith("step[rendered") &&
+      name !== "step[transitions_json]"
+  }
+
+  // step[options][][label] -> options. The server keys both dirty fields and
+  // rendered values by attribute name, not by the full input name.
+  fieldNameOf(input) {
+    return input.name.match(/^step\[([^\]]+)\]/)?.[1] ?? null
+  }
+
+  markDirty(event) {
+    const input = event.target
+    if (!this.tracked(input?.name)) return
+
+    const field = this.fieldNameOf(input)
+    if (field) this.dirtyFields.add(field)
+  }
+
+  // Written into the form itself rather than appended to a FormData, so the
+  // disconnect flush - which snapshots the form - carries them too.
+  writeDirtyState() {
+    this.element.querySelectorAll("[data-autosave-generated]").forEach(node => node.remove())
+
+    this.dirtyFields.forEach(field => {
+      this.appendHidden("step[dirty_fields][]", field)
+      const rendered = this.renderedValueFor(field)
+      if (rendered !== undefined) this.appendHidden(`step[rendered][${field}]`, rendered)
+    })
+  }
+
+  // Only meaningful where a field is one input. `options` is many, and a
+  // checkbox is two (Rails renders a hidden "0" beside it), so those send no
+  // rendered value and the server simply does not conflict-check them.
+  singleInputFor(field) {
+    const inputs = this.namedInputs().filter(input => this.fieldNameOf(input) === field)
+    return inputs.length === 1 ? inputs[0] : null
+  }
+
+  renderedValueFor(field) {
+    const input = this.singleInputFor(field)
+    return input ? this.renderedValues.get(input.name) : undefined
+  }
+
+  rememberSentValues() {
+    this.sentValues = new Map()
+    this.dirtyFields.forEach(field => {
+      const input = this.singleInputFor(field)
+      if (input) this.sentValues.set(input.name, input.value)
+    })
+  }
+
+  // A save that landed is what the server now holds, so it becomes the new
+  // rendered baseline. Without this the author's NEXT edit is compared against
+  // the value their own last save replaced, and every second edit of a field is
+  // refused as a conflict with themselves.
+  adoptSentValues() {
+    this.sentValues?.forEach((value, name) => this.renderedValues.set(name, value))
+    this.sentValues = null
+    this.dirtyFields.clear()
+  }
+
+  appendHidden(name, value) {
+    const input = document.createElement("input")
+    input.type = "hidden"
+    input.name = name
+    input.value = value
+    input.setAttribute("data-autosave-generated", "")
+    this.element.appendChild(input)
   }
 
   // Saves now if anything is waiting on the debounce, and resolves once no save
@@ -121,6 +218,7 @@ export default class extends Controller {
     if (!("success" in event.detail)) return
 
     this.setStatus(event.detail.success ? "saved" : "error")
+    if (event.detail.success) this.adoptSentValues()
     this.settleInFlight()
   }
 
@@ -146,11 +244,18 @@ export default class extends Controller {
 
   disconnect() {
     clearTimeout(this.timeout)
+    // BEFORE the snapshot, not after: save() writes the dirty state too, but by
+    // the time it runs on this path the FormData has already been taken and the
+    // flush would carry none of it. That flush is the save most likely to be
+    // racing someone - it fires when the author switches steps mid-debounce.
+    if (this.dirty) this.writeDirtyState()
     // Snapshot form data while the form is still accessible
     this.lastFormData = new FormData(this.element)
     this.formAction = this.element.action
     this.element.removeEventListener("lexxy:change", this.boundSchedule)
     this.element.removeEventListener("turbo:submit-end", this.boundSubmitEnded)
+    this.element.removeEventListener("input", this.boundMarkDirty)
+    this.element.removeEventListener("change", this.boundMarkDirty)
     // Whoever was waiting on this form is released: it is gone, and the flush
     // below goes out by fetch, which nothing here tracks.
     this.settleInFlight()

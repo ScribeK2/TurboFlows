@@ -515,9 +515,19 @@ class StepsController < ApplicationController
         # conflict that could never clear. deserialize is cast for every other
         # type here, so this costs nothing elsewhere.
         type = @step.class.type_for_attribute(field)
-        type.deserialize(rendered[field]) != type.cast(@step.read_attribute(field))
+        # An empty text input reads "" where its column holds nil, so without
+        # this every optional field the author never filled in reported a
+        # conflict on its first save and could never be saved again. Only ""
+        # and nil are folded together - `false` stays distinct from nil, which
+        # an .blank? test would not.
+        empty_string_as_nil(type.deserialize(rendered[field])) !=
+          empty_string_as_nil(type.cast(@step.read_attribute(field)))
       end
     end
+  end
+
+  def empty_string_as_nil(value)
+    value.is_a?(String) && value.empty? ? nil : value
   end
 
   # `step_type` is the spelling every other StepFieldMap reader uses
