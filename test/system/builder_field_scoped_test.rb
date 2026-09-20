@@ -56,6 +56,27 @@ class BuilderFieldScopedTest < ApplicationSystemTestCase
     assert_equal "Theirs, saved elsewhere", @step.reload.title
   end
 
+  # The refusal tells the author to change it again to save over theirs. That
+  # promise was false until the server started naming the conflicting field:
+  # nothing updated the panel's baseline, so the second attempt was refused
+  # against a value the database had left behind and the author was stuck until
+  # they reloaded. A browser found it; the refusal test above never tried to
+  # recover.
+  test "an author who is refused can save over the other editor on the next try" do
+    visit_builder_in_edit_mode
+    open_step(@step)
+
+    Step.where(id: @step.id).update_all(title: "Theirs, saved elsewhere")
+
+    fill_in "step[title]", with: "Mine, first try"
+    assert_selector "[data-autosave-status]", text: "Not saved", wait: 10
+
+    fill_in "step[title]", with: "Mine, second try"
+    assert_selector "[data-autosave-status]", text: "Saved", wait: 10
+
+    assert_equal "Mine, second try", @step.reload.title
+  end
+
   # The phantom-conflict case: this author's own second edit must not be refused
   # against the value their own first edit replaced.
   test "a second edit by the same author saves" do
