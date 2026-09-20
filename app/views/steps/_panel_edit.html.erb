@@ -56,6 +56,20 @@
           data: { controller: "inline-autosave", "inline-autosave-delay-value": 2000,
                   turbo_frame: "_top", turbo_stream: true } do |f| %>
 
+        <%# The conflict baseline for rich text, rendered by the SERVER.
+            inline-autosave snapshots every other field from its input's initial
+            value, which IS what the server rendered. A Lexxy editor is
+            form-associated and holds its own normalisation of the body instead
+            — an empty one reads "<p><br></p>" where the column holds "" — so
+            snapshotting it would report a conflict on the first edit of every
+            rich-text field. This carries the stored HTML, so the server
+            compares what it stored against what it stores now. %>
+        <% StepFieldMap.rich_text_fields(step.step_type).each do |rich_field| %>
+          <%= hidden_field_tag "step[rendered][#{rich_field}]",
+                               step.public_send(rich_field)&.body&.to_html.to_s,
+                               id: nil, data: { autosave_rendered: "" } %>
+        <% end %>
+
         <div class="form-group">
           <%= f.label :title, class: "form-label" %>
           <%= f.text_field :title, class: "form-input", required: true,

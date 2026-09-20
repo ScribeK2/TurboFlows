@@ -18,7 +18,11 @@
     field's label, name, required flag or its select choices fired no request,
     and the edit persisted only if the operator also touched the step title or
     instructions, whose values rode along in that save. %>
+<%# Adding or removing a field changes `options` with no input event on a named
+    field of its own - see form-field-builder#scheduleSave - so this names it for
+    inline-autosave's dirty tracking. %>
 <div data-controller="form-field-builder"
+     data-autosave-field="options"
      data-action="input->inline-autosave#schedule change->inline-autosave#schedule"
      data-form-field-builder-field-types-value="<%= Steps::Form::VALID_FIELD_TYPES.to_json %>">
   <span class="form-label">Form fields</span>

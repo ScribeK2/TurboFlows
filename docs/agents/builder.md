@@ -53,6 +53,74 @@ rendered its own, and that one is not describing this save.
 
 **Autosave pattern:** Every field change triggers `inline-autosave#schedule` (via `data-action` on inputs or `lexxy:change` listener on the form). On disconnect (e.g., switching steps), pending saves are flushed by snapshotting `FormData` and sending via `fetch()` POST with `_method=patch`. The step panel form carries `novalidate`: `requestSubmit()` runs the browser's required-field check, and while any `required` field was empty (a new Question's text, a Form row just added) every save was refused and the edit dropped. The health check says what still needs filling in.
 
+**The panel still submits the whole step, but the server writes only what was
+touched.** `inline-autosave` sends `step[dirty_fields][]` — the fields that
+fired an `input`, `change` or `lexxy:change` — and `step[rendered][<field>]`,
+the value the server put in that input when the panel rendered.
+`StepsController#permitted_step_params` slices the permitted attributes by that
+list, and a touched field whose `rendered` value no longer matches what is
+stored means someone else wrote it while this panel sat open: the whole save is
+refused **before `@step.update` runs**, so nothing is written, connections
+included. A check placed after the update would be reporting a conflict it had
+itself caused.
+
+An **absent** `dirty_fields` key writes everything, exactly as before — that is
+what keeps `step_field_map_test` (the publish/restore guarantee), imports and
+any older client working. The panel therefore always sends the key, empty
+sentinel included: with nothing marked dirty and no key at all, the fallback
+would write everything and the mechanism would silently revert to clobbering
+with every test still green. Two mutation checks passed for exactly that reason
+before the sentinel existed.
+
+**Three refusals now, and they must keep different words.** The connections
+refusal happens *after* the step's fields are written and says so.
+`SAVE_CONFLICT_MESSAGE` belongs to the `StaleObjectError` path — two writes
+overlapping in the DATABASE — and says to reload, which is right when the
+request never held the current row. `FIELD_CONFLICT_MESSAGE` must NOT say
+reload: the author's typing is still on screen and their next keystroke retries.
+
+**What is not conflict-checked, deliberately:** a field with more than one form
+element. `options` is many inputs and a checkbox is two (Rails renders a hidden
+`0` beside it), so neither carries a single rendered value and both keep
+last-write-wins rather than getting a comparison that cannot be right.
+`transitions_json` is outside the mechanism entirely — it has its own
+`rendered`/`minted` protocol, and a second staleness mechanism on the same
+payload is how the `known` conflation started.
+
+**Comparison is per attribute type, and two normalisations are load-bearing.**
+`type.deserialize` on the rendered side, not `cast`: `Type::Json#cast` returns a
+String unchanged, so casting both sides compared a JSON string against an Array
+and refused every `options` save for ever. And `""` folds to `nil`, because an
+empty text input reads `""` where its column holds `nil` — without it every
+optional field the author never filled in reported a conflict on its first save
+and could never be saved again. Only `""` and `nil` fold; `false` stays distinct
+from `nil`, which a `.blank?` test would not.
+
+**Rich text takes its baseline from the SERVER, not the editor.**
+`steps/_panel_edit` renders a hidden `step[rendered][<field>]` per rich-text
+field from the stored HTML. `<lexxy-editor>` is form-associated and holds its
+own normalisation of the body — an empty one reads `<p><br></p>` where the
+column holds `""` — so snapshotting the editor would conflict with itself on the
+first edit of every rich-text field. Those baselines ride along `disabled`
+unless their field is dirty, since each is a full copy of the body (5.7KB
+measured for an ordinary one, up to `MAX_STEP_CONTENT_LENGTH`) and the server
+reads one only for a dirty field.
+
+What marks rich text dirty is **not** the `lexxy:change` handler: an `input`
+event raised inside the editor is retargeted to the form-associated host as it
+crosses the shadow boundary, so it arrives already carrying the field's `name`.
+Mutation testing established that; the `closest("lexxy-editor")` walk beside it
+is an unproven guard for an event that is not retargeted, not covered behaviour.
+
+A save that lands becomes the new rendered baseline (`adoptSentValues`). Without
+it the author's next edit is compared against the value their own last save
+replaced, and every second edit is refused as a conflict with themselves.
+
+The dirty state is written into the form **before** `disconnect` snapshots its
+`FormData`. `save()` writes it too, but on that path the snapshot has already
+been taken, and that flush is the save most likely to be racing someone — it
+fires when the author switches steps mid-debounce.
+
 Media is the exception: the panel form is not multipart and never carries file
 bytes. A chosen file is direct-uploaded and attached by
 `Steps::MediaAttachmentsController`, which answers with `steps/_media_list`.

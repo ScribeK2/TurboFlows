@@ -18,7 +18,7 @@ module Steps
       # `attach` appends and saves; on a validation failure (type, size) it
       # returns nil with the errors on the step. Plain assignment would replace
       # every existing attachment, which is why this is not `update`.
-      if @step.media_attachments.attach(blob)
+      if @step.attach_media(blob)
         render_list
       else
         render_refusal("This file could not be attached: #{@step.errors.full_messages.to_sentence}.")
