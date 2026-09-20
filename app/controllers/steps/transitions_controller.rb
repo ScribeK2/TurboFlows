@@ -126,6 +126,35 @@ module Steps
         partial: "workflows/steps_list_items",
         locals: { workflow: @workflow, steps: steps }
       )
+      broadcast_connections
+    end
+
+    # The streams above answer the editor who acted. Another editor with this
+    # same step's panel open was watching only the list broadcast, so their doors
+    # list and candidate list stayed stale until they saved or reopened the
+    # panel.
+    #
+    # The acting editor receives these too - nothing here identifies a sender -
+    # and that is fine: their fragment is identical to the one they just
+    # rendered. What must NOT be overwritten is an editor mid-edit in the
+    # connections editor, which holds rows typed and not yet saved. The browser
+    # decides that, in step_transitions#declineWhileDirty, because only the
+    # browser knows what is unsaved.
+    def broadcast_connections
+      Turbo::StreamsChannel.broadcast_update_to(
+        "workflow_#{@workflow.id}",
+        target: dom_id(@step, :connections),
+        partial: "steps/connections",
+        locals: { step: @step, workflow: @workflow }
+      )
+      # Its own partial precisely so the list can be replaced without closing an
+      # open dialog; optionTargetConnected re-runs markGoneOptions and filter.
+      Turbo::StreamsChannel.broadcast_replace_to(
+        "workflow_#{@workflow.id}",
+        target: dom_id(@step, :target_picker_options),
+        partial: "steps/target_picker_options",
+        locals: { step: @step, workflow: @workflow }
+      )
     end
   end
 end

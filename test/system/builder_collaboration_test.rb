@@ -84,7 +84,78 @@ class BuilderCollaborationTest < ApplicationSystemTestCase
     end
   end
 
+  # Steps::TransitionsController re-streamed the Connections section to the
+  # ACTING editor only, so the other editor's open panel kept a stale doors list
+  # and target-picker candidates until it saved or was reopened. The step list
+  # broadcast never covered it: that replaces rows, not the open panel.
+  test "a connection made by one editor updates the other's open panel" do
+    question = question_with_a_door
+
+    sign_in_as @editor_one
+    visit_builder
+    open_step(question)
+    within("turbo-frame#builder-panel") { assert_selector ".step-doors__row", text: /Yes/ }
+
+    using_session(:editor_two) { wire_yes_to_all_done(question) }
+
+    # No visit, no reload, no save of our own - the broadcast has to carry it.
+    within("turbo-frame#builder-panel") do
+      assert_selector ".step-doors__row", text: /Yes.*All done/m, wait: 10
+    end
+  end
+
+  # ...unless this editor is mid-edit in the connections editor itself, where
+  # replacing the section would throw away a row they typed and never saved.
+  # That is the failure the rendered/minted split exists to prevent, pointed the
+  # other way.
+  test "a refresh is declined while this editor has an unsaved connection row" do
+    question = question_with_a_door
+
+    sign_in_as @editor_one
+    visit_builder
+    open_step(question)
+
+    # "Other connections" is a collapsed disclosure; the editor is inside it.
+    within "turbo-frame#builder-panel" do
+      find("summary", text: /Other connections/i).click
+      click_on "Add Connection"
+    end
+    assert_selector "turbo-frame#builder-panel .transition-item", wait: 5
+
+    using_session(:editor_two) { wire_yes_to_all_done(question) }
+
+    within "turbo-frame#builder-panel" do
+      assert_selector ".transition-item", wait: 5
+      assert_text(/changed elsewhere/i, wait: 10)
+    end
+  end
+
   private
+
+  def question_with_a_door
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?",
+                                       question: "Light green?", position: 1,
+                                       answer_type: "yes_no", variable_name: "light")
+    @workflow.update!(start_step: question)
+    question
+  end
+
+  # Editor two wires the Yes door to the Resolve, through the real dialog, so
+  # Steps::TransitionsController actually runs and actually broadcasts.
+  def wire_yes_to_all_done(question)
+    sign_in_as @editor_two
+    visit_builder
+    open_step(question)
+    within "turbo-frame#builder-panel" do
+      find(".step-doors__row", text: "Yes").click_on "Use existing…"
+    end
+    assert_selector "dialog[open]", wait: 5
+    within "dialog[open]" do
+      fill_in "Find a step", with: "done"
+      click_on "All done"
+    end
+    assert_eventually(timeout: 10) { question.transitions.reload.any? }
+  end
 
   # Scoped to the row's list semantics: the warning icon also carries
   # data-step-uuid, so a bare attribute selector matches twice for any step

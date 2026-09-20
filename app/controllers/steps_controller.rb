@@ -262,6 +262,7 @@ class StepsController < ApplicationController
     end
 
     broadcast_step_list
+    broadcast_parent_connections(parent_steps)
   end
 
   # POST /workflows/:workflow_id/steps/apply_template
@@ -389,6 +390,22 @@ class StepsController < ApplicationController
     end
 
     streams
+  end
+
+  # destroy_streams answers the editor who deleted; every OTHER editor with one
+  # of these parents' panels open was watching only the list broadcast, so their
+  # Connections section went on naming a step that no longer exists. Same shape
+  # as Steps::TransitionsController#broadcast_connections, and the browser
+  # declines it the same way when that editor holds unsaved rows.
+  def broadcast_parent_connections(parent_steps)
+    parent_steps.each do |parent|
+      Turbo::StreamsChannel.broadcast_update_to(
+        "workflow_#{@workflow.id}",
+        target: dom_id(parent, :connections),
+        partial: "steps/connections",
+        locals: { step: parent.reload, workflow: @workflow }
+      )
+    end
   end
 
   def broadcast_step_list

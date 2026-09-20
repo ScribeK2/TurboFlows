@@ -427,6 +427,38 @@ list otherwise stays honest through the browser's own check
 builder's live rows every time the dialog opens, which is what actually keeps
 a deleted OTHER step off the list before anyone tries to pick it).
 
+**A change to one step's connections reaches every open panel.**
+`Steps::TransitionsController#broadcast_connections` and
+`StepsController#broadcast_parent_connections` broadcast the
+`dom_id(step, :connections)` fragment (and, for the transitions path, the
+picker's own `steps/_target_picker_options`, which exists so the candidate list
+can be replaced without closing an open `<dialog>`). Before this, both answered
+only the editor who acted, and everyone else kept a stale doors list until they
+saved or reopened the panel; the step-list broadcast never covered it, because
+that replaces rows rather than an open panel.
+
+Nothing identifies a sender — the acting editor receives their own broadcast
+too — so **the browser decides whether to apply it**, in
+`step_transitions#declineWhileDirty`. It tests the row's own CONTENT, not the
+stream's origin and not an editor-dirty flag: it declines only while the editor
+holds a row with **no target chosen yet**, which is exactly what
+`TransitionSync#sync_row` writes nowhere and therefore the one thing no
+incoming render can contain. Everything else is saved inside the 2s debounce,
+which makes the incoming fragment server truth and worth taking. A declined
+render leaves a persistent line in the editor rather than a flash: a flash
+self-dismisses in five seconds and being out of date is durable until the panel
+is reopened. It deliberately does not stash the fragment to apply later, since
+applying HTML rendered minutes ago is the staleness this exists to cure.
+
+**A dirty flag is the wrong instrument here, twice over, and both ways were
+tried.** It cannot tell another editor's broadcast from the answer to this
+panel's OWN save, because both land on the same target — so it cancelled the
+author's own doors re-render, caught by the pre-existing grow test "a
+connection made with the editor's No preset is read as the No door". And it
+drifts: clearing it on a successful save was wrong too, because a row with no
+target is written nowhere, so the save succeeded while the editor still held
+that row and a broadcast two seconds later wiped it.
+
 **Which row is selected is decided in the browser**, by
 `builder_controller#syncSelectedRow`, from whichever step panel is open, after
 every stream render and every panel frame load. Never pass a `selected_step:`
