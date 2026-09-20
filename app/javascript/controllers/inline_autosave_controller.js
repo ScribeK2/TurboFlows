@@ -42,6 +42,10 @@ export default class extends Controller {
     this.renderedValues = new Map()
     this.dirtyFields = new Set()
     this.singleInputFields = new Set()
+    // Fields whose baseline this panel has deliberately dropped: the server
+    // refused a save over them, said so, and the author's next attempt is then
+    // allowed to overwrite. Cleared again once a save of that field lands.
+    this.overriddenFields = new Set()
 
     const byField = new Map()
     this.namedInputs().forEach(input => {
@@ -113,6 +117,7 @@ export default class extends Controller {
         // dropped here with nothing shown. A stream aimed at an element this
         // page no longer has - the panel has already been replaced - is a
         // no-op, so rendering the rest costs nothing.
+        if (!response.ok) this.acknowledgeConflict(response.headers.get("X-Conflicting-Field"))
         if (response.headers.get("Content-Type")?.includes("turbo-stream")) {
           const html = await response.text()
           if (html.trim()) Turbo.renderStreamMessage(html)
@@ -196,7 +201,7 @@ export default class extends Controller {
     // not removed: the panel needs them again on the next save.
     this.element.querySelectorAll("input[data-autosave-rendered]").forEach(input => {
       const field = input.name.match(/^step\[rendered\]\[([^\]]+)\]/)?.[1]
-      input.disabled = !this.dirtyFields.has(field)
+      input.disabled = !this.dirtyFields.has(field) || this.overriddenFields.has(field)
     })
 
     this.dirtyFields.forEach(field => {
@@ -226,6 +231,8 @@ export default class extends Controller {
       return undefined
     }
 
+    if (this.overriddenFields.has(field)) return undefined
+
     return this.singleInputFor(field) ? this.renderedValues.get(field) : undefined
   }
 
@@ -242,9 +249,19 @@ export default class extends Controller {
   // the value their own last save replaced, and every second edit of a field is
   // refused as a conflict with themselves.
   adoptSentValues() {
-    this.sentValues?.forEach((value, field) => this.renderedValues.set(field, value))
+    this.sentValues?.forEach((value, field) => {
+      this.renderedValues.set(field, value)
+      this.overriddenFields.delete(field)
+    })
     this.sentValues = null
     this.dirtyFields.clear()
+  }
+
+  // The server refused a save because this field changed underneath the panel,
+  // and said which. Dropping the baseline is what makes the refusal's own advice
+  // true: the author has been told once, and their next save overwrites.
+  acknowledgeConflict(field) {
+    if (field) this.overriddenFields.add(field)
   }
 
   appendHidden(name, value) {
@@ -295,7 +312,11 @@ export default class extends Controller {
     if (!("success" in event.detail)) return
 
     this.setStatus(event.detail.success ? "saved" : "error")
-    if (event.detail.success) this.adoptSentValues()
+    if (event.detail.success) {
+      this.adoptSentValues()
+    } else {
+      this.acknowledgeConflict(event.detail.fetchResponse?.response?.headers?.get("X-Conflicting-Field"))
+    }
     this.settleInFlight()
   }
 

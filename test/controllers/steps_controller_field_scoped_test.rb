@@ -128,6 +128,37 @@ class StepsControllerFieldScopedTest < ActionDispatch::IntegrationTest
     assert_includes action.reload.instructions.body.to_html, "Theirs"
   end
 
+  # The refusal tells the author "change it again to save over theirs". Tested in
+  # a browser, that promise was false: nothing updated the panel's baseline, so
+  # every later attempt was refused against a value the database had left behind
+  # long ago and the author was stuck until they reloaded. The response names the
+  # conflicting field so the panel can drop that baseline and let the next save
+  # through — they have been told once, and overwriting is then their choice.
+  test "a refusal names the field that conflicted" do
+    @step.update!(title: "Theirs")
+
+    patch workflow_step_path(@workflow, @step),
+          params: { step: { title: "Mine", dirty_fields: ["title"],
+                            rendered: { title: "Original title" } } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :conflict
+    assert_equal "title", response.headers["X-Conflicting-Field"]
+  end
+
+  # And the save that follows one wins, because the panel stops sending a
+  # baseline for that field.
+  test "a save that sends no rendered value for a field is written" do
+    @step.update!(title: "Theirs")
+
+    patch workflow_step_path(@workflow, @step),
+          params: { step: { title: "Mine wins now", dirty_fields: ["title"] } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    assert_equal "Mine wins now", @step.reload.title
+  end
+
   # An empty text input reads "" where its column holds nil. Without treating
   # those as the same value, EVERY optional field the author had never filled in
   # reported a conflict on its first save and could never be saved again — which

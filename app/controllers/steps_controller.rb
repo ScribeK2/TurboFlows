@@ -125,6 +125,14 @@ class StepsController < ApplicationController
     # NOTHING — not the step's own fields, and not its connections, since
     # sync_transitions lives inside the success branch below.
     if (stale_field = conflicting_field)
+      # Named for the panel, which drops its baseline for this field so the
+      # author's NEXT save goes through. Without that the refusal's own advice -
+      # "change it again to save over theirs" - is false: nothing else updates
+      # the baseline, so every later attempt is compared against a value the
+      # database left behind long ago and the author is stuck until they reload.
+      # Caught in a browser; the system test asserted the refusal and never
+      # tried to recover from it.
+      response.headers["X-Conflicting-Field"] = stale_field.to_s
       return respond_to_refusal(format(FIELD_CONFLICT_MESSAGE, field: stale_field.to_s.humanize.downcase),
                                 status: :conflict)
     end
