@@ -34,7 +34,7 @@
                class="builder__title"
                value="<%= workflow.title %>"
                data-builder-target="titleInput"
-               data-action="blur->builder#saveTitle change->builder#saveTitle"
+               data-action="input->builder#scheduleTitleSave blur->builder#saveTitle change->builder#saveTitle"
                data-url="<%= workflow_path(workflow) %>"
                <%= "readonly" if mode == "view" %>
                placeholder="Workflow title...">

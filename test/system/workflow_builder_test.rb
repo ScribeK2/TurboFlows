@@ -681,6 +681,18 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
     assert_eventually(timeout: 10) { @workflow.reload.title == "Renamed with a sub-flow pending" }
   end
 
+  # The title field saved on blur/change ONLY, while every other builder field
+  # autosaves on a debounce. An author who renames the workflow and goes straight
+  # to a step — never blurring the field, because clicking a step row inside the
+  # builder does not always take focus out of it — lost the rename with nothing
+  # said. Typed here and deliberately never blurred.
+  test "the workflow title saves without being blurred" do
+    visit_builder_in_edit_mode
+    find("input[placeholder='Workflow title...']").set("Renamed and never blurred")
+
+    assert_eventually(timeout: 10) { @workflow.reload.title == "Renamed and never blurred" }
+  end
+
   # The Details panel shows the server's reason through its Turbo Stream; the
   # header title saves through fetch and overwrote it with a bare "Save failed".
   test "a refused title save says why in the header" do
