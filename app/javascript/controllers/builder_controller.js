@@ -1,5 +1,9 @@
 import { Controller } from "@hotwired/stimulus"
 
+// The step panel's inline-autosave waits this long after the last keystroke;
+// the header title matches it, so the two fields behave the same way.
+const TITLE_SAVE_DEBOUNCE = 2000
+
 // Manages the builder shell: panel open/close, mode toggle, keyboard shortcuts.
 export default class extends Controller {
   static targets = ["panel", "titleInput"]
@@ -40,6 +44,7 @@ export default class extends Controller {
     document.removeEventListener("keydown", this.boundKeydown)
     document.removeEventListener("turbo:before-stream-render", this.boundWrapStreamRender)
     document.removeEventListener("turbo:frame-load", this.boundOnPanelFrameLoad)
+    this.clearTitleSave()
   }
 
   // See the connect() comment above: this stays a document listener so it
@@ -202,10 +207,31 @@ export default class extends Controller {
     return this.hasPanelTarget && this.panelTarget.children.length > 0
   }
 
+  // blur and change save at once: the author has finished with the field.
   saveTitle(event) {
-    if (this.modeValue !== "edit") return
+    this.clearTitleSave()
+    this.submitTitle(event.currentTarget)
+  }
 
+  // Typing saves too, on the same debounce every other builder field uses. The
+  // title used to save on blur and change ALONE, so a rename the author typed
+  // and then walked away from — to a step row, which does not always take focus
+  // out of the header — was dropped with nothing said.
+  scheduleTitleSave(event) {
     const input = event.currentTarget
+    this.clearTitleSave()
+    this.titleSaveTimer = setTimeout(() => this.submitTitle(input), TITLE_SAVE_DEBOUNCE)
+  }
+
+  clearTitleSave() {
+    if (this.titleSaveTimer) clearTimeout(this.titleSaveTimer)
+    this.titleSaveTimer = null
+  }
+
+  submitTitle(input) {
+    if (this.modeValue !== "edit") return
+    if (!input) return
+
     const url = input.dataset.url
     const title = input.value.trim()
 

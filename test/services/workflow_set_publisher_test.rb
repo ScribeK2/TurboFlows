@@ -107,6 +107,24 @@ class WorkflowSetPublisherTest < ActiveSupport::TestCase
     assert_empty dangling, "the rule's timing moved; the rule did not"
   end
 
+  # The set publisher prefixes the member's title, so Rails' own prefix landed
+  # in the middle: "Blank B: Validation failed: Steps Sub-flow step 'Not picked
+  # yet' requires a target workflow". The title is the only subject this needs.
+  test "a refused set names the member and then the plain reason" do
+    a = resolving_workflow("Blank A")
+    b = resolving_workflow("Blank B")
+    link(a, b, returns: false)
+    link(b, a, returns: false)
+    untargeted = Steps::SubFlow.create!(workflow: b, position: 9, title: "Not picked yet")
+    Transition.create!(step: b.steps.find_by(type: "Steps::Question"), target_step: untargeted, position: 2)
+    Transition.create!(step: untargeted, target_step: b.steps.find_by(type: "Steps::Resolve"), position: 0)
+
+    result = WorkflowSetPublisher.publish(a.reload, @user)
+
+    assert_not result.success?
+    assert_equal "Blank B: Sub-flow step 'Not picked yet' requires a target workflow", result.error
+  end
+
   # The blank-target check moved from every save to publish; a bundle member
   # still in that state must stop the whole set, not slip through with it.
   test "a member with an untargeted sub-flow refuses the whole set" do

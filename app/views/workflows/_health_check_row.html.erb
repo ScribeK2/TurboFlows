@@ -1,0 +1,10 @@
+<%# One passing check. Both branches of _health_panel_inner render through this:
+    they used to write the row separately, and the anything-failing branch wrote
+    a bare <li>, so `.health-panel__checklist .list-row__title` matched nothing
+    exactly when there were failures to read past. %>
+<li class="list-row list-row--compact">
+  <%= icon "check", class: "icon health-panel__check-icon" %>
+  <span class="list-row__body">
+    <span class="list-row__title"><%= check %></span>
+  </span>
+</li>
