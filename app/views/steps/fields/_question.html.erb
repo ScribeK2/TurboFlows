@@ -30,7 +30,11 @@
        data-question-form-target="optionsContainer"
        data-action="input->inline-autosave#schedule change->inline-autosave#schedule">
     <label class="form-label">Options</label>
-    <div data-question-form-target="optionsList" class="flex-col-gap-2">
+    <%# Adding, removing or reordering an option changes `options` without any
+        input firing on a named field, so inline-autosave cannot name what
+        changed from the event alone. This says it. %>
+    <div data-question-form-target="optionsList" class="flex-col-gap-2"
+         data-autosave-field="options">
       <% if step.options.present? && step.options.is_a?(Array) %>
         <% step.options.each do |option| %>
           <div class="option-item">

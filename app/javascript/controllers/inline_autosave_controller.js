@@ -33,9 +33,26 @@ export default class extends Controller {
     // can change anything, and which fields they then actually touch. The panel
     // submits the WHOLE step on every change, so without these two the server
     // cannot tell an edit from a seconds-old copy of someone else's field.
+    // Keyed by FIELD, and decided once: which fields are single-input has to be
+    // settled here, not re-derived per save. `options` is several inputs with a
+    // row on screen, but removing the last row leaves only its hidden empty
+    // marker - so a later re-derivation would call it single-input and compare
+    // that marker's "" against the stored Array, refusing the removal as a
+    // conflict. Which is exactly what a system test caught.
     this.renderedValues = new Map()
     this.dirtyFields = new Set()
-    this.namedInputs().forEach(input => this.renderedValues.set(input.name, input.value))
+    this.singleInputFields = new Set()
+
+    const byField = new Map()
+    this.namedInputs().forEach(input => {
+      const field = this.fieldNameOf(input)
+      if (field) byField.set(field, (byField.get(field) ?? []).concat(input))
+    })
+    byField.forEach((inputs, field) => {
+      if (inputs.length !== 1) return
+      this.singleInputFields.add(field)
+      this.renderedValues.set(field, inputs[0].value)
+    })
 
     this.boundMarkDirty = this.markDirty.bind(this)
     this.element.addEventListener("input", this.boundMarkDirty)
@@ -128,9 +145,7 @@ export default class extends Controller {
 
   markDirty(event) {
     const named = this.namedElementFor(event.target)
-    if (!named) return
-
-    const field = this.fieldNameOf(named)
+    const field = named ? this.fieldNameOf(named) : this.declaredFieldFor(event.target)
     if (field) this.dirtyFields.add(field)
   }
 
@@ -151,6 +166,15 @@ export default class extends Controller {
     return this.tracked(editor?.name) ? editor : null
   }
 
+  // A field can also change with no input event on a named control at all:
+  // adding, removing or reordering a Question option or a Form field rewrites
+  // `options` by rebuilding DOM rows, and its controller announces that by
+  // dispatching a bubbling input/change on the CONTAINER. A container has no
+  // name, so it declares the field it stands for instead.
+  declaredFieldFor(target) {
+    return target?.closest?.("[data-autosave-field]")?.dataset?.autosaveField ?? null
+  }
+
   // Written into the form itself rather than appended to a FormData, so the
   // disconnect flush - which snapshots the form - carries them too.
   writeDirtyState() {
@@ -164,6 +188,17 @@ export default class extends Controller {
     // An absent key now means only "a client older than this code".
     this.appendHidden("step[dirty_fields][]", "")
 
+    // The server renders a baseline for every rich-text field on the step, and
+    // the server only ever reads the baseline of a field that is dirty. Sending
+    // the others costs a full copy of each body on every save - measured at
+    // 5.7KB for an ordinary one, and a field may hold up to
+    // MAX_STEP_CONTENT_LENGTH - so the idle ones ride along disabled. Disabled,
+    // not removed: the panel needs them again on the next save.
+    this.element.querySelectorAll("input[data-autosave-rendered]").forEach(input => {
+      const field = input.name.match(/^step\[rendered\]\[([^\]]+)\]/)?.[1]
+      input.disabled = !this.dirtyFields.has(field)
+    })
+
     this.dirtyFields.forEach(field => {
       this.appendHidden("step[dirty_fields][]", field)
       const rendered = this.renderedValueFor(field)
@@ -171,10 +206,13 @@ export default class extends Controller {
     })
   }
 
-  // Only meaningful where a field is one input. `options` is many, and a
-  // checkbox is two (Rails renders a hidden "0" beside it), so those send no
-  // rendered value and the server simply does not conflict-check them.
+  // Only meaningful where a field was one input when the panel rendered.
+  // `options` is many and a checkbox is two (Rails renders a hidden "0" beside
+  // it), so neither sends a rendered value and the server does not
+  // conflict-check them.
   singleInputFor(field) {
+    if (!this.singleInputFields.has(field)) return null
+
     const inputs = this.namedInputs().filter(input => this.fieldNameOf(input) === field)
     return inputs.length === 1 ? inputs[0] : null
   }
@@ -188,15 +226,14 @@ export default class extends Controller {
       return undefined
     }
 
-    const input = this.singleInputFor(field)
-    return input ? this.renderedValues.get(input.name) : undefined
+    return this.singleInputFor(field) ? this.renderedValues.get(field) : undefined
   }
 
   rememberSentValues() {
     this.sentValues = new Map()
     this.dirtyFields.forEach(field => {
       const input = this.singleInputFor(field)
-      if (input) this.sentValues.set(input.name, input.value)
+      if (input) this.sentValues.set(field, input.value)
     })
   }
 
@@ -205,7 +242,7 @@ export default class extends Controller {
   // the value their own last save replaced, and every second edit of a field is
   // refused as a conflict with themselves.
   adoptSentValues() {
-    this.sentValues?.forEach((value, name) => this.renderedValues.set(name, value))
+    this.sentValues?.forEach((value, field) => this.renderedValues.set(field, value))
     this.sentValues = null
     this.dirtyFields.clear()
   }

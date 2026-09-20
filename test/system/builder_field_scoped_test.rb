@@ -104,6 +104,26 @@ class BuilderFieldScopedTest < ApplicationSystemTestCase
     assert_includes message.reload.content.body.to_html, "First words"
   end
 
+  # The rich-text baseline is a full copy of the body, and the server only reads
+  # it for a field that is dirty. Editing something else must not carry it.
+  test "a rich text baseline is not submitted when that field was not edited" do
+    action = Steps::Action.create!(workflow: @workflow, position: 1, title: "Do the thing")
+    action.update!(instructions: "<p>Existing body</p>")
+    Transition.create!(step: @step, target_step: action, position: 0)
+
+    visit_builder_in_edit_mode
+    open_step(action)
+
+    fill_in "step[title]", with: "Renamed only"
+    assert_selector "[data-autosave-status]", text: "Saved", wait: 10
+
+    assert page.evaluate_script(
+      "document.querySelector('input[data-autosave-rendered][name=\\'step[rendered][instructions]\\']').disabled"
+    ), "an untouched rich-text baseline must not be submitted"
+    assert_equal "Renamed only", action.reload.title
+    assert_includes action.instructions.body.to_html, "Existing body"
+  end
+
   private
 
   def visit_builder_in_edit_mode
