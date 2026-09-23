@@ -288,9 +288,13 @@
   border-bottom: 0;
 }
 
+/* Shrinks and wraps: an answer label with no spaces (a ticket id, a URL)
+   was flex: 0 0 auto and pushed the target, Change and Remove off the panel
+   (QA B-003). A normal label still sits at its own width. */
 .step-doors__label {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   min-width: 4rem;
+  overflow-wrap: anywhere;
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-ink);
