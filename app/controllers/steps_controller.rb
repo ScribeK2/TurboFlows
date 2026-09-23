@@ -1,4 +1,6 @@
 class StepsController < ApplicationController
+  include BroadcastsOutline
+
   # Derived from StepFieldMap, so a field added there is permitted here without
   # anyone remembering this list exists. `description` was rendered by the
   # Resolve editor and missing from this list for months: the value was dropped
@@ -439,21 +441,7 @@ class StepsController < ApplicationController
   end
 
   def broadcast_step_list
-    Turbo::StreamsChannel.broadcast_update_to(
-      "workflow_#{@workflow.id}",
-      target: "steps-list",
-      partial: "workflows/steps_list_items",
-      locals: { workflow: @workflow.reload, steps: list_steps, outline: outline }
-    )
-    # The list-level "An existing step…" dialog (workflows/_list_target_picker)
-    # sits beside #steps-list, not in it, so the update above leaves its
-    # candidates stale - a step grown in another tab would never be offered.
-    Turbo::StreamsChannel.broadcast_replace_to(
-      "workflow_#{@workflow.id}",
-      target: "list-target-picker-options",
-      partial: "steps/target_picker_options",
-      locals: list_target_picker_options_locals
-    )
+    broadcast_outline(@workflow.reload, steps: list_steps, outline: outline)
   end
 
   def list_target_picker_options_locals

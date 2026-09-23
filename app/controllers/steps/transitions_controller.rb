@@ -4,6 +4,7 @@ module Steps
   # Connections section, whole: the editor beside the doors holds a snapshot,
   # and one still listing a removed connection would save it back.
   class TransitionsController < ApplicationController
+    include BroadcastsOutline
     include ActionView::RecordIdentifier
 
     before_action :set_workflow
@@ -139,20 +140,7 @@ module Steps
                                                             locals: { step: @step, workflow: @workflow, outline: outline })
       ]
 
-      Turbo::StreamsChannel.broadcast_update_to(
-        "workflow_#{@workflow.id}",
-        target: "steps-list",
-        partial: "workflows/steps_list_items",
-        locals: { workflow: @workflow, steps: steps, outline: outline }
-      )
-      # The list-level dialog sits beside #steps-list, not in it, so its
-      # candidates ride along with every list broadcast.
-      Turbo::StreamsChannel.broadcast_replace_to(
-        "workflow_#{@workflow.id}",
-        target: "list-target-picker-options",
-        partial: "steps/target_picker_options",
-        locals: { step: nil, workflow: @workflow, options_id: "list-target-picker-options", outline: outline }
-      )
+      broadcast_outline(@workflow, steps: steps, outline: outline)
       broadcast_connections
     end
 

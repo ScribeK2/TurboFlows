@@ -1,5 +1,7 @@
 module Workflows
   class HealthFixesController < BaseController
+    include BroadcastsOutline
+
     before_action :ensure_can_edit_workflow!
 
     # POST /workflows/:workflow_id/health_fix
@@ -109,6 +111,10 @@ module Workflows
         end
         format.html { redirect_to workflow_path(@workflow, edit: true), notice: "Fix applied." }
       end
+
+      # A fix writes a connection or a step like any grow, so every other tab
+      # has to see it (QA C-003, 2026-09-23).
+      broadcast_outline(@workflow, steps:, outline:)
     end
   end
 end
