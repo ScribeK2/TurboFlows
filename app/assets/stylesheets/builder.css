@@ -349,6 +349,12 @@
      sibling. See docs/agents/builder.md § The list is an outline. */
   .builder__node { min-width: 0; }
 
+  /* A node takes focus only from code (tabindex="-1", the list dialog's
+     fallback after a pick). It wraps its whole subtree, so the ring goes on
+     its own row rather than around the branch. */
+  .builder__node:focus { outline: none; }
+  .builder__node:focus-visible > .builder__step { outline: var(--focus-ring); }
+
   .builder__list .list-row:not(:last-child) { border-bottom: 0; }
   .builder__step { border-radius: var(--radius); }
 

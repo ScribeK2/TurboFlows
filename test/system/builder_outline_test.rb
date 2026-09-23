@@ -564,6 +564,38 @@ class BuilderOutlineTest < ApplicationSystemTestCase
     assert_selector "#{fold}[open]", wait: 5
   end
 
+  # QA D-004 (and A-002): when the picked door comes back as plain text (a
+  # wired continuation), focus fell back to the row's Remove button, which is
+  # opacity 0 until hovered, so the next Space asked "Remove this step?".
+  test "a pick that leaves no chip to focus puts focus on the from-step's node, not a Remove button" do
+    q = Steps::Question.create!(workflow: @workflow, title: "Q", position: 0, answer_type: "yes_no", variable_name: "q")
+    done = Steps::Resolve.create!(workflow: @workflow, title: "Done", position: 1)
+    loose = Steps::Resolve.create!(workflow: @workflow, title: "Loose", position: 2)
+    Transition.create!(step: q, target_step: done, condition: "q == 'yes'", position: 0)
+    @workflow.update_columns(start_step_id: q.id)
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 3, wait: 5
+
+    pick_existing_from(q, "No → add step")
+    within("dialog#list-target-picker") { click_on "Loose" }
+    assert_no_selector "dialog#list-target-picker[open]", wait: 5
+    assert_equal loose, q.transitions.reload.find_by(condition: "q == 'no'").target_step
+
+    node_focused = "document.activeElement.matches('[role=treeitem][data-node-uuid=\"#{q.uuid}\"]') && document.activeElement.isConnected"
+    assert_eventually { page.evaluate_script(node_focused) }
+    assert_not page.evaluate_script("document.activeElement.matches('button')")
+
+    # The pick's own list broadcast, arriving late, replaces the node; the guard
+    # puts focus back on the new one, never on a button.
+    html = ApplicationController.render(
+      partial: "workflows/steps_list_items",
+      locals: { workflow: @workflow.reload, steps: @workflow.steps.ordered.includes(transitions: :target_step) }
+    )
+    stream = %(<turbo-stream action="update" target="steps-list"><template>#{html}</template></turbo-stream>)
+    page.execute_script("Turbo.renderStreamMessage(#{stream.to_json})")
+    assert_eventually { page.evaluate_script(node_focused) }
+  end
+
   def jump_focused_js
     "document.activeElement.matches('.builder__outline-jump') && document.activeElement.isConnected"
   end

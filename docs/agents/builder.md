@@ -419,11 +419,17 @@ guide line. A linear workflow therefore renders exactly as the flat list did.
   and now nests under it. `openFromList` keeps a selector for either, keyed by
   the door's `data-door-key`, and `focusWhenReplaced` finds the new element on
   close. When neither exists (a wired continuation chip is plain text), focus
-  falls back to the from-step's Remove button. The acting tab also receives
+  falls back to the from-step's treeitem node, which carries `tabindex="-1"`
+  so code can focus it without adding it to the Tab order, and which shows
+  the ring on its own row. Never a button: the fallback was the row's Remove,
+  opacity 0 until hovered, and a Space pressed after a click on empty page
+  (which leaves focus on `<body>`, so the guard below moved it there) asked
+  "Remove this step?" (QA D-004). The acting tab also receives
   its OWN Action Cable broadcast of the same list a moment later. That
   replaces the element just focused and drops focus on `<body>`. So
   `refocusAfterSelfBroadcast` watches the page with a `MutationObserver` for
-  one second and puts focus back only while it sits on `<body>`, so an author
+  one second and puts focus back, on the same element or the same node
+  fallback, only while it sits on `<body>`, so an author
   who has tabbed on is never pulled back. It is a MutationObserver rather than
   `turbo:before-stream-render`, which Turbo dispatches before the render
   happens.

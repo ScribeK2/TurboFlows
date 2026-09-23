@@ -38,11 +38,13 @@ export default class extends Controller {
     // After a pick the door is a jump (a button) or, when its target was
     // unplaced, a fold's <summary> carrying the same key; only one of the two
     // exists. A wired continuation chip is plain text, so submitEnded falls
-    // back to the from-step's row delete button rather than leave focus on
-    // <body>.
+    // back to the from-step's treeitem node (tabindex="-1") rather than leave
+    // focus on <body>. Never a button: the row's Remove is opacity 0 until
+    // hovered, and focus left there turned the next Space into "Remove this
+    // step?" (QA D-004).
     const key = detail.doorKey ? CSS.escape(detail.doorKey) : null
     this.focusAfter = key ? `[data-door-key="${key}"] button, summary[data-door-key="${key}"]` : null
-    this.focusFallback = `.builder__step[data-step-id="${CSS.escape(String(detail.from))}"] .builder__step-delete`
+    this.focusFallback = `[role="treeitem"]:has(> .builder__step[data-step-id="${CSS.escape(String(detail.from))}"])`
     this.show({
       label: detail.label || "",
       condition: detail.condition || "",
