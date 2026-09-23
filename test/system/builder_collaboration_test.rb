@@ -148,6 +148,7 @@ class BuilderCollaborationTest < ApplicationSystemTestCase
     sign_in_as @editor_one
     visit_builder
     assert_selector STEP_ROW, count: 3, wait: 5
+    within(node_for(q)) { assert_no_selector ".builder__outline-jump" }
 
     using_session(:editor_two) do
       sign_in_as @editor_two

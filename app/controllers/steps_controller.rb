@@ -148,8 +148,14 @@ class StepsController < ApplicationController
       # saved-change tracking: nil unless this save renamed a Question's own
       # variable_name, else [old_name, new_name].
       rename_pair = @step.try(:renamed_variable_pair)
-      # Read now, before the reload below clears saved-change tracking.
-      outline_changed = outline_changed?
+      # Read now, before the reload below clears saved-change tracking. This is
+      # only the FIELD half of whether the outline needs the whole list -
+      # transitions_json is folded in below, once TransitionSync has actually
+      # run: that field is present on every non-Resolve panel autosave (the
+      # editor renders it non-blank and inline-autosave never marks it dirty),
+      # so its mere presence can't tell a real retarget from an unchanged
+      # snapshot - only TransitionSync's own before/after signature can.
+      outline_changed = @step.saved_changes.keys.intersect?(OUTLINE_FIELDS)
 
       if step_params[:transitions_json].present?
         refusal = sync_transitions(rename_pair)
@@ -158,6 +164,8 @@ class StepsController < ApplicationController
         # So this answers a refusal rather than the success path, and says the
         # truth: the step was saved, its connections were not.
         return respond_to_connections_refusal(refusal, rename_pair) if refusal
+
+        outline_changed ||= @sync_result.changed
       end
 
       respond_to do |format|
@@ -416,14 +424,6 @@ class StepsController < ApplicationController
       partial: "workflows/steps_list_items",
       locals: { workflow: @workflow.reload, steps: list_steps }
     )
-  end
-
-  # Whether this save changed something the OUTLINE shows beyond this step's
-  # own row (see OUTLINE_FIELDS), or moved a connection via transitions_json -
-  # either means every open tab's jump chips, fold summaries and ways-in
-  # tooltips naming this step are now stale, not just its row.
-  def outline_changed?
-    @step.saved_changes.keys.intersect?(OUTLINE_FIELDS) || step_params[:transitions_json].present?
   end
 
   def set_step

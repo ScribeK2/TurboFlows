@@ -28,7 +28,7 @@
 class TransitionSync
   class Malformed < StandardError; end
 
-  Result = Data.define(:skipped)
+  Result = Data.define(:skipped, :changed)
 
   def self.call(step, json, renamed_variable: nil)
     new(step, json, renamed_variable).call
@@ -44,6 +44,7 @@ class TransitionSync
 
   def call
     steps_by_uuid = @step.workflow.steps.index_by(&:uuid)
+    before = signature
 
     Transition.transaction do
       @step.transitions.where(uuid: shown_uuids - rows.pluck("uuid")).destroy_all
@@ -54,10 +55,25 @@ class TransitionSync
       Transition.settle_positions(@step)
     end
 
-    Result.new(skipped: @skipped)
+    Result.new(skipped: @skipped, changed: signature != before)
   end
 
   private
+
+  # Whether this save actually changed anything about the step's OWN
+  # connections - not merely whether a sync ran. The panel's hidden
+  # transitions_json field rides along on every autosave (see
+  # docs/agents/builder.md's "the panel submits the whole step on every
+  # change"), present and non-blank whether or not the author touched a
+  # connection, so the caller cannot tell a real edit from an unchanged
+  # snapshot without asking this. Ordered by id so two reads of the same rows
+  # compare equal regardless of insert order; position is included because
+  # Transition.settle_positions can reorder a SIBLING row this payload never
+  # named, and that reorder is exactly the kind of change a stale doors list
+  # or jump chip would otherwise miss.
+  def signature
+    @step.transitions.order(:id).pluck(:uuid, :target_step_id, :condition, :label, :position)
+  end
 
   # A missing row (no transition with this uuid, scoped to this step) is only
   # ever created when this editor minted it - or, under the legacy shape,
