@@ -65,6 +65,41 @@ class NarrowViewportTest < ApplicationSystemTestCase
     assert_selector ".builder__list", visible: true
   end
 
+  # At a phone's width the panel takes the list's place in the page, but the
+  # page kept its scroll: a step tapped low in a long list opened its panel
+  # scrolled to the middle, header and Close above the screen, with nothing
+  # saying which step was open; closing left the author somewhere else in the
+  # list (QA C-007, 2026-09-23).
+  #
+  # Mutation check: drop the scroll handling in builder#onPanelFrameLoad /
+  # #closePanel - red on the header, then on the row.
+  test "a panel opened low in a long list on a phone opens at its top, and closing returns to the row" do
+    steps = Array.new(20) do |i|
+      Steps::Action.create!(workflow: @workflow, title: "wf-system-test-Check #{i + 1}", position: i)
+    end
+    done = Steps::Resolve.create!(workflow: @workflow, title: "wf-system-test-Done", position: 20)
+    (steps + [done]).each_cons(2) { |from, to| Transition.create!(step: from, target_step: to) }
+    @workflow.update!(start_step: steps.first)
+
+    visit workflow_path(@workflow, edit: true)
+    row = find("#{STEP_ROW}[data-step-uuid='#{steps[16].uuid}']")
+    row.scroll_to(row, align: :center)
+    scrolled = page.evaluate_script("window.scrollY")
+    assert_operator scrolled, :>, 300, "the list is long enough to scroll the page"
+    row.click
+    assert_selector "turbo-frame#builder-panel form", wait: 5
+
+    close_top = -> { page.evaluate_script("document.querySelector('.builder__panel-close').getBoundingClientRect().top") }
+    assert_eventually(timeout: 5) { close_top.call >= 0 }
+    assert_operator close_top.call, :<, 200, "the panel's header and Close are on screen"
+
+    find(".builder__panel-close").click
+    assert_selector ".builder__list", visible: true
+    row_top = -> { page.evaluate_script("document.querySelector(\"#{STEP_ROW}[data-step-uuid='#{steps[16].uuid}']\").getBoundingClientRect().top") }
+    viewport = page.evaluate_script("window.innerHeight")
+    assert_eventually(timeout: 5) { row_top.call.between?(0, viewport - 40) }
+  end
+
   # Below the 640px breakpoint, .builder__list (and the one type picker inside
   # it) is hidden while a panel is open - but the panel's own "New step"
   # buttons (outside the list entirely) must still reach it. It used to be

@@ -5,6 +5,10 @@ import { revealRowInList } from "services/scroll"
 // the header title matches it, so the two fields behave the same way.
 const TITLE_SAVE_DEBOUNCE = 2000
 
+// builder.css's one-column breakpoint: below it the open panel takes the
+// list's place in the page instead of sitting beside it.
+const ONE_COLUMN = "(max-width: 640px)"
+
 // Manages the builder shell: panel open/close, mode toggle, keyboard shortcuts.
 export default class extends Controller {
   static targets = ["panel", "titleInput"]
@@ -60,6 +64,13 @@ export default class extends Controller {
     const row = this.stepToReveal && this.rowFor(this.stepToReveal)
     if (row) revealRowInList(row, { block: "center" })
     this.stepToReveal = null
+
+    // In one column the panel replaces the list where the page is, and the
+    // page kept its scroll: a step tapped low in a long list opened with its
+    // header and Close above the screen (QA C-007). Start it at its top.
+    // The frame itself is display: contents - no box, so scrolling it does
+    // nothing; its .builder__panel wrapper has one.
+    if (this.oneColumn) this.panelTarget.closest(".builder__panel")?.scrollIntoView({ block: "start" })
   }
 
   // Composes with any other turbo:before-stream-render listener (e.g.
@@ -205,6 +216,15 @@ export default class extends Controller {
         this.panelTarget.removeChild(this.panelTarget.firstChild)
       }
     }
+
+    // In one column, closing puts the list back: return to where the author
+    // was in it when the panel took its place (see #loadPanel).
+    if (this.listScrollY != null && this.oneColumn) window.scrollTo(0, this.listScrollY)
+    this.listScrollY = null
+  }
+
+  get oneColumn() {
+    return window.matchMedia(ONE_COLUMN).matches
   }
 
   // Whether the panel is open, read from the same fact the CSS uses: does the
@@ -284,6 +304,9 @@ export default class extends Controller {
     // And any jump's pending second look (see #openStep): a health, settings
     // or flow panel loaded after a jump must not scroll to the jump's row.
     this.stepToReveal = null
+    // Opening over the list (not moving from one panel to another): remember
+    // where the page was, for #closePanel to come back to.
+    if (!this.panelOpen) this.listScrollY = window.scrollY
 
     this.panelTarget.src = this.modeValue === "edit" ? url : this.readonlyUrl(url)
   }
