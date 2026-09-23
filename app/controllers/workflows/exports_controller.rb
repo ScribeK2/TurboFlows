@@ -27,7 +27,7 @@ module Workflows
     def pdf
       require "prawn"
 
-      pdf = Prawn::Document.new
+      pdf = PdfFonts.apply(Prawn::Document.new)
       pdf.text @workflow.title, size: 24, style: :bold
       pdf.move_down 10
       pdf.text @workflow.description_text, size: 12 if @workflow.description_text.present?

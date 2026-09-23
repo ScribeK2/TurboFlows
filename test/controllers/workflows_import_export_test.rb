@@ -494,4 +494,27 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
   ensure
     Thread.current[:recorded_pdf_text] = nil
   end
+
+  # Prawn's built-in Helvetica is Windows-1252 only: before the export carried
+  # its own fonts, one "→" anywhere in a workflow raised
+  # Prawn::Errors::IncompatibleStringEncoding and the export was a 500. Authors
+  # write arrows, check marks, curly quotes and emoji into titles and
+  # instructions all the time (26 of 107 dev workflows had one).
+  #
+  # Mutation check: drop `PdfFonts.apply(...)` around Prawn::Document.new in #pdf - red.
+  test "the PDF exports a workflow whose text is outside Windows-1252" do
+    workflow = Workflow.create!(title: "Reset → reconnect ✓", description: "“Quoted” — Привет",
+                                user: @editor)
+    Steps::Question.create!(workflow: workflow, title: "Waited ≤ 5 min?", position: 0,
+                            question: "Is the light ★ green? 🙂", answer_type: "yes_no", variable_name: "waited")
+    Steps::Action.create!(workflow: workflow, title: "Settings → Storage", position: 1,
+                          instructions: "Tap Settings → Storage → Clear cache ✓")
+    Steps::Resolve.create!(workflow: workflow, title: "Fixed ✓", position: 2)
+
+    get pdf_workflow_export_path(workflow)
+
+    assert_response :success
+    assert_equal "application/pdf", response.content_type
+    assert response.body.start_with?("%PDF"), "the body is a PDF"
+  end
 end
