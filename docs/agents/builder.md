@@ -693,7 +693,8 @@ to the row and `aria-selected="true"` to the row's enclosing `role="treeitem"`
 (the outline's wrapper inside `#steps-list` is `role="tree"`, each node a
 `treeitem` with `aria-level`, each exit branch and the Unconnected section a
 `group`). A jump chip is not a row: `builder#openStep` from a jump
-selects the row of the step it OPENS (`data-builder-step-id-param`), never the
+selects the row of the step it OPENS (`data-builder-step-id-param`, which View
+Flow's nodes and the health panel's step links carry too), never the
 chip, and brings that row into view (QA C-002). It does NOT open folds
 itself: `outline-fold` is the only writer of a fold's `open`, because a second
 writer's opens were re-closed by its next reapply (review, 2026-09-23). So

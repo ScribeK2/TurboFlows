@@ -35,6 +35,7 @@
               <div class="flow-diagram__node flow-diagram__node--<%= step.step_type %>"
                    data-action="click->builder#openStep"
                    data-builder-url-param="<%= panel_edit_workflow_step_path(workflow, step) %>"
+                   data-builder-step-id-param="<%= step.id %>"
                    title="<%= step.title %>">
                 <span class="flow-diagram__node-number"><%= ordinals[step.uuid] %></span>
                 <span class="flow-diagram__node-title"><%= truncate(step.title.presence || "Untitled", length: 20) %></span>

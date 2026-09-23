@@ -547,6 +547,21 @@ class BuilderOutlineTest < ApplicationSystemTestCase
     assert_eventually { page.evaluate_script(row_visible_in_list_js(far)) }
   end
 
+  # Review round 2: View Flow's nodes and the health panel's step links open a
+  # step too, and now name it, so its row is selected and scrolled to.
+  test "opening a step from View Flow selects its row and brings it into view" do
+    _chain, last = long_chain
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 21, wait: 5
+    click_on "View Flow"
+    find(".flow-diagram__node[title='Last?']", wait: 5).click
+
+    assert_selector "#builder-panel .builder__panel-body[data-step-id='#{last.id}']", wait: 5
+    assert_selector "#{STEP_ROW}.builder__step--selected[data-step-uuid='#{last.uuid}']"
+    assert_panel_settled
+    assert_eventually { page.evaluate_script(row_visible_in_list_js(last)) }
+  end
+
   # QA C-001: the open step's branch sprang open again on every keystroke,
   # because the reveal ran on every DOM mutation. It now runs when the open
   # step changes or the list re-renders; between those, the author's fold holds.
