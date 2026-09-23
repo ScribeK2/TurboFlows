@@ -364,6 +364,12 @@ class BuilderOutlineTest < ApplicationSystemTestCase
     visit workflow_path(@workflow, edit: true)
     assert_selector STEP_ROW, count: 1, wait: 5
 
+    # Shown for a chip first, so the bottom prompt has to hide it again.
+    within(node_for(q)) { click_on "No → add step" }
+    within(".builder__type-picker") { assert_button "An existing step…" }
+    find("body").send_keys(:escape)
+    assert_no_selector ".builder__type-picker:not([hidden])"
+
     click_on "Add unconnected step"
     within(".builder__type-picker") { assert_no_button "An existing step…" }
     find("body").send_keys(:escape)
