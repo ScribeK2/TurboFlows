@@ -32,6 +32,20 @@ class PlayerSharingTest < ActionDispatch::IntegrationTest
     assert_nil @workflow.share_token
   end
 
+  # What the settings panel's draft hint promises (_share_link_draft_hint):
+  # the link answers "not found" while the workflow is a draft, and the SAME
+  # link works once it is published.
+  test "a draft's share link is not found until the workflow is published, then works" do
+    @workflow.generate_share_token!
+    @workflow.update!(status: "draft")
+    get shared_player_path(share_token: @workflow.share_token)
+    assert_response :not_found
+
+    @workflow.update!(status: "published")
+    get shared_player_path(share_token: @workflow.share_token)
+    assert_response :redirect
+  end
+
   test "shared link accessible without login" do
     @workflow.generate_share_token!
     get shared_player_path(share_token: @workflow.share_token)

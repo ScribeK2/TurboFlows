@@ -21,6 +21,25 @@ module Workflows
       assert_response :success
     end
 
+    # A share link opens only a PUBLISHED workflow (PlayerController#show_shared
+    # uses Workflow.published), so on a draft it 404s - and the panel handed the
+    # author a link to copy and send without a word (QA C-006, 2026-09-23).
+    test 'a draft says its share link works only once it is published' do
+      @workflow.update!(status: 'draft')
+      get workflow_settings_path(@workflow)
+      assert_select '.form-hint', text: /works once this workflow is published/
+
+      @workflow.update!(share_token: SecureRandom.urlsafe_base64(16))
+      get workflow_settings_path(@workflow)
+      assert_select '.form-hint', text: /works once this workflow is published/
+    end
+
+    test 'a published workflow does not warn about its share link' do
+      @workflow.update!(status: 'published', share_token: SecureRandom.urlsafe_base64(16))
+      get workflow_settings_path(@workflow)
+      assert_select '.form-hint', text: /works once this workflow is published/, count: 0
+    end
+
     test 'show requires authentication' do
       sign_out @editor
       get workflow_settings_path(@workflow)
