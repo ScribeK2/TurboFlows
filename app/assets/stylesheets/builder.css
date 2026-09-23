@@ -227,6 +227,13 @@
     padding-left: calc(var(--space-4) - 3px);
   }
 
+  /* A title can hold one long unbreakable run: a URL, a ticket id, pasted
+     code. At panel-open width it overflowed the row and ran under the warning
+     icon and Remove. The title is a flex container, so its text is an
+     anonymous flex item whose min-content is that whole run; `anywhere`,
+     unlike `break-word`, lowers min-content, so the item can shrink. */
+  .builder__step .list-row__title { overflow-wrap: anywhere; }
+
   /* Only "Start" / "Terminal" now: where a step leads is the outline around
      its row (workflows/_step_node), not a crumb on it. */
   .builder__step-meta {
@@ -390,6 +397,10 @@
      the pill's fill, so it reads as wired-but-unusual, not unfinished. */
   .builder__outline-door--extra .builder__outline-chip { border-style: dashed; font-weight: 500; }
 
+  /* "→ Title · step N" beside an extra: a title that is one unbreakable run
+     wraps inside the door's line rather than overflowing it. */
+  .builder__outline-extra-target { min-width: 0; overflow-wrap: anywhere; }
+
   /* A condition format_condition_for_display could not read: the raw
      expression, set in mono so it does not pass for an answer's label. */
   .builder__outline-chip--expression { font-family: var(--font-mono); }
@@ -451,6 +462,8 @@
   .builder__outline-chip.builder__outline-jump {
     max-width: 100%;
     white-space: normal;
+    /* The target's title may be one unbreakable run, as on the row. */
+    overflow-wrap: anywhere;
     text-overflow: clip;
     border-radius: var(--radius-lg);
   }
@@ -517,6 +530,7 @@
   .builder__outline-fold-count {
     flex: 1 1 10rem;
     min-width: 0;
+    overflow-wrap: anywhere;
     color: var(--color-ink-muted);
   }
 
