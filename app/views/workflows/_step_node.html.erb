@@ -21,6 +21,16 @@
 <% row_title = step.title.presence || "Untitled #{step.step_type.titleize}" %>
 <% target_title = ->(target) { target.title.presence || "Untitled #{target.step_type.titleize}" } %>
 <% ways_in = outline.ways_in_for(step) %>
+<%# A door's key - how a fold (data-fold-key) and the chip menu's focus return
+    (data-door-key) find the door again after a re-render - is its label. Two
+    answers may share a label, and then they folded as one (QA B-002), so a
+    repeat gets its position in door order: "Same", "Same#2". %>
+<% door_keys = {} %>
+<% label_counts = Hash.new(0) %>
+<% (node.exits + [node.continuation].compact).each do |edge| %>
+  <% count = label_counts[edge.door.label] += 1 %>
+  <% door_keys[edge.door.object_id] = count == 1 ? edge.door.label : "#{edge.door.label}##{count}" %>
+<% end %>
 
 <%# A stub and a jump are ONE button each with the door's label inside, so the
     whole chip is the click target and a stub's words are today's row-stub
@@ -30,7 +40,7 @@
   <% door = edge.door %>
   <% stub_label = door.kind == :next ? "→" : "#{door.label} →" %>
   <div class="builder__outline-door builder__outline-door--<%= edge.kind %><%= " builder__outline-door--continue" if continuation %>"
-       data-door-key="<%= step.id %>:<%= door.label %>">
+       data-door-key="<%= step.id %>:<%= door_keys[door.object_id] %>">
     <% case edge.kind %>
     <% when :step %>
       <span class="builder__type-dot builder__type-dot--<%= edge.target.step_type %>" aria-hidden="true"></span>
@@ -95,9 +105,9 @@
     <div class="builder__outline-branch" role="group">
       <% node.exits.each do |edge| %>
         <% if edge.kind == :step %>
-          <details class="builder__outline-fold" open data-fold-key="<%= step.uuid %>:<%= edge.door.label %>">
+          <details class="builder__outline-fold" open data-fold-key="<%= step.uuid %>:<%= door_keys[edge.door.object_id] %>">
             <summary class="builder__outline-door builder__outline-door--step builder__outline-door--fold"
-                     data-door-key="<%= step.id %>:<%= edge.door.label %>">
+                     data-door-key="<%= step.id %>:<%= door_keys[edge.door.object_id] %>">
               <span class="builder__type-dot builder__type-dot--<%= edge.target.step_type %>" aria-hidden="true"></span>
               <span class="builder__outline-chip" title="<%= edge.door.label %>"><%= edge.door.label %></span>
               <span class="builder__outline-fold-count">→ <%= target_title.call(edge.target) %> <span class="builder__outline-step-ref">· step <%= ordinals[edge.target.uuid] %> · <%= pluralize(edge.child.chain_rows, "step") %></span></span>
