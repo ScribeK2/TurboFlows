@@ -9,8 +9,11 @@ import { Controller } from "@hotwired/stimulus"
 // The author's folds are recorded from clicks on a fold's <summary> (keyboard
 // activation fires click too), never from `toggle`: toggle fires
 // asynchronously, so a restore made here would come back as if the author had
-// done it. The branch holding the step whose panel is open is always shown,
-// without forgetting that the author folded it.
+// done it. The branch holding the step whose panel is open is shown when that
+// panel opens, and again after a list re-render, without forgetting that the
+// author folded it. Between those, a fold the author makes by hand sticks: the
+// reveal used to run on every mutation, so the next keystroke in the panel
+// (the save indicator's text changing) sprang the branch open again (QA C-001).
 //
 // The Collapse all/Expand all LABEL is a different matter: it only reads the
 // DOM's current `open` state, never records anything, so deriving it from
@@ -22,12 +25,13 @@ import { Controller } from "@hotwired/stimulus"
 // its microtask checkpoint after the flip, which is why this shipped once
 // already. `toggle` does not bubble, so a bubble-phase listener on the root
 // never sees it; capture does. Never compute the label from `this.closed`
-// either: `revealOpenStep` opens a fold without discarding its entry there.
+// either: `this.revealed` holds a fold open without discarding its entry there.
 export default class extends Controller {
   static targets = ["toggleAll"]
 
   connect() {
     this.closed = new Set()
+    this.revealed = new Set()
     this.boundClick = this.clicked.bind(this)
     this.element.addEventListener("click", this.boundClick)
     this.boundToggle = () => this.updateToggleAll()
@@ -53,8 +57,12 @@ export default class extends Controller {
     // The click runs before the browser flips `open`: the state now is the
     // state being left. The label itself is refreshed by the capture-phase
     // `toggle` listener above, once the flip has actually happened.
-    if (details.open) this.closed.add(details.dataset.foldKey)
-    else this.closed.delete(details.dataset.foldKey)
+    if (details.open) {
+      this.closed.add(details.dataset.foldKey)
+      this.revealed.delete(details.dataset.foldKey)
+    } else {
+      this.closed.delete(details.dataset.foldKey)
+    }
   }
 
   toggleAll() {
@@ -76,21 +84,34 @@ export default class extends Controller {
   }
 
   reapply() {
+    this.updateRevealed()
     this.folds().forEach(details => {
-      const open = !this.closed.has(details.dataset.foldKey)
+      const key = details.dataset.foldKey
+      const open = !this.closed.has(key) || this.revealed.has(key)
       if (details.open !== open) details.open = open
     })
-    this.revealOpenStep()
     this.updateToggleAll()
   }
 
-  revealOpenStep() {
+  // Which folds are held open for the open step: those around its row, worked
+  // out afresh only when the open step changes or the outline itself was
+  // replaced (both update("steps-list") and replace("step-list") render a
+  // fresh .builder__outline; a save indicator's text or one row's replacement
+  // do not). Between those, reapply keeps the set as it is, so a fold the
+  // author closes by hand (clicked() drops it from the set) stays closed.
+  updateRevealed() {
     const stepId = this.element.querySelector("#builder-panel .builder__panel-body[data-step-id]")?.dataset.stepId
+    const outline = this.element.querySelector(".builder__outline")
+    if (stepId === this.revealedStepId && outline === this.revealedOutline) return
+
+    this.revealedStepId = stepId
+    this.revealedOutline = outline
+    this.revealed = new Set()
     if (!stepId) return
 
     const row = this.element.querySelector(`.builder__step[data-step-id="${CSS.escape(stepId)}"]`)
     for (let fold = row?.closest("details[data-fold-key]"); fold; fold = fold.parentElement?.closest("details[data-fold-key]")) {
-      if (!fold.open) fold.open = true
+      this.revealed.add(fold.dataset.foldKey)
     }
   }
 

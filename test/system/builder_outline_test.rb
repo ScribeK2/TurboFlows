@@ -531,6 +531,39 @@ class BuilderOutlineTest < ApplicationSystemTestCase
     assert_eventually { page.evaluate_script(row_visible_in_list_js(far)) }
   end
 
+  # QA C-001: the open step's branch sprang open again on every keystroke,
+  # because the reveal ran on every DOM mutation. It now runs when the open
+  # step changes or the list re-renders; between those, the author's fold holds.
+  test "folding the open step's branch sticks while typing, and opening another step in it reveals it" do
+    toy_graph
+    # q2 Yes → Confirm → Working, so the branch holds two steps.
+    confirm = Steps::Action.create!(workflow: @workflow, title: "Confirm", position: 5)
+    Transition.where(step: @q2, condition: "back == 'yes'").update_all(target_step_id: confirm.id)
+    Transition.create!(step: confirm, target_step: @working)
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 6, wait: 5
+    fold = "details[data-fold-key='#{@q2.uuid}:Yes']"
+
+    open_step(confirm)
+    find("#{fold} > summary").click
+    assert_selector "#{fold}:not([open])"
+    find("#builder-panel input[name='step[title]']").send_keys("!")
+    assert_selector "#builder-panel [data-autosave-status]", text: /Unsaved|Saving|Saved/, wait: 5
+    sleep 0.3 # a reveal on the keystroke's own mutation lands within a microtask
+    assert_selector "#{fold}:not([open])"
+
+    # The title save re-renders the whole list, which reveals the branch again.
+    assert_selector "#{STEP_ROW}[data-step-title='Confirm!']", wait: 5, visible: :all
+    assert_selector "#{fold}[open]", wait: 5
+
+    # Fold it again and open a different step inside it, from q1's jump.
+    find("#{fold} > summary").click
+    assert_selector "#{fold}:not([open])"
+    within(node_for(@q1)) { find(".builder__outline-jump", text: "Working").click }
+    assert_selector "#builder-panel .builder__panel-body[data-step-id='#{@working.id}']", wait: 5
+    assert_selector "#{fold}[open]", wait: 5
+  end
+
   def jump_focused_js
     "document.activeElement.matches('.builder__outline-jump') && document.activeElement.isConnected"
   end

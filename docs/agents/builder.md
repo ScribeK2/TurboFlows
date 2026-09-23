@@ -376,9 +376,18 @@ guide line. A linear workflow therefore renders exactly as the flat list did.
     `<details>.open` AFTER a trusted click's handlers return, so a microtask
     queued there still sees the state being left. A scripted `.click()` does
     not show this, which is how it shipped once.
-  - `revealOpenStep` always opens the branch holding the step whose panel is
-    open, without removing it from the closed set. So a revealed fold closes
-    again once the panel moves elsewhere; that residual is deliberate for now.
+  - The branch holding the step whose panel is open is revealed: its folds
+    go into `this.revealed`, which holds them open without removing them from
+    the closed set. So a revealed fold closes again once the panel moves
+    elsewhere; that residual is deliberate for now. `updateRevealed` works
+    that set out afresh ONLY when the open step changes or the outline itself
+    was replaced (a fresh `.builder__outline` element, which both
+    `update("steps-list")` and `replace("step-list")` render, and a save
+    indicator's text or one row's replacement do not). Between those, a fold
+    the author closes by hand leaves the set and stays closed. It used to
+    reveal on every mutation, so the next keystroke in the panel sprang the
+    branch open again (QA C-001). A title save re-renders the whole list, so
+    it reveals the branch again once it lands; that is the rule, not a bug.
     Collapse all fills or empties the same set, and the button is labelled by
     what it will do. It is hidden, and `.builder__list-tools` with it, when
     the workflow has no fold. A viewer in view mode folds too.
