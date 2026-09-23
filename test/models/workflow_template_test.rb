@@ -59,6 +59,20 @@ class WorkflowTemplateTest < ActiveSupport::TestCase
     end
   end
 
+  # YAML reads a bare yes/no/on/off as a boolean: `condition: yes` became the
+  # string "t" once stored, and `condition: no` a blank - so a Yes door never
+  # fired and No silently turned into the fallback. Quote them.
+  test "every transition condition is a string, not a YAML boolean" do
+    WorkflowTemplate.all.each do |key, template|
+      template["transitions"].each do |t|
+        next unless t.key?("condition")
+
+        assert_kind_of String, t["condition"],
+                       "#{key}: #{t['from']} → #{t['to']} condition #{t['condition'].inspect} - quote it in config/templates.yml"
+      end
+    end
+  end
+
   test "templates are frozen" do
     template = WorkflowTemplate.find("guided_decision")
     assert_raises(FrozenError) { template["name"] = "Modified" }
