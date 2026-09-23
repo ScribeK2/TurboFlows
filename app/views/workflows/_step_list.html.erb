@@ -1,5 +1,5 @@
 <%#
-  Step List — builder step list with SortableJS drag-and-drop.
+  Step List — the builder's step list.
 
   Local variables:
   - workflow: Workflow object
@@ -12,8 +12,7 @@
 %>
 <div class="builder__list"
      id="step-list"
-     data-controller="step-list"
-     data-step-list-reorder-url-value="<%= reorder_workflow_step_path(workflow, ':id') %>">
+     data-controller="step-list">
 
   <div class="builder__list-scroll">
     <div id="steps-list"

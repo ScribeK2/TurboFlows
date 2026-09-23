@@ -8,9 +8,9 @@ class StepsController < ApplicationController
   # STI class, :lock_version drives optimistic locking, and the last two are
   # submission formats, not columns.
   # :position is excluded deliberately. It is in the map because it must survive
-  # a round trip, but it is set from graph order by StepBuilder and by #reorder
-  # — never submitted on an ordinary edit. Deriving it in would have widened
-  # what a PATCH can set, which the old hand-written list did not allow.
+  # a round trip, but it is set from graph order by StepBuilder — never
+  # submitted on an ordinary edit. Deriving it in would have widened what a
+  # PATCH can set, which the old hand-written list did not allow.
   PERMITTED_STEP_PARAMS = (
     StepFieldMap.scalar_fields - %i[position] +
     StepFieldMap.all_rich_text_fields +
@@ -54,7 +54,7 @@ class StepsController < ApplicationController
   before_action :set_workflow
   before_action :ensure_can_edit!, except: :panel_edit
   before_action :ensure_can_view!, only: :panel_edit
-  before_action :set_step, only: %i[show update destroy reorder panel_edit]
+  before_action :set_step, only: %i[show update destroy panel_edit]
 
   # GET /workflows/:workflow_id/steps/:id
   def show
@@ -294,14 +294,6 @@ class StepsController < ApplicationController
       end
       format.html { redirect_to workflow_path(@workflow, edit: true), notice: "Template applied." }
     end
-  end
-
-  # PATCH /workflows/:workflow_id/steps/:id/reorder
-  def reorder
-    StepReorderer.call(@workflow, @step, params[:position])
-    broadcast_step_list
-
-    head :ok
   end
 
   private

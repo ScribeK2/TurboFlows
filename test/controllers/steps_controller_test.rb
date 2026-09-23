@@ -83,18 +83,6 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     assert_response :no_content
   end
 
-  # 6. reorder step updates position
-  test "reorder step updates step position" do
-    extra = Steps::Action.create!(workflow: @workflow, position: 1, title: "Second Step")
-
-    patch reorder_workflow_step_path(@workflow, extra),
-          params: { position: 0 },
-          as: :json
-
-    assert_response :ok
-    assert_equal 0, extra.reload.position
-  end
-
   # 7. create step via Turbo Stream replaces the list and opens the new step
   test "create via turbo stream replaces the list and opens the new step" do
     assert_difference("Step.count", 1) do

@@ -13,7 +13,7 @@ The unified builder lives at `workflows/:id` — one URL for both viewing and ed
 
 **Key views:**
 - `_builder.html.erb` — main layout, renders step list + empty Turbo Frame panel
-- `_step_list.html.erb` / `_step_row.html.erb` — compact step rows with SortableJS drag-and-drop
+- `_step_list.html.erb` / `_step_row.html.erb` — compact step rows. In an outline the order IS the graph, so there is no drag-reorder: `StepReorderer` and its route were deleted 2026-09-22
 - `steps/_panel_edit.html.erb` — step editor loaded via Turbo Frame into the panel
 - `steps/_doors.html.erb` — the ways out of the open step, one row each, wired or a stub. Inside the autosave form, so it holds no `<form>`
 - `steps/_target_picker.html.erb` — the "Use existing…" `<dialog>`, rendered outside that form because it holds one
@@ -25,7 +25,7 @@ The unified builder lives at `workflows/:id` — one URL for both viewing and ed
 **Key Stimulus controllers:**
 - `panel_title_controller.js` — keeps the step panel's header in step with the title field as it is typed. Declared on the builder's own `<turbo-frame id="builder-panel">` **and** on the one `steps/_panel_edit` renders, because the two delivery paths differ: a frame navigation replaces the frame's CONTENTS and keeps the element (so attributes on the incoming tag are discarded), while `turbo_stream.replace "builder-panel"` (a grow) replaces the element itself
 - `builder_controller.js` — panel open/close, step selection, title autosave, Escape to close, `openHealth` action, auto-opens health panel when `?health=true` URL param is present
-- `step_list_controller.js` — SortableJS reorder + the type picker: opening it for a door (from a row's stub or the panel's "New step"), writing the `data-grow-*` fields, and floating it beside its trigger
+- `step_list_controller.js` — the type picker: opening it for a door (from a row's stub or the panel's "New step"), writing the `data-grow-*` fields, and floating it beside its trigger
 - `step_target_picker_controller.js` — the "Use existing…" dialog on a door row: which door it is for, waiting for the panel's pending save before the pick is sent, the filter, Escape (`stopPropagation`, or the whole panel closes behind it), and closing on `turbo:before-cache`
 - `inline_autosave_controller.js` — debounced autosave (2s), `flush()` for whoever must act after the pending save (it returns a promise that resolves once nothing is in flight), the panel's **save indicator** (see below), listens for `lexxy:change` events, flushes pending saves on disconnect via `FormData` + `fetch`, dispatches `health:check-needed` after disconnect saves
 - `step_warnings_controller.js` — async health check fetch, renders inline warning icons on step rows, toolbar issue count, click-to-open popover with Fix buttons. Listens for `turbo:submit-end`, `health:check-needed`, `turbo:before-stream-render`
@@ -558,7 +558,7 @@ matching at runtime, because the door condition's escaping and
 the two-readings note above (`Step::Doors#operator_match?` and
 `ConditionEvaluator#parse`'s `:value`/`:literal_value`).
 
-**Mode:** `data-builder-mode-value="view|edit"` on the builder container. CSS hides drag handles, add/delete buttons, and edit-only elements in view mode. View mode is a preview: `builder_controller#loadPanel` asks for `readonly=1`, and `StepsController#panel_edit` and `Workflows::SettingsController#show` render the readonly branch for that or for a viewer who may not edit. Nothing in view mode saves.
+**Mode:** `data-builder-mode-value="view|edit"` on the builder container. CSS hides add/delete buttons and edit-only elements in view mode. View mode is a preview: `builder_controller#loadPanel` asks for `readonly=1`, and `StepsController#panel_edit` and `Workflows::SettingsController#show` render the readonly branch for that or for a viewer who may not edit. Nothing in view mode saves.
 
 **Inline Validation + Health Panel:**
 - `step_warnings_controller.js` fetches `/workflows/:id/health.json` asynchronously (debounced 500ms) after every autosave or Turbo Stream update

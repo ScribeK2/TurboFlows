@@ -1,26 +1,13 @@
 import { Controller } from "@hotwired/stimulus"
-import Sortable from "sortablejs"
 import { deferSubmitUntilPanelSaved } from "services/pending_panel_saves"
 import { focusWhenReplaced } from "services/focus"
 
-// Manages the step list: SortableJS drag-and-drop and type picker popover.
+// The step list's type picker: opened from the bottom prompt or beside a
+// door, it grows a step (see docs/agents/builder.md § Growing a workflow).
 export default class extends Controller {
   static targets = ["list", "typePicker", "pickerContext", "fromStepId", "doorLabel", "doorCondition"]
-  static values = {
-    reorderUrl: String
-  }
 
   connect() {
-    if (this.hasListTarget) {
-      this.sortable = new Sortable(this.listTarget, {
-        handle: ".drag-handle",
-        animation: 150,
-        ghostClass: "sortable-ghost",
-        dragClass: "sortable-drag",
-        onEnd: this.handleReorder.bind(this)
-      })
-    }
-
     this.boundCloseOnOutsideClick = this.closeOnOutsideClick.bind(this)
     document.addEventListener("click", this.boundCloseOnOutsideClick)
 
@@ -42,7 +29,6 @@ export default class extends Controller {
   }
 
   disconnect() {
-    this.sortable?.destroy()
     document.removeEventListener("click", this.boundCloseOnOutsideClick)
     document.removeEventListener("keydown", this.boundCloseOnEscape, true)
     document.removeEventListener("click", this.boundGrowFromOutside)
@@ -216,22 +202,6 @@ export default class extends Controller {
     this.typePickerTarget.hidden = hidden
     this.typePickerTarget.classList.toggle("is-hidden", hidden)
     if (hidden) this.clearFloatingPosition()
-  }
-
-  handleReorder(event) {
-    const stepId = event.item.dataset.stepId
-    const newPosition = event.newIndex
-    const url = this.reorderUrlValue.replace(":id", stepId)
-
-    const token = document.querySelector('meta[name="csrf-token"]')?.content
-    fetch(url, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": token
-      },
-      body: JSON.stringify({ position: newPosition })
-    })
   }
 
   stopPropagation(event) {

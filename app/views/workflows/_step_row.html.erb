@@ -3,7 +3,7 @@
 
   Adopts .list-row anatomy from lists.css (compact size) so the builder shares
   one row definition with the dashboard and player index. builder__step carries
-  only the builder's own concerns: click target, drag slot, selected state.
+  only the builder's own concerns: click target, selected state.
 
   Local variables:
   - step: AR Step object
@@ -33,12 +33,6 @@
      data-action="click->builder#openStep"
      data-builder-url-param="<%= panel_edit_workflow_step_path(workflow, step) %>"
      role="listitem">
-
-  <%# Drag Handle (edit mode only) %>
-  <span class="drag-handle builder__edit-only"
-        data-controller="tooltip" data-tooltip-text-value="Drag to reorder">
-    <%= icon "bars-2", class: "icon icon--sm" %>
-  </span>
 
   <%# Step number in a type-hued badge. The type name is not repeated as a
       separate label - it lives here, so colour is never the only signal. %>

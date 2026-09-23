@@ -15,7 +15,6 @@ require "test_helper"
 # GlobalThemeParityTest already requires it to match the [data-theme] block.
 class TokenContrastTest < ActiveSupport::TestCase
   CSS = Rails.root.join("app/assets/stylesheets/_global.css").read.freeze
-  TOOLTIPS_CSS = Rails.root.join("app/assets/stylesheets/tooltips.css").read.freeze
 
   LIGHT_BLOCK = "\n:root {".freeze
   DARK_BLOCK = "\n[data-theme=\"dark\"] {".freeze
@@ -63,46 +62,7 @@ class TokenContrastTest < ActiveSupport::TestCase
     end
   end
 
-  # The builder's drag handle is this component's main user ("Drag to reorder"),
-  # and the pill paints literal white on --color-ink — the TEXT token, which
-  # inverts with the theme. 19.69:1 in light, 1.27:1 in dark: a blank pill for
-  # every editor in dark mode. Unlike the pairs above, this reads the component's
-  # own declarations, because the defect was never in the tokens.
-  test "the tooltip's own colours meet AA in both themes" do
-    body = tooltip_rule
-
-    %w[light dark].each do |theme|
-      tokens = theme_tokens(theme)
-      ratio = contrast(css_color(tokens, body.fetch(:color)), css_color(tokens, body.fetch(:background)))
-
-      assert_operator ratio.round(2), :>=, AA_TEXT,
-                      "#{theme}: .tooltip paints #{body[:color]} on #{body[:background]}, " \
-                      "measuring #{format('%.2f', ratio)}:1. A tooltip on --color-ink needs a " \
-                      "canvas-coloured text token, not literal white — --color-ink flips with the theme."
-    end
-  end
-
   private
-
-  # The `color` and `background` of the leaf `.tooltip` rule, as declared.
-  def tooltip_rule
-    body = TOOLTIPS_CSS.to_enum(:scan, /([^{}]+)\{([^{}]*)\}/)
-                       .map { [Regexp.last_match(1), Regexp.last_match(2)] }
-                       .filter_map { |selector, declarations| declarations if selector.strip.lines.last.to_s.strip == ".tooltip" }
-                       .first
-    assert body, "no leaf .tooltip rule in tooltips.css"
-
-    {
-      color: body[/(?:\A|[;{\s])color\s*:\s*([^;]+);/, 1]&.strip,
-      background: body[/(?:\A|[;{\s])background(?:-color)?\s*:\s*([^;]+);/, 1]&.strip
-    }
-  end
-
-  # A declared value (a literal oklch, or var(--token)) measured the way a token
-  # is: fed through `color` as if it were one.
-  def css_color(tokens, value)
-    color(tokens.merge("--measured" => value), "--measured")
-  end
 
   # Dark mode overrides :root rather than replacing it, so a token the dark
   # block does not declare (the avatar fills) keeps its light value there too.

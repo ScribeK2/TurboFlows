@@ -119,7 +119,7 @@ genuinely float above the page. Use token names, never raw box-shadow values.
 - `var(--shadow-sm)` — none (kept so existing rules stay valid)
 - `var(--shadow)` — dropdowns, popovers (medium lift)
 - `var(--shadow-lg)` — dialogs, modals (high lift)
-- `var(--shadow-xl)` — tooltips, floating elements
+- `var(--shadow-xl)` — floating elements
 
 ### Border Radii
 
@@ -597,7 +597,6 @@ so `.tab-bar` drops into any existing tablist with no JS change.
 | List rows | `.list-section`, `.list-row`, `.list-row--compact` | `lists.css` | Section + hairline-divided rows. `--compact` is the dense size (builder step list); same anatomy, tighter box — sized like `.btn--sm` is to `.btn` |
 | Player index row | `.player-row`, `__run`, `__pin` | `_player.css` | A `/play` row: the Run button (a `button_to` whose form is `__run`) and, for a Regular user, a pin toggle in `__pin` beside it. The wrapper carries the divider and `data-player-filter-target="card"`, so a search hides the toggle with its row. Hover lights only the Run area, telling it apart from the toggle |
 | Pin toggle | `.pin-button`, `.is-pinned` | `dashboard.css` | `render "workflows/pins/toggle", workflow:, pinned:, location:`, where location is `pinned`, `recent` or `play`. A bookmark button with a 2.5rem square target: a solid bookmark in primary text when pinned, outline in muted ink when not. Its id is `dom_id(workflow, "pin_#{location}")`, so every copy on a page is replaced after a pin change |
-| Tooltips | `.tooltip`, `.tooltip--bottom` | `tooltips.css` | Absolute, spring easing entrance |
 | Skeletons | `.skeleton`, `.skeleton--text`, `--heading`, `--card` | `skeleton.css` | Shimmer animation, use for loading states |
 | Pagination | `.pagination-bar`, `.pagination`, `.pagination__item`, `.is-active` | `pagination.css` | `.pagination-bar` is a three-zone grid: summary left, numbered nav centred, page-size right |
 | Admin sidebar | `.admin-shell`, `__main`, `.admin-nav`, `__list`, `__link`, `__label`, `__divider`, `__count` | `admin.css` | Second-level nav for admin pages (see § Navigation). Current is `[aria-current="page"]`: primary-soft fill + primary text + weight — a different channel from hover. `__count` is a `.badge--warning`, rendered only when something needs attention, and counts *kinds* of problem, not affected records |
@@ -658,10 +657,9 @@ These are the most-used controllers. Wire them via `data-controller` on the appr
 | `media-attachments` | Direct-upload a chosen or dropped file, show progress, attach it to the step | On the panel's media block, with `url`, `direct-upload-url`, `max-bytes`, `allowed-types` values; `change->media-attachments#fileSelected` on the file input |
 | `dropdown` | Toggle dropdown menus | `click->dropdown#toggle` |
 | `clipboard` | Copy text to clipboard | `click->clipboard#copy` |
-| `tooltip` | Show/hide tooltips | `mouseenter->tooltip#show`, `mouseleave->tooltip#hide` |
 | `nav-search` | Cmd+K fuzzy search | On search input |
 | `step-warnings` | Async health check, inline warning icons, popover | On builder container, auto-fetches after saves |
-| `step-list` | Drag-reorder + the type picker. A control that grows a step from a door carries `data-grow-from`, `-label`, `-condition` and `-context`; the picker copies them into its hidden fields when it OPENS (choosing a type closes it before the form submits, so writing on close sends a grow with no parent) | `click->step-list#growFromDoor` on a row's stub; a panel button outside the list element is picked up by a document listener |
+| `step-list` | The type picker. A control that grows a step from a door carries `data-grow-from`, `-label`, `-condition` and `-context`; the picker copies them into its hidden fields when it OPENS (choosing a type closes it before the form submits, so writing on close sends a grow with no parent) | `click->step-list#growFromDoor` on a row's stub; a panel button outside the list element is picked up by a document listener |
 | `step-target-picker` | The "Use existing…" `<dialog>` on a door row: which door it is for, the filter, and a refusal rendered inside the dialog | On the panel body; `click->step-target-picker#open` on the door's button, `keydown.esc->step-target-picker#stopEscape` and `click->step-target-picker#backdropClose` on the dialog |
 | `scenario-step` | Player step interactions | On step card, handles auto-advance |
 | `tabs` | Tab switching | `click->tabs#select` |
@@ -956,7 +954,6 @@ For page types not covered by a recipe, read these exemplary views. They demonst
 | `badges.css` | components | Badges, pills, dots |
 | `flash.css` | components | Flash messages |
 | `icons.css` | components | Icon sizing |
-| `tooltips.css` | components | Tooltip positioning |
 | `skeleton.css` | components | Loading skeletons |
 | `pagination.css` | components | Page navigation (« ‹ 1 2 3 › » + summary) |
 | `tabs.css` | components | Underline tab bar (`.tab-bar`) |

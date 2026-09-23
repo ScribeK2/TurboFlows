@@ -294,47 +294,6 @@
     background: var(--color-primary-soft);
   }
 
-  /* ===== Drag =====
-     Resting rows are flat, so drag affordance lives in SortableJS's own
-     classes: the ghost marks the drop slot, the floating clone is the one
-     element here that genuinely floats and so earns a shadow. */
-  .drag-handle {
-    opacity: 0;
-    transition: opacity var(--duration-snap) var(--ease-out);
-  }
-
-  .builder__step:hover .drag-handle,
-  .builder__step:focus-within .drag-handle {
-    opacity: 0.6;
-  }
-
-  .drag-handle:active,
-  .sortable-drag .drag-handle {
-    opacity: 1;
-  }
-
-  .builder__step .drag-handle {
-    cursor: grab;
-    color: var(--color-ink-muted);
-    flex-shrink: 0;
-  }
-
-  .sortable-ghost {
-    background: var(--color-canvas-alt);
-    outline: 2px dashed var(--color-border-strong);
-    outline-offset: -2px;
-  }
-
-  .sortable-ghost > * {
-    visibility: hidden;
-  }
-
-  .sortable-drag {
-    background: var(--color-canvas-raised);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-lg);
-  }
-
   .builder__step-badge {
     width: 1.5rem;
     height: 1.5rem;
@@ -859,7 +818,6 @@
   }
 
   /* ===== View Mode ===== */
-  .builder[data-builder-mode-value="view"] .drag-handle,
   .builder[data-builder-mode-value="view"] .builder__list-add,
   .builder[data-builder-mode-value="view"] .builder__step-delete,
   .builder[data-builder-mode-value="view"] .builder__edit-only {
