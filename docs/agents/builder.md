@@ -14,7 +14,7 @@ The unified builder lives at `workflows/:id` — one URL for both viewing and ed
 **Key views:**
 - `_builder.html.erb` — main layout, renders step list + empty Turbo Frame panel
 - `_step_list.html.erb` / `_step_row.html.erb` — the list as an outline of the graph (`_step_outline`, `_step_node`); a row is one step's own line (number, title, "N ways in", Start/Terminal, warning icon, Remove). In an outline the order IS the graph, so there is no drag-reorder: `StepReorderer` and its route were deleted 2026-09-22
-- `_step_outline.html.erb` — the tree: the trunk from the start step as level-1 siblings, then the "Unconnected: nothing leads here yet" section, whose trees render the same way. Takes a `StepOutline::Result`
+- `_step_outline.html.erb` — the tree (`role="tree"`, on a wrapper inside `#steps-list`, which also holds the empty state): the trunk from the start step as level-1 siblings, then the "Unconnected: nothing leads here yet" section, a `role="group"` labelled by its heading whose trees render the same way one level down. Takes a `StepOutline::Result`
 - `_step_node.html.erb` — one `role="treeitem"`: its row, its exit doors in a `role="group"` (a foldable `<details>` per exit that holds steps), then its continuation door chip. A door chip is a wired chip (text + the target's type dot), a stub (ONE button, the grow trigger) or a jump (ONE button naming the target, "Yes → Working · step 4"); extras render as dashed chips under the exits
 - `_list_target_picker.html.erb` — the list-level "An existing step…" `<dialog>`, one per page, shared by every stub chip. A second mount of `step-target-picker`, rendered beside the type picker, outside `#steps-list`
 - `steps/_panel_edit.html.erb` — step editor loaded via Turbo Frame into the panel
@@ -235,8 +235,9 @@ guide line. A linear workflow therefore renders exactly as the flat list did.
 - **The walk.** `StepOutline.for(workflow)` (or `.call(workflow, steps)` with
   steps already preloaded with `transitions: :target_step`) starts at
   `workflow.start_step`, or the first step by position when that is unset. It
-  builds one `Step::Doors` per step and does no queries of its own. The same
-  "build `Doors` on a fresh step after a write" rule applies. The walk is
+  builds one `Step::Doors` per step. `.call` does no queries of its own; `.for`
+  is `.call` plus the preload, three queries. The same "build `Doors` on a
+  fresh step after a write" rule applies. The walk is
   linear in steps + edges; `test/benchmarks/step_outline_benchmark_test.rb`
   holds a 300-step, 600-edge graph under 100ms. A door with no transition is a
   **stub**, a door whose target already has its row elsewhere is a **jump**, and
@@ -265,15 +266,17 @@ guide line. A linear workflow therefore renders exactly as the flat list did.
   nothing leads here yet" heading. `Result#orphan_roots` gives them trees of
   their own, each rooted at a step nothing still unplaced leads to (position
   order), so an unconnected chain keeps its shape and an unconnected Question
-  keeps its growable stubs. "Add unconnected step" lands a step here, and
+  keeps its growable stubs. The section is a `role="group"` labelled by its
+  heading (`#steps-unconnected-heading`), so its trees are `aria-level` 2 and
+  their exits one deeper; it renders at the trunk's indent all the same. "Add unconnected step" lands a step here, and
   `:unreachable_step` has its place on the page here.
 - **Numbers are derived on every read, and nothing is persisted.**
   `Result#ordinals` numbers the steps in render order (exits before the
   continuation), then the Unconnected section. `WorkflowsHelper#step_ordinals`
-  returns `StepOutline.for(workflow).ordinals`, and every "step N" goes through
-  it: the row badge, jump chips, `steps/_doors`, `steps/_target_picker_options`
-  (which also lists candidates in that order), the health panel and the flow
-  diagram. `Workflows::ExportsController`'s PDF lists steps in the same order
+  returns `StepOutline.for(workflow).ordinals`, and every "step N" comes from
+  one outline: the row badge, jump chips, `steps/_doors`,
+  `steps/_target_picker_options` (which also lists candidates in that order),
+  the health panel and the flow diagram. `Workflows::ExportsController`'s PDF lists steps in the same order
   with the same numbers, so they agree by construction. `position` keeps its
   old meaning, insertion order, which now only orders the Unconnected section
   and the JSON export. There is no `settle_positions`-style rewrite, no stored
@@ -282,8 +285,27 @@ guide line. A linear workflow therefore renders exactly as the flat list did.
   cut: no tool studied persists a derived order, and nothing outside the builder
   reads it except the PDF. The accepted consequence is that a rewire can
   renumber the steps below it, as a grow always did. Numbers were never
-  identifiers; uuids are. `Workflow#step_options_for_select`, which numbered by
-  position and had no caller, was deleted.
+  identifiers; uuids are. `Workflow#step_options_for_select` and
+  `WorkflowsHelper#step_options_for_select`, which numbered by position and
+  had no caller, were deleted.
+- **Built once per request.** A build is three queries and a full walk (about
+  14ms on the 53-step Opening Scan), and every partial above needs one. When
+  each built its own, a title autosave built it five times and a door pick
+  eight. So `StepsController`, `Steps::TransitionsController` and
+  `Workflows::HealthFixesController` each build ONE per request (a private
+  `outline`, memoised on the controller and first read only after the
+  action's writes) and pass it as `outline:` to every partial and broadcast
+  they render. `_step_list`, `_steps_list_items`, `_step_row`,
+  `steps/_panel_edit`, `_connections`, `_doors`, `_target_picker`,
+  `_target_picker_options`, `_list_target_picker` and `_health_panel_inner`
+  take an optional `outline:` and build their own only when rendered alone
+  (a page load, a panel open, `steps#show`), then pass it on. A view-context
+  memo would not do: a controller's every `turbo_stream.*` call and every
+  broadcast renders in a fresh view context. Never memoise it on the model,
+  the class or a global. `test/controllers/step_outline_builds_test.rb` counts
+  `StepOutline.call` across a whole request, broadcasts included, and holds
+  every entry point to one. Anything new that renders these partials passes
+  the request's outline down.
 - **Drag-reorder is gone: order is the graph.** `StepReorderer`, the `reorder`
   route, SortableJS in `step_list_controller`, the drag handle, and the
   `tooltip` controller and `tooltips.css` (their only mount was that handle)
@@ -305,8 +327,13 @@ guide line. A linear workflow therefore renders exactly as the flat list did.
   tree's shape depends on `answer_type`, `options` and `sub_flow_returns` too.
   So `StepsController#update` broadcasts the whole list when
   `saved_changes` touches `OUTLINE_FIELDS` (`title answer_type options
-  sub_flow_returns`, read before anything reloads `@step`) or when
-  `TransitionSync::Result#changed` is true. `changed` is a before/after
+  sub_flow_returns variable_name`, read before anything reloads `@step`) or
+  when `TransitionSync::Result#changed` is true. `variable_name` is there
+  because a rename rewrites the step's conditions inside `@step.update`
+  (`Question#carry_conditions_to_new_variable`), before `TransitionSync` takes
+  its before-signature, so `changed` reads false; the extras' chips and the
+  "ways in" tooltips quote those conditions and kept the old name in every
+  other tab. `changed` is a before/after
   signature of the step's own transitions, taken inside the sync. It is NOT
   "`transitions_json` was present": every non-Resolve panel autosave carries
   that field (the editor renders it non-blank and `inline-autosave` never marks
@@ -633,8 +660,9 @@ that row and a broadcast two seconds later wiped it.
 `builder_controller#syncSelectedRow`, from whichever step panel is open, after
 every stream render and every panel frame load. It adds `builder__step--selected`
 to the row and `aria-selected="true"` to the row's enclosing `role="treeitem"`
-(the list is `role="tree"`, each node a `treeitem` with `aria-level`, each exit
-branch a `group`). A jump chip is not a row: `builder#openStep` from a jump
+(the outline's wrapper inside `#steps-list` is `role="tree"`, each node a
+`treeitem` with `aria-level`, each exit branch and the Unconnected section a
+`group`). A jump chip is not a row: `builder#openStep` from a jump
 selects the row of the step it OPENS (`data-builder-step-id-param`), never the
 chip. The open step's branch guides darken through CSS `:has()` on that class. Never pass a `selected_step:`
 local to the list or row partials: the builder subscribes to its own Action
