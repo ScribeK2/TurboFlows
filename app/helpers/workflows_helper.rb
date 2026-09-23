@@ -155,11 +155,12 @@ module WorkflowsHelper
     wired.join(" · ")
   end
 
-  # Computed, not memoised: a helper's instance variables live in the view
-  # context, so caching here would outlive the workflow it was built for.
-  # Callers that render a list compute it once and pass it down.
+  # One number per step, in the builder outline's reading order (StepOutline).
+  # Every "step N" in the builder - row badge, door rows, the Use existing
+  # dialog, the health panel, jump chips - goes through here, so they agree by
+  # construction. Derived on every read; nothing is persisted.
   def step_ordinals(workflow)
-    workflow.steps.ordered.each_with_index.to_h { |step, index| [step.uuid, index + 1] }
+    StepOutline.for(workflow).ordinals
   end
 
   # One section of the health panel, as a flat list of [step uuid, issue], with

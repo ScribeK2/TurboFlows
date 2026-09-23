@@ -138,6 +138,21 @@ class WorkflowsHelperTest < ActionView::TestCase
     result = resolve_step_reference(wf, "test-uuid")
     assert_equal "My Step", result
   end
+
+  # Mutation check: restore `workflow.steps.ordered.each_with_index` in
+  # step_ordinals - red.
+  test "step_ordinals counts in the outline's reading order, not position order" do
+    user = User.create!(email: "ordinals-#{SecureRandom.hex(4)}@example.com", password: "password123456")
+    workflow = Workflow.create!(title: "Ordinals", user: user)
+    q = Steps::Question.create!(workflow: workflow, title: "Q", position: 0, answer_type: "yes_no", variable_name: "q")
+    trunk = Steps::Resolve.create!(workflow: workflow, title: "Trunk", position: 1)
+    exit_step = Steps::Resolve.create!(workflow: workflow, title: "Exit", position: 2)
+    Transition.create!(step: q, target_step: exit_step, condition: "q == 'yes'", position: 0)
+    Transition.create!(step: q, target_step: trunk, condition: "q == 'no'", position: 1)
+    workflow.update_columns(start_step_id: q.id)
+
+    assert_equal({ q.uuid => 1, exit_step.uuid => 2, trunk.uuid => 3 }, step_ordinals(workflow))
+  end
 end
 
 class WorkflowsHelperDoorSummaryTest < ActionView::TestCase

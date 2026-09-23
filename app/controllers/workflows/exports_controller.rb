@@ -69,9 +69,12 @@ module Workflows
     end
 
     def export_pdf_ar_steps(pdf)
-      @workflow.steps.includes(:transitions).each_with_index do |step, index|
+      # The builder's outline order and numbers, so a printed "step 14" is the
+      # step 14 an author sees on screen.
+      outline = StepOutline.for(@workflow)
+      outline.reading_order.each do |step|
         step_type = step.type.demodulize.capitalize
-        pdf.text "#{index + 1}. #{step.title} [#{step_type}]", size: 14, style: :bold
+        pdf.text "#{outline.ordinals[step.uuid]}. #{step.title} [#{step_type}]", size: 14, style: :bold
 
         case step
         when Steps::Question

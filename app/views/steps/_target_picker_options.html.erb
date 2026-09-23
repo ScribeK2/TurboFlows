@@ -1,4 +1,4 @@
-<%# locals: (step:, workflow:) %>
+<%# locals: (step:, workflow:, options_id: nil) %>
 <%#
   The dialog's candidate list, pulled out on its own so a refusal that names a
   stale target (finding 1) can re-stream just this - replacing the whole
@@ -11,18 +11,23 @@
   existing…" dialog's own JS (step_target_picker_controller#markGoneOptions,
   finding 3) reads it to hide an option whose step has no row left in the
   builder, without waiting for this partial to be re-rendered by the server.
+
+  Candidates are listed in the builder outline's reading order, numbered as
+  the page numbers them. `step` is nil for the list-level dialog
+  (workflows/_list_target_picker), which hides its from-step client-side
+  instead; `options_id` names that dialog's copy of this list.
 %>
-<% ordinals = step_ordinals(workflow) %>
-<div id="<%= dom_id(step, :target_picker_options) %>">
+<% outline = StepOutline.for(workflow) %>
+<div id="<%= options_id || dom_id(step, :target_picker_options) %>">
   <ul class="step-target-list" role="list">
-    <% workflow.steps.ordered.each do |candidate| %>
+    <% outline.reading_order.each do |candidate| %>
       <% next if candidate == step %>
       <li data-step-target-picker-target="option"
           data-step-id="<%= candidate.id %>"
           data-search="<%= "#{candidate.title} #{step_type_label(candidate.step_type)}".downcase %>">
         <button type="submit" name="target_step_id" value="<%= candidate.id %>" class="step-target-list__option">
           <span class="step-target-list__title"><%= candidate.title.presence || "Untitled #{candidate.step_type.titleize}" %></span>
-          <span class="step-target-list__meta"><%= step_type_label(candidate.step_type) %> · <%= ordinals[candidate.uuid] %></span>
+          <span class="step-target-list__meta"><%= step_type_label(candidate.step_type) %> · <%= outline.ordinals[candidate.uuid] %></span>
         </button>
       </li>
     <% end %>
