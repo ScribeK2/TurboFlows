@@ -827,7 +827,10 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
   test "a title save broadcasts the whole list, with the real unchanged connections payload riding along" do
     question, transitions_json = wired_question_with_rendered_transitions_json
 
-    assert_turbo_stream_broadcasts("workflow_#{@workflow.id}", count: 2) do
+    # Row + list + the list dialog's candidates: the list broadcast replaces
+    # only #steps-list's children, so broadcast_step_list carries
+    # #list-target-picker-options beside it.
+    assert_turbo_stream_broadcasts("workflow_#{@workflow.id}", count: 3) do
       patch workflow_step_path(@workflow, question),
             params: { step: { title: "Renamed", dirty_fields: ["title"], rendered: { title: question.title },
                               transitions_json: transitions_json } },
@@ -842,7 +845,9 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     payload = JSON.parse(transitions_json)
     payload["rows"].first["target_uuid"] = other_target.uuid
 
-    assert_turbo_stream_broadcasts("workflow_#{@workflow.id}", count: 2) do
+    # Row + list + the list dialog's candidates (broadcast_step_list carries
+    # #list-target-picker-options with the list).
+    assert_turbo_stream_broadcasts("workflow_#{@workflow.id}", count: 3) do
       patch workflow_step_path(@workflow, question),
             params: { step: { dirty_fields: [""], transitions_json: payload.to_json } },
             headers: { "Accept" => "text/vnd.turbo-stream.html" }

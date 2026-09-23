@@ -75,12 +75,19 @@ module Steps
       flash.now[:alert] = "That connection was not saved: #{message}"
       streams = [
         turbo_stream.update("flash", partial: "shared/flash_messages"),
-        turbo_stream.update(dom_id(@step, :target_picker_error), ERB::Util.html_escape(message))
+        turbo_stream.update(dom_id(@step, :target_picker_error), ERB::Util.html_escape(message)),
+        # The list-level dialog (workflows/_list_target_picker) is a second
+        # place a pick can come from; a stream at a target not on the page is
+        # a no-op, so answer both.
+        turbo_stream.update("list-target-picker-error", ERB::Util.html_escape(message))
       ]
       if refresh_options
         streams << turbo_stream.replace(dom_id(@step, :target_picker_options),
                                         partial: "steps/target_picker_options",
                                         locals: { step: @step, workflow: @workflow })
+        streams << turbo_stream.replace("list-target-picker-options",
+                                        partial: "steps/target_picker_options",
+                                        locals: { step: nil, workflow: @workflow, options_id: "list-target-picker-options" })
       end
       render turbo_stream: streams, status: :unprocessable_content
     end
@@ -125,6 +132,14 @@ module Steps
         target: "steps-list",
         partial: "workflows/steps_list_items",
         locals: { workflow: @workflow, steps: steps }
+      )
+      # The list-level dialog sits beside #steps-list, not in it, so its
+      # candidates ride along with every list broadcast.
+      Turbo::StreamsChannel.broadcast_replace_to(
+        "workflow_#{@workflow.id}",
+        target: "list-target-picker-options",
+        partial: "steps/target_picker_options",
+        locals: { step: nil, workflow: @workflow, options_id: "list-target-picker-options" }
       )
       broadcast_connections
     end

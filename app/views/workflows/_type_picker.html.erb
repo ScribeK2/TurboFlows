@@ -27,4 +27,18 @@
       </button>
     <% end %>
   <% end %>
+  <%# A list chip's door can also point at a step that already exists (spec
+      §7). Shown only when the picker was opened from a list chip, which
+      carries the connect URL; the panel's door rows have their own "Use
+      existing…" and an unconnected step has no door. %>
+  <div class="builder__type-picker-existing" data-step-list-target="existingOption" hidden>
+    <%# A div, as the account menu uses it: on an <hr> the class leaves the UA
+        inset border on three sides, grey in both themes. %>
+    <div class="dropdown__divider" role="separator"></div>
+    <button type="button" class="dropdown__item builder__type-option"
+            data-action="click->step-list#pickExisting">
+      <%= icon "link", class: "icon icon--sm" %>
+      <span class="builder__type-name">An existing step…</span>
+    </button>
+  </div>
 </div>

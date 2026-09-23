@@ -258,4 +258,136 @@ class BuilderOutlineTest < ApplicationSystemTestCase
     assert_no_button "Collapse all"
     assert_no_button "Expand all"
   end
+
+  def pick_existing_from(step, door_text)
+    within(node_for(step)) { click_on door_text }
+    within(".builder__type-picker") { click_on "An existing step…" }
+    assert_selector "dialog#list-target-picker[open]", wait: 5
+  end
+
+  test "an unwired answer wires to an existing step from its chip, and the panel is left alone" do
+    toy_graph
+    Transition.where(step: @q2, condition: "back == 'no'").delete_all # No on step "Did it come back?" is now a stub
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 5, wait: 5
+    open_step(@cycle)
+
+    pick_existing_from(@q2, "No → add step")
+    within("dialog#list-target-picker") do
+      assert_no_selector "li[data-step-id='#{@q2.id}']:not(.is-hidden)", text: "Did it come back?"
+      fill_in "Find a step", with: "Escalate"
+      click_on "Escalate to tier 2"
+    end
+
+    assert_no_selector "dialog#list-target-picker[open]", wait: 5
+    assert_equal @escalate, @q2.transitions.reload.find_by(condition: "back == 'no'").target_step
+    within(node_for(@q2)) { assert_no_selector ".builder__door-stub", text: "No → add step" }
+    # The open panel is untouched.
+    assert_selector "#builder-panel .builder__panel-body[data-step-id='#{@cycle.id}']"
+  end
+
+  test "wiring from the chip with the same step's panel open keeps its door rows in step" do
+    toy_graph
+    Transition.where(step: @q2, condition: "back == 'no'").delete_all
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 5, wait: 5
+    open_step(@q2)
+
+    pick_existing_from(@q2, "No → add step")
+    within("dialog#list-target-picker") { click_on "Escalate to tier 2" }
+    assert_selector "#builder-panel .step-doors", text: /No.*Escalate to tier 2/m, wait: 5
+  end
+
+  test "a refused pick answers inside the dialog, and picking another works" do
+    toy_graph
+    Transition.where(step: @q2, condition: "back == 'no'").delete_all
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 5, wait: 5
+
+    pick_existing_from(@q2, "No → add step")
+    @escalate.destroy # a collaborator deleted it while the dialog was open
+    within("dialog#list-target-picker") { click_on "Escalate to tier 2" }
+    within("dialog#list-target-picker") do
+      assert_selector "#list-target-picker-error", text: "no longer in this workflow", wait: 5
+      assert_no_selector "button", text: "Escalate to tier 2"
+      click_on "Working"
+    end
+    assert_no_selector "dialog#list-target-picker[open]", wait: 5
+    assert_equal @working, @q2.transitions.reload.find_by(condition: "back == 'no'").target_step
+  end
+
+  test "the list dialog offers a step grown after the page loaded" do
+    q = Steps::Question.create!(workflow: @workflow, title: "Q", position: 0, answer_type: "yes_no", variable_name: "q")
+    @workflow.update_columns(start_step_id: q.id)
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 1, wait: 5
+
+    within(node_for(q)) { click_on "No → add step" }
+    pick_type "Resolve"
+    assert_selector STEP_ROW, count: 2, wait: 5
+    assert_panel_settled
+    grown = @workflow.steps.reload.find_by(type: "Steps::Resolve")
+
+    pick_existing_from(q, "Yes → add step")
+    within("dialog#list-target-picker") { assert_selector "li[data-step-id='#{grown.id}']" }
+  end
+
+  # This tab's own grow answers with the WHOLE #step-list, dialog included, so
+  # the test above passes whether or not anything refreshes the dialog. A step
+  # grown in another tab arrives only as the list broadcast, which replaces
+  # #steps-list's children and not the dialog beside them - that is the case
+  # broadcast_step_list's companion #list-target-picker-options exists for.
+  test "the list dialog offers a step grown in another tab" do
+    q = Steps::Question.create!(workflow: @workflow, title: "Q", position: 0, answer_type: "yes_no", variable_name: "q")
+    @workflow.update_columns(start_step_id: q.id)
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 1, wait: 5
+
+    using_session(:second_tab) do
+      sign_in_as @user
+      visit workflow_path(@workflow, edit: true)
+      assert_selector STEP_ROW, count: 1, wait: 5
+      within(node_for(q)) { click_on "No → add step" }
+      pick_type "Resolve"
+      assert_selector STEP_ROW, count: 2, wait: 5
+    end
+    grown = @workflow.steps.reload.find_by(type: "Steps::Resolve")
+
+    assert_selector STEP_ROW, count: 2, wait: 10
+    pick_existing_from(q, "Yes → add step")
+    within("dialog#list-target-picker") { assert_selector "li[data-step-id='#{grown.id}']" }
+  end
+
+  test "the existing-step item appears only for a list chip" do
+    q = Steps::Question.create!(workflow: @workflow, title: "Q", position: 0, answer_type: "yes_no", variable_name: "q")
+    @workflow.update_columns(start_step_id: q.id)
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 1, wait: 5
+
+    click_on "Add unconnected step"
+    within(".builder__type-picker") { assert_no_button "An existing step…" }
+    find("body").send_keys(:escape)
+
+    open_step(q)
+    within("#builder-panel .step-doors") { find("[data-grow-from]", match: :first).click }
+    within(".builder__type-picker") { assert_no_button "An existing step…" }
+  end
+
+  test "a quoted answer label wires from its chip and returns focus to it" do
+    q = Steps::Question.create!(workflow: @workflow, title: "Q", position: 0, answer_type: "multiple_choice", variable_name: "q",
+                                options: [{ "label" => %(Won't "turn on"), "value" => "wont" }, { "label" => "Fine", "value" => "fine" }])
+    done = Steps::Resolve.create!(workflow: @workflow, title: "Done", position: 1)
+    Transition.create!(step: q, target_step: done, condition: "q == 'fine'", position: 0)
+    @workflow.update_columns(start_step_id: q.id)
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 2, wait: 5
+
+    pick_existing_from(q, %(Won't "turn on" → add step))
+    within("dialog#list-target-picker") { click_on "Done" }
+    assert_no_selector "dialog#list-target-picker[open]", wait: 5
+    within(node_for(q)) { assert_selector ".builder__outline-jump", text: "→ Done · step 2" }
+    # Focus lands a frame after the list re-renders (focusWhenReplaced), so the
+    # jump can be on the page a moment before it holds focus.
+    assert_eventually { page.evaluate_script("document.activeElement.classList.contains('builder__outline-jump')") }
+  end
 end

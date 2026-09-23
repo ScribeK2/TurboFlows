@@ -1,8 +1,10 @@
 require "test_helper"
+require "turbo/broadcastable/test_helper"
 
 module Steps
   class TransitionsControllerTest < ActionDispatch::IntegrationTest
     include ActionView::RecordIdentifier
+    include Turbo::Broadcastable::TestHelper
 
     setup do
       @editor = User.create!(email: "tr-#{SecureRandom.hex(4)}@example.com", password: "password123!",
@@ -115,6 +117,33 @@ module Steps
       assert_select "turbo-stream[action='replace'][target='#{dom_id(@question, :target_picker_options)}']"
       assert_no_match "value=\"#{stale_id}\"", response.body
       assert_match "no longer in this workflow", response.body
+    end
+
+    # A pick can also come from the list-level dialog (workflows/_list_target_picker),
+    # which a stub chip in the outline opens. It sits in the top layer exactly as
+    # the panel's does, so the refusal has to answer inside it too.
+    test "a refusal also answers into the list dialog" do
+      post workflow_step_transitions_path(@workflow, @question),
+           params: { target_step_id: 0, label: "Yes", condition: "light == 'yes'" },
+           headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+      assert_response :unprocessable_content
+      assert_includes response.body, %(target="list-target-picker-error")
+      assert_includes response.body, %(target="list-target-picker-options")
+    end
+
+    # Another editor's list dialog is outside #steps-list, which is all the list
+    # broadcast replaces, so its candidate list rides along beside it.
+    test "a connection broadcasts the list dialog's candidates with the list" do
+      resolve = Steps::Resolve.create!(workflow: @workflow, position: 2, title: "Done")
+
+      broadcasts = capture_turbo_stream_broadcasts("workflow_#{@workflow.id}") do
+        post workflow_step_transitions_path(@workflow, @question),
+             params: { target_step_id: resolve.id, label: "Yes", condition: "light == 'yes'" },
+             headers: { "Accept" => "text/vnd.turbo-stream.html" }
+      end
+
+      assert_includes broadcasts.pluck("target"), "list-target-picker-options"
     end
 
     test "update refuses a stale target_step_id the same way create does" do

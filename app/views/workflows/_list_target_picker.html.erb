@@ -1,0 +1,55 @@
+<%# locals: (workflow:) %>
+<%#
+  "An existing step…" from a list chip (spec §7): the same dialog the step
+  panel's "Use existing…" opens (steps/_target_picker), mounted once for the
+  whole list. step-target-picker#openFromList fills in which step and door it
+  is for and points the form at that step's transitions endpoint.
+
+  The form's action is rewritten on open, so its per-form CSRF token (bound to
+  the path it was rendered with) never matches; the request is accepted on the
+  page's global token, which Turbo sends as X-CSRF-Token on every request -
+  the same reliance steps/_target_picker documents for its retarget.
+
+  The candidate list goes stale when a step is grown elsewhere (the list
+  broadcast replaces only #steps-list's children), so every stream of
+  workflows/steps_list_items also replaces #list-target-picker-options. The
+  from-step is hidden client-side.
+%>
+<div data-controller="step-target-picker"
+     data-action="step-list:pick-existing@window->step-target-picker#openFromList">
+  <dialog class="dialog dialog--sm" id="list-target-picker"
+          aria-labelledby="list-target-picker-heading"
+          data-step-target-picker-target="dialog"
+          data-action="click->step-target-picker#backdropClose keydown.esc->step-target-picker#stopEscape">
+    <%# The action is rewritten by openFromList before any submit; the default
+        names no endpoint, so a stray submit can never create a step. %>
+    <%= form_with url: "#", method: :post,
+          data: { turbo_stream: true, step_target_picker_target: "form",
+                  action: "submit->step-target-picker#pickAfterPendingSave " \
+                          "turbo:submit-end->step-target-picker#submitEnded" } do %>
+      <input type="hidden" name="_method" value="post" data-step-target-picker-target="method">
+      <input type="hidden" name="label" data-step-target-picker-target="label">
+      <input type="hidden" name="condition" data-step-target-picker-target="condition">
+
+      <div class="dialog__header">
+        <h2 class="font-semibold" id="list-target-picker-heading"
+            data-step-target-picker-target="heading">Use an existing step</h2>
+      </div>
+      <div class="dialog__body">
+        <%# Top layer: #flash renders behind this dialog, so a refusal answers
+            here too (Steps::TransitionsController#render_refusal). %>
+        <p class="form-error" role="alert" id="list-target-picker-error"
+           data-step-target-picker-target="error"></p>
+        <label class="form-label" for="list-target-filter">Find a step</label>
+        <input type="search" class="form-input" id="list-target-filter" autocomplete="off"
+               data-step-target-picker-target="filter"
+               data-action="input->step-target-picker#filter">
+        <%= render "steps/target_picker_options", step: nil, workflow: workflow, options_id: "list-target-picker-options" %>
+        <p class="form-hint is-hidden" data-step-target-picker-target="empty">No step matches.</p>
+      </div>
+      <div class="dialog__footer">
+        <button type="button" class="btn btn--plain" data-action="click->step-target-picker#close">Cancel</button>
+      </div>
+    <% end %>
+  </dialog>
+</div>

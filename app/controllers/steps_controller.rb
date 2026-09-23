@@ -304,6 +304,9 @@ class StepsController < ApplicationController
           turbo_stream.update("steps-list",
                               partial: "workflows/steps_list_items",
                               locals: { workflow: @workflow, steps: steps }),
+          # The list-level dialog sits beside #steps-list, not in it.
+          turbo_stream.replace("list-target-picker-options", partial: "steps/target_picker_options",
+                                                             locals: list_target_picker_options_locals),
           turbo_stream.update("builder-panel", ""),
           turbo_stream.update("step-count-text",
                               helpers.pluralize(steps.size, "step"))
@@ -424,6 +427,19 @@ class StepsController < ApplicationController
       partial: "workflows/steps_list_items",
       locals: { workflow: @workflow.reload, steps: list_steps }
     )
+    # The list-level "An existing step…" dialog (workflows/_list_target_picker)
+    # sits beside #steps-list, not in it, so the update above leaves its
+    # candidates stale - a step grown in another tab would never be offered.
+    Turbo::StreamsChannel.broadcast_replace_to(
+      "workflow_#{@workflow.id}",
+      target: "list-target-picker-options",
+      partial: "steps/target_picker_options",
+      locals: list_target_picker_options_locals
+    )
+  end
+
+  def list_target_picker_options_locals
+    { step: nil, workflow: @workflow, options_id: "list-target-picker-options" }
   end
 
   def set_step

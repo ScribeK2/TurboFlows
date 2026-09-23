@@ -5,7 +5,7 @@ import { focusWhenReplaced } from "services/focus"
 // The step list's type picker: opened from the bottom prompt or beside a
 // door, it grows a step (see docs/agents/builder.md § Growing a workflow).
 export default class extends Controller {
-  static targets = ["list", "typePicker", "pickerContext", "fromStepId", "doorLabel", "doorCondition"]
+  static targets = ["list", "typePicker", "pickerContext", "fromStepId", "doorLabel", "doorCondition", "existingOption"]
 
   connect() {
     this.boundCloseOnOutsideClick = this.closeOnOutsideClick.bind(this)
@@ -41,7 +41,9 @@ export default class extends Controller {
     event.stopPropagation()
     const opening = this.typePickerTarget?.hidden
     if (opening) {
+      this.door = null
       this.setDoor({})
+      this.setExistingOptionHidden(true)
       this.clearFloatingPosition()
     }
     this.setTypePickerHidden(!opening)
@@ -86,14 +88,33 @@ export default class extends Controller {
   }
 
   openForDoor(trigger) {
-    this.setDoor({
+    this.door = {
       from: trigger.dataset.growFrom,
       label: trigger.dataset.growLabel,
       condition: trigger.dataset.growCondition,
-      context: trigger.dataset.growContext
-    })
+      context: trigger.dataset.growContext,
+      connectUrl: trigger.dataset.growConnectUrl || "",
+      doorKey: trigger.closest("[data-door-key]")?.dataset.doorKey || ""
+    }
+    this.setDoor(this.door)
+    this.setExistingOptionHidden(!this.door.connectUrl)
     this.setTypePickerHidden(false)
     this.positionPickerNear(trigger)
+  }
+
+  // "An existing step…": hand the door to the list-level target picker
+  // (workflows/_list_target_picker), which posts to the same connection
+  // endpoint the panel's "Use existing…" does.
+  pickExisting(event) {
+    event.preventDefault()
+    event.stopPropagation()
+    const door = this.door
+    this.closeTypePicker()
+    if (door?.connectUrl) this.dispatch("pick-existing", { detail: door })
+  }
+
+  setExistingOptionHidden(hidden) {
+    if (this.hasExistingOptionTarget) this.existingOptionTarget.hidden = hidden
   }
 
   // Anchors the picker beside whatever door was pressed instead of always
