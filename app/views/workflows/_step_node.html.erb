@@ -58,7 +58,10 @@
         <%= icon "link", class: "icon icon--xs" %>
         <%= door.label %>
         <span class="builder__type-dot builder__type-dot--<%= edge.target.step_type %>" aria-hidden="true"></span>
-        → <%= target_title.call(edge.target) %> · step <%= ordinals[edge.target.uuid] %>
+        <%# The chip wraps rather than ellipsizing, and "· step N" never breaks,
+            so the number is never what gets cut. All inline: a flex or block
+            child would split the chip's text into lines (see builder.css). %>
+        → <%= target_title.call(edge.target) %> <span class="builder__outline-jump-step">· step <%= ordinals[edge.target.uuid] %></span>
       </button>
     <% end %>
   </div>
@@ -101,8 +104,21 @@
         <% end %>
       <% end %>
       <% node.extras.each do |transition| %>
+        <%# A connection no door claims: a custom condition (or a default edge
+            sorted where it can never fire). One whole comparison reads through
+            the builder's existing condition reading ("tier is "gold""); that
+            helper misreads a compound one ("a > 1 && b < 2" came out as
+            'a is greater than "1 && b < 2"'), so only ConditionEvaluator.complete?
+            ones go through it. Anything else stays raw, in mono, so it reads as
+            an expression rather than an answer. %>
+        <% condition = transition.condition.to_s.strip %>
+        <% reading = if condition.blank? then "Anything else"
+                     elsif ConditionEvaluator.complete?(condition) then format_condition_for_display(condition)
+                     else condition
+                     end %>
         <div class="builder__outline-door builder__outline-door--extra">
-          <span class="builder__outline-chip"><%= transition.condition.presence || "Anything else" %></span>
+          <span class="builder__outline-chip<%= " builder__outline-chip--expression" if condition.present? && reading == condition %>"
+                title="<%= condition.presence || "Anything else" %>"><%= reading %></span>
           <% if transition.target_step %>
             <span class="builder__outline-extra-target">→ <%= target_title.call(transition.target_step) %> · step <%= ordinals[transition.target_step.uuid] %></span>
           <% end %>

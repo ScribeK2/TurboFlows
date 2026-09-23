@@ -54,7 +54,10 @@
   <% if ways_in.any? %>
     <span class="builder__ways-in" id="<%= dom_id(step, :ways_in) %>"
           title="From <%= ways_in.map { |way| "step #{outline.ordinals[way.source.uuid]} · #{way.label}" }.join(", ") %>">
-      <%= icon "link", class: "icon icon--xs" %><%= ways_in.size %> ways in
+      <%# One inline run, so its text reads "2 ways in" on one line. With a
+          panel open the words are visually hidden and the count stays; they
+          remain in the treeitem's accessible name. %>
+      <%= icon "link", class: "icon icon--xs" %><span><%= ways_in.size %><span class="builder__ways-in-label"> ways in</span></span>
     </span>
   <% end %>
 

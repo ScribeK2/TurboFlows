@@ -354,6 +354,13 @@
     border-left: 1px solid var(--color-border);
   }
 
+  /* The branch holding the open step: its guide darkens so the author can
+     see which branch they are in at depth. Every enclosing branch darkens,
+     which is the path down to it. */
+  .builder__outline-branch:has(.builder__step--selected) {
+    border-left-color: var(--color-border-strong);
+  }
+
   .builder__outline-door {
     display: flex;
     align-items: center;
@@ -379,7 +386,25 @@
     text-overflow: ellipsis;
   }
 
-  .builder__outline-door--extra .builder__outline-chip { border-style: dashed; }
+  /* An extra (a connection no door claims) is dashed like a stub but keeps
+     the pill's fill, so it reads as wired-but-unusual, not unfinished. */
+  .builder__outline-door--extra .builder__outline-chip { border-style: dashed; font-weight: 500; }
+
+  /* A condition format_condition_for_display could not read: the raw
+     expression, set in mono so it does not pass for an answer's label. */
+  .builder__outline-chip--expression { font-family: var(--font-mono); }
+
+  /* The view-mode reading of a stub is words, not a chip: no pill around it. */
+  .builder__outline-chip.builder__door-stub-text {
+    border-color: transparent;
+    background: transparent;
+    color: var(--color-ink-muted);
+    font-weight: 400;
+    padding-inline: 0;
+  }
+
+  /* Chip dots: the target step's type colour, never squeezed by a long label. */
+  .builder__outline-door .builder__type-dot { flex: 0 0 auto; }
 
   /* A stub keeps the dashed hairline and link colour of .builder__door-stub,
      which .builder__outline-chip (later in source) would otherwise override,
@@ -416,6 +441,26 @@
 
   .builder__outline-jump:hover { text-decoration: underline; }
 
+  /* A jump must always show its "· step N". At panel-open width a door has
+     ~180px, less than most "Label → Title · step N" need, and an ellipsis on
+     the chip cut the number first. So a jump WRAPS instead, with the step
+     number one unbreakable run at its end; its corners drop from a pill to
+     --radius-lg, which a two-line chip needs. Every part stays inline - see
+     the inline-flow note above. */
+  .builder__outline-chip.builder__outline-jump {
+    max-width: 100%;
+    white-space: normal;
+    text-overflow: clip;
+    border-radius: var(--radius-lg);
+  }
+
+  .builder__outline-jump-step { white-space: nowrap; }
+
+  /* Merges share one treatment from either end: the link icon and the
+     primary accent, on a jump chip and on "ways in". */
+  .builder__outline-jump .icon,
+  .builder__ways-in .icon { color: var(--color-primary-text); }
+
   .builder__ways-in {
     display: inline-flex;
     align-items: center;
@@ -424,6 +469,22 @@
     font-size: var(--text-xs);
     color: var(--color-primary-text);
     white-space: nowrap;
+  }
+
+  /* With the panel open the list is ~38% wide: "ways in" keeps its icon and
+     count and drops the words - visually only (the .sr-only recipe), so the
+     treeitem's accessible name, which aria-labelledby reads from here, still
+     says "2 ways in". */
+  .builder:has(#builder-panel > *) .builder__ways-in-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
   }
 
   /* A foldable exit: the door chip is the summary; the marker is a chevron. */
@@ -464,6 +525,12 @@
     display: flex;
     justify-content: flex-end;
     padding: var(--space-1) var(--space-2) 0;
+  }
+
+  /* No fold to act on (a linear or empty workflow): no strip either, or its
+     padding sits above the first row as an empty band. */
+  .builder__list-tools:not(:has(.builder__outline-toggle-all:not([hidden]))) {
+    display: none;
   }
 
   /* An author rule always beats a user-agent one, regardless of specificity
