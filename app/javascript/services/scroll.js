@@ -24,9 +24,11 @@ export function revealRowInList(row, { block = "nearest" } = {}) {
 function scrollRow(row, block) {
   const scroller = row?.closest(".builder__list-scroll")
   if (!scroller) return
-  // A row inside a closed fold has no box, and its zero rect would scroll the
-  // list to nowhere in particular.
-  if (!row.getClientRects().length) return
+  // A row inside a closed fold has nowhere to scroll to. Ask the DOM, not the
+  // box: Chrome hides a closed <details>' content with content-visibility, so
+  // the row still reports a full-size rect (43px measured on Chrome 152) that
+  // points at nothing on screen.
+  if (row.closest("details:not([open])")) return
 
   const box = scroller.getBoundingClientRect()
   const rect = row.getBoundingClientRect()
