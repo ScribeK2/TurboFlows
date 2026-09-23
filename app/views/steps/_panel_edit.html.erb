@@ -5,6 +5,9 @@
   - step: AR Step object
   - workflow: Workflow object
   - readonly: boolean (default false)
+  - outline: StepOutline::Result. Optional: a caller that already built one
+    (a grow's streams) passes it, so the doors and the Use existing list share
+    it rather than each building their own.
 %>
 <% readonly = local_assigns.fetch(:readonly, false) %>
 <%# panel-title spans the header and the form below it: the heading it keeps in
@@ -44,6 +47,8 @@
     <% if readonly %>
       <%= render "steps/panel_readonly", step: step, workflow: workflow %>
     <% else %>
+      <%# Built once for this panel; a Resolve has no doors and no picker. %>
+      <% outline = local_assigns.fetch(:outline) { StepOutline.for(workflow) } unless step.is_a?(Steps::Resolve) %>
       <%# novalidate: autosave submits with requestSubmit(), which runs the
           browser's required-field check. An empty required field (a new
           Question's text, the row "+ Add Field" just added) made the browser
@@ -86,13 +91,13 @@
         <%# Connections section %>
         <% unless step.is_a?(Steps::Resolve) %>
           <div id="<%= dom_id(step, :connections) %>">
-            <%= render "steps/connections", step: step, workflow: workflow %>
+            <%= render "steps/connections", step: step, workflow: workflow, outline: outline %>
           </div>
         <% end %>
       <% end %>
 
       <% unless step.is_a?(Steps::Resolve) || step.hands_off? %>
-        <%= render "steps/target_picker", step: step, workflow: workflow %>
+        <%= render "steps/target_picker", step: step, workflow: workflow, outline: outline %>
       <% end %>
 
       <%# Media attaches on choose (direct upload + Steps::MediaAttachmentsController).

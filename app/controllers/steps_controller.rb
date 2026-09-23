@@ -174,7 +174,7 @@ class StepsController < ApplicationController
             turbo_stream.replace(
               dom_id(@step),
               partial: "workflows/step_row",
-              locals: { step: @step.reload, workflow: @workflow }
+              locals: { step: @step.reload, workflow: @workflow, outline: outline }
             )
           ]
 
@@ -194,7 +194,7 @@ class StepsController < ApplicationController
             streams << turbo_stream.update(
               dom_id(@step, :connections),
               partial: "steps/connections",
-              locals: { step: @step, workflow: @workflow }
+              locals: { step: @step, workflow: @workflow, outline: outline }
             )
             connections_streamed = true
           end
@@ -297,13 +297,14 @@ class StepsController < ApplicationController
 
     @workflow.reload
     steps = @workflow.steps.order(:position).includes(:incoming_transitions, transitions: :target_step)
+    @outline = StepOutline.call(@workflow, steps)
 
     respond_to do |format|
       format.turbo_stream do
         render turbo_stream: [
           turbo_stream.update("steps-list",
                               partial: "workflows/steps_list_items",
-                              locals: { workflow: @workflow, steps: steps }),
+                              locals: { workflow: @workflow, steps: steps, outline: outline }),
           # The list-level dialog sits beside #steps-list, not in it.
           turbo_stream.replace("list-target-picker-options", partial: "steps/target_picker_options",
                                                              locals: list_target_picker_options_locals),
@@ -332,10 +333,11 @@ class StepsController < ApplicationController
         flash.now[:alert] = message
         parent = grow_from_step
         streams = [turbo_stream.replace("step-list", partial: "workflows/step_list",
-                                                     locals: { workflow: @workflow, steps: list_steps })]
+                                                     locals: { workflow: @workflow, steps: list_steps, outline: outline })]
         if parent
-          streams << turbo_stream.update(dom_id(parent, :connections), partial: "steps/connections",
-                                                                       locals: { step: parent, workflow: @workflow })
+          streams << turbo_stream.update(dom_id(parent, :connections),
+                                         partial: "steps/connections",
+                                         locals: { step: parent, workflow: @workflow, outline: outline })
         end
         streams << turbo_stream.update("flash", partial: "shared/flash_messages")
 
@@ -362,15 +364,28 @@ class StepsController < ApplicationController
   def grown_streams(step)
     [
       turbo_stream.replace("step-list", partial: "workflows/step_list",
-                                        locals: { workflow: @workflow, steps: list_steps }),
+                                        locals: { workflow: @workflow, steps: list_steps, outline: outline }),
       turbo_stream.replace("builder-panel", partial: "steps/panel_edit",
-                                            locals: { step: step, workflow: @workflow, readonly: false }),
+                                            locals: { step: step, workflow: @workflow, readonly: false,
+                                                      outline: outline }),
       turbo_stream.update("step-count-text", helpers.pluralize(@workflow.steps.count, "step"))
     ]
   end
 
+  # Loaded once per request. Like #outline, read only after the action's writes.
   def list_steps
-    @workflow.steps.reload.ordered.includes(transitions: :target_step)
+    @list_steps ||= @workflow.steps.reload.ordered.includes(transitions: :target_step).to_a
+  end
+
+  # The builder outline for everything this request renders - its response
+  # streams and its broadcasts - built ONCE and passed down as `outline:`.
+  # Each partial used to build its own, 3 queries and a full walk apiece: a
+  # title autosave built it five times, a door pick eight
+  # (test/controllers/step_outline_builds_test.rb). Memoised on the
+  # controller, never on the model or class, and first read only after the
+  # action has finished writing - every action here renders last.
+  def outline
+    @outline ||= StepOutline.call(@workflow, list_steps)
   end
 
   # The source steps of @step's own incoming transitions, captured before
@@ -388,17 +403,18 @@ class StepsController < ApplicationController
   # a target not on the page is a no-op, so this does not need to know which
   # panel, if any, is open.
   def destroy_streams(parent_steps)
-    steps = list_steps.to_a
+    steps = list_steps
     streams = [
       turbo_stream.replace("step-list", partial: "workflows/step_list",
-                                        locals: { workflow: @workflow, steps: steps }),
+                                        locals: { workflow: @workflow, steps: steps, outline: outline }),
       turbo_stream.update("step-count-text", helpers.pluralize(steps.size, "step"))
     ]
     streams << turbo_stream.update("builder-panel", "") if steps.empty?
 
     parent_steps.each do |parent|
-      streams << turbo_stream.update(dom_id(parent, :connections), partial: "steps/connections",
-                                                                   locals: { step: parent, workflow: @workflow })
+      streams << turbo_stream.update(dom_id(parent, :connections),
+                                     partial: "steps/connections",
+                                     locals: { step: parent, workflow: @workflow, outline: outline })
     end
 
     streams
@@ -415,7 +431,7 @@ class StepsController < ApplicationController
         "workflow_#{@workflow.id}",
         target: dom_id(parent, :connections),
         partial: "steps/connections",
-        locals: { step: parent.reload, workflow: @workflow }
+        locals: { step: parent.reload, workflow: @workflow, outline: outline }
       )
     end
   end
@@ -425,7 +441,7 @@ class StepsController < ApplicationController
       "workflow_#{@workflow.id}",
       target: "steps-list",
       partial: "workflows/steps_list_items",
-      locals: { workflow: @workflow.reload, steps: list_steps }
+      locals: { workflow: @workflow.reload, steps: list_steps, outline: outline }
     )
     # The list-level "An existing step…" dialog (workflows/_list_target_picker)
     # sits beside #steps-list, not in it, so the update above leaves its
@@ -439,7 +455,7 @@ class StepsController < ApplicationController
   end
 
   def list_target_picker_options_locals
-    { step: nil, workflow: @workflow, options_id: "list-target-picker-options" }
+    { step: nil, workflow: @workflow, options_id: "list-target-picker-options", outline: outline }
   end
 
   def set_step
@@ -502,7 +518,8 @@ class StepsController < ApplicationController
       format.turbo_stream do
         flash.now[:alert] = message
         streams = [turbo_stream.replace(dom_id(@step), partial: "workflows/step_row",
-                                                       locals: { step: @step.reload, workflow: @workflow })]
+                                                       locals: { step: @step.reload, workflow: @workflow,
+                                                                 outline: outline })]
         streams << full_connections_stream if rename_pair
         streams << turbo_stream.update("flash", partial: "shared/flash_messages")
 
@@ -715,12 +732,12 @@ class StepsController < ApplicationController
 
   def full_connections_stream
     turbo_stream.update(dom_id(@step, :connections), partial: "steps/connections",
-                                                     locals: { step: @step, workflow: @workflow })
+                                                     locals: { step: @step, workflow: @workflow, outline: outline })
   end
 
   def doors_stream
     turbo_stream.replace(dom_id(@step, :doors), partial: "steps/doors",
-                                                locals: { step: @step, workflow: @workflow })
+                                                locals: { step: @step, workflow: @workflow, outline: outline })
   end
 
   def broadcast_step_row(step)
@@ -728,7 +745,7 @@ class StepsController < ApplicationController
       "workflow_#{@workflow.id}",
       target: dom_id(step),
       partial: "workflows/step_row",
-      locals: { step: step, workflow: @workflow }
+      locals: { step: step, workflow: @workflow, outline: outline }
     )
   end
 

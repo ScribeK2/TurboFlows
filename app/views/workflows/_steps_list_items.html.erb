@@ -1,7 +1,10 @@
 <%# The list's children, re-rendered after a grow, a delete, a structural save
-    or a collaborator's change. Same outline as _step_list renders. %>
+    or a collaborator's change. Same outline as _step_list renders. `outline`
+    is the caller's StepOutline::Result, built once per request and passed to
+    every partial that request renders; built from `steps` only when absent. %>
+<% outline = local_assigns.fetch(:outline) { StepOutline.call(workflow, steps) } %>
 <% if steps.any? %>
-  <%= render "workflows/step_outline", workflow: workflow, outline: StepOutline.call(workflow, steps) %>
+  <%= render "workflows/step_outline", workflow: workflow, outline: outline %>
 <% else %>
   <%= render "workflows/empty_state", workflow: workflow %>
 <% end %>

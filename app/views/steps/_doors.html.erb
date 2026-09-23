@@ -1,13 +1,16 @@
-<%# locals: (step:, workflow:, readonly: false) %>
+<%# locals: (step:, workflow:, readonly: false, outline: nil) %>
 <%#
   The ways out of this step (Step::Doors), one row each: wired, or a stub that
   offers to be filled. Rendered by the server so a Turbo replace stays honest.
 
   This sits INSIDE the panel's autosave form, so it holds no <form>: New step is
   a plain button the step list's type picker answers, Remove is a Turbo link.
+
+  outline: the caller's StepOutline::Result, so a render that already built one
+  does not build another for the numbers. Built here only when rendered alone.
 %>
 <% doors = Step::Doors.for(step) %>
-<% ordinals = step_ordinals(workflow) %>
+<% ordinals = outline ? outline.ordinals : step_ordinals(workflow) %>
 <% title = step.title.presence || "Untitled #{step.step_type.titleize}" %>
 <%# tabindex="-1": a successful pick replaces this whole section, taking the
     button that had focus with it, and step-target-picker#submitEnded puts

@@ -1,4 +1,4 @@
-<%# locals: (step:, workflow:, options_id: nil) %>
+<%# locals: (step:, workflow:, options_id: nil, outline: nil) %>
 <%#
   The dialog's candidate list, pulled out on its own so a refusal that names a
   stale target (finding 1) can re-stream just this - replacing the whole
@@ -15,9 +15,10 @@
   Candidates are listed in the builder outline's reading order, numbered as
   the page numbers them. `step` is nil for the list-level dialog
   (workflows/_list_target_picker), which hides its from-step client-side
-  instead; `options_id` names that dialog's copy of this list.
+  instead; `options_id` names that dialog's copy of this list. `outline` is the
+  caller's StepOutline::Result when it has one; built here only when not.
 %>
-<% outline = StepOutline.for(workflow) %>
+<% outline ||= StepOutline.for(workflow) %>
 <div id="<%= options_id || dom_id(step, :target_picker_options) %>">
   <ul class="step-target-list" role="list">
     <% outline.reading_order.each do |candidate| %>

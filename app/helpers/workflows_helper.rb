@@ -133,6 +133,11 @@ module WorkflowsHelper
   # Every "step N" in the builder - row badge, door rows, the Use existing
   # dialog, the health panel, jump chips - goes through here, so they agree by
   # construction. Derived on every read; nothing is persisted.
+  #
+  # This BUILDS an outline (3 queries and a walk). A render that already holds
+  # one - every builder stream and broadcast passes its request's one down as
+  # `outline:` - reads `outline.ordinals` instead; this is for a partial
+  # rendered on its own (the health and flow-diagram panels).
   def step_ordinals(workflow)
     StepOutline.for(workflow).ordinals
   end

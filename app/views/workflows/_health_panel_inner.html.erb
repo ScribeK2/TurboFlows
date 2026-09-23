@@ -1,5 +1,6 @@
-<%# One numbering for the whole panel; see WorkflowsHelper#step_ordinals. %>
-<% ordinals = step_ordinals(workflow) %>
+<%# One numbering for the whole panel; see WorkflowsHelper#step_ordinals. A
+    health fix passes the outline it built for the list it streams beside this. %>
+<% ordinals = local_assigns[:outline]&.ordinals || step_ordinals(workflow) %>
 <%#
   Health Panel Inner — content rendered inside the builder panel turbo-frame.
 

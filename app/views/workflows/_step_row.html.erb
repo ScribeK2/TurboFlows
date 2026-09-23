@@ -13,8 +13,9 @@
   Local variables:
   - step: AR Step object
   - workflow: Workflow object
-  - outline: StepOutline::Result. Optional: a row rendered on its own (a
-    stream after a panel save) builds the workflow's own.
+  - outline: StepOutline::Result. Every caller in the builder passes the one
+    its request built; only a row rendered on its own with none (steps#show)
+    builds the workflow's own.
 
   Rows always render unselected. builder_controller#syncSelectedRow adds
   builder__step--selected client-side, reading data-step-id against the open

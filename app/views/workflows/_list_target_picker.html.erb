@@ -1,4 +1,4 @@
-<%# locals: (workflow:) %>
+<%# locals: (workflow:, outline: nil) %>
 <%#
   "An existing step…" from a list chip (spec §7): the same dialog the step
   panel's "Use existing…" opens (steps/_target_picker), mounted once for the
@@ -44,7 +44,8 @@
         <input type="search" class="form-input" id="list-target-filter" autocomplete="off"
                data-step-target-picker-target="filter"
                data-action="input->step-target-picker#filter">
-        <%= render "steps/target_picker_options", step: nil, workflow: workflow, options_id: "list-target-picker-options" %>
+        <%= render "steps/target_picker_options", step: nil, workflow: workflow, options_id: "list-target-picker-options",
+                                                  outline: outline %>
         <p class="form-hint is-hidden" data-step-target-picker-target="empty">No step matches.</p>
       </div>
       <div class="dialog__footer">

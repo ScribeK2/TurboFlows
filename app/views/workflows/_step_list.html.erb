@@ -4,12 +4,15 @@
   Local variables:
   - workflow: Workflow object
   - steps: ordered step collection (preloaded with transitions)
+  - outline: StepOutline::Result (optional). Built from `steps` when absent;
+    the list dialog's candidates share it.
 
   Rows always render unselected. Which row is selected is a client-side fact
   read from the open panel (builder_controller#syncSelectedRow) — see that
   controller for why: a server-picked selected_step here raced the same
   subtree's Action Cable rebroadcast in a solo editor's own browser.
 %>
+<% outline = local_assigns.fetch(:outline) { StepOutline.call(workflow, steps) } %>
 <div class="builder__list"
      id="step-list"
      data-controller="step-list">
@@ -27,7 +30,7 @@
          data-step-list-target="list"
          role="tree" aria-label="Steps">
       <% if steps.any? %>
-        <%= render "workflows/step_outline", workflow: workflow, outline: StepOutline.call(workflow, steps) %>
+        <%= render "workflows/step_outline", workflow: workflow, outline: outline %>
       <% else %>
         <%= render "workflows/empty_state", workflow: workflow %>
       <% end %>
@@ -54,6 +57,6 @@
       </span>
     </button>
     <%= render "workflows/type_picker", workflow: workflow %>
-    <%= render "workflows/list_target_picker", workflow: workflow %>
+    <%= render "workflows/list_target_picker", workflow: workflow, outline: outline %>
   </div>
 </div>

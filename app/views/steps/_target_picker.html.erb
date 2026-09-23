@@ -1,4 +1,4 @@
-<%# locals: (step:, workflow:) %>
+<%# locals: (step:, workflow:, outline: nil) %>
 <%#
   "Use existing…": point one of this step's doors at a step that already exists -
   how two branches meet at one Resolve. One dialog per panel, outside the
@@ -45,7 +45,7 @@
       <input type="search" class="form-input" id="<%= dom_id(step, :target_filter) %>" autocomplete="off"
              data-step-target-picker-target="filter"
              data-action="input->step-target-picker#filter">
-      <%= render "steps/target_picker_options", step: step, workflow: workflow %>
+      <%= render "steps/target_picker_options", step: step, workflow: workflow, outline: outline %>
       <p class="form-hint is-hidden" data-step-target-picker-target="empty">No step matches.</p>
     </div>
     <div class="dialog__footer">
