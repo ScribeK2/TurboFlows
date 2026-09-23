@@ -147,24 +147,6 @@ export default class extends Controller {
     this.loadPanel(url)
   }
 
-  // A row with more doors than fit on one line: open its panel at the doors.
-  openStepAtDoors(event) {
-    const row = event.currentTarget.closest(".builder__step")
-    const url = event.currentTarget.dataset.builderUrlParam
-    if (!row || !url) return
-
-    event.preventDefault()
-    event.stopPropagation()
-    this.clearSelectedRow()
-    row.classList.add("builder__step--selected")
-    row.closest("[role='treeitem']")?.setAttribute("aria-selected", "true")
-
-    this.panelTarget.addEventListener("turbo:frame-load", () => {
-      this.panelTarget.querySelector(".step-doors")?.scrollIntoView({ block: "center" })
-    }, { once: true })
-    this.loadPanel(url)
-  }
-
   openFlowDiagram() {
     const url = this.element.querySelector("[data-builder-flow-url-value]")
       ?.dataset.builderFlowUrlValue

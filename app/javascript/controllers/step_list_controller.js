@@ -5,7 +5,7 @@ import { focusWhenReplaced } from "services/focus"
 // The step list's type picker: opened from the bottom prompt or beside a
 // door, it grows a step (see docs/agents/builder.md § Growing a workflow).
 export default class extends Controller {
-  static targets = ["list", "typePicker", "pickerContext", "fromStepId", "doorLabel", "doorCondition", "existingOption"]
+  static targets = ["typePicker", "pickerContext", "fromStepId", "doorLabel", "doorCondition", "existingOption"]
 
   connect() {
     this.boundCloseOnOutsideClick = this.closeOnOutsideClick.bind(this)

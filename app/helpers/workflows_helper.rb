@@ -253,22 +253,6 @@ module WorkflowsHelper
     title || reference
   end
 
-  # Get step options for a select dropdown
-  # Returns an array of [display_name, value] pairs
-  def step_options_for_select(workflow, exclude_step_id: nil)
-    return [] unless workflow&.steps&.any?
-
-    workflow.steps.order(:position).map.with_index do |step, index|
-      next nil if step.title.blank?
-      next nil if exclude_step_id && step.uuid == exclude_step_id
-
-      [
-        "#{step_type_icon(step.step_type)} #{index + 1}. #{step.title}",
-        step.title
-      ]
-    end.compact
-  end
-
   # ============================================================================
   # Variable Helpers
   # ============================================================================
