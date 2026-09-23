@@ -94,11 +94,39 @@ export default class extends Controller {
     // go back to. Without this, focus lands on <body>.
     // From a list chip, the chip it came from is re-rendered as a jump; focus that.
     if (this.focusAfter) {
+      const selector = this.focusAfter
       const fallback = this.focusFallback
-      focusWhenReplaced(this.focusAfter).then(element => { if (!element) focusWhenReplaced(fallback) })
+      focusWhenReplaced(selector).then(element => {
+        // Nothing was replaced to wait for on the fallback: focus it now.
+        if (!element) document.querySelector(fallback)?.focus()
+        this.refocusAfterSelfBroadcast(element ? selector : fallback)
+      })
     } else {
-      focusWhenReplaced(".step-doors", { within: this.element })
+      const within = this.element
+      focusWhenReplaced(".step-doors", { within }).then(() => {
+        this.refocusAfterSelfBroadcast(".step-doors", within)
+      })
     }
+  }
+
+  // The acting tab is subscribed to the workflow's stream too, so the list
+  // broadcast this same request sent (Steps::TransitionsController#render_connections)
+  // comes back to it. Rendered AFTER the response it replaces the element just
+  // focused, and focus falls to <body>. For about a second, put it back after
+  // any change to the page that left focus on <body> - never otherwise, so an
+  // author who has tabbed on is not pulled back. Not focusWhenReplaced again:
+  // that focuses whatever is there even when nothing was replaced.
+  //
+  // A MutationObserver, not turbo:before-stream-render: Turbo dispatches that
+  // event and then waits a repaint before rendering, so a broadcast whose
+  // event fired before this guard existed could still render after it and
+  // never be seen. Observer callbacks run after the DOM has actually changed.
+  refocusAfterSelfBroadcast(selector, within = document) {
+    const observer = new MutationObserver(() => {
+      if (document.activeElement === document.body) within.querySelector(selector)?.focus()
+    })
+    observer.observe(document.body, { childList: true, subtree: true })
+    setTimeout(() => observer.disconnect(), 1000)
   }
 
   // A click whose target is the <dialog> itself landed on the backdrop.

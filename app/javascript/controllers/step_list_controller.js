@@ -42,6 +42,7 @@ export default class extends Controller {
     const opening = this.typePickerTarget?.hidden
     if (opening) {
       this.door = null
+      this.doorTrigger = null
       this.setDoor({})
       this.setExistingOptionHidden(true)
       this.clearFloatingPosition()
@@ -88,6 +89,7 @@ export default class extends Controller {
   }
 
   openForDoor(trigger) {
+    this.doorTrigger = trigger
     this.door = {
       from: trigger.dataset.growFrom,
       label: trigger.dataset.growLabel,
@@ -110,6 +112,10 @@ export default class extends Controller {
     event.stopPropagation()
     const door = this.door
     this.closeTypePicker()
+    // showModal() records whatever has focus and hands it back on close. That
+    // is this item, hidden a line ago, so Escape, Cancel and the backdrop
+    // would all drop focus on <body>; the chip is where the author came from.
+    this.doorTrigger?.focus()
     if (door?.connectUrl) this.dispatch("pick-existing", { detail: door })
   }
 

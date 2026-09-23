@@ -396,4 +396,60 @@ class BuilderOutlineTest < ApplicationSystemTestCase
     # jump can be on the page a moment before it holds focus.
     assert_eventually { page.evaluate_script("document.activeElement.classList.contains('builder__outline-jump')") }
   end
+
+  # showModal() remembers what had focus and hands it back on close. The type
+  # picker's own item is hidden by then, so without putting focus back on the
+  # chip first, Escape, Cancel and the backdrop all left focus on <body>.
+  test "closing the list dialog without a pick returns focus to the chip" do
+    q = Steps::Question.create!(workflow: @workflow, title: "Q", position: 0, answer_type: "yes_no", variable_name: "q")
+    @workflow.update_columns(start_step_id: q.id)
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 1, wait: 5
+
+    pick_existing_from(q, "No → add step")
+    find("dialog#list-target-picker").send_keys(:escape)
+    assert_no_selector "dialog#list-target-picker[open]", wait: 5
+    assert_eventually { page.evaluate_script(chip_focused_js("No")) }
+
+    pick_existing_from(q, "Yes → add step")
+    within("dialog#list-target-picker") { click_on "Cancel" }
+    assert_no_selector "dialog#list-target-picker[open]", wait: 5
+    assert_eventually { page.evaluate_script(chip_focused_js("Yes")) }
+  end
+
+  # The acting tab receives its own list broadcast. When it renders after the
+  # response it replaces the jump that was just focused. This renders that
+  # broadcast late on purpose, the same stream broadcast_step_list sends.
+  test "focus survives the pick's own list broadcast arriving after the response" do
+    # No (the continuation) leads to Done, so wiring Yes to Done makes Yes a jump.
+    q = Steps::Question.create!(workflow: @workflow, title: "Q", position: 0, answer_type: "yes_no", variable_name: "q")
+    done = Steps::Resolve.create!(workflow: @workflow, title: "Done", position: 1)
+    Transition.create!(step: q, target_step: done, condition: "q == 'no'", position: 0)
+    @workflow.update_columns(start_step_id: q.id)
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 2, wait: 5
+
+    pick_existing_from(q, "Yes → add step")
+    within("dialog#list-target-picker") { click_on "Done" }
+    within(node_for(q)) { assert_selector ".builder__outline-jump", text: "→ Done" }
+    assert_eventually { page.evaluate_script(jump_focused_js) }
+
+    html = ApplicationController.render(
+      partial: "workflows/steps_list_items",
+      locals: { workflow: @workflow.reload, steps: @workflow.steps.ordered.includes(transitions: :target_step) }
+    )
+    stream = %(<turbo-stream action="update" target="steps-list"><template>#{html}</template></turbo-stream>)
+    page.execute_script("Turbo.renderStreamMessage(#{stream.to_json})")
+
+    assert_eventually { page.evaluate_script(jump_focused_js) }
+  end
+
+  def jump_focused_js
+    "document.activeElement.matches('.builder__outline-jump') && document.activeElement.isConnected"
+  end
+
+  def chip_focused_js(label)
+    "document.activeElement.matches('.builder__door-stub') && " \
+      "document.activeElement.closest('[data-door-key]').dataset.doorKey.endsWith(':#{label}')"
+  end
 end

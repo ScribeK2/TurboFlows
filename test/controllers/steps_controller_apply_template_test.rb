@@ -25,6 +25,9 @@ class StepsControllerApplyTemplateTest < ActionDispatch::IntegrationTest
     assert(@workflow.steps.any?(Steps::Question))
     assert(@workflow.steps.any?(Steps::Resolve))
     assert_predicate @workflow.start_step_id, :present?
+    # The list-level "An existing step…" dialog sits beside #steps-list, so its
+    # candidates are re-streamed or it would offer only the replaced steps.
+    assert_select "turbo-stream[action='replace'][target='list-target-picker-options']"
   end
 
   test "apply_template creates transitions between steps" do
