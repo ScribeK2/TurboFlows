@@ -16,6 +16,31 @@ class BuilderOutlineTest < ApplicationSystemTestCase
     User.where("email LIKE ?", "outline-sys-%").destroy_all
   end
 
+  # Closing the panel re-widens .builder__list over the same 250ms transition
+  # that widens the panel on open (see assert_panel_settled in
+  # application_system_test_case.rb) - .builder__list-tools, which holds
+  # Collapse all/Expand all, slides with it (justify-content: flex-end). A
+  # click sent mid-animation lands where the button used to be, missing it
+  # silently: no exception, just a click nothing was under. Poll the tools
+  # row's own position until two consecutive reads agree.
+  def assert_list_settled(timeout: 5)
+    deadline = Time.current + timeout
+    previous = nil
+    loop do
+      right_edge = page.evaluate_script(<<~JS)
+        (() => {
+          const el = document.querySelector(".builder__list-tools");
+          return el ? Math.round(el.getBoundingClientRect().right) : null;
+        })()
+      JS
+      return if right_edge && right_edge == previous
+
+      flunk "the list never settled after closing the panel (#{right_edge.inspect})" if Time.current > deadline
+      previous = right_edge
+      sleep 0.1
+    end
+  end
+
   # Yes → Working, No → Power cycle → Did it come back? (Yes → Working, No → Escalate)
   def toy_graph
     @q1 = Steps::Question.create!(workflow: @workflow, title: "Power light green?", position: 0, answer_type: "yes_no", variable_name: "light")
@@ -131,5 +156,92 @@ class BuilderOutlineTest < ApplicationSystemTestCase
     # the rendered text.
     assert_selector ".builder__outline-section", text: /unconnected/i, wait: 5
     assert_selector ".builder__outline-section + #{STEP_NODE}[data-node-uuid='#{lone.uuid}']"
+  end
+
+  test "a folded branch stays folded across a re-render, and says what is inside" do
+    toy_graph
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 5, wait: 5
+
+    fold_selector = "details[data-fold-key='#{@q2.uuid}:Yes']"
+    assert find(fold_selector)[:open], "folds start open"
+    find("#{fold_selector} > summary").click
+    assert_no_selector "#{fold_selector}[open]"
+    within(fold_selector) { assert_selector ".builder__outline-fold-count", text: "→ Working · step 4 · 1 step" }
+
+    open_step(@q1)
+    fill_in "step[title]", with: "Power light green?!"
+    assert_selector "#{STEP_ROW}[data-step-title='Power light green?!']", wait: 5
+    # "the re-render kept the fold"
+    assert_no_selector "#{fold_selector}[open]"
+  end
+
+  test "a fold survives a whole-list replace from a delete" do
+    toy_graph
+    lone = Steps::Resolve.create!(workflow: @workflow, title: "Lone", position: 9)
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 6, wait: 5
+
+    find("details[data-fold-key='#{@q2.uuid}:Yes'] > summary").click
+    # .builder__step-delete is opacity: 0 until the row is hovered, so it must
+    # be hovered before Capybara/Selenium will treat it as clickable.
+    row = find("#{STEP_ROW}[data-step-uuid='#{lone.uuid}']")
+    row.hover
+    accept_confirm { row.find(".builder__step-delete").click }
+    assert_selector STEP_ROW, count: 5, wait: 5
+    assert_no_selector "details[data-fold-key='#{@q2.uuid}:Yes'][open]"
+  end
+
+  test "a folded branch reveals the step whose panel is open" do
+    toy_graph
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 5, wait: 5
+
+    find("details[data-fold-key='#{@q2.uuid}:Yes'] > summary").click
+    within(node_for(@q1)) { find(".builder__outline-jump").click }
+    assert_selector "#builder-panel .builder__panel-body[data-step-id='#{@working.id}']", wait: 5
+    assert_selector "details[data-fold-key='#{@q2.uuid}:Yes'][open]", wait: 5
+  end
+
+  test "Collapse all closes every fold, and Expand all opens them, across a re-render" do
+    toy_graph
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 5, wait: 5
+
+    click_on "Collapse all"
+    assert_no_selector "details[data-fold-key][open]"
+    assert_button "Expand all"
+
+    open_step(@q1)
+    fill_in "step[title]", with: "Renamed"
+    assert_selector "#{STEP_ROW}[data-step-title='Renamed']", wait: 5
+    assert_no_selector "details[data-fold-key][open]"
+
+    find("#builder-panel button[title='Close panel']").click
+    assert_list_settled
+    click_on "Expand all"
+    assert_selector "details[data-fold-key][open]"
+    assert_button "Collapse all"
+  end
+
+  test "view mode folds too" do
+    toy_graph
+    visit workflow_path(@workflow)
+    assert_selector "[data-builder-mode-value='view']", wait: 5
+    assert_button "Collapse all"
+    find("details[data-fold-key='#{@q2.uuid}:Yes'] > summary").click
+    assert_no_selector "details[data-fold-key='#{@q2.uuid}:Yes'][open]"
+  end
+
+  test "no folds, no Collapse all" do
+    a = Steps::Action.create!(workflow: @workflow, title: "A", position: 0)
+    done = Steps::Resolve.create!(workflow: @workflow, title: "Done", position: 1)
+    Transition.create!(step: a, target_step: done)
+    @workflow.update_columns(start_step_id: a.id)
+
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 2, wait: 5
+    assert_no_button "Collapse all"
+    assert_no_button "Expand all"
   end
 end

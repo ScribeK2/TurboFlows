@@ -14,6 +14,14 @@
      id="step-list"
      data-controller="step-list">
 
+  <%# Collapse all / Expand all. Hidden until outline-fold finds a fold to act
+      on; not edit-only - a viewer folds too. %>
+  <div class="builder__list-tools">
+    <button type="button" class="btn btn--plain btn--sm builder__outline-toggle-all" hidden
+            data-outline-fold-target="toggleAll"
+            data-action="outline-fold#toggleAll">Collapse all</button>
+  </div>
+
   <div class="builder__list-scroll">
     <div id="steps-list"
          data-step-list-target="list"

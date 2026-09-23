@@ -86,8 +86,19 @@
   <% if node.exits.any? || node.extras.any? %>
     <div class="builder__outline-branch" role="group">
       <% node.exits.each do |edge| %>
-        <% door_chip.call(edge) %>
-        <% exit_chain.call(edge) if edge.kind == :step %>
+        <% if edge.kind == :step %>
+          <details class="builder__outline-fold" open data-fold-key="<%= step.uuid %>:<%= edge.door.label %>">
+            <summary class="builder__outline-door builder__outline-door--step builder__outline-door--fold"
+                     data-door-key="<%= step.id %>:<%= edge.door.label %>">
+              <span class="builder__type-dot builder__type-dot--<%= edge.target.step_type %>" aria-hidden="true"></span>
+              <span class="builder__outline-chip" title="<%= edge.door.label %>"><%= edge.door.label %></span>
+              <span class="builder__outline-fold-count">→ <%= target_title.call(edge.target) %> · step <%= ordinals[edge.target.uuid] %> · <%= pluralize(edge.child.chain_rows, "step") %></span>
+            </summary>
+            <% exit_chain.call(edge) %>
+          </details>
+        <% else %>
+          <% door_chip.call(edge) %>
+        <% end %>
       <% end %>
       <% node.extras.each do |transition| %>
         <div class="builder__outline-door builder__outline-door--extra">

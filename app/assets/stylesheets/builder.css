@@ -423,6 +423,54 @@
     white-space: nowrap;
   }
 
+  /* A foldable exit: the door chip is the summary; the marker is a chevron. */
+  .builder__outline-fold > summary { cursor: pointer; list-style: none; }
+  .builder__outline-fold > summary::-webkit-details-marker { display: none; }
+
+  .builder__outline-fold > summary::before {
+    content: "";
+    flex: 0 0 auto;
+    width: 0.4em;
+    height: 0.4em;
+    border-right: 1.5px solid var(--color-ink-muted);
+    border-bottom: 1.5px solid var(--color-ink-muted);
+    transform: rotate(45deg);
+    transition: transform var(--duration-fast) var(--ease-out);
+  }
+
+  .builder__outline-fold:not([open]) > summary::before { transform: rotate(-45deg); }
+
+  /* A stub, a jump or an extra has nothing to fold: keep its chip in the
+     chevron's column so everything lines up. */
+  .builder__outline-branch > .builder__outline-door:not(.builder__outline-door--fold) {
+    padding-left: calc(var(--space-3) + 0.4em + var(--space-2));
+  }
+
+  .builder__outline-fold-count {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--color-ink-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .builder__outline-fold[open] > summary .builder__outline-fold-count { display: none; }
+
+  .builder__list-tools {
+    display: flex;
+    justify-content: flex-end;
+    padding: var(--space-1) var(--space-2) 0;
+  }
+
+  /* .btn sets display: inline-flex at the same specificity as the UA's
+     [hidden] { display: none }, loaded later in the cascade, so it wins and
+     the button stays visible. See UIGUIDE § The unstyled-button trap for the
+     same shape of bug; .builder__toolbar-issues[hidden] is the existing fix. */
+  .builder__outline-toggle-all[hidden] {
+    display: none;
+  }
+
   .builder__outline-section {
     padding: var(--space-3) var(--space-4) var(--space-1);
     font-size: var(--text-xs);
