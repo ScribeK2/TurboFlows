@@ -61,7 +61,7 @@
         <%# The chip wraps rather than ellipsizing, and "· step N" never breaks,
             so the number is never what gets cut. All inline: a flex or block
             child would split the chip's text into lines (see builder.css). %>
-        → <%= target_title.call(edge.target) %> <span class="builder__outline-jump-step">· step <%= ordinals[edge.target.uuid] %></span>
+        → <%= target_title.call(edge.target) %> <span class="builder__outline-step-ref">· step <%= ordinals[edge.target.uuid] %></span>
       </button>
     <% end %>
   </div>
@@ -95,7 +95,7 @@
                      data-door-key="<%= step.id %>:<%= edge.door.label %>">
               <span class="builder__type-dot builder__type-dot--<%= edge.target.step_type %>" aria-hidden="true"></span>
               <span class="builder__outline-chip" title="<%= edge.door.label %>"><%= edge.door.label %></span>
-              <span class="builder__outline-fold-count">→ <%= target_title.call(edge.target) %> · step <%= ordinals[edge.target.uuid] %> · <%= pluralize(edge.child.chain_rows, "step") %></span>
+              <span class="builder__outline-fold-count">→ <%= target_title.call(edge.target) %> <span class="builder__outline-step-ref">· step <%= ordinals[edge.target.uuid] %> · <%= pluralize(edge.child.chain_rows, "step") %></span></span>
             </summary>
             <% exit_chain.call(edge) %>
           </details>

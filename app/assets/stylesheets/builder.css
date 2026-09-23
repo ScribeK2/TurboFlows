@@ -454,7 +454,7 @@
     border-radius: var(--radius-lg);
   }
 
-  .builder__outline-jump-step { white-space: nowrap; }
+  .builder__outline-step-ref { white-space: nowrap; }
 
   /* Merges share one treatment from either end: the link icon and the
      primary accent, on a jump chip and on "ways in". */
@@ -510,13 +510,23 @@
     padding-left: calc(var(--space-3) + 0.4em + var(--space-2));
   }
 
+  /* Wraps like a jump chip, for the same reason: an ellipsis over the whole
+     line cut "· step N · 3 steps" first at panel-open width. The number and
+     count are one unbreakable run (.builder__outline-step-ref). */
   .builder__outline-fold-count {
-    flex: 1 1 auto;
+    flex: 1 1 10rem;
     min-width: 0;
     color: var(--color-ink-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  }
+
+  /* When the chip leaves the count less than 10rem, the count takes its own
+     line under the chip instead of a narrow column beside it. The chip is
+     capped short of the line so it never wraps away from its chevron and
+     dot (the three are ~3rem narrower than 100% together). */
+  .builder__outline-fold:not([open]) > summary { flex-wrap: wrap; }
+
+  .builder__outline-fold:not([open]) > summary .builder__outline-chip {
+    max-width: min(20rem, calc(100% - var(--space-12)));
   }
 
   .builder__outline-fold[open] > summary .builder__outline-fold-count { display: none; }

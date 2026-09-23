@@ -297,7 +297,9 @@ guide line. A linear workflow therefore renders exactly as the flat list did.
   sources in reading order ("From step 3 · Yes, step 7 · Next"). The treeitem's
   `aria-labelledby` includes it, so the words are part of the accessible name.
   With a panel open they are visually hidden (the `.sr-only` recipe) and the
-  icon and count stay. It is not interactive.
+  icon and count stay. The hidden span is then out of flow, so the element's
+  `innerText` (and Capybara's `.text`) reads `"2\nways in"` while a panel is
+  open; assert on "2 ways in" with the panel closed. It is not interactive.
 - **Which saves re-render the whole list.** A title now appears beyond its own
   row: in jump chips, "ways in" tooltips and the list dialog's options. The
   tree's shape depends on `answer_type`, `options` and `sub_flow_returns` too.
