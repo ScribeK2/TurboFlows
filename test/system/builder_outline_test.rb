@@ -562,6 +562,23 @@ class BuilderOutlineTest < ApplicationSystemTestCase
     assert_eventually { page.evaluate_script(row_visible_in_list_js(last)) }
   end
 
+  # QA A-003: one long unbroken run in a title overflowed its row at
+  # panel-open width, under the warning icon and Remove.
+  test "a long unbroken title wraps inside its row with the panel open" do
+    step = Steps::Action.create!(workflow: @workflow, position: 0, title: "Escalate #{'X' * 90}")
+    @workflow.update_columns(start_step_id: step.id)
+    visit workflow_path(@workflow, edit: true)
+    open_step(step)
+
+    fits = page.evaluate_script(<<~JS)
+      [".builder__step .list-row__title", ".builder__step", ".builder__outline"].every(sel => {
+        const el = document.querySelector(sel);
+        return el.scrollWidth <= el.clientWidth;
+      })
+    JS
+    assert fits, "the title, its row and the outline all fit their width"
+  end
+
   # QA C-001: the open step's branch sprang open again on every keystroke,
   # because the reveal ran on every DOM mutation. It now runs when the open
   # step changes or the list re-renders; between those, the author's fold holds.
