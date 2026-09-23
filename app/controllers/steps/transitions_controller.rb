@@ -75,12 +75,20 @@ module Steps
       flash.now[:alert] = "That connection was not saved: #{message}"
       streams = [
         turbo_stream.update("flash", partial: "shared/flash_messages"),
-        turbo_stream.update(dom_id(@step, :target_picker_error), ERB::Util.html_escape(message))
+        turbo_stream.update(dom_id(@step, :target_picker_error), ERB::Util.html_escape(message)),
+        # The list-level dialog (workflows/_list_target_picker) is a second
+        # place a pick can come from; a stream at a target not on the page is
+        # a no-op, so answer both.
+        turbo_stream.update("list-target-picker-error", ERB::Util.html_escape(message))
       ]
       if refresh_options
         streams << turbo_stream.replace(dom_id(@step, :target_picker_options),
                                         partial: "steps/target_picker_options",
-                                        locals: { step: @step, workflow: @workflow })
+                                        locals: { step: @step, workflow: @workflow, outline: outline })
+        streams << turbo_stream.replace("list-target-picker-options",
+                                        partial: "steps/target_picker_options",
+                                        locals: { step: nil, workflow: @workflow, outline: outline,
+                                                  options_id: "list-target-picker-options" })
       end
       render turbo_stream: streams, status: :unprocessable_content
     end
@@ -99,15 +107,26 @@ module Steps
       redirect_to workflows_path, alert: "You don't have permission to edit this workflow."
     end
 
+    # The steps and outline everything this request renders shares - built once,
+    # after the action's write, and passed down as `outline:` rather than built
+    # again by each partial and broadcast (test/controllers/step_outline_builds_test.rb).
+    def list_steps
+      @list_steps ||= @workflow.steps.ordered.includes(transitions: :target_step).to_a
+    end
+
+    def outline
+      @outline ||= StepOutline.call(@workflow, list_steps)
+    end
+
     def render_connections
       @step.reload
-      steps = @workflow.steps.ordered.includes(transitions: :target_step)
+      steps = list_steps
 
       render turbo_stream: [
         turbo_stream.replace("step-list", partial: "workflows/step_list",
-                                          locals: { workflow: @workflow, steps: steps }),
+                                          locals: { workflow: @workflow, steps: steps, outline: outline }),
         turbo_stream.update(dom_id(@step, :connections), partial: "steps/connections",
-                                                         locals: { step: @step, workflow: @workflow }),
+                                                         locals: { step: @step, workflow: @workflow, outline: outline }),
         # The dialog's own list is rendered with the panel, so a step grown
         # after it opened is missing until this refreshes it. This never fights
         # the JS-side close: turbo:submit-end (which closes the dialog on a
@@ -117,14 +136,22 @@ module Steps
         # already closed, and it stays closed (the fresh copy carries no
         # `open` attribute).
         turbo_stream.replace(dom_id(@step, :target_picker), partial: "steps/target_picker",
-                                                            locals: { step: @step, workflow: @workflow })
+                                                            locals: { step: @step, workflow: @workflow, outline: outline })
       ]
 
       Turbo::StreamsChannel.broadcast_update_to(
         "workflow_#{@workflow.id}",
         target: "steps-list",
         partial: "workflows/steps_list_items",
-        locals: { workflow: @workflow, steps: steps }
+        locals: { workflow: @workflow, steps: steps, outline: outline }
+      )
+      # The list-level dialog sits beside #steps-list, not in it, so its
+      # candidates ride along with every list broadcast.
+      Turbo::StreamsChannel.broadcast_replace_to(
+        "workflow_#{@workflow.id}",
+        target: "list-target-picker-options",
+        partial: "steps/target_picker_options",
+        locals: { step: nil, workflow: @workflow, options_id: "list-target-picker-options", outline: outline }
       )
       broadcast_connections
     end
@@ -145,7 +172,7 @@ module Steps
         "workflow_#{@workflow.id}",
         target: dom_id(@step, :connections),
         partial: "steps/connections",
-        locals: { step: @step, workflow: @workflow }
+        locals: { step: @step, workflow: @workflow, outline: outline }
       )
       # Its own partial precisely so the list can be replaced without closing an
       # open dialog; optionTargetConnected re-runs markGoneOptions and filter.
@@ -153,7 +180,7 @@ module Steps
         "workflow_#{@workflow.id}",
         target: dom_id(@step, :target_picker_options),
         partial: "steps/target_picker_options",
-        locals: { step: @step, workflow: @workflow }
+        locals: { step: @step, workflow: @workflow, outline: outline }
       )
     end
   end

@@ -130,6 +130,41 @@ class BuilderCollaborationTest < ApplicationSystemTestCase
     end
   end
 
+  # The retarget goes through Steps::TransitionsController#update, which
+  # already broadcasts the list - this guards that the broadcast renders the
+  # outline, not just the Connections fragment inside the panel that made it.
+  #
+  # The setup block already gives @workflow one step (@resolve, "All done"), so
+  # this reuses it as the Yes target rather than creating a second Resolve -
+  # that keeps the row count at 3, matching the workflow this test actually
+  # runs against.
+  test "a door retargeted by one editor moves the jump chip the other is looking at" do
+    q = Steps::Question.create!(workflow: @workflow, title: "Q", position: 1, answer_type: "yes_no", variable_name: "q")
+    b = Steps::Resolve.create!(workflow: @workflow, title: "B", position: 2)
+    Transition.create!(step: q, target_step: @resolve, condition: "q == 'yes'", position: 0)
+    Transition.create!(step: q, target_step: b, condition: "q == 'no'", position: 1)
+    @workflow.update!(start_step: q)
+
+    sign_in_as @editor_one
+    visit_builder
+    assert_selector STEP_ROW, count: 3, wait: 5
+    within(node_for(q)) { assert_no_selector ".builder__outline-jump" }
+
+    using_session(:editor_two) do
+      sign_in_as @editor_two
+      visit_builder
+      assert_selector STEP_ROW, count: 3, wait: 5
+      open_step(q)
+      within("#builder-panel .step-doors") { find("button", text: "Change", match: :first).click }
+      within("dialog[open]") { click_on "B" }
+      assert_selector "#builder-panel .step-doors", text: /Yes.*B/m, wait: 5
+    end
+
+    within(node_for(q)) do
+      assert_selector ".builder__outline-jump", text: /B · step/, wait: 5
+    end
+  end
+
   private
 
   def question_with_a_door
@@ -157,11 +192,11 @@ class BuilderCollaborationTest < ApplicationSystemTestCase
     assert_eventually(timeout: 10) { question.transitions.reload.any? }
   end
 
-  # Scoped to the row's list semantics: the warning icon also carries
+  # Scoped to the row's own class: the warning icon also carries
   # data-step-uuid, so a bare attribute selector matches twice for any step
   # showing an issue.
   def step_row_selector(uuid)
-    "[role='listitem'][data-step-uuid='#{uuid}']"
+    "#{STEP_ROW}[data-step-uuid='#{uuid}']"
   end
 
   def create_editor

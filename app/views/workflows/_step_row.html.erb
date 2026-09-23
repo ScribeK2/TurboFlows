@@ -1,27 +1,30 @@
 <%#
-  Step Row — one row in the builder step list.
+  Step Row — one step's own line in the builder's outline.
 
   Adopts .list-row anatomy from lists.css (compact size) so the builder shares
   one row definition with the dashboard and player index. builder__step carries
-  only the builder's own concerns: click target, drag slot, selected state.
+  only the builder's own concerns: click target and selected state.
+
+  Where this step LEADS is not on the row: the outline around it says that
+  (workflows/_step_node), with a chip per door. The row is the step itself:
+  number, title, how many connections lead in, Start/Terminal, the health
+  icon, Remove.
 
   Local variables:
   - step: AR Step object
   - workflow: Workflow object
-  - ordinals: { step uuid => 1-based position in the rendered list }, so the
-    badge and the "→ Step N" summary agree, and neither depends on the stored
-    `position` column — which is 0-based in service-built workflows and 1-based
-    in UI-built ones. Optional: callers that render a row on its own (Turbo
-    Stream appends) fall back to the step's own place in the workflow.
+  - outline: StepOutline::Result. Every caller in the builder passes the one
+    its request built; only a row rendered on its own with none (steps#show)
+    builds the workflow's own.
 
   Rows always render unselected. builder_controller#syncSelectedRow adds
   builder__step--selected client-side, reading data-step-id against the open
   panel — see that controller for why selection isn't decided here.
 %>
-<% ordinals = local_assigns.fetch(:ordinals) { step_ordinals(workflow) } %>
-<% ordinal = ordinals[step.uuid] || "?" %>
+<% outline = local_assigns.fetch(:outline) { StepOutline.for(workflow) } %>
+<% ordinal = outline.ordinals[step.uuid] || "?" %>
+<% ways_in = outline.ways_in_for(step) %>
 <% type_label = step_type_label(step.step_type) %>
-<% doors = Step::Doors.for(step) %>
 <% row_title = step.title.presence || "Untitled #{step.step_type.titleize}" %>
 
 <div class="list-row list-row--compact builder__step"
@@ -29,19 +32,10 @@
      data-step-id="<%= step.id %>"
      data-step-uuid="<%= step.uuid %>"
      data-step-type="<%= step.step_type %>"
-     data-step-title="<%= step.title.presence || "Untitled #{step.step_type.titleize}" %>"
+     data-step-title="<%= row_title %>"
      data-action="click->builder#openStep"
-     data-builder-url-param="<%= panel_edit_workflow_step_path(workflow, step) %>"
-     role="listitem">
+     data-builder-url-param="<%= panel_edit_workflow_step_path(workflow, step) %>">
 
-  <%# Drag Handle (edit mode only) %>
-  <span class="drag-handle builder__edit-only"
-        data-controller="tooltip" data-tooltip-text-value="Drag to reorder">
-    <%= icon "bars-2", class: "icon icon--sm" %>
-  </span>
-
-  <%# Step number in a type-hued badge. The type name is not repeated as a
-      separate label - it lives here, so colour is never the only signal. %>
   <span class="builder__step-badge builder__step-badge--<%= step.step_type %>"
         aria-label="<%= type_label %>"
         title="<%= type_label %>">
@@ -49,76 +43,30 @@
   </span>
 
   <div class="list-row__body">
-    <div class="list-row__title">
+    <div class="list-row__title" id="<%= dom_id(step, :title) %>">
       <%= row_title %>
     </div>
   </div>
 
-  <%# Status and outgoing connections sit inline rather than on a second line:
-      a step list is scanned vertically, and a two-line row costs about a third
-      of the steps visible at once. Mirrors how .list-row__progress sits inline.
-      title= keeps the full crumb readable once CSS ellipsizes it. %>
+  <%# More than one connection leads here. The outline shows the step once,
+      under the door that reached it first; this says the others exist, and
+      the tooltip names them. Read as part of the treeitem's name (see
+      _step_node's aria-labelledby). %>
+  <% if ways_in.any? %>
+    <span class="builder__ways-in" id="<%= dom_id(step, :ways_in) %>"
+          title="From <%= ways_in.map { |way| "step #{outline.ordinals[way.source.uuid]} · #{way.label}" }.join(", ") %>">
+      <%# One inline run, so its text reads "2 ways in" on one line. With a
+          panel open the words are visually hidden and the count stays; they
+          remain in the treeitem's accessible name. %>
+      <%= icon "link", class: "icon icon--xs" %><span><%= ways_in.size %><span class="builder__ways-in-label"> ways in</span></span>
+    </span>
+  <% end %>
+
   <% parts = [] %>
   <% parts << "Start" if step == workflow.start_step %>
   <% parts << "Terminal" if step.terminal? %>
-  <% door_summary = step_door_summary(doors, ordinals) %>
-  <% parts << door_summary if door_summary.present? %>
-  <% meta = parts.join(" · ") %>
-  <span class="builder__step-meta"<% if meta.present? %> title="<%= meta %>"<% end %>>
-    <%= meta %>
-  </span>
-
-  <%# Stubs: the answers that lead nowhere yet. Not inside .builder__step-meta,
-      which hides while the panel is open - and the panel is open right after a
-      grow, which is exactly when the remaining stub has to be findable. Two
-      doors or fewer get a button each; more collapse to one line that opens the
-      panel at its doors, since a row is one line tall at rest. While the panel
-      is open a stubbed row takes a second line for its stubs instead of
-      overlapping the title (builder.css), but that does not raise the collapse
-      threshold - 3 or more still read as one summary line, not a wider one. %>
-  <% stubs = doors.stubs %>
-  <% if stubs.any? %>
-    <%# View mode says where an unwired answer goes today, and that is not
-        always "nowhere": a blank-condition connection catches every answer
-        without a door of its own. The panel's door rows say the same thing in
-        the same words (steps/_doors) — when the row said "nothing yet" beside
-        a panel reading "follows “Anything else” for now", one of them was
-        lying. %>
-    <% stub_state = doors.fallback ? "follows “Anything else” for now" : "nothing yet" %>
-    <span class="builder__step-doors">
-      <% if doors.doors.size <= 2 %>
-        <% stubs.each do |door| %>
-          <% stub_label = door.kind == :next ? "→" : "#{door.label} →" %>
-          <%# Same fact as data-grow-context, worded as what the button does
-              rather than where it's growing from - a row-by-row reader hears
-              which Question this stub belongs to, not just "→ add step"
-              repeated once per row. %>
-          <% stub_aria = door.kind == :next ? "Add a step after “#{row_title}”" : "“#{row_title}” — #{door.label}: add step" %>
-          <button type="button" class="builder__door-stub builder__edit-only"
-                  aria-label="<%= stub_aria %>"
-                  data-action="click->step-list#growFromDoor"
-                  data-grow-from="<%= step.id %>"
-                  data-grow-label="<%= door.label unless door.kind == :next %>"
-                  data-grow-condition="<%= door.condition %>"
-                  data-grow-context="<%= door.kind == :next ? "After “#{row_title}”" : "“#{row_title}” — #{door.label}" %>">
-            <%= stub_label %> add step
-          </button>
-          <span class="builder__door-stub-text builder__view-only"><%= stub_label %> <%= stub_state %></span>
-        <% end %>
-      <% else %>
-        <%# Honest about a wired fallback the same way the per-door line above
-            is: an unwired answer collapsed into this summary still follows
-            "Anything else" when the step has one, so it does not read as
-            "needing a step" it already has. %>
-        <% collapsed = step_collapsed_stub_summary(doors) %>
-        <button type="button" class="builder__door-stub builder__edit-only"
-                data-action="click->builder#openStepAtDoors"
-                data-builder-url-param="<%= panel_edit_workflow_step_path(workflow, step) %>">
-          <%= collapsed %>
-        </button>
-        <span class="builder__door-stub-text builder__view-only"><%= collapsed %></span>
-      <% end %>
-    </span>
+  <% if parts.any? %>
+    <span class="builder__step-meta"><%= parts.join(" · ") %></span>
   <% end %>
 
   <%# Warning Icon (populated by step_warnings_controller.js) %>

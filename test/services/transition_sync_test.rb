@@ -342,4 +342,36 @@ class TransitionSyncTest < ActiveSupport::TestCase
     assert_equal @a.id, other.reload.step_id
     assert_equal [other.uuid], result.skipped
   end
+
+  # The panel's hidden transitions_json field rides along on every autosave,
+  # present and non-blank whether or not the author touched a connection - so
+  # StepsController#update relies on this flag, not on the field's mere
+  # presence, to decide whether the outline needs the whole list re-broadcast.
+  test "changed is false when the payload leaves connections exactly as they were" do
+    # position: 0, not left nil - a real panel's existing row has already been
+    # through settle_positions once, and leaving it nil here would make THIS
+    # save look like a change (nil -> 0) that isn't the retarget under test.
+    existing = Transition.create!(step: @question, target_step: @a, condition: "light == 'yes'", label: "Yes",
+                                  position: 0)
+
+    result = TransitionSync.call(@question, new_payload(rendered: [existing.uuid], minted: [], rows: [
+                                                          { uuid: existing.uuid, target_uuid: @a.uuid,
+                                                            condition: "light == 'yes'", label: "Yes" }
+                                                        ]))
+
+    assert_not result.changed
+  end
+
+  test "changed is true when a row is retargeted" do
+    existing = Transition.create!(step: @question, target_step: @a, condition: "light == 'yes'", label: "Yes",
+                                  position: 0)
+
+    result = TransitionSync.call(@question, new_payload(rendered: [existing.uuid], minted: [], rows: [
+                                                          { uuid: existing.uuid, target_uuid: @b.uuid,
+                                                            condition: "light == 'yes'", label: "Yes" }
+                                                        ]))
+
+    assert result.changed
+    assert_equal @b.id, existing.reload.target_step_id
+  end
 end

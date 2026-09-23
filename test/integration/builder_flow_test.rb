@@ -29,7 +29,7 @@ class BuilderFlowTest < ActionDispatch::IntegrationTest
     assert_match "Publish", response.body
   end
 
-  test "step row meta carries the full connection crumb as a title" do
+  test "step row meta says Start and the continuation chip names its door" do
     workflow = Workflow.create!(title: "Overflow crumbs", user: @user)
     question = Steps::Question.create!(
       workflow: workflow, position: 0,
@@ -45,7 +45,8 @@ class BuilderFlowTest < ActionDispatch::IntegrationTest
     get workflow_path(workflow, edit: true)
 
     assert_response :success
-    assert_select ".builder__step-meta[title=?]", "Start · → Verify Client Account · 2"
+    assert_select ".builder__step-meta", text: "Start"
+    assert_select ".builder__outline-door--continue .builder__outline-chip", text: "Next"
   end
 
   test "adding a step via turbo stream appends step row" do

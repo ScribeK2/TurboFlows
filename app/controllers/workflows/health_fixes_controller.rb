@@ -83,8 +83,10 @@ module Workflows
 
     def respond_with_updated_steps
       @workflow.reload
-      steps = @workflow.steps.includes(transitions: :target_step).ordered
+      steps = @workflow.steps.includes(transitions: :target_step).ordered.to_a
       health = WorkflowHealthCheck.call(@workflow)
+      # One outline for the list and the health panel's numbers.
+      outline = StepOutline.call(@workflow, steps)
 
       respond_to do |format|
         format.turbo_stream do
@@ -92,12 +94,12 @@ module Workflows
             turbo_stream.replace(
               "step-list",
               partial: "workflows/step_list",
-              locals: { workflow: @workflow, steps: }
+              locals: { workflow: @workflow, steps:, outline: }
             ),
             turbo_stream.update(
               "builder-panel",
               partial: "workflows/health_panel_inner",
-              locals: { workflow: @workflow, health: }
+              locals: { workflow: @workflow, health:, outline: }
             ),
             # A fix can add a step, so the toolbar count has to move with it.
             # steps#create streams this; this action did not, which left the

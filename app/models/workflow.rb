@@ -9,6 +9,7 @@ class Workflow < ApplicationRecord
   include WorkflowStepValidation
   include WorkflowSharing
   include WorkflowGraphQueries
+  include WorkflowStartStep
 
   belongs_to :user
 
@@ -363,22 +364,6 @@ class Workflow < ApplicationRecord
 
     step = find_step_by_uuid(reference) || find_step_by_title(reference)
     step&.title
-  end
-
-  # Get step options for select dropdowns
-  def step_options_for_select
-    steps.map.with_index do |step, index|
-      next nil if step.title.blank?
-
-      {
-        id: step.uuid,
-        title: step.title,
-        type: step.step_type,
-        index: index,
-        display_name: "#{index + 1}. #{step.title}",
-        type_icon: step_type_icon(step.step_type)
-      }
-    end.compact
   end
 
   # Count steps by type, returns hash like { 'question' => 3, 'action' => 2, ... }

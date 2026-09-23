@@ -60,12 +60,12 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
 
     page.execute_script("document.querySelector('.builder__list-scroll').scrollTop = 0")
 
-    step_row(steps.first.uuid).find(".builder__door-stub").click
+    find("#{STEP_NODE}[data-node-uuid='#{steps.first.uuid}'] .builder__door-stub", match: :first).click
     assert_selector "[data-step-list-target='typePicker']:not(.is-hidden)", wait: 5
 
     rects = page.evaluate_script(<<~JS)
       (() => {
-        const stub = document.querySelector("[data-step-uuid='#{steps.first.uuid}'] .builder__door-stub");
+        const stub = document.querySelector("[data-node-uuid='#{steps.first.uuid}'] .builder__door-stub");
         const menu = document.querySelector("[data-step-list-target='typePicker']");
         const s = stub.getBoundingClientRect();
         const m = menu.getBoundingClientRect();
@@ -122,7 +122,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
 
     visit_builder_in_edit_mode
     assert_step_count 2
-    assert_selector "[role='listitem'][data-step-uuid='#{question.uuid}']"
+    assert_selector "#{STEP_ROW}[data-step-uuid='#{question.uuid}']"
 
     # The delete control is opacity:0 until the row is hovered, so hovering is
     # part of the real interaction rather than a test workaround.
@@ -130,7 +130,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
     row.hover
     accept_confirm { row.find("button[title='Remove step']").click }
 
-    assert_no_selector "[role='listitem'][data-step-uuid='#{question.uuid}']", wait: 5
+    assert_no_selector "#{STEP_ROW}[data-step-uuid='#{question.uuid}']", wait: 5
     assert_step_count 1
   end
 
@@ -752,7 +752,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
   end
 
   def step_row(uuid)
-    find("[role='listitem'][data-step-uuid='#{uuid}']")
+    find("#{STEP_ROW}[data-step-uuid='#{uuid}']")
   end
 
   def preset_dropdown

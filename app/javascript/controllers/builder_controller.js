@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { revealRowInList } from "services/scroll"
 
 // The step panel's inline-autosave waits this long after the last keystroke;
 // the header title matches it, so the two fields behave the same way.
@@ -50,7 +51,15 @@ export default class extends Controller {
   // See the connect() comment above: this stays a document listener so it
   // survives #builder-panel being replaced wholesale.
   onPanelFrameLoad(event) {
-    if (event.target.id === "builder-panel") this.syncSelectedRow()
+    if (event.target.id !== "builder-panel") return
+
+    this.syncSelectedRow()
+    // A jump's target row, looked at again now the panel is in: opening it
+    // narrows the list and re-wraps the rows above (see #openStep).
+    // Found by id: a list broadcast may have replaced the row since.
+    const row = this.stepToReveal && this.rowFor(this.stepToReveal)
+    if (row) revealRowInList(row, { block: "center" })
+    this.stepToReveal = null
   }
 
   // Composes with any other turbo:before-stream-render listener (e.g.
@@ -106,6 +115,7 @@ export default class extends Controller {
       return
     }
     row.classList.add("builder__step--selected")
+    row.closest("[role='treeitem']")?.setAttribute("aria-selected", "true")
   }
 
   // Before the panel is looked at, so this render's own row can reopen it. The
@@ -135,29 +145,25 @@ export default class extends Controller {
     event.preventDefault()
     event.stopPropagation()
 
-    this.element.querySelectorAll(".builder__step--selected").forEach(el => {
-      el.classList.remove("builder__step--selected")
-    })
-    event.currentTarget.classList.add("builder__step--selected")
-
-    this.loadPanel(url)
-  }
-
-  // A row with more doors than fit on one line: open its panel at the doors.
-  openStepAtDoors(event) {
-    const row = event.currentTarget.closest(".builder__step")
-    const url = event.currentTarget.dataset.builderUrlParam
-    if (!row || !url) return
-
-    event.preventDefault()
-    event.stopPropagation()
+    // A jump chip opens ANOTHER step, whose row is the one selected, not the chip.
     this.clearSelectedRow()
-    row.classList.add("builder__step--selected")
+    const row = event.currentTarget.matches(".builder__step")
+      ? event.currentTarget
+      : this.rowFor(event.params.stepId)
+    row?.classList.add("builder__step--selected")
+    row?.closest("[role='treeitem']")?.setAttribute("aria-selected", "true")
 
-    this.panelTarget.addEventListener("turbo:frame-load", () => {
-      this.panelTarget.querySelector(".step-doors")?.scrollIntoView({ block: "center" })
-    }, { once: true })
+    // A jump is the outline's "go to": its target can be far down the list, or
+    // inside a folded branch (QA C-002). outline-fold owns every fold's `open`,
+    // so ask it to reveal the row's branch (synchronously), then bring the row
+    // into view, centred, since the panel opening will re-wrap the rows.
     this.loadPanel(url)
+    // After loadPanel, which clears it for every other caller.
+    if (row && row !== event.currentTarget) {
+      this.dispatch("reveal", { prefix: "outline-fold", detail: { stepId: row.dataset.stepId } })
+      revealRowInList(row, { block: "center" })
+      this.stepToReveal = row.dataset.stepId
+    }
   }
 
   openFlowDiagram() {
@@ -191,6 +197,7 @@ export default class extends Controller {
     // An author's own close is final; #syncSelectedRow sets this again AFTER
     // calling here when the close was its own.
     this.closedOnMissingRowOf = null
+    this.stepToReveal = null
 
     if (this.hasPanelTarget) {
       this.panelTarget.removeAttribute("src")
@@ -274,6 +281,9 @@ export default class extends Controller {
     // Whatever opens a panel - the author or the reopen itself - ends the wait
     // for a row to come back (see #syncSelectedRow).
     this.closedOnMissingRowOf = null
+    // And any jump's pending second look (see #openStep): a health, settings
+    // or flow panel loaded after a jump must not scroll to the jump's row.
+    this.stepToReveal = null
 
     this.panelTarget.src = this.modeValue === "edit" ? url : this.readonlyUrl(url)
   }
@@ -288,6 +298,7 @@ export default class extends Controller {
     this.element.querySelectorAll(".builder__step--selected").forEach(el => {
       el.classList.remove("builder__step--selected")
     })
+    this.element.querySelectorAll("[role='treeitem'][aria-selected]").forEach(el => el.removeAttribute("aria-selected"))
   }
 
   handleKeydown(event) {

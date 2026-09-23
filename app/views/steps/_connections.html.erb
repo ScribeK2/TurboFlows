@@ -17,9 +17,10 @@
   - step: AR Step object
   - workflow: Workflow object
   - readonly: boolean (default false)
+  - outline: StepOutline::Result (optional; passed down to the doors)
 %>
 <% readonly = local_assigns.fetch(:readonly, false) %>
-<%= render "steps/doors", step: step, workflow: workflow, readonly: readonly %>
+<%= render "steps/doors", step: step, workflow: workflow, readonly: readonly, outline: local_assigns[:outline] %>
 <% if !readonly && (!step.hands_off? || step.transitions.any?) %>
   <%= render "steps/transitions_editor", step: step, workflow: workflow %>
 <% end %>

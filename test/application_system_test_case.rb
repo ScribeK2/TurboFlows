@@ -68,14 +68,27 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   # icon, which step_warnings_controller un-hides when the step has issues. A
   # bare [data-step-uuid] therefore counts double for any step with a warning,
   # which makes the count depend on when the async health fetch lands. Scope to
-  # the row's list semantics instead.
-  STEP_ROW = "[role='listitem'][data-step-uuid]".freeze
+  # the row's own class instead.
+  STEP_ROW = ".builder__step[data-step-uuid]".freeze
+  # A step's whole outline node: its row, its exit door chips (with their
+  # nested nodes) and its continuation chip. Scope a stub click here, not to
+  # the row: stubs sit on door chips now.
+  STEP_NODE = "[role='treeitem'][data-node-uuid]".freeze
 
   # Opens a step's panel and waits until it is safe to click inside.
   def open_step(step)
     find("#{STEP_ROW}[data-step-uuid='#{step.uuid}']").click
     assert_selector "turbo-frame#builder-panel form", wait: 5
     assert_panel_settled
+  end
+
+  def node_for(step)
+    find("#{STEP_NODE}[data-node-uuid='#{step.uuid}']")
+  end
+
+  # Chooses a type in the open type picker, whichever door opened it.
+  def pick_type(name)
+    within(".builder__type-picker") { find(".builder__type-name", text: name, exact_text: true).click }
   end
 
   # The panel animates open over 250ms and the fields in it re-wrap as it

@@ -118,6 +118,16 @@ class WorkflowsHelperTest < ActionView::TestCase
     assert_equal 'count is at most "7"', format_condition_for_display("count <= '7'")
   end
 
+  # The outline's extra chips read unquoted numeric comparisons through this.
+  # With `>` tried before `>=` in the alternation, "tier >= 5" read
+  # 'tier is greater than "= 5"'.
+  test "format_condition_for_display reads unquoted >= and <= as themselves" do
+    assert_equal 'tier is at least "5"', format_condition_for_display("tier >= 5")
+    assert_equal 'tier is at most "5"', format_condition_for_display("tier <= 5")
+    assert_equal 'tier is greater than "5"', format_condition_for_display("tier > 5")
+    assert_equal 'tier is less than "5"', format_condition_for_display("tier < 5")
+  end
+
   test "format_condition_for_display returns raw for unparseable condition" do
     assert_equal "some complex thing", format_condition_for_display("some complex thing")
     assert_equal "Not set", format_condition_for_display(nil)
@@ -138,85 +148,19 @@ class WorkflowsHelperTest < ActionView::TestCase
     result = resolve_step_reference(wf, "test-uuid")
     assert_equal "My Step", result
   end
-end
 
-class WorkflowsHelperDoorSummaryTest < ActionView::TestCase
-  include WorkflowsHelper
+  # Mutation check: restore `workflow.steps.ordered.each_with_index` in
+  # step_ordinals - red.
+  test "step_ordinals counts in the outline's reading order, not position order" do
+    user = User.create!(email: "ordinals-#{SecureRandom.hex(4)}@example.com", password: "password123456")
+    workflow = Workflow.create!(title: "Ordinals", user: user)
+    q = Steps::Question.create!(workflow: workflow, title: "Q", position: 0, answer_type: "yes_no", variable_name: "q")
+    trunk = Steps::Resolve.create!(workflow: workflow, title: "Trunk", position: 1)
+    exit_step = Steps::Resolve.create!(workflow: workflow, title: "Exit", position: 2)
+    Transition.create!(step: q, target_step: exit_step, condition: "q == 'yes'", position: 0)
+    Transition.create!(step: q, target_step: trunk, condition: "q == 'no'", position: 1)
+    workflow.update_columns(start_step_id: q.id)
 
-  setup do
-    @user = User.create!(email: "sum-#{SecureRandom.hex(4)}@example.com", password: "password123456")
-    @workflow = Workflow.create!(title: "Summary", user: @user)
-    @question = Steps::Question.create!(workflow: @workflow, title: "Light green?", position: 0,
-                                        answer_type: "yes_no", variable_name: "light")
-    @action = Steps::Action.create!(workflow: @workflow, title: "Power cycle", position: 1)
-    @resolve = Steps::Resolve.create!(workflow: @workflow, title: "Done", position: 2)
-  end
-
-  def summary(step)
-    step_door_summary(Step::Doors.for(step.reload), step_ordinals(@workflow))
-  end
-
-  test "a wired answer door names its answer, target and number" do
-    Transition.create!(step: @question, target_step: @action, condition: "light == 'no'")
-    assert_equal "No → Power cycle · 2", summary(@question)
-  end
-
-  test "a wired Next door reads as it always has" do
-    Transition.create!(step: @action, target_step: @resolve)
-    assert_equal "→ Done · 3", summary(@action)
-  end
-
-  test "extras follow the doors" do
-    Transition.create!(step: @question, target_step: @action, condition: "light == 'no'")
-    Transition.create!(step: @question, target_step: @resolve, condition: "tier == 'gold'")
-    assert_equal "No → Power cycle · 2 · → Done · 3", summary(@question)
-  end
-
-  test "nothing wired is an empty summary" do
-    assert_equal "", summary(@question)
-  end
-end
-
-class WorkflowsHelperCollapsedStubSummaryTest < ActionView::TestCase
-  include WorkflowsHelper
-
-  setup do
-    @user = User.create!(email: "collapsed-#{SecureRandom.hex(4)}@example.com", password: "password123456")
-    @workflow = Workflow.create!(title: "Collapsed", user: @user)
-    @question = Steps::Question.create!(workflow: @workflow, title: "Which one?", position: 0,
-                                        answer_type: "multiple_choice", variable_name: "pick",
-                                        options: [{ "label" => "Alpha", "value" => "alpha" },
-                                                  { "label" => "Beta", "value" => "beta" },
-                                                  { "label" => "Gamma", "value" => "gamma" },
-                                                  { "label" => "Delta", "value" => "delta" }])
-    @resolve = Steps::Resolve.create!(workflow: @workflow, title: "Done", position: 1)
-  end
-
-  def doors
-    Step::Doors.for(@question.reload)
-  end
-
-  test "with no fallback, every unwired answer needs a step" do
-    assert_equal "4 answers need a step", step_collapsed_stub_summary(doors)
-  end
-
-  test "with a wired fallback, every unwired answer already follows Anything else" do
-    Transition.create!(step: @question, target_step: @resolve)
-    assert_equal "4 answers follow “Anything else”", step_collapsed_stub_summary(doors)
-  end
-
-  test "singular wording for exactly one remaining stub" do
-    %w[alpha beta gamma].each do |value|
-      Transition.create!(step: @question, target_step: @resolve, condition: "pick == '#{value}'")
-    end
-    assert_equal "1 answer needs a step", step_collapsed_stub_summary(doors)
-  end
-
-  test "singular wording for exactly one remaining stub with a wired fallback" do
-    %w[alpha beta gamma].each do |value|
-      Transition.create!(step: @question, target_step: @resolve, condition: "pick == '#{value}'")
-    end
-    Transition.create!(step: @question, target_step: @resolve)
-    assert_equal "1 answer follows “Anything else”", step_collapsed_stub_summary(doors)
+    assert_equal({ q.uuid => 1, exit_step.uuid => 2, trunk.uuid => 3 }, step_ordinals(workflow))
   end
 end

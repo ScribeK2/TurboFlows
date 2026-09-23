@@ -36,7 +36,10 @@ class GrowStep
       step.save!
 
       connect_steps(from_step, step, label:, condition:) if from_step
-      assign_start_step(step)
+      # A workflow with no start gets its first step by position: for the
+      # first grow, the step just saved. update_column, so the lock_version an
+      # autosave is holding is not bumped (Workflow#assign_start_step).
+      @workflow.assign_start_step
       step
     end
   end
@@ -71,7 +74,7 @@ class GrowStep
   #
   # A row lock, not a save: it holds other grows off until this transaction
   # ends and bumps no lock_version, so the title and Details autosaves are not
-  # refused as stale (see #assign_start_step). Queried fresh rather than
+  # refused as stale (see Workflow#assign_start_step). Queried fresh rather than
   # @workflow.lock!, which would reload the caller's object under it. SQLite
   # ignores FOR UPDATE and serialises writers anyway, so only
   # test/services/grow_step_concurrency_test.rb, on PostgreSQL, can show this.
@@ -157,15 +160,5 @@ class GrowStep
                                     position: from_step.transitions.count)
     Transition.settle_positions(from_step)
     transition
-  end
-
-  # Same write StepsController#ensure_start_step_assigned makes, for the same
-  # reason: a full save would bump the workflow's lock_version under whatever
-  # the title or Details autosave is holding, and refuse that save as stale.
-  def assign_start_step(step)
-    return if @workflow.start_step_id.present?
-
-    first = @workflow.steps.order(:position).first || step
-    @workflow.update_column(:start_step_id, first.id)
   end
 end

@@ -28,12 +28,13 @@
       Steps (<%= @version.steps_snapshot.length %>)
     </h2>
     <div class="flex-col-gap-3">
-      <% @version.steps_snapshot.each_with_index do |step, index| %>
+      <%# No step numbers: the builder numbers steps by the outline of the
+          graph (StepOutline), and a snapshot is stored in position order, not
+          as an outline, so "5" here named a different step from the builder's
+          "5" (QA D-002). %>
+      <% @version.steps_snapshot.each do |step| %>
         <div class="version-step-item card">
           <div class="flex items-center gap-3">
-            <span class="step-card__number">
-              <%= index + 1 %>
-            </span>
             <span class="badge badge--<%= step['type'] || 'default' %>">
               <%= step['type']&.humanize %>
             </span>

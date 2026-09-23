@@ -54,6 +54,16 @@ class WorkflowVersionsControllerTest < ActionDispatch::IntegrationTest
     assert_match "Start Question", response.body
   end
 
+  # The builder numbers steps by the outline, and a snapshot is in position
+  # order, so a number here named a different step (QA D-002).
+  test "show: lists steps by type and title without positional numbers" do
+    sign_in @editor
+    get workflow_version_path(@workflow, @version)
+    assert_select ".version-step-item", count: 2
+    assert_select ".version-step-item .step-card__number", count: 0
+    assert_select ".version-step-item", text: /Question\s+Start Question/
+  end
+
   test "show: admin can view any version" do
     sign_in @admin
     get workflow_version_path(@workflow, @version)

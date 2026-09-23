@@ -59,7 +59,6 @@ Rails.application.routes.draw do
         post :apply_template
       end
       member do
-        patch :reorder
         get :panel_edit
       end
       # A file chosen in the step panel is direct-uploaded to Active Storage and

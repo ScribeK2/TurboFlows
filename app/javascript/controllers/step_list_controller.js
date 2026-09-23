@@ -1,26 +1,14 @@
 import { Controller } from "@hotwired/stimulus"
-import Sortable from "sortablejs"
 import { deferSubmitUntilPanelSaved } from "services/pending_panel_saves"
 import { focusWhenReplaced } from "services/focus"
+import { revealRowInList } from "services/scroll"
 
-// Manages the step list: SortableJS drag-and-drop and type picker popover.
+// The step list's type picker: opened from the bottom prompt or beside a
+// door, it grows a step (see docs/agents/builder.md § Growing a workflow).
 export default class extends Controller {
-  static targets = ["list", "typePicker", "pickerContext", "fromStepId", "doorLabel", "doorCondition"]
-  static values = {
-    reorderUrl: String
-  }
+  static targets = ["typePicker", "pickerContext", "fromStepId", "doorLabel", "doorCondition", "existingOption"]
 
   connect() {
-    if (this.hasListTarget) {
-      this.sortable = new Sortable(this.listTarget, {
-        handle: ".drag-handle",
-        animation: 150,
-        ghostClass: "sortable-ghost",
-        dragClass: "sortable-drag",
-        onEnd: this.handleReorder.bind(this)
-      })
-    }
-
     this.boundCloseOnOutsideClick = this.closeOnOutsideClick.bind(this)
     document.addEventListener("click", this.boundCloseOnOutsideClick)
 
@@ -42,7 +30,6 @@ export default class extends Controller {
   }
 
   disconnect() {
-    this.sortable?.destroy()
     document.removeEventListener("click", this.boundCloseOnOutsideClick)
     document.removeEventListener("keydown", this.boundCloseOnEscape, true)
     document.removeEventListener("click", this.boundGrowFromOutside)
@@ -55,7 +42,10 @@ export default class extends Controller {
     event.stopPropagation()
     const opening = this.typePickerTarget?.hidden
     if (opening) {
+      this.door = null
+      this.doorTrigger = null
       this.setDoor({})
+      this.setExistingOptionHidden(true)
       this.clearFloatingPosition()
     }
     this.setTypePickerHidden(!opening)
@@ -96,18 +86,56 @@ export default class extends Controller {
 
     // Selected, not just focused: the field holds "Untitled Action", which is
     // the thing the author is there to replace.
-    focusWhenReplaced('#builder-panel input[name="step[title]"]').then(field => field?.select())
+    focusWhenReplaced('#builder-panel input[name="step[title]"]').then(field => {
+      field?.select()
+      this.revealGrownRow(field)
+    })
+  }
+
+  // The grow replaced #step-list, and its scroller with it, so the list is back
+  // at the top and the new row can be far below it (QA A-007). The list is
+  // rendered before the panel in the same response, so its row is on the page
+  // by now. Read from the document: this controller's own element is the list
+  // the response just replaced.
+  revealGrownRow(field) {
+    const stepId = field?.closest(".builder__panel-body[data-step-id]")?.dataset.stepId
+    const row = stepId && document.querySelector(`.builder__step[data-step-id="${CSS.escape(stepId)}"]`)
+    if (row) revealRowInList(row)
   }
 
   openForDoor(trigger) {
-    this.setDoor({
+    this.doorTrigger = trigger
+    this.door = {
       from: trigger.dataset.growFrom,
       label: trigger.dataset.growLabel,
       condition: trigger.dataset.growCondition,
-      context: trigger.dataset.growContext
-    })
+      context: trigger.dataset.growContext,
+      connectUrl: trigger.dataset.growConnectUrl || "",
+      doorKey: trigger.closest("[data-door-key]")?.dataset.doorKey || ""
+    }
+    this.setDoor(this.door)
+    this.setExistingOptionHidden(!this.door.connectUrl)
     this.setTypePickerHidden(false)
     this.positionPickerNear(trigger)
+  }
+
+  // "An existing step…": hand the door to the list-level target picker
+  // (workflows/_list_target_picker), which posts to the same connection
+  // endpoint the panel's "Use existing…" does.
+  pickExisting(event) {
+    event.preventDefault()
+    event.stopPropagation()
+    const door = this.door
+    this.closeTypePicker()
+    // showModal() records whatever has focus and hands it back on close. That
+    // is this item, hidden a line ago, so Escape, Cancel and the backdrop
+    // would all drop focus on <body>; the chip is where the author came from.
+    this.doorTrigger?.focus()
+    if (door?.connectUrl) this.dispatch("pick-existing", { detail: door })
+  }
+
+  setExistingOptionHidden(hidden) {
+    if (this.hasExistingOptionTarget) this.existingOptionTarget.hidden = hidden
   }
 
   // Anchors the picker beside whatever door was pressed instead of always
@@ -216,22 +244,6 @@ export default class extends Controller {
     this.typePickerTarget.hidden = hidden
     this.typePickerTarget.classList.toggle("is-hidden", hidden)
     if (hidden) this.clearFloatingPosition()
-  }
-
-  handleReorder(event) {
-    const stepId = event.item.dataset.stepId
-    const newPosition = event.newIndex
-    const url = this.reorderUrlValue.replace(":id", stepId)
-
-    const token = document.querySelector('meta[name="csrf-token"]')?.content
-    fetch(url, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": token
-      },
-      body: JSON.stringify({ position: newPosition })
-    })
   }
 
   stopPropagation(event) {

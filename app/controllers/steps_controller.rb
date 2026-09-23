@@ -8,9 +8,9 @@ class StepsController < ApplicationController
   # STI class, :lock_version drives optimistic locking, and the last two are
   # submission formats, not columns.
   # :position is excluded deliberately. It is in the map because it must survive
-  # a round trip, but it is set from graph order by StepBuilder and by #reorder
-  # — never submitted on an ordinary edit. Deriving it in would have widened
-  # what a PATCH can set, which the old hand-written list did not allow.
+  # a round trip, but it is set from graph order by StepBuilder — never
+  # submitted on an ordinary edit. Deriving it in would have widened what a
+  # PATCH can set, which the old hand-written list did not allow.
   PERMITTED_STEP_PARAMS = (
     StepFieldMap.scalar_fields - %i[position] +
     StepFieldMap.all_rich_text_fields +
@@ -49,12 +49,25 @@ class StepsController < ApplicationController
   # doors-only replace has to answer for.
   DOOR_DECIDING_PARAMS = %i[answer_type options transitions_json].freeze
 
+  # Fields whose change alters what the OUTLINE shows beyond this step's own
+  # row: its title is on every jump chip, fold summary and ways-in tooltip
+  # naming it; answer type and options are its doors; sub_flow_returns turns
+  # a leaf into a step with a door.
+  #
+  # variable_name because a rename rewrites this step's conditions inside
+  # @step.update (Question#carry_conditions_to_new_variable), BEFORE
+  # TransitionSync takes its `before` signature - so the sync reads the
+  # rewritten rows as unchanged, and nothing else would re-render the list.
+  # The extras' chip text and the "ways in" tooltips quote those conditions,
+  # and kept the old name in every other tab until something else re-rendered.
+  OUTLINE_FIELDS = %w[title answer_type options sub_flow_returns variable_name].freeze
+
   include ActionView::RecordIdentifier
 
   before_action :set_workflow
   before_action :ensure_can_edit!, except: :panel_edit
   before_action :ensure_can_view!, only: :panel_edit
-  before_action :set_step, only: %i[show update destroy reorder panel_edit]
+  before_action :set_step, only: %i[show update destroy panel_edit]
 
   # GET /workflows/:workflow_id/steps/:id
   def show
@@ -142,6 +155,14 @@ class StepsController < ApplicationController
       # saved-change tracking: nil unless this save renamed a Question's own
       # variable_name, else [old_name, new_name].
       rename_pair = @step.try(:renamed_variable_pair)
+      # Read now, before the reload below clears saved-change tracking. This is
+      # only the FIELD half of whether the outline needs the whole list -
+      # transitions_json is folded in below, once TransitionSync has actually
+      # run: that field is present on every non-Resolve panel autosave (the
+      # editor renders it non-blank and inline-autosave never marks it dirty),
+      # so its mere presence can't tell a real retarget from an unchanged
+      # snapshot - only TransitionSync's own before/after signature can.
+      outline_changed = @step.saved_changes.keys.intersect?(OUTLINE_FIELDS)
 
       if step_params[:transitions_json].present?
         refusal = sync_transitions(rename_pair)
@@ -150,6 +171,8 @@ class StepsController < ApplicationController
         # So this answers a refusal rather than the success path, and says the
         # truth: the step was saved, its connections were not.
         return respond_to_connections_refusal(refusal, rename_pair) if refusal
+
+        outline_changed ||= @sync_result.changed
       end
 
       respond_to do |format|
@@ -158,7 +181,7 @@ class StepsController < ApplicationController
             turbo_stream.replace(
               dom_id(@step),
               partial: "workflows/step_row",
-              locals: { step: @step.reload, workflow: @workflow }
+              locals: { step: @step.reload, workflow: @workflow, outline: outline }
             )
           ]
 
@@ -178,7 +201,7 @@ class StepsController < ApplicationController
             streams << turbo_stream.update(
               dom_id(@step, :connections),
               partial: "steps/connections",
-              locals: { step: @step, workflow: @workflow }
+              locals: { step: @step, workflow: @workflow, outline: outline }
             )
             connections_streamed = true
           end
@@ -223,6 +246,7 @@ class StepsController < ApplicationController
       end
 
       broadcast_step_row(@step)
+      broadcast_step_list if outline_changed
     else
       # The panel is not re-rendered on save, and the frame this used to stream
       # into does not exist there, so a refused save was silent.
@@ -247,12 +271,7 @@ class StepsController < ApplicationController
   # DELETE /workflows/:workflow_id/steps/:id
   def destroy
     parent_steps = incoming_parent_steps(@step)
-
-    if @workflow.start_step_id == @step.id
-      @workflow.update_column(:start_step_id, nil)
-    end
-    @step.destroy
-    ensure_start_step_assigned
+    @workflow.destroy_step(@step)
     Step.rebalance_positions(@workflow)
 
     respond_to do |format|
@@ -280,13 +299,17 @@ class StepsController < ApplicationController
 
     @workflow.reload
     steps = @workflow.steps.order(:position).includes(:incoming_transitions, transitions: :target_step)
+    @outline = StepOutline.call(@workflow, steps)
 
     respond_to do |format|
       format.turbo_stream do
         render turbo_stream: [
           turbo_stream.update("steps-list",
                               partial: "workflows/steps_list_items",
-                              locals: { workflow: @workflow, steps: steps }),
+                              locals: { workflow: @workflow, steps: steps, outline: outline }),
+          # The list-level dialog sits beside #steps-list, not in it.
+          turbo_stream.replace("list-target-picker-options", partial: "steps/target_picker_options",
+                                                             locals: list_target_picker_options_locals),
           turbo_stream.update("builder-panel", ""),
           turbo_stream.update("step-count-text",
                               helpers.pluralize(steps.size, "step"))
@@ -294,14 +317,6 @@ class StepsController < ApplicationController
       end
       format.html { redirect_to workflow_path(@workflow, edit: true), notice: "Template applied." }
     end
-  end
-
-  # PATCH /workflows/:workflow_id/steps/:id/reorder
-  def reorder
-    StepReorderer.call(@workflow, @step, params[:position])
-    broadcast_step_list
-
-    head :ok
   end
 
   private
@@ -320,10 +335,11 @@ class StepsController < ApplicationController
         flash.now[:alert] = message
         parent = grow_from_step
         streams = [turbo_stream.replace("step-list", partial: "workflows/step_list",
-                                                     locals: { workflow: @workflow, steps: list_steps })]
+                                                     locals: { workflow: @workflow, steps: list_steps, outline: outline })]
         if parent
-          streams << turbo_stream.update(dom_id(parent, :connections), partial: "steps/connections",
-                                                                       locals: { step: parent, workflow: @workflow })
+          streams << turbo_stream.update(dom_id(parent, :connections),
+                                         partial: "steps/connections",
+                                         locals: { step: parent, workflow: @workflow, outline: outline })
         end
         streams << turbo_stream.update("flash", partial: "shared/flash_messages")
 
@@ -350,15 +366,28 @@ class StepsController < ApplicationController
   def grown_streams(step)
     [
       turbo_stream.replace("step-list", partial: "workflows/step_list",
-                                        locals: { workflow: @workflow, steps: list_steps }),
+                                        locals: { workflow: @workflow, steps: list_steps, outline: outline }),
       turbo_stream.replace("builder-panel", partial: "steps/panel_edit",
-                                            locals: { step: step, workflow: @workflow, readonly: false }),
+                                            locals: { step: step, workflow: @workflow, readonly: false,
+                                                      outline: outline }),
       turbo_stream.update("step-count-text", helpers.pluralize(@workflow.steps.count, "step"))
     ]
   end
 
+  # Loaded once per request. Like #outline, read only after the action's writes.
   def list_steps
-    @workflow.steps.reload.ordered.includes(transitions: :target_step)
+    @list_steps ||= @workflow.steps.reload.ordered.includes(transitions: :target_step).to_a
+  end
+
+  # The builder outline for everything this request renders - its response
+  # streams and its broadcasts - built ONCE and passed down as `outline:`.
+  # Each partial used to build its own, 3 queries and a full walk apiece: a
+  # title autosave built it five times, a door pick eight
+  # (test/controllers/step_outline_builds_test.rb). Memoised on the
+  # controller, never on the model or class, and first read only after the
+  # action has finished writing - every action here renders last.
+  def outline
+    @outline ||= StepOutline.call(@workflow, list_steps)
   end
 
   # The source steps of @step's own incoming transitions, captured before
@@ -376,17 +405,18 @@ class StepsController < ApplicationController
   # a target not on the page is a no-op, so this does not need to know which
   # panel, if any, is open.
   def destroy_streams(parent_steps)
-    steps = list_steps.to_a
+    steps = list_steps
     streams = [
       turbo_stream.replace("step-list", partial: "workflows/step_list",
-                                        locals: { workflow: @workflow, steps: steps }),
+                                        locals: { workflow: @workflow, steps: steps, outline: outline }),
       turbo_stream.update("step-count-text", helpers.pluralize(steps.size, "step"))
     ]
     streams << turbo_stream.update("builder-panel", "") if steps.empty?
 
     parent_steps.each do |parent|
-      streams << turbo_stream.update(dom_id(parent, :connections), partial: "steps/connections",
-                                                                   locals: { step: parent, workflow: @workflow })
+      streams << turbo_stream.update(dom_id(parent, :connections),
+                                     partial: "steps/connections",
+                                     locals: { step: parent, workflow: @workflow, outline: outline })
     end
 
     streams
@@ -403,7 +433,7 @@ class StepsController < ApplicationController
         "workflow_#{@workflow.id}",
         target: dom_id(parent, :connections),
         partial: "steps/connections",
-        locals: { step: parent.reload, workflow: @workflow }
+        locals: { step: parent.reload, workflow: @workflow, outline: outline }
       )
     end
   end
@@ -413,8 +443,21 @@ class StepsController < ApplicationController
       "workflow_#{@workflow.id}",
       target: "steps-list",
       partial: "workflows/steps_list_items",
-      locals: { workflow: @workflow.reload, steps: list_steps }
+      locals: { workflow: @workflow.reload, steps: list_steps, outline: outline }
     )
+    # The list-level "An existing step…" dialog (workflows/_list_target_picker)
+    # sits beside #steps-list, not in it, so the update above leaves its
+    # candidates stale - a step grown in another tab would never be offered.
+    Turbo::StreamsChannel.broadcast_replace_to(
+      "workflow_#{@workflow.id}",
+      target: "list-target-picker-options",
+      partial: "steps/target_picker_options",
+      locals: list_target_picker_options_locals
+    )
+  end
+
+  def list_target_picker_options_locals
+    { step: nil, workflow: @workflow, options_id: "list-target-picker-options", outline: outline }
   end
 
   def set_step
@@ -477,7 +520,8 @@ class StepsController < ApplicationController
       format.turbo_stream do
         flash.now[:alert] = message
         streams = [turbo_stream.replace(dom_id(@step), partial: "workflows/step_row",
-                                                       locals: { step: @step.reload, workflow: @workflow })]
+                                                       locals: { step: @step.reload, workflow: @workflow,
+                                                                 outline: outline })]
         streams << full_connections_stream if rename_pair
         streams << turbo_stream.update("flash", partial: "shared/flash_messages")
 
@@ -583,13 +627,6 @@ class StepsController < ApplicationController
     }
   end
 
-  def ensure_start_step_assigned
-    return if @workflow.start_step_id.present?
-
-    first_step = @workflow.steps.first
-    @workflow.update_column(:start_step_id, first_step.id) if first_step
-  end
-
   # Returns nil on success, or the message to refuse the response with. On
   # success the result is stashed in @sync_result so the stream/notice
   # decisions below can read whether TransitionSync skipped a stale row,
@@ -690,12 +727,12 @@ class StepsController < ApplicationController
 
   def full_connections_stream
     turbo_stream.update(dom_id(@step, :connections), partial: "steps/connections",
-                                                     locals: { step: @step, workflow: @workflow })
+                                                     locals: { step: @step, workflow: @workflow, outline: outline })
   end
 
   def doors_stream
     turbo_stream.replace(dom_id(@step, :doors), partial: "steps/doors",
-                                                locals: { step: @step, workflow: @workflow })
+                                                locals: { step: @step, workflow: @workflow, outline: outline })
   end
 
   def broadcast_step_row(step)
@@ -703,7 +740,7 @@ class StepsController < ApplicationController
       "workflow_#{@workflow.id}",
       target: dom_id(step),
       partial: "workflows/step_row",
-      locals: { step: step, workflow: @workflow }
+      locals: { step: step, workflow: @workflow, outline: outline }
     )
   end
 

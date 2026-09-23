@@ -13,7 +13,10 @@ The unified builder lives at `workflows/:id` — one URL for both viewing and ed
 
 **Key views:**
 - `_builder.html.erb` — main layout, renders step list + empty Turbo Frame panel
-- `_step_list.html.erb` / `_step_row.html.erb` — compact step rows with SortableJS drag-and-drop
+- `_step_list.html.erb` / `_step_row.html.erb` — the list as an outline of the graph (`_step_outline`, `_step_node`); a row is one step's own line (number, title, "N ways in", Start/Terminal, warning icon, Remove). In an outline the order IS the graph, so there is no drag-reorder: `StepReorderer` and its route were deleted 2026-09-22
+- `_step_outline.html.erb` — the tree (`role="tree"`, on a wrapper inside `#steps-list`, which also holds the empty state): the trunk from the start step as level-1 siblings, then the "Unconnected: not reached from the start" section, a `role="group"` labelled by its heading whose trees render the same way one level down. Takes a `StepOutline::Result`
+- `_step_node.html.erb` — one `role="treeitem"`: its row, its exit doors in a `role="group"` (a foldable `<details>` per exit that holds steps), then its continuation door chip. A door chip is a wired chip (text + the target's type dot), a stub (ONE button, the grow trigger) or a jump (ONE button naming the target, "Yes → Working · step 4"); extras render as dashed chips under the exits
+- `_list_target_picker.html.erb` — the list-level "An existing step…" `<dialog>`, one per page, shared by every stub chip. A second mount of `step-target-picker`, rendered beside the type picker, outside `#steps-list`
 - `steps/_panel_edit.html.erb` — step editor loaded via Turbo Frame into the panel
 - `steps/_doors.html.erb` — the ways out of the open step, one row each, wired or a stub. Inside the autosave form, so it holds no `<form>`
 - `steps/_target_picker.html.erb` — the "Use existing…" `<dialog>`, rendered outside that form because it holds one
@@ -25,8 +28,9 @@ The unified builder lives at `workflows/:id` — one URL for both viewing and ed
 **Key Stimulus controllers:**
 - `panel_title_controller.js` — keeps the step panel's header in step with the title field as it is typed. Declared on the builder's own `<turbo-frame id="builder-panel">` **and** on the one `steps/_panel_edit` renders, because the two delivery paths differ: a frame navigation replaces the frame's CONTENTS and keeps the element (so attributes on the incoming tag are discarded), while `turbo_stream.replace "builder-panel"` (a grow) replaces the element itself
 - `builder_controller.js` — panel open/close, step selection, title autosave, Escape to close, `openHealth` action, auto-opens health panel when `?health=true` URL param is present
-- `step_list_controller.js` — SortableJS reorder + the type picker: opening it for a door (from a row's stub or the panel's "New step"), writing the `data-grow-*` fields, and floating it beside its trigger
-- `step_target_picker_controller.js` — the "Use existing…" dialog on a door row: which door it is for, waiting for the panel's pending save before the pick is sent, the filter, Escape (`stopPropagation`, or the whole panel closes behind it), and closing on `turbo:before-cache`
+- `step_list_controller.js` — the type picker: opening it for a door (from an outline stub chip or the panel's "New step"), writing the `data-grow-*` fields, and floating it beside its trigger. It opens the type picker for a door; "An existing step…" (shown only when a list chip opened it) hands the door to the list target picker
+- `outline_fold_controller.js` — keeps folded exit branches folded across list re-renders, reveals the open step's branch, drives Collapse all; mounted on the builder root
+- `step_target_picker_controller.js` — the "Use existing…" dialog on a door row (and, as a second mount, the list's "An existing step…" dialog, via `openFromList`): which door it is for, waiting for the panel's pending save before the pick is sent, the filter, Escape (`stopPropagation`, or the whole panel closes behind it), and closing on `turbo:before-cache`
 - `inline_autosave_controller.js` — debounced autosave (2s), `flush()` for whoever must act after the pending save (it returns a promise that resolves once nothing is in flight), the panel's **save indicator** (see below), listens for `lexxy:change` events, flushes pending saves on disconnect via `FormData` + `fetch`, dispatches `health:check-needed` after disconnect saves
 - `step_warnings_controller.js` — async health check fetch, renders inline warning icons on step rows, toolbar issue count, click-to-open popover with Fix buttons. Listens for `turbo:submit-end`, `health:check-needed`, `turbo:before-stream-render`
 - `template_picker_controller.js` — template popover in toolbar, applies workflow archetypes
@@ -163,7 +167,7 @@ so a wired door there means the stub was stale (another editor wired it, or a
 second click raced the first), and retargeting would silently strand the step
 the door already led to. `StepsController#respond_to_refused_grow` answers with
 the whole list and the parent's Connections fragment, so the stale stub goes. The one `update_column` here is
-`assign_start_step`, moved from `StepsController` unchanged: a full save would
+`Workflow#assign_start_step` (`WorkflowStartStep`, shared with a delete): a full save would
 bump the workflow's `lock_version` under whatever the title or Details autosave
 is holding and be refused as stale. Both `GrowStep` entry points hold a **row lock on the workflow**
 (`Workflow.lock.find`, no `lock_version` bump) for their transaction, because
@@ -172,8 +176,12 @@ positions `[1, 2, 2, 2, 3]`, and one door pressed four times grew three steps.
 SQLite ignores `FOR UPDATE`, so only `test/services/grow_step_concurrency_test.rb`
 can show it, on PostgreSQL — it skips itself locally and its header says how to
 run it. Every grow replaces the **whole** step list
-and broadcasts it, because a mid-list insert moves every later ordinal and every
-"→ Title · 4" that names one.
+and broadcasts it, because a grow moves every later ordinal and every jump chip
+("→ Title · step 4") that names one. Replacing `#step-list` replaces its
+scroller too, so the list comes back at the top: `step_list#grown` therefore
+brings the new step's row into view (`services/scroll#revealRowInList`, which
+moves `.builder__list-scroll` alone, never the page, and looks again once the
+panel has finished widening), after it has focused the title (QA A-007).
 
 **The ways out of a step are computed, never stored.** `Step::Doors`
 (`app/models/step/doors.rb`) derives them from the step itself — Yes and No for
@@ -219,6 +227,225 @@ on a proxy always re-queries and one `Doors` per row made that a query per step
 on every list render. So build it on a fresh or reloaded step after writing
 transitions — `@step.reload` — never on one whose association was loaded before
 the write.
+
+**The list is an outline.** The step list at `workflows/:id` is not a list
+of steps in `position` order; it is an outline of the graph, walked by
+`StepOutline` (`app/services/step_outline.rb`). Each step's children hang off
+the door (`Step::Doors`) that leads to them. One door per step is the
+**continuation**: its step renders at the parent's indent, as the parent's next
+sibling. Every other door is an **exit**, and its step nests one level down a
+guide line. A linear workflow therefore renders exactly as the flat list did.
+
+- **The walk.** `StepOutline.for(workflow)` (or `.call(workflow, steps)` with
+  steps already preloaded with `transitions: :target_step`) starts at
+  `workflow.start_step`, or the first step by position when that is unset. It
+  builds one `Step::Doors` per step. `.call` does no queries of its own; `.for`
+  is `.call` plus the preload, three queries. The same "build `Doors` on a
+  fresh step after a write" rule applies. The walk is
+  linear in steps + edges; `test/benchmarks/step_outline_benchmark_test.rb`
+  holds a 300-step, 600-edge graph under 100ms. A door with no transition is a
+  **stub**, a door whose target already has its row elsewhere is a **jump**, and
+  an extra (`Doors#extras`) is a dashed chip that never owns a step, so a step
+  reachable only through an extra lands in Unconnected. The health check does
+  NOT agree: `GraphValidator` follows every transition, extras included, so it
+  reports no `:unreachable_step` for such a step, and the runner does reach it.
+  The outline walks doors only. Walking extras too is open (QA B-001); only
+  the Unconnected heading's words were corrected, 2026-09-23.
+- **The continuation is the LAST door in `Doors#doors` order.** That is the
+  wired "Anything else" when there is one, otherwise the last answer; on a
+  Yes/No, No. It is NOT the door with the largest subtree. The throwaway
+  prototype computed that, and it was dropped (user's ruling, 2026-09-23) for
+  three reasons. The last door is predictable, because an author can see which
+  door continues without doing arithmetic. It is the category's convention:
+  every tool studied fixes the fallback as the sibling (Intercom's Else,
+  Zendesk's Fallback, HubSpot's "None met"). The cost was measured and
+  accepted: the 53-step Opening Scan renders at depth 3 instead of 2, because
+  its author uses "Anything else" as the exit at three steps. A stored "this
+  answer continues" mark is deferred until authors are seen fighting the rule.
+- **Ownership is trunk-first.** A step several doors lead to gets its real row
+  under the door the walk reaches FIRST. The walk VISITS the continuation
+  before the exits, even though the view RENDERS exits first; visit order and
+  render order differ on purpose. Owning by reading order was tried and lost.
+  On the Opening Scan, step 12's Yes branch rejoins the trunk at step 13, and
+  reading order let that side branch capture step 13, nesting forty steps
+  under a Yes. Every other door to an owned step gets a jump chip.
+- **Unconnected.** Steps the outline's walk does not reach from the start
+  follow an "Unconnected: not reached from the start" heading. It used to say
+  "nothing leads here yet", which was false for every member of an unconnected
+  chain or cycle but its root, and for a step reached only through an extra.
+  `Result#orphan_roots` gives them trees of
+  their own, each rooted at a step nothing still unplaced leads to (position
+  order), so an unconnected chain keeps its shape and an unconnected Question
+  keeps its growable stubs. The section is a `role="group"` labelled by its
+  heading (`#steps-unconnected-heading`), so its trees are `aria-level` 2 and
+  their exits one deeper; it renders at the trunk's indent all the same. "Add unconnected step" lands a step here, and
+  every `:unreachable_step` has its place on the page here (not the converse:
+  see extras above).
+- **Numbers are derived on every read, and nothing is persisted.**
+  `Result#ordinals` numbers the steps in render order (exits before the
+  continuation), then the Unconnected section. `WorkflowsHelper#step_ordinals`
+  returns `StepOutline.for(workflow).ordinals`, and every "step N" comes from
+  one outline: the row badge, jump chips, `steps/_doors`,
+  `steps/_target_picker_options` (which also lists candidates in that order),
+  the health panel and the flow diagram. `Workflows::ExportsController`'s PDF lists steps in the same order
+  with the same numbers, so they agree by construction. `position` keeps its
+  old meaning, insertion order, which now only orders the Unconnected section
+  and the JSON export. There is no `settle_positions`-style rewrite, no stored
+  order and no migration. A persisted reading order (six write hooks, a row
+  lock, a data migration) was specified in the first revision of the design and
+  cut: no tool studied persists a derived order, and nothing outside the builder
+  reads it except the PDF. The accepted consequence is that a rewire can
+  renumber the steps below it, as a grow always did. Numbers were never
+  identifiers; uuids are. `Workflow#step_options_for_select` and
+  `WorkflowsHelper#step_options_for_select`, which numbered by position and
+  had no caller, were deleted.
+- **Built once per request.** A build is three queries and a full walk (about
+  14ms on the 53-step Opening Scan), and every partial above needs one. When
+  each built its own, a title autosave built it five times and a door pick
+  eight. So `StepsController`, `Steps::TransitionsController` and
+  `Workflows::HealthFixesController` each build ONE per request (a private
+  `outline`, memoised on the controller and first read only after the
+  action's writes) and pass it as `outline:` to every partial and broadcast
+  they render. `_step_list`, `_steps_list_items`, `_step_row`,
+  `steps/_panel_edit`, `_connections`, `_doors`, `_target_picker`,
+  `_target_picker_options`, `_list_target_picker` and `_health_panel_inner`
+  take an optional `outline:` and build their own only when rendered alone
+  (a page load, a panel open, `steps#show`), then pass it on. A view-context
+  memo would not do: a controller's every `turbo_stream.*` call and every
+  broadcast renders in a fresh view context. Never memoise it on the model,
+  the class or a global. `test/controllers/step_outline_builds_test.rb` counts
+  `StepOutline.call` across a whole request, broadcasts included, and holds
+  every entry point to one. Anything new that renders these partials passes
+  the request's outline down.
+- **Drag-reorder is gone: order is the graph.** `StepReorderer`, the `reorder`
+  route, SortableJS in `step_list_controller`, the drag handle, and the
+  `tooltip` controller and `tooltips.css` (their only mount was that handle)
+  were deleted. `sortable-list` elsewhere (folders, featured workflows) is a
+  different controller and untouched.
+- **"N ways in".** `Result#ways_in_for(step)` returns entries only when two or
+  more transitions lead to the step. A single one is the outline's own nesting
+  and says nothing new. It counts every transition, including self-loops,
+  Unconnected sources and extras; the start step's "Start" reading is separate.
+  The row shows `.builder__ways-in` ("2 ways in"), whose `title` names the
+  sources in reading order ("From step 3 · Yes, step 7 · Next"). The treeitem's
+  `aria-labelledby` includes it, so the words are part of the accessible name.
+  With a panel open they are visually hidden (the `.sr-only` recipe) and the
+  icon and count stay. The hidden span is then out of flow, so the element's
+  `innerText` (and Capybara's `.text`) reads `"2\nways in"` while a panel is
+  open; assert on "2 ways in" with the panel closed. It is not interactive.
+- **Which saves re-render the whole list.** A title now appears beyond its own
+  row: in jump chips, "ways in" tooltips and the list dialog's options. The
+  tree's shape depends on `answer_type`, `options` and `sub_flow_returns` too.
+  So `StepsController#update` broadcasts the whole list when
+  `saved_changes` touches `OUTLINE_FIELDS` (`title answer_type options
+  sub_flow_returns variable_name`, read before anything reloads `@step`) or
+  when `TransitionSync::Result#changed` is true. `variable_name` is there
+  because a rename rewrites the step's conditions inside `@step.update`
+  (`Question#carry_conditions_to_new_variable`), before `TransitionSync` takes
+  its before-signature, so `changed` reads false; the extras' chips and the
+  "ways in" tooltips quote those conditions and kept the old name in every
+  other tab. `changed` is a before/after
+  signature of the step's own transitions, taken inside the sync. It is NOT
+  "`transitions_json` was present": every non-Resolve panel autosave carries
+  that field (the editor renders it non-blank and `inline-autosave` never marks
+  it dirty), so presence re-broadcast the whole list on every keystroke-save of
+  a copy field. A copy-only save still broadcasts just its own row.
+- **Folds.** Every exit whose branch holds steps is a native `<details>`, open
+  by default. Its `<summary>` is the door chip plus, while closed, where it
+  goes and how much is inside ("→ Domain cancel · step 4 · 3 steps"). The
+  continuation never folds. The fold key is `"#{step.uuid}:#{door.label}"`.
+  `outline_fold_controller.js` keeps the closed set in memory for the page,
+  and two rulings shape it:
+  - It is mounted on the **builder root**, not the list. A grow's own
+    response (`StepsController#grown_streams`), a refused grow
+    (`#respond_to_refused_grow`), the transitions endpoint, a delete and a
+    health fix all replace the whole `#step-list` element, which would discard a controller living on it and every fold
+    with it. Every other re-render replaces `#steps-list`'s children and would
+    reopen everything, so a `MutationObserver` re-applies the closed set after
+    each one (batched to one pass per microtask). Its own writes are guarded:
+    it writes the Collapse all label and `hidden` only when they change,
+    because it observes the subtree that holds that button, and an
+    unconditional write re-fires the observer forever.
+  - It **records the author's folds from clicks** on a fold's `<summary>`
+    (keyboard activation fires click too), never from `toggle`. `toggle`
+    fires asynchronously, so a restore made in code would come back as if the
+    author had done it. The Collapse all / Expand all LABEL is the one thing
+    derived from `toggle`, through a capture-phase listener (`toggle` does not
+    bubble). It only reads the DOM's `open` state and never records anything.
+    It cannot be computed inside the click handler: the browser flips
+    `<details>.open` AFTER a trusted click's handlers return, so a microtask
+    queued there still sees the state being left. A scripted `.click()` does
+    not show this, which is how it shipped once.
+  - The branch holding the step whose panel is open is revealed: its folds
+    go into `this.revealed`, which holds them open without removing them from
+    the closed set. So a revealed fold closes again once the panel moves
+    elsewhere; that residual is deliberate for now. `updateRevealed` works
+    that set out afresh ONLY when the open step changes or the outline itself
+    was replaced (a fresh `.builder__outline` element, which both
+    `update("steps-list")` and `replace("step-list")` render, and a save
+    indicator's text or one row's replacement do not). Between those, a fold
+    the author closes by hand leaves the set and stays closed. It used to
+    reveal on every mutation, so the next keystroke in the panel sprang the
+    branch open again (QA C-001). A title save re-renders the whole list, so
+    it reveals the branch again once it lands, even when the author folded
+    it a moment before typing; that is the rule, not a bug (the spec's §4.4
+    hybrid). Besides those two events, `reveal` (the `outline-fold:reveal`
+    event a jump chip sends) adds a branch's folds to the set at once, and
+    nothing else writes a fold's `open`.
+    Collapse all fills or empties the closed set, and the button is labelled by
+    what it will do; a fold held in `revealed` stays open through Collapse all. It is hidden, and `.builder__list-tools` with it, when
+    the workflow has no fold. A viewer in view mode folds too.
+- **"An existing step…" from a stub chip.** A stub chip opens the same
+  floating type picker a panel door does (`step-list#growFromDoor`). Below a
+  divider it shows one more item, "An existing step…". The item is shown only
+  when the trigger carries `data-grow-connect-url`, which only a list chip
+  does: the panel has its own "Use existing…", and "Add unconnected step" has
+  no door. Choosing it runs `step_list_controller#pickExisting`. That focuses
+  the chip first, because `showModal()` records the focused element and hands
+  it back on close, and the item it would otherwise record has just been
+  hidden. It then dispatches `step-list:pick-existing` with the door.
+  `workflows/_list_target_picker`, one `<dialog>` per page and a second mount
+  of `step-target-picker`, listens for it on `window` (`openFromList`). It
+  fills in the door's label and condition, hides the from-step among its
+  candidates client-side (the dialog is shared), and rewrites the form's
+  action to the from-step's `Steps::TransitionsController#create`, exactly
+  what the panel's "Use existing…" posts. Because the action is rewritten, the
+  form's own per-form CSRF token (bound to the path it was rendered with)
+  never matches; the request is accepted on the page's global token, which
+  Turbo sends as `X-CSRF-Token`. The submit waits for a pending panel save
+  (`deferSubmitUntilPanelSaved`), as a grow does. Success replaces the whole
+  `#step-list`, so the chip comes back as a jump. A refusal is written into
+  `#list-target-picker-error` as well as the panel dialog's error and
+  `#flash`, since the modal covers `#flash`. A stale target re-streams the
+  list dialog's options too.
+- **Focus after a pick.** The chip the author came from is re-rendered as a
+  jump button, or as a fold's `<summary>` when the picked step had no row yet
+  and now nests under it. `openFromList` keeps a selector for either, keyed by
+  the door's `data-door-key`, and `focusWhenReplaced` finds the new element on
+  close. When neither exists (a wired continuation chip is plain text), focus
+  falls back to the from-step's treeitem node, which carries `tabindex="-1"`
+  so code can focus it without adding it to the Tab order, and which shows
+  the ring on its own row. Never a button: the fallback was the row's Remove,
+  opacity 0 until hovered, and a Space pressed after a click on empty page
+  (which leaves focus on `<body>`, so the guard below moved it there) asked
+  "Remove this step?" (QA D-004). The acting tab also receives
+  its OWN Action Cable broadcast of the same list a moment later. That
+  replaces the element just focused and drops focus on `<body>`. So
+  `refocusAfterSelfBroadcast` watches the page with a `MutationObserver` for
+  one second and puts focus back, on the same element or the same node
+  fallback, only while it sits on `<body>`, so an author
+  who has tabbed on is never pulled back. It is a MutationObserver rather than
+  `turbo:before-stream-render`, which Turbo dispatches before the render
+  happens.
+- **The list dialog's options ride along with every list re-render.** The
+  dialog sits beside `#steps-list`, not in it, and a grow or a collaborator's
+  save only re-streams the list's children. So its candidates would go stale,
+  and a step grown after the page loaded would never be offered. Every
+  `workflows/steps_list_items` stream and broadcast therefore sends a
+  companion `turbo_stream.replace("list-target-picker-options", …)`, rendering
+  `steps/_target_picker_options` with `step: nil, options_id:
+  "list-target-picker-options"`. Anything new that re-renders the list must
+  send it too.
 
 **Option labels and values are trimmed on save.**
 `Steps::Question#default_option_values_to_labels` strips both fields every
@@ -461,7 +688,23 @@ that row and a broadcast two seconds later wiped it.
 
 **Which row is selected is decided in the browser**, by
 `builder_controller#syncSelectedRow`, from whichever step panel is open, after
-every stream render and every panel frame load. Never pass a `selected_step:`
+every stream render and every panel frame load. It adds `builder__step--selected`
+to the row and `aria-selected="true"` to the row's enclosing `role="treeitem"`
+(the outline's wrapper inside `#steps-list` is `role="tree"`, each node a
+`treeitem` with `aria-level`, each exit branch and the Unconnected section a
+`group`). A jump chip is not a row: `builder#openStep` from a jump
+selects the row of the step it OPENS (`data-builder-step-id-param`, which View
+Flow's nodes and the health panel's step links carry too), never the
+chip, and brings that row into view (QA C-002). It does NOT open folds
+itself: `outline-fold` is the only writer of a fold's `open`, because a second
+writer's opens were re-closed by its next reapply (review, 2026-09-23). So
+`openStep` dispatches `outline-fold:reveal` with the row's step id, which adds
+the folds around it to the controller's `revealed` set and reapplies at once;
+that is also the only thing that reveals a hand-folded branch when the jump is
+to the step whose panel is ALREADY open, since no step changes. It then centres
+the row in `.builder__list-scroll`, and again once the panel frame has loaded
+and the list has narrowed. `services/scroll` skips a row with no box (inside a
+closed fold) rather than scroll to its zero rect. The open step's branch guides darken through CSS `:has()` on that class. Never pass a `selected_step:`
 local to the list or row partials: the builder subscribes to its own Action
 Cable channel, so a server-painted selection is immediately overwritten by the
 same editor's own broadcast of the same subtree.
@@ -492,10 +735,28 @@ is unchanged. (The TODO this closed proposed "close only after two consecutive
 renders without the row" — that regresses the 404: a collaborator's delete is
 exactly ONE render for everyone else.)
 
-**The grow protocol is four data attributes.** A trigger carries
-`data-grow-from` (the parent step id), `data-grow-label`, `data-grow-condition`
-and `data-grow-context` (what the picker says it is growing from);
-`step_list_controller` reads them from a row's stub (`#growFromDoor`) or, for
+**Deleting the start step hands the start to its continuation.**
+`StepsController#destroy` calls `Workflow#destroy_step` (`WorkflowStartStep`).
+When the step was the start, it reads the targets of the step's wired doors,
+LAST door first (`Step::Doors`; the last door is the outline's continuation),
+BEFORE the destroy takes its transitions, and `assign_start_step` makes the
+first of them that still exists the start. So a stub last door hands the start
+to the wired door nearest it, and a door back to the step itself is passed
+over. Whatever that successor is becomes the start, a Resolve included. Only
+when the deleted start has no wired door (a Resolve, a handoff, or every door
+a stub) does it fall back to the first step by position, as before.
+First-by-position alone could pick a side branch, and the outline then dropped
+the whole trunk into Unconnected (QA B-005, 2026-09-23). The builder has no
+control that sets the start, and drag-reorder, the old indirect one, is gone.
+Deleting any other step never touches the start.
+`test/models/workflow_start_step_test.rb` holds the rule and its edges.
+
+**The grow protocol is five data attributes.** A trigger carries
+`data-grow-from` (the parent step id), `data-grow-label`, `data-grow-condition`,
+`data-grow-context` (what the picker says it is growing from) and, on an outline
+stub chip only, `data-grow-connect-url` (the from-step's transitions endpoint,
+which is what shows "An existing step…"); `step_list_controller` reads them from
+a door chip's stub button inside the step's node (`#growFromDoor`) or, for
 the panel's own "New step" buttons, from a document-level click handler, and
 copies them into the type picker's hidden fields. There is one type picker, and
 its door fields are written **when it opens, never when it closes** — choosing a
@@ -506,8 +767,8 @@ it opened ~650px from a stub on row 1 of a long list; it is measured with
 `offsetWidth`/`offsetHeight`, not `getBoundingClientRect`, which reads a
 scaled-down size during the `@starting-style` entrance and threw the clamp off
 by that margin. A fixed menu does not move with its trigger, so it closes
-once that trigger has moved — whichever scroller moved it, the list for a row's
-stub or the panel for a door (one capture-phase `scroll` listener on the
+once that trigger has moved — whichever scroller moved it, the list for a stub
+chip or the panel for a door (one capture-phase `scroll` listener on the
 document, since scroll does not bubble) — or the window is resized. It asks
 whether the trigger MOVED rather than whether something scrolled: at phone
 width the document fires scroll events as a click lands that move nothing,
@@ -558,7 +819,7 @@ matching at runtime, because the door condition's escaping and
 the two-readings note above (`Step::Doors#operator_match?` and
 `ConditionEvaluator#parse`'s `:value`/`:literal_value`).
 
-**Mode:** `data-builder-mode-value="view|edit"` on the builder container. CSS hides drag handles, add/delete buttons, and edit-only elements in view mode. View mode is a preview: `builder_controller#loadPanel` asks for `readonly=1`, and `StepsController#panel_edit` and `Workflows::SettingsController#show` render the readonly branch for that or for a viewer who may not edit. Nothing in view mode saves.
+**Mode:** `data-builder-mode-value="view|edit"` on the builder container. CSS hides add/delete buttons and edit-only elements in view mode. View mode is a preview: `builder_controller#loadPanel` asks for `readonly=1`, and `StepsController#panel_edit` and `Workflows::SettingsController#show` render the readonly branch for that or for a viewer who may not edit. Nothing in view mode saves.
 
 **Inline Validation + Health Panel:**
 - `step_warnings_controller.js` fetches `/workflows/:id/health.json` asynchronously (debounced 500ms) after every autosave or Turbo Stream update

@@ -21,12 +21,45 @@ export default class extends Controller {
 
   open(event) {
     const { label = "", condition = "", transitionUrl = "" } = event.currentTarget.dataset
+    this.fromStepId = null
+    this.focusAfter = null
+    this.show({
+      label,
+      condition,
+      url: transitionUrl || this.formTarget.dataset.createUrl,
+      method: transitionUrl ? "patch" : "post",
+      heading: label ? `“${label}” leads to…` : "This step leads to…"
+    })
+  }
 
+  // A list chip's "An existing step…" (step_list_controller#pickExisting).
+  openFromList({ detail }) {
+    this.fromStepId = detail.from
+    // After a pick the door is a jump (a button) or, when its target was
+    // unplaced, a fold's <summary> carrying the same key; only one of the two
+    // exists. A wired continuation chip is plain text, so submitEnded falls
+    // back to the from-step's treeitem node (tabindex="-1") rather than leave
+    // focus on <body>. Never a button: the row's Remove is opacity 0 until
+    // hovered, and focus left there turned the next Space into "Remove this
+    // step?" (QA D-004).
+    const key = detail.doorKey ? CSS.escape(detail.doorKey) : null
+    this.focusAfter = key ? `[data-door-key="${key}"] button, summary[data-door-key="${key}"]` : null
+    this.focusFallback = `[role="treeitem"]:has(> .builder__step[data-step-id="${CSS.escape(String(detail.from))}"])`
+    this.show({
+      label: detail.label || "",
+      condition: detail.condition || "",
+      url: detail.connectUrl,
+      method: "post",
+      heading: detail.context ? `${detail.context} leads to…` : "This step leads to…"
+    })
+  }
+
+  show({ label, condition, url, method, heading }) {
     this.labelTarget.value = label
     this.conditionTarget.value = condition
-    this.formTarget.action = transitionUrl || this.formTarget.dataset.createUrl
-    this.methodTarget.value = transitionUrl ? "patch" : "post"
-    this.headingTarget.textContent = label ? `“${label}” leads to…` : "This step leads to…"
+    this.formTarget.action = url
+    this.methodTarget.value = method
+    this.headingTarget.textContent = heading
 
     // A refused attempt fills this in without reloading the rest of the
     // dialog (see render_refusal); clear it so a fresh open never shows a
@@ -61,7 +94,45 @@ export default class extends Controller {
     // The doors list is re-rendered by this very response, so the button that
     // opened the dialog is gone and the browser's own restore has nothing to
     // go back to. Without this, focus lands on <body>.
-    focusWhenReplaced(".step-doors", { within: this.element })
+    // From a list chip, the chip it came from is re-rendered as a jump; focus that.
+    if (this.focusAfter) {
+      const selector = this.focusAfter
+      const fallback = this.focusFallback
+      focusWhenReplaced(selector).then(element => {
+        // Nothing was replaced to wait for on the fallback: focus it now. The
+        // node wraps its whole branch, so a plain focus() could scroll the
+        // list to bring all of it into view.
+        if (!element) document.querySelector(fallback)?.focus({ preventScroll: true })
+        this.refocusAfterSelfBroadcast(element ? selector : fallback)
+      })
+    } else {
+      const within = this.element
+      focusWhenReplaced(".step-doors", { within }).then(() => {
+        this.refocusAfterSelfBroadcast(".step-doors", within)
+      })
+    }
+  }
+
+  // The acting tab is subscribed to the workflow's stream too, so the list
+  // broadcast this same request sent (Steps::TransitionsController#render_connections)
+  // comes back to it. Rendered AFTER the response it replaces the element just
+  // focused, and focus falls to <body>. For about a second, put it back after
+  // any change to the page that left focus on <body> - never otherwise, so an
+  // author who has tabbed on is not pulled back. Not focusWhenReplaced again:
+  // that focuses whatever is there even when nothing was replaced.
+  //
+  // A MutationObserver, not turbo:before-stream-render: Turbo dispatches that
+  // event and then waits a repaint before rendering, so a broadcast whose
+  // event fired before this guard existed could still render after it and
+  // never be seen. Observer callbacks run after the DOM has actually changed.
+  refocusAfterSelfBroadcast(selector, within = document) {
+    const observer = new MutationObserver(() => {
+      // preventScroll: this puts back focus the author already had; it must
+      // not move the list under them.
+      if (document.activeElement === document.body) within.querySelector(selector)?.focus({ preventScroll: true })
+    })
+    observer.observe(document.body, { childList: true, subtree: true })
+    setTimeout(() => observer.disconnect(), 1000)
   }
 
   // A click whose target is the <dialog> itself landed on the backdrop.
@@ -110,10 +181,15 @@ export default class extends Controller {
   // This can't help with a step ADDED since the panel rendered: a grow
   // replaces the whole panel, rebuilding this dialog fresh with it, so that
   // gap is only reachable through a collaborator's grow while THIS panel
-  // stays open - left for TODOS.md.
+  // stays open - left for TODOS.md. (The list-level mount has no such gap:
+  // every list broadcast re-streams its options.)
+  //
+  // The list-level mount (workflows/_list_target_picker) also hides the step
+  // the door belongs to, which its shared candidate list cannot leave out.
   markGoneOptions() {
     this.optionTargets.forEach(option => {
-      const gone = !document.querySelector(`.builder__step[data-step-id="${option.dataset.stepId}"]`)
+      const gone = option.dataset.stepId === String(this.fromStepId) ||
+                   !document.querySelector(`.builder__step[data-step-id="${option.dataset.stepId}"]`)
       option.dataset.gone = gone ? "true" : "false"
       option.classList.toggle("is-hidden", gone)
     })

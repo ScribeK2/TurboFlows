@@ -1,0 +1,135 @@
+<%#
+  Step Node — one step in the outline: its row, then its EXIT doors nested in
+  a group, then its CONTINUATION door chip at this indent. The continuation's
+  STEP is rendered by the caller as this node's next sibling, so a trunk is a
+  run of siblings and aria-level matches what the eye sees.
+
+  Local variables:
+  - node: StepOutline::Node
+  - workflow, outline (StepOutline::Result), level (1-based aria-level)
+
+  A door chip is one of three things:
+  - a stub: opens the type picker beside it, which grows a step or picks an
+    existing one (data-grow-* protocol, see docs/agents/builder.md § Growing a
+    workflow);
+  - a jump: the target is placed elsewhere; the chip names it and opens it;
+  - a wired step: its step nests under it (an exit) or follows it (the
+    continuation). Its dot is the target's type colour.
+%>
+<% step = node.step %>
+<% ordinals = outline.ordinals %>
+<% row_title = step.title.presence || "Untitled #{step.step_type.titleize}" %>
+<% target_title = ->(target) { target.title.presence || "Untitled #{target.step_type.titleize}" } %>
+<% ways_in = outline.ways_in_for(step) %>
+
+<%# A stub and a jump are ONE button each with the door's label inside, so the
+    whole chip is the click target and a stub's words are today's row-stub
+    words ("No → add step", "→ add step" for a lone Next) - the grow tests
+    click those strings. A wired step's chip is text: its step is right there. %>
+<% door_chip = lambda do |edge, continuation: false| %>
+  <% door = edge.door %>
+  <% stub_label = door.kind == :next ? "→" : "#{door.label} →" %>
+  <div class="builder__outline-door builder__outline-door--<%= edge.kind %><%= " builder__outline-door--continue" if continuation %>"
+       data-door-key="<%= step.id %>:<%= door.label %>">
+    <% case edge.kind %>
+    <% when :step %>
+      <span class="builder__type-dot builder__type-dot--<%= edge.target.step_type %>" aria-hidden="true"></span>
+      <span class="builder__outline-chip" title="<%= door.label %>"><%= door.label %></span>
+    <% when :stub %>
+      <button type="button" class="builder__outline-chip builder__door-stub builder__edit-only"
+              title="<%= door.label %>"
+              aria-label="<%= door.kind == :next ? "Add a step after “#{row_title}”" : "“#{row_title}” — #{door.label}: add step" %>"
+              data-action="click->step-list#growFromDoor"
+              data-grow-from="<%= step.id %>"
+              data-grow-label="<%= door.label unless door.kind == :next %>"
+              data-grow-condition="<%= door.condition %>"
+              data-grow-context="<%= door.kind == :next ? "After “#{row_title}”" : "“#{row_title}” — #{door.label}" %>"
+              data-grow-connect-url="<%= workflow_step_transitions_path(workflow, step) %>"><%= stub_label %> add step</button>
+      <%# The same words as the panel's door row: an unwired answer with a
+          wired fallback is not "nothing yet". %>
+      <span class="builder__outline-chip builder__door-stub-text builder__view-only"><%= stub_label %> <%= node.fallback ? "follows “Anything else” for now" : "nothing yet" %></span>
+    <% when :jump %>
+      <button type="button" class="builder__outline-chip builder__outline-jump"
+              title="<%= door.label %> → <%= target_title.call(edge.target) %>"
+              aria-label="“<%= row_title %>” — <%= door.label %>: goes to “<%= target_title.call(edge.target) %>”, step <%= ordinals[edge.target.uuid] %>"
+              data-action="click->builder#openStep"
+              data-builder-url-param="<%= panel_edit_workflow_step_path(workflow, edge.target) %>"
+              data-builder-step-id-param="<%= edge.target.id %>">
+        <%= icon "link", class: "icon icon--xs" %>
+        <%= door.label %>
+        <span class="builder__type-dot builder__type-dot--<%= edge.target.step_type %>" aria-hidden="true"></span>
+        <%# The chip wraps rather than ellipsizing, and "· step N" never breaks,
+            so the number is never what gets cut. All inline: a flex or block
+            child would split the chip's text into lines (see builder.css). %>
+        → <%= target_title.call(edge.target) %> <span class="builder__outline-step-ref">· step <%= ordinals[edge.target.uuid] %></span>
+      </button>
+    <% end %>
+  </div>
+<% end %>
+
+<% exit_chain = lambda do |edge| %>
+  <%= render "workflows/step_node", node: edge.child, workflow: workflow, outline: outline, level: level + 1 %>
+  <%# The exit's own trunk continues as siblings inside this group. %>
+  <% following = edge.child.continuation %>
+  <% while following&.kind == :step %>
+    <%= render "workflows/step_node", node: following.child, workflow: workflow, outline: outline, level: level + 1 %>
+    <% following = following.child.continuation %>
+  <% end %>
+<% end %>
+
+<%# tabindex="-1": the node can take focus from code (the list dialog's
+    fallback after a pick, step_target_picker_controller#openFromList) without
+    joining the Tab order. %>
+<div class="builder__node"
+     id="<%= dom_id(step, :node) %>"
+     role="treeitem"
+     tabindex="-1"
+     aria-level="<%= level %>"
+     aria-labelledby="<%= [dom_id(step, :title), (dom_id(step, :ways_in) if ways_in.any?)].compact.join(" ") %>"
+     data-node-uuid="<%= step.uuid %>">
+
+  <%= render "workflows/step_row", step: step, workflow: workflow, outline: outline %>
+
+  <% if node.exits.any? || node.extras.any? %>
+    <div class="builder__outline-branch" role="group">
+      <% node.exits.each do |edge| %>
+        <% if edge.kind == :step %>
+          <details class="builder__outline-fold" open data-fold-key="<%= step.uuid %>:<%= edge.door.label %>">
+            <summary class="builder__outline-door builder__outline-door--step builder__outline-door--fold"
+                     data-door-key="<%= step.id %>:<%= edge.door.label %>">
+              <span class="builder__type-dot builder__type-dot--<%= edge.target.step_type %>" aria-hidden="true"></span>
+              <span class="builder__outline-chip" title="<%= edge.door.label %>"><%= edge.door.label %></span>
+              <span class="builder__outline-fold-count">→ <%= target_title.call(edge.target) %> <span class="builder__outline-step-ref">· step <%= ordinals[edge.target.uuid] %> · <%= pluralize(edge.child.chain_rows, "step") %></span></span>
+            </summary>
+            <% exit_chain.call(edge) %>
+          </details>
+        <% else %>
+          <% door_chip.call(edge) %>
+        <% end %>
+      <% end %>
+      <% node.extras.each do |transition| %>
+        <%# A connection no door claims: a custom condition (or a default edge
+            sorted where it can never fire). One whole comparison reads through
+            the builder's existing condition reading ("tier is "gold""); that
+            helper misreads a compound one ("a > 1 && b < 2" came out as
+            'a is greater than "1 && b < 2"'), so only ConditionEvaluator.complete?
+            ones go through it. Anything else stays raw, in mono, so it reads as
+            an expression rather than an answer. %>
+        <% condition = transition.condition.to_s.strip %>
+        <% reading = if condition.blank? then "Anything else"
+                     elsif ConditionEvaluator.complete?(condition) then format_condition_for_display(condition)
+                     else condition
+                     end %>
+        <div class="builder__outline-door builder__outline-door--extra">
+          <span class="builder__outline-chip<%= " builder__outline-chip--expression" if condition.present? && reading == condition %>"
+                title="<%= condition.presence || "Anything else" %>"><%= reading %></span>
+          <% if transition.target_step %>
+            <span class="builder__outline-extra-target">→ <%= target_title.call(transition.target_step) %> · step <%= ordinals[transition.target_step.uuid] %></span>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% door_chip.call(node.continuation, continuation: true) if node.continuation %>
+</div>

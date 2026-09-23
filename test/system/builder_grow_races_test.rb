@@ -225,10 +225,6 @@ class BuilderGrowRacesTest < ApplicationSystemTestCase
 
   private
 
-  def pick_type(name)
-    within(".builder__type-picker") { find(".builder__type-name", text: name, exact_text: true).click }
-  end
-
   # The same stream broadcast_step_list sends, rendered straight into the page.
   def render_list_stream(steps)
     html = ApplicationController.render(

@@ -460,4 +460,38 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
     assert_predicate imported, :graph_mode?, "Should be imported as graph mode"
     assert imported.steps.all? { |s| s.uuid.present? }, "All steps should have UUIDs"
   end
+
+  # ============================================================================
+  # PDF Export Ordering
+  # ============================================================================
+
+  module RecordPdfText
+    def text(string, options = {})
+      (Thread.current[:recorded_pdf_text] ||= []) << string
+      super
+    end
+  end
+  Prawn::Document.prepend(RecordPdfText) unless Prawn::Document <= RecordPdfText
+
+  # Mutation check: restore `@workflow.steps.includes(:transitions).each_with_index`
+  # in export_pdf_ar_steps - red.
+  test "the PDF numbers steps as the builder's outline does" do
+    workflow = Workflow.create!(title: "PDF order", user: @editor)
+    q = Steps::Question.create!(workflow: workflow, title: "Power light green?", position: 0,
+                                answer_type: "yes_no", variable_name: "light")
+    trunk = Steps::Resolve.create!(workflow: workflow, title: "Trunk done", position: 1)
+    exit_step = Steps::Resolve.create!(workflow: workflow, title: "Exit done", position: 2)
+    Transition.create!(step: q, target_step: exit_step, condition: "light == 'yes'", position: 0)
+    Transition.create!(step: q, target_step: trunk, condition: "light == 'no'", position: 1)
+    workflow.update_columns(start_step_id: q.id)
+
+    Thread.current[:recorded_pdf_text] = []
+    get pdf_workflow_export_path(workflow)
+    assert_response :success
+
+    headings = Thread.current[:recorded_pdf_text].grep(/\A\d+\. /)
+    assert_equal(["1. Power light green? [Question]", "2. Exit done [Resolve]", "3. Trunk done [Resolve]"], headings)
+  ensure
+    Thread.current[:recorded_pdf_text] = nil
+  end
 end

@@ -108,22 +108,8 @@ module WorkflowsHelper
     "→ #{titles.join(', ')}"
   end
 
-  # The collapsed line for a row with more doors than fit on one (see
-  # workflows/_step_row): every unwired answer already follows "Anything
-  # else" when the step has a wired blank-condition door - same fact the
-  # per-door line above reads off doors.fallback - or none of them lead
-  # anywhere yet.
-  def step_collapsed_stub_summary(doors)
-    count = doors.stubs.size
-    if doors.fallback
-      "#{pluralize(count, 'answer')} #{count == 1 ? 'follows' : 'follow'} “Anything else”"
-    else
-      "#{pluralize(count, 'answer')} #{count == 1 ? 'needs' : 'need'} a step"
-    end
-  end
-
   # Accessible names for a door's action buttons (steps/_doors) and the row
-  # stub that opens the type picker for it (workflows/_step_row) - every one
+  # stub that opens the type picker for it (workflows/_step_node) - every one
   # of them repeats the same visible text ("New step", "Use existing…",
   # "Change", "Remove", "→ add step") once per door, with only a sibling span
   # telling doors apart. A screen reader hears a list of identical names; this
@@ -143,23 +129,17 @@ module WorkflowsHelper
     end
   end
 
-  # The wired half of a row: "No → Power cycle · 2". Stubs are not text here -
-  # the row renders them as buttons (workflows/_step_row).
-  def step_door_summary(doors, ordinals)
-    wired = doors.doors.reject(&:stub?).map do |door|
-      arrow = step_connection_summary([door.target_step], ordinals)
-      door.kind == :next ? arrow : "#{door.label} #{arrow}"
-    end
-    extras = doors.extras.filter_map(&:target_step)
-    wired << step_connection_summary(extras, ordinals) if extras.any?
-    wired.join(" · ")
-  end
-
-  # Computed, not memoised: a helper's instance variables live in the view
-  # context, so caching here would outlive the workflow it was built for.
-  # Callers that render a list compute it once and pass it down.
+  # One number per step, in the builder outline's reading order (StepOutline).
+  # Every "step N" in the builder - row badge, door rows, the Use existing
+  # dialog, the health panel, jump chips - goes through here, so they agree by
+  # construction. Derived on every read; nothing is persisted.
+  #
+  # This BUILDS an outline (3 queries and a walk). A render that already holds
+  # one - every builder stream and broadcast passes its request's one down as
+  # `outline:` - reads `outline.ordinals` instead; this is for a partial
+  # rendered on its own (the health and flow-diagram panels).
   def step_ordinals(workflow)
-    workflow.steps.ordered.each_with_index.to_h { |step, index| [step.uuid, index + 1] }
+    StepOutline.for(workflow).ordinals
   end
 
   # One section of the health panel, as a flat list of [step uuid, issue], with
@@ -233,7 +213,7 @@ module WorkflowsHelper
     return 'Not set' if condition.blank?
 
     # Parse the condition
-    if (match = condition.match(/^(\w+)\s*(==|!=|>|>=|<|<=)\s*['"]?([^'"]*?)['"]?$/))
+    if (match = condition.match(/^(\w+)\s*(==|!=|>=|<=|>|<)\s*['"]?([^'"]*?)['"]?$/))
       variable, operator, value = match.captures
 
       operator_text = case operator
@@ -271,22 +251,6 @@ module WorkflowsHelper
 
     title = workflow.resolve_step_reference_to_title(reference)
     title || reference
-  end
-
-  # Get step options for a select dropdown
-  # Returns an array of [display_name, value] pairs
-  def step_options_for_select(workflow, exclude_step_id: nil)
-    return [] unless workflow&.steps&.any?
-
-    workflow.steps.order(:position).map.with_index do |step, index|
-      next nil if step.title.blank?
-      next nil if exclude_step_id && step.uuid == exclude_step_id
-
-      [
-        "#{step_type_icon(step.step_type)} #{index + 1}. #{step.title}",
-        step.title
-      ]
-    end.compact
   end
 
   # ============================================================================
