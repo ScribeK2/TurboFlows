@@ -53,7 +53,14 @@ class StepsController < ApplicationController
   # row: its title is on every jump chip, fold summary and ways-in tooltip
   # naming it; answer type and options are its doors; sub_flow_returns turns
   # a leaf into a step with a door.
-  OUTLINE_FIELDS = %w[title answer_type options sub_flow_returns].freeze
+  #
+  # variable_name because a rename rewrites this step's conditions inside
+  # @step.update (Question#carry_conditions_to_new_variable), BEFORE
+  # TransitionSync takes its `before` signature - so the sync reads the
+  # rewritten rows as unchanged, and nothing else would re-render the list.
+  # The extras' chip text and the "ways in" tooltips quote those conditions,
+  # and kept the old name in every other tab until something else re-rendered.
+  OUTLINE_FIELDS = %w[title answer_type options sub_flow_returns variable_name].freeze
 
   include ActionView::RecordIdentifier
 
