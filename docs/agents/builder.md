@@ -30,6 +30,7 @@ The unified builder lives at `workflows/:id` — one URL for both viewing and ed
 - `builder_controller.js` — panel open/close, step selection, title autosave, Escape to close, `openHealth` action, auto-opens health panel when `?health=true` URL param is present
 - `step_list_controller.js` — the type picker: opening it for a door (from an outline stub chip or the panel's "New step"), writing the `data-grow-*` fields, and floating it beside its trigger. It opens the type picker for a door; "An existing step…" (shown only when a list chip opened it) hands the door to the list target picker
 - `outline_fold_controller.js` — keeps folded exit branches folded across list re-renders, reveals the open step's branch, drives Collapse all; mounted on the builder root
+- `outline_keys_controller.js` — the step list from the keyboard: with focus on a step's node (every node is a Tab stop), Enter/Space open its panel, Down/Up/Home/End move between the visible steps in reading order (closed folds' steps skipped, chips never count), Left folds the branch the step sits in via its `<summary>` click (so outline-fold records it), Right unfolds the step's own folds; mounted on the builder root (QA A-004)
 - `ordinal_sync_controller.js` — after any list re-render, copies each row's step number onto every `[data-step-ordinal="<uuid>"]` outside the list (the panel's door rows and Use existing… candidates, the health panel, View Flow), which the server cannot re-render because it doesn't know which panel another tab has open; mounted on the builder root, writes only on change (it observes its own writes)
 - `step_target_picker_controller.js` — the "Use existing…" dialog on a door row (and, as a second mount, the list's "An existing step…" dialog, via `openFromList`): which door it is for, waiting for the panel's pending save before the pick is sent, the filter, Escape (`stopPropagation`, or the whole panel closes behind it), and closing on `turbo:before-cache`
 - `inline_autosave_controller.js` — debounced autosave (2s), `flush()` for whoever must act after the pending save (it returns a promise that resolves once nothing is in flight), the panel's **save indicator** (see below), listens for `lexxy:change` events, flushes pending saves on disconnect via `FormData` + `fetch`, dispatches `health:check-needed` after disconnect saves
@@ -424,9 +425,9 @@ guide line. A linear workflow therefore renders exactly as the flat list did.
   and now nests under it. `openFromList` keeps a selector for either, keyed by
   the door's `data-door-key`, and `focusWhenReplaced` finds the new element on
   close. When neither exists (a wired continuation chip is plain text), focus
-  falls back to the from-step's treeitem node, which carries `tabindex="-1"`
-  so code can focus it without adding it to the Tab order, and which shows
-  the ring on its own row. Never a button: the fallback was the row's Remove,
+  falls back to the from-step's treeitem node - a Tab stop since keyboard
+  access landed (`tabindex="0"`, see outline-keys below) - which shows the
+  ring on its own row. Never a button: the fallback was the row's Remove,
   opacity 0 until hovered, and a Space pressed after a click on empty page
   (which leaves focus on `<body>`, so the guard below moved it there) asked
   "Remove this step?" (QA D-004). The acting tab also receives
