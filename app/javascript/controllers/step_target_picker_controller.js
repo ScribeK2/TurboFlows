@@ -99,8 +99,10 @@ export default class extends Controller {
       const selector = this.focusAfter
       const fallback = this.focusFallback
       focusWhenReplaced(selector).then(element => {
-        // Nothing was replaced to wait for on the fallback: focus it now.
-        if (!element) document.querySelector(fallback)?.focus()
+        // Nothing was replaced to wait for on the fallback: focus it now. The
+        // node wraps its whole branch, so a plain focus() could scroll the
+        // list to bring all of it into view.
+        if (!element) document.querySelector(fallback)?.focus({ preventScroll: true })
         this.refocusAfterSelfBroadcast(element ? selector : fallback)
       })
     } else {
@@ -125,7 +127,9 @@ export default class extends Controller {
   // never be seen. Observer callbacks run after the DOM has actually changed.
   refocusAfterSelfBroadcast(selector, within = document) {
     const observer = new MutationObserver(() => {
-      if (document.activeElement === document.body) within.querySelector(selector)?.focus()
+      // preventScroll: this puts back focus the author already had; it must
+      // not move the list under them.
+      if (document.activeElement === document.body) within.querySelector(selector)?.focus({ preventScroll: true })
     })
     observer.observe(document.body, { childList: true, subtree: true })
     setTimeout(() => observer.disconnect(), 1000)
