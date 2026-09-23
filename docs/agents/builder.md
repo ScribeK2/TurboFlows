@@ -167,7 +167,7 @@ so a wired door there means the stub was stale (another editor wired it, or a
 second click raced the first), and retargeting would silently strand the step
 the door already led to. `StepsController#respond_to_refused_grow` answers with
 the whole list and the parent's Connections fragment, so the stale stub goes. The one `update_column` here is
-`assign_start_step`, moved from `StepsController` unchanged: a full save would
+`Workflow#assign_start_step` (`WorkflowStartStep`, shared with a delete): a full save would
 bump the workflow's `lock_version` under whatever the title or Details autosave
 is holding and be refused as stale. Both `GrowStep` entry points hold a **row lock on the workflow**
 (`Workflow.lock.find`, no `lock_version` bump) for their transaction, because
@@ -725,15 +725,20 @@ renders without the row" — that regresses the 404: a collaborator's delete is
 exactly ONE render for everyone else.)
 
 **Deleting the start step hands the start to its continuation.**
-`StepsController#start_successor_id_for` reads the target of the deleted step's
-LAST door (`Step::Doors`, the outline's continuation) BEFORE the destroy takes
-its transitions, and `ensure_start_step_assigned` makes that step the start
-when it still exists. Otherwise (a stub, a Resolve, a self-loop) it falls back
-to the first step by position, as before. First-by-position alone could pick a
-side branch, and the outline then dropped the whole trunk into Unconnected
-(QA B-005, 2026-09-23). The builder has no control that sets the start, and
-drag-reorder, the old indirect one, is gone. Deleting any other step never
-touches the start.
+`StepsController#destroy` calls `Workflow#destroy_step` (`WorkflowStartStep`).
+When the step was the start, it reads the targets of the step's wired doors,
+LAST door first (`Step::Doors`; the last door is the outline's continuation),
+BEFORE the destroy takes its transitions, and `assign_start_step` makes the
+first of them that still exists the start. So a stub last door hands the start
+to the wired door nearest it, and a door back to the step itself is passed
+over. Whatever that successor is becomes the start, a Resolve included. Only
+when the deleted start has no wired door (a Resolve, a handoff, or every door
+a stub) does it fall back to the first step by position, as before.
+First-by-position alone could pick a side branch, and the outline then dropped
+the whole trunk into Unconnected (QA B-005, 2026-09-23). The builder has no
+control that sets the start, and drag-reorder, the old indirect one, is gone.
+Deleting any other step never touches the start.
+`test/models/workflow_start_step_test.rb` holds the rule and its edges.
 
 **The grow protocol is five data attributes.** A trigger carries
 `data-grow-from` (the parent step id), `data-grow-label`, `data-grow-condition`,

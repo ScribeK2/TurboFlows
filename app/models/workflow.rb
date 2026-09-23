@@ -9,6 +9,7 @@ class Workflow < ApplicationRecord
   include WorkflowStepValidation
   include WorkflowSharing
   include WorkflowGraphQueries
+  include WorkflowStartStep
 
   belongs_to :user
 

@@ -153,7 +153,7 @@ class StepsControllerDestroyTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "deleting the start step falls back to the first step when its continuation is a stub" do
+  test "deleting the start step with a stub continuation hands the start to its wired Yes" do
     start, side, _mid, _finish = trunk_under_no
     Transition.where(step: start, condition: "del == 'no'").delete_all
 
@@ -162,7 +162,7 @@ class StepsControllerDestroyTest < ActionDispatch::IntegrationTest
     assert_equal side, @workflow.reload.start_step
   end
 
-  test "deleting a start step that continues into itself falls back to the first step" do
+  test "deleting a start step that continues into itself hands the start to its wired Yes" do
     start, side, _mid, _finish = trunk_under_no
     Transition.where(step: start, condition: "del == 'no'").update_all(target_step_id: start.id)
 
