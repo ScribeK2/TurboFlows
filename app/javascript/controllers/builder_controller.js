@@ -152,23 +152,17 @@ export default class extends Controller {
     row?.closest("[role='treeitem']")?.setAttribute("aria-selected", "true")
 
     // A jump is the outline's "go to": its target can be far down the list, or
-    // inside a folded branch (QA C-002). Open the folds around it (outline-fold
-    // records only the author's own clicks, so this forgets no fold) and bring
-    // it into view, centred, since the panel opening will re-wrap the rows.
+    // inside a folded branch (QA C-002). outline-fold owns every fold's `open`,
+    // so ask it to reveal the row's branch (synchronously), then bring the row
+    // into view, centred, since the panel opening will re-wrap the rows.
     this.rowToReveal = null
     if (row && row !== event.currentTarget) {
-      this.openFoldsAround(row)
+      this.dispatch("reveal", { prefix: "outline-fold", detail: { stepId: row.dataset.stepId } })
       revealRowInList(row, { block: "center" })
       this.rowToReveal = row
     }
 
     this.loadPanel(url)
-  }
-
-  openFoldsAround(row) {
-    for (let fold = row.closest("details[data-fold-key]"); fold; fold = fold.parentElement?.closest("details[data-fold-key]")) {
-      if (!fold.open) fold.open = true
-    }
   }
 
   openFlowDiagram() {

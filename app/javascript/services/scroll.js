@@ -24,6 +24,9 @@ export function revealRowInList(row, { block = "nearest" } = {}) {
 function scrollRow(row, block) {
   const scroller = row?.closest(".builder__list-scroll")
   if (!scroller) return
+  // A row inside a closed fold has no box, and its zero rect would scroll the
+  // list to nowhere in particular.
+  if (!row.getClientRects().length) return
 
   const box = scroller.getBoundingClientRect()
   const rect = row.getBoundingClientRect()

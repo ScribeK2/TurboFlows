@@ -37,6 +37,12 @@ export default class extends Controller {
     this.boundToggle = () => this.updateToggleAll()
     this.element.addEventListener("toggle", this.boundToggle, true)
 
+    // builder#openStep asks for a jump's target to be shown. This controller
+    // is the only writer of a fold's `open`: a second writer's opens were
+    // re-closed by the next reapply.
+    this.boundReveal = this.reveal.bind(this)
+    this.element.addEventListener("outline-fold:reveal", this.boundReveal)
+
     this.observer = new MutationObserver(() => this.queueReapply())
     this.observer.observe(this.element, { childList: true, subtree: true })
     this.reapply()
@@ -45,6 +51,7 @@ export default class extends Controller {
   disconnect() {
     this.element.removeEventListener("click", this.boundClick)
     this.element.removeEventListener("toggle", this.boundToggle, true)
+    this.element.removeEventListener("outline-fold:reveal", this.boundReveal)
     this.observer?.disconnect()
   }
 
@@ -93,6 +100,18 @@ export default class extends Controller {
     this.updateToggleAll()
   }
 
+  // Shows the branch holding a step, now: its folds join `revealed` (settled
+  // first, so a recompute already due cannot wipe them), so they stay open
+  // until the open step changes or the list re-renders, like the open step's
+  // own. This is what a jump to the step whose panel is ALREADY open needs:
+  // nothing changes step, so nothing else would reveal a branch the author
+  // folded by hand.
+  reveal({ detail: { stepId } }) {
+    this.updateRevealed()
+    this.foldKeysAround(stepId).forEach(key => this.revealed.add(key))
+    this.reapply()
+  }
+
   // Which folds are held open for the open step: those around its row, worked
   // out afresh only when the open step changes or the outline itself was
   // replaced (both update("steps-list") and replace("step-list") render a
@@ -109,10 +128,16 @@ export default class extends Controller {
     this.revealed = new Set()
     if (!stepId) return
 
-    const row = this.element.querySelector(`.builder__step[data-step-id="${CSS.escape(stepId)}"]`)
+    this.revealed = new Set(this.foldKeysAround(stepId))
+  }
+
+  foldKeysAround(stepId) {
+    const keys = []
+    const row = this.element.querySelector(`.builder__step[data-step-id="${CSS.escape(String(stepId))}"]`)
     for (let fold = row?.closest("details[data-fold-key]"); fold; fold = fold.parentElement?.closest("details[data-fold-key]")) {
-      this.revealed.add(fold.dataset.foldKey)
+      keys.push(fold.dataset.foldKey)
     }
+    return keys
   }
 
   updateToggleAll() {

@@ -564,6 +564,30 @@ class BuilderOutlineTest < ApplicationSystemTestCase
     assert_selector "#{fold}[open]", wait: 5
   end
 
+  # Review round 2: a jump to the step whose panel is ALREADY open changes no
+  # step, so only the jump's own reveal (builder#openStep asking outline-fold)
+  # can show a branch the author folded by hand. A second writer of `open`
+  # used to be re-closed by the fold controller's next reapply.
+  test "a jump to the already-open step reveals its hand-folded branch" do
+    toy_graph
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 5, wait: 5
+    fold = "details[data-fold-key='#{@q2.uuid}:Yes']"
+    jump = -> { within(node_for(@q1)) { find(".builder__outline-jump", text: "Working").click } }
+
+    jump.call
+    assert_selector "#builder-panel .builder__panel-body[data-step-id='#{@working.id}']", wait: 5
+    assert_panel_settled
+    find("#{fold} > summary").click
+    assert_selector "#{fold}:not([open])"
+
+    jump.call
+    assert_selector "#{fold}[open]", wait: 5
+    assert_eventually { page.evaluate_script(row_visible_in_list_js(@working)) }
+    sleep 0.5 # the panel reload's own mutations must not re-close it
+    assert_selector "#{fold}[open]"
+  end
+
   # QA D-004 (and A-002): when the picked door comes back as plain text (a
   # wired continuation), focus fell back to the row's Remove button, which is
   # opacity 0 until hovered, so the next Space asked "Remove this step?".

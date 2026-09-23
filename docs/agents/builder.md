@@ -690,10 +690,16 @@ to the row and `aria-selected="true"` to the row's enclosing `role="treeitem"`
 `treeitem` with `aria-level`, each exit branch and the Unconnected section a
 `group`). A jump chip is not a row: `builder#openStep` from a jump
 selects the row of the step it OPENS (`data-builder-step-id-param`), never the
-chip, and brings that row into view: it opens any fold around it (outline-fold
-records only the author's clicks, so no fold is forgotten) and centres it in
-`.builder__list-scroll`, then again once the panel frame has loaded and the
-list has narrowed (QA C-002). The open step's branch guides darken through CSS `:has()` on that class. Never pass a `selected_step:`
+chip, and brings that row into view (QA C-002). It does NOT open folds
+itself: `outline-fold` is the only writer of a fold's `open`, because a second
+writer's opens were re-closed by its next reapply (review, 2026-09-23). So
+`openStep` dispatches `outline-fold:reveal` with the row's step id, which adds
+the folds around it to the controller's `revealed` set and reapplies at once;
+that is also the only thing that reveals a hand-folded branch when the jump is
+to the step whose panel is ALREADY open, since no step changes. It then centres
+the row in `.builder__list-scroll`, and again once the panel frame has loaded
+and the list has narrowed. `services/scroll` skips a row with no box (inside a
+closed fold) rather than scroll to its zero rect. The open step's branch guides darken through CSS `:has()` on that class. Never pass a `selected_step:`
 local to the list or row partials: the builder subscribes to its own Action
 Cable channel, so a server-painted selection is immediately overwritten by the
 same editor's own broadcast of the same subtree.
