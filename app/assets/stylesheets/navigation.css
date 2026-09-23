@@ -58,8 +58,12 @@
   align-items: stretch;
   gap: var(--space-6);
   /* min-width lets the 1fr column shrink below its content so the destinations
-     can scroll instead of being clipped; see the narrow-width block below. */
+     can scroll instead of being clipped; see the narrow-width block below.
+     max-width keeps the zone's box inside its column: with justify-self: start
+     it sized to its content instead, so even where it scrolled its box ran up
+     to 83px under the search pill (390px, admin; QA C-008, 2026-09-23). */
   min-width: 0;
+  max-width: 100%;
 }
 
 /* Chrome holds its size; the destinations are what gives. */
@@ -224,24 +228,37 @@
    Hiding the label alone was not enough — at 375px the row still ran 15px over
    and clipped, which can put the last destination out of reach. Gaps tighten,
    and past that the destinations scroll sideways, the same answer .tab-bar
-   already gives when a row outgrows its width. */
-@media (max-width: 639px) {
+   already gives when a row outgrows its width.
+   Up to 767px, not 639: from 640 the wordmark and the search pill's label
+   came back and an admin's five destinations ran under the search box until
+   ~767 (measured; QA C-008). */
+@media (max-width: 767px) {
   .nav__brand-text {
     display: none;
   }
 
   .nav__zone--start {
     gap: var(--space-3);
+  }
+
+  .nav__links {
+    gap: var(--space-4);
+  }
+}
+
+/* Below the width where every destination always fits (an admin's five sit
+   ~10px clear at 768 with no scrollbar and 5px UNDER the search pill with one),
+   the destinations scroll inside their zone rather than spill out of it: the
+   zone is clamped to its column (max-width above), and overflow keeps its
+   content inside that box at any width, however many destinations a role has. */
+@media (max-width: 1023px) {
+  .nav__zone--start {
     overflow-x: auto;
     scrollbar-width: none;
   }
 
   .nav__zone--start::-webkit-scrollbar {
     display: none;
-  }
-
-  .nav__links {
-    gap: var(--space-4);
   }
 
   /* Setting overflow-x forces overflow-y to auto as well, so the rule's
