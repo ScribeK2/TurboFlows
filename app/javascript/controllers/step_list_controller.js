@@ -60,6 +60,7 @@ export default class extends Controller {
     event.preventDefault()
     event.stopPropagation()
     this.openForDoor(event.currentTarget)
+    this.focusMenuIfKeyboard(event)
   }
 
   growFromOutside(event) {
@@ -68,6 +69,17 @@ export default class extends Controller {
 
     event.preventDefault()
     this.openForDoor(trigger)
+    this.focusMenuIfKeyboard(event)
+  }
+
+  // Opened with Enter or Space (a click with detail 0), the menu takes focus:
+  // it floats beside the door but lives at the end of the list, so Tab from
+  // the door walked every later chip before reaching it (QA A-006). A mouse
+  // click leaves focus where it is. Escape gives focus back (#closeOnEscape).
+  focusMenuIfKeyboard(event) {
+    if (event.detail !== 0 || !this.hasTypePickerTarget) return
+
+    this.typePickerTarget.querySelector(".builder__type-option")?.focus()
   }
 
   // A grow acts on what the server believes about the step it grows from, and
@@ -257,7 +269,11 @@ export default class extends Controller {
     if (event.key !== "Escape") return
     if (!this.hasTypePickerTarget || this.typePickerTarget.hidden) return
 
+    // Back to the door it was opened for, if the menu had focus: closing it
+    // otherwise drops focus to <body>.
+    const hadFocus = this.typePickerTarget.contains(document.activeElement)
     this.setTypePickerHidden(true)
+    if (hadFocus && this.doorTrigger?.isConnected) this.doorTrigger.focus()
     event.stopPropagation()
   }
 

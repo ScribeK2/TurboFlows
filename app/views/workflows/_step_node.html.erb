@@ -77,13 +77,14 @@
   <% end %>
 <% end %>
 
-<%# tabindex="-1": the node can take focus from code (the list dialog's
-    fallback after a pick, step_target_picker_controller#openFromList) without
-    joining the Tab order. %>
+<%# tabindex="0": each step is a Tab stop (QA A-004). outline-keys opens it on
+    Enter/Space and moves between steps on the arrow keys; the list dialog's
+    focus fallback after a pick (step_target_picker_controller#openFromList)
+    lands here too. %>
 <div class="builder__node"
      id="<%= dom_id(step, :node) %>"
      role="treeitem"
-     tabindex="-1"
+     tabindex="0"
      aria-level="<%= level %>"
      aria-labelledby="<%= [dom_id(step, :title), (dom_id(step, :ways_in) if ways_in.any?)].compact.join(" ") %>"
      data-node-uuid="<%= step.uuid %>">
