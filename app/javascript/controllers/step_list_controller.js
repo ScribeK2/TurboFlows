@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { deferSubmitUntilPanelSaved } from "services/pending_panel_saves"
 import { focusWhenReplaced } from "services/focus"
+import { revealRowInList } from "services/scroll"
 
 // The step list's type picker: opened from the bottom prompt or beside a
 // door, it grows a step (see docs/agents/builder.md § Growing a workflow).
@@ -85,7 +86,21 @@ export default class extends Controller {
 
     // Selected, not just focused: the field holds "Untitled Action", which is
     // the thing the author is there to replace.
-    focusWhenReplaced('#builder-panel input[name="step[title]"]').then(field => field?.select())
+    focusWhenReplaced('#builder-panel input[name="step[title]"]').then(field => {
+      field?.select()
+      this.revealGrownRow(field)
+    })
+  }
+
+  // The grow replaced #step-list, and its scroller with it, so the list is back
+  // at the top and the new row can be far below it (QA A-007). The list is
+  // rendered before the panel in the same response, so its row is on the page
+  // by now. Read from the document: this controller's own element is the list
+  // the response just replaced.
+  revealGrownRow(field) {
+    const stepId = field?.closest(".builder__panel-body[data-step-id]")?.dataset.stepId
+    const row = stepId && document.querySelector(`.builder__step[data-step-id="${CSS.escape(stepId)}"]`)
+    if (row) revealRowInList(row)
   }
 
   openForDoor(trigger) {

@@ -453,6 +453,56 @@ class BuilderOutlineTest < ApplicationSystemTestCase
     assert_eventually { page.evaluate_script(jump_focused_js) }
   end
 
+  # --- QA fixes, 2026-09-23 ---
+
+  # A chain long enough that .builder__list-scroll scrolls at 1400x900:
+  # start → A1 … A20 → Last? (Yes and No both stubs).
+  def long_chain
+    steps = (1..20).map { |i| Steps::Action.create!(workflow: @workflow, title: "Chain #{i}", position: i) }
+    last = Steps::Question.create!(workflow: @workflow, title: "Last?", position: 21, answer_type: "yes_no", variable_name: "last")
+    steps.each_cons(2) { |from, to| Transition.create!(step: from, target_step: to) }
+    Transition.create!(step: steps.last, target_step: last)
+    @workflow.update_columns(start_step_id: steps.first.id)
+    [steps, last]
+  end
+
+  # Returns the list's scrollTop afterwards, which is 0 when it cannot scroll.
+  def scroll_list_to_bottom
+    page.evaluate_script("(() => { const s = document.querySelector('.builder__list-scroll'); s.scrollTop = s.scrollHeight; return s.scrollTop })()")
+  end
+
+  def row_visible_in_list_js(step)
+    <<~JS
+      (() => {
+        const row = document.querySelector('.builder__step[data-step-id="#{step.id}"]');
+        const box = document.querySelector('.builder__list-scroll').getBoundingClientRect();
+        if (!row || !row.offsetParent) return false;
+        const r = row.getBoundingClientRect();
+        return r.top >= box.top - 1 && r.bottom <= box.bottom + 1;
+      })()
+    JS
+  end
+
+  # QA A-007: the grow's response replaces #step-list and its scroller with it,
+  # which put the list back at the top with the new row far below.
+  test "a grow from a chip low in a long list brings the new row into view" do
+    _chain, last = long_chain
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 21, wait: 5
+    assert_operator scroll_list_to_bottom, :>, 0, "the list scrolls"
+
+    within(node_for(last)) { click_on "Yes → add step" }
+    pick_type "Resolve"
+    assert_selector STEP_ROW, count: 22, wait: 5
+    grown = @workflow.steps.reload.find_by!(type: "Steps::Resolve")
+    assert_selector "#builder-panel .builder__panel-body[data-step-id='#{grown.id}']", wait: 5
+    assert_panel_settled
+
+    assert_eventually { page.evaluate_script(row_visible_in_list_js(grown)) }
+    # The title keeps focus: the scroll takes nothing from it.
+    assert_equal "step[title]", page.evaluate_script("document.activeElement?.name")
+  end
+
   def jump_focused_js
     "document.activeElement.matches('.builder__outline-jump') && document.activeElement.isConnected"
   end

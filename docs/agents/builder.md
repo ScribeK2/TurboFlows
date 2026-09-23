@@ -177,7 +177,11 @@ SQLite ignores `FOR UPDATE`, so only `test/services/grow_step_concurrency_test.r
 can show it, on PostgreSQL — it skips itself locally and its header says how to
 run it. Every grow replaces the **whole** step list
 and broadcasts it, because a grow moves every later ordinal and every jump chip
-("→ Title · step 4") that names one.
+("→ Title · step 4") that names one. Replacing `#step-list` replaces its
+scroller too, so the list comes back at the top: `step_list#grown` therefore
+brings the new step's row into view (`services/scroll#revealRowInList`, which
+moves `.builder__list-scroll` alone, never the page, and looks again once the
+panel has finished widening), after it has focused the title (QA A-007).
 
 **The ways out of a step are computed, never stored.** `Step::Doors`
 (`app/models/step/doors.rb`) derives them from the step itself — Yes and No for
