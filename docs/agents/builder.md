@@ -675,7 +675,10 @@ to the row and `aria-selected="true"` to the row's enclosing `role="treeitem"`
 `treeitem` with `aria-level`, each exit branch and the Unconnected section a
 `group`). A jump chip is not a row: `builder#openStep` from a jump
 selects the row of the step it OPENS (`data-builder-step-id-param`), never the
-chip. The open step's branch guides darken through CSS `:has()` on that class. Never pass a `selected_step:`
+chip, and brings that row into view: it opens any fold around it (outline-fold
+records only the author's clicks, so no fold is forgotten) and centres it in
+`.builder__list-scroll`, then again once the panel frame has loaded and the
+list has narrowed (QA C-002). The open step's branch guides darken through CSS `:has()` on that class. Never pass a `selected_step:`
 local to the list or row partials: the builder subscribes to its own Action
 Cable channel, so a server-painted selection is immediately overwritten by the
 same editor's own broadcast of the same subtree.

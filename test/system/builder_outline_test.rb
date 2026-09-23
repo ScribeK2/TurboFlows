@@ -503,6 +503,34 @@ class BuilderOutlineTest < ApplicationSystemTestCase
     assert_equal "step[title]", page.evaluate_script("document.activeElement?.name")
   end
 
+  # QA C-002: a jump opened its target's panel but left the row off-screen,
+  # even when it had just unfolded the branch holding it.
+  test "a jump chip scrolls its target's row into view, out of a folded branch" do
+    chain, last = long_chain
+    q1 = Steps::Question.create!(workflow: @workflow, title: "First?", position: 0, answer_type: "yes_no", variable_name: "first")
+    far = Steps::Resolve.create!(workflow: @workflow, title: "Far away", position: 22)
+    done = Steps::Resolve.create!(workflow: @workflow, title: "Done", position: 23)
+    Transition.create!(step: q1, target_step: far, condition: "first == 'yes'", position: 0)
+    Transition.create!(step: q1, target_step: chain.first, condition: "first == 'no'", position: 1)
+    Transition.create!(step: last, target_step: far, condition: "last == 'yes'", position: 0)
+    Transition.create!(step: last, target_step: done, condition: "last == 'no'", position: 1)
+    @workflow.update_columns(start_step_id: q1.id)
+
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 24, wait: 5
+    fold = "details[data-fold-key='#{last.uuid}:Yes']"
+    assert_operator scroll_list_to_bottom, :>, 0, "the list scrolls"
+    find("#{fold} > summary").click
+    assert_selector "#{fold}:not([open])"
+    page.execute_script("document.querySelector('.builder__list-scroll').scrollTop = 0")
+
+    within(node_for(q1)) { find(".builder__outline-jump", text: "Far away").click }
+    assert_selector "#builder-panel .builder__panel-body[data-step-id='#{far.id}']", wait: 5
+    assert_selector "#{fold}[open]", wait: 5
+    assert_panel_settled
+    assert_eventually { page.evaluate_script(row_visible_in_list_js(far)) }
+  end
+
   def jump_focused_js
     "document.activeElement.matches('.builder__outline-jump') && document.activeElement.isConnected"
   end

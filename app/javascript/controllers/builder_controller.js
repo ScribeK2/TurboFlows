@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { revealRowInList } from "services/scroll"
 
 // The step panel's inline-autosave waits this long after the last keystroke;
 // the header title matches it, so the two fields behave the same way.
@@ -50,7 +51,13 @@ export default class extends Controller {
   // See the connect() comment above: this stays a document listener so it
   // survives #builder-panel being replaced wholesale.
   onPanelFrameLoad(event) {
-    if (event.target.id === "builder-panel") this.syncSelectedRow()
+    if (event.target.id !== "builder-panel") return
+
+    this.syncSelectedRow()
+    // A jump's target row, looked at again now the panel is in: opening it
+    // narrows the list and re-wraps the rows above (see #openStep).
+    if (this.rowToReveal?.isConnected) revealRowInList(this.rowToReveal, { block: "center" })
+    this.rowToReveal = null
   }
 
   // Composes with any other turbo:before-stream-render listener (e.g.
@@ -144,7 +151,24 @@ export default class extends Controller {
     row?.classList.add("builder__step--selected")
     row?.closest("[role='treeitem']")?.setAttribute("aria-selected", "true")
 
+    // A jump is the outline's "go to": its target can be far down the list, or
+    // inside a folded branch (QA C-002). Open the folds around it (outline-fold
+    // records only the author's own clicks, so this forgets no fold) and bring
+    // it into view, centred, since the panel opening will re-wrap the rows.
+    this.rowToReveal = null
+    if (row && row !== event.currentTarget) {
+      this.openFoldsAround(row)
+      revealRowInList(row, { block: "center" })
+      this.rowToReveal = row
+    }
+
     this.loadPanel(url)
+  }
+
+  openFoldsAround(row) {
+    for (let fold = row.closest("details[data-fold-key]"); fold; fold = fold.parentElement?.closest("details[data-fold-key]")) {
+      if (!fold.open) fold.open = true
+    }
   }
 
   openFlowDiagram() {
