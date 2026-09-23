@@ -29,7 +29,13 @@ class WorkflowTemplateContentTest < ActiveSupport::TestCase
     end
   end
 
-  test "every branching question carries options the agent can pick from" do
+  # The answers are the ones the RUNNER offers (Step::Doors' answer doors):
+  # a Yes/No question's are yes and no, whatever `options` it carries. Until
+  # 2026-09-23 this read `question.options`, which three templates filled with
+  # custom values on Yes/No questions - values no run ever sends - so this and
+  # the routing test below passed while every run of those templates stopped
+  # at that question (QA D-001).
+  test "every branching question offers the agent answers to pick from" do
     template_keys.each do |key|
       workflow = Workflow.create!(title: "Options #{key}", user: @user)
       apply(key, workflow)
@@ -39,8 +45,8 @@ class WorkflowTemplateContentTest < ActiveSupport::TestCase
 
         assert_predicate question.answer_type, :present?,
                          "#{key}: branching question #{question.title.inspect} has no answer_type"
-        assert_predicate question.options, :present?,
-                         "#{key}: branching question #{question.title.inspect} has no options"
+        assert_predicate runner_answers(question), :present?,
+                         "#{key}: branching question #{question.title.inspect} offers no answers"
       end
     end
   end
@@ -56,9 +62,10 @@ class WorkflowTemplateContentTest < ActiveSupport::TestCase
       workflow.steps.where(type: "Steps::Question").find_each do |question|
         next if question.transitions.count < 2
 
-        destinations = question.options.map do |option|
-          results = { question.variable_name.to_s => option["value"] }
-          resolver.resolve_next(question, results)&.id
+        destinations = runner_answers(question).map do |value|
+          results = { question.variable_name.to_s => value }
+          next_step = resolver.resolve_next(question, results)
+          next_step.is_a?(Step) ? next_step.id : nil
         end
 
         assert_equal destinations.uniq.size, destinations.size,
@@ -108,6 +115,11 @@ class WorkflowTemplateContentTest < ActiveSupport::TestCase
     steps_data, first_uuid = controller.send(:build_steps_data_from_template, template)
     StepBuilder.call(workflow, steps_data, start_node_uuid: first_uuid, replace: true)
     workflow.reload
+  end
+
+  # What a run can actually answer: the values of the step's answer doors.
+  def runner_answers(question)
+    Step::Doors.for(question).doors.select { |door| door.kind == :answer }.map(&:value)
   end
 
   def issue_messages(result)

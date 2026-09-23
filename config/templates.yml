@@ -56,11 +56,6 @@ guided_decision:
       question: "Most issues clear on a restart. Ask them to fully close and reopen the app, then confirm."
       answer_type: yes_no
       variable_name: restarted
-      options:
-        - label: "Yes, and it still fails"
-          value: still_failing
-        - label: "No, not yet"
-          value: not_yet
       position: 3
     - uuid: gd-r1
       type: resolve
@@ -109,11 +104,6 @@ verification_checklist:
       question: "Both identity and account status must be clear before you continue."
       answer_type: yes_no
       variable_name: checks_passed
-      options:
-        - label: "Yes, everything checks out"
-          value: passed
-        - label: "No, something didn't match"
-          value: failed
       position: 3
     - uuid: vc-r1
       type: resolve
@@ -143,12 +133,12 @@ verification_checklist:
       to: vc-q1
     - from: vc-q1
       to: vc-r1
-      condition: passed
-      label: "Passed"
+      condition: "yes"
+      label: "Yes"
     - from: vc-q1
       to: vc-e1
-      condition: failed
-      label: "Failed"
+      condition: "no"
+      label: "No"
     - from: vc-e1
       to: vc-r2
 
@@ -244,11 +234,6 @@ diagnosis_flow:
       question: "Have them retry the original action before answering."
       answer_type: yes_no
       variable_name: connection_fixed
-      options:
-        - label: "Yes, it works now"
-          value: fixed
-        - label: "No, same problem"
-          value: still_broken
       position: 3
     - uuid: df-a2
       type: action
@@ -261,11 +246,6 @@ diagnosis_flow:
       question: "Have them repeat the exact action that failed at the start of the call."
       answer_type: yes_no
       variable_name: cache_fixed
-      options:
-        - label: "Yes, resolved"
-          value: resolved
-        - label: "No, still failing"
-          value: still_failing
       position: 5
     - uuid: df-r1
       type: resolve
@@ -301,22 +281,22 @@ diagnosis_flow:
       to: df-q2
     - from: df-q2
       to: df-r1
-      condition: fixed
-      label: "Fixed"
+      condition: "yes"
+      label: "Yes"
     - from: df-q2
       to: df-a2
-      condition: still_broken
-      label: "Still broken"
+      condition: "no"
+      label: "No"
     - from: df-a2
       to: df-q3
     - from: df-q3
       to: df-r1
-      condition: resolved
-      label: "Resolved"
+      condition: "yes"
+      label: "Yes"
     - from: df-q3
       to: df-e1
-      condition: still_failing
-      label: "Still failing"
+      condition: "no"
+      label: "No"
     - from: df-e1
       to: df-r2
 
@@ -348,11 +328,6 @@ simple_handoff:
       question: "Check your own permissions before promising the customer an outcome."
       answer_type: yes_no
       variable_name: can_handle
-      options:
-        - label: "Yes, I can do this"
-          value: can_handle
-        - label: "No, it needs someone else"
-          value: needs_handoff
       position: 3
     - uuid: sh-r1
       type: resolve
@@ -385,11 +360,11 @@ simple_handoff:
       to: sh-q2
     - from: sh-q2
       to: sh-r1
-      condition: can_handle
+      condition: "yes"
       label: "Yes"
     - from: sh-q2
       to: sh-e1
-      condition: needs_handoff
+      condition: "no"
       label: "No"
     - from: sh-e1
       to: sh-r2
