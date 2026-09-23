@@ -226,6 +226,22 @@ class BuilderOutlineTest < ApplicationSystemTestCase
     assert_selector "details[data-fold-key='#{@q2.uuid}:Yes'][open]", wait: 5
   end
 
+  # The fold controller's own reveal, with no jump involved: the panel is
+  # loaded straight into the frame, so builder#openStep never runs and only
+  # outline-fold's "the open step changed" rule can show the branch.
+  test "a panel opened without a jump still reveals the hand-folded branch holding its step" do
+    toy_graph
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 5, wait: 5
+    fold = "details[data-fold-key='#{@q2.uuid}:Yes']"
+    find("#{fold} > summary").click
+    assert_selector "#{fold}:not([open])"
+
+    execute_script("document.getElementById('builder-panel').src = #{panel_edit_workflow_step_path(@workflow, @working).to_json}")
+    assert_selector "#builder-panel .builder__panel-body[data-step-id='#{@working.id}']", wait: 5
+    assert_selector "#{fold}[open]", wait: 5
+  end
+
   test "Collapse all closes every fold, and Expand all opens them, across a re-render" do
     toy_graph
     visit workflow_path(@workflow, edit: true)
