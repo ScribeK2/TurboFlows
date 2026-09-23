@@ -28,7 +28,7 @@
           data-search="<%= "#{candidate.title} #{step_type_label(candidate.step_type)}".downcase %>">
         <button type="submit" name="target_step_id" value="<%= candidate.id %>" class="step-target-list__option">
           <span class="step-target-list__title"><%= candidate.title.presence || "Untitled #{candidate.step_type.titleize}" %></span>
-          <span class="step-target-list__meta"><%= step_type_label(candidate.step_type) %> · <%= outline.ordinals[candidate.uuid] %></span>
+          <span class="step-target-list__meta"><%= step_type_label(candidate.step_type) %> · <span data-step-ordinal="<%= candidate.uuid %>"><%= outline.ordinals[candidate.uuid] %></span></span>
         </button>
       </li>
     <% end %>

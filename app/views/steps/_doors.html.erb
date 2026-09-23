@@ -46,7 +46,7 @@
           <% else %>
             <% target = door.target_step %>
             <span class="step-doors__target">
-              → <%= target.title.presence || "Untitled" %><% if ordinals[target.uuid] %> · <%= ordinals[target.uuid] %><% end %>
+              → <%= target.title.presence || "Untitled" %><% if ordinals[target.uuid] %> · <span data-step-ordinal="<%= target.uuid %>"><%= ordinals[target.uuid] %></span><% end %>
             </span>
             <% unless readonly %>
               <button type="button" class="btn btn--plain btn--sm"
