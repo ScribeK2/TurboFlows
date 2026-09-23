@@ -103,6 +103,42 @@ class BuilderOutlineTest < ApplicationSystemTestCase
     assert_equal "true", node_for(@working)["aria-selected"]
   end
 
+  # The panel prints step numbers too - its door rows ("Yes → Working · 4") and
+  # its "Use existing…" candidates - and every delete, grow or rewire can
+  # renumber the whole outline. The server re-renders only the deleted step's
+  # parents' panels, so a panel open on any other step kept the old numbers
+  # until it was reopened (QA B-004, 2026-09-23).
+  #
+  # Mutation check: stop mounting ordinal-sync in _builder.html.erb - red.
+  test "an open panel's step numbers follow the list after a delete renumbers it" do
+    toy_graph
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 5, wait: 5
+    open_step(@q2)
+    within("#builder-panel .step-doors") do
+      assert_text "Working · 4"
+      assert_text "Escalate to tier 2 · 5"
+    end
+
+    # Power cycle leads INTO the open step, so the open panel is not one of
+    # the deleted step's parents the server re-renders.
+    row = find("#{STEP_ROW}[data-step-uuid='#{@cycle.uuid}']")
+    row.hover
+    accept_confirm { row.find(".builder__step-delete").click }
+    assert_selector STEP_ROW, count: 4, wait: 5
+    assert_equal "2", find("#{STEP_ROW}[data-step-uuid='#{@working.uuid}'] .builder__step-badge").text.strip
+
+    within("#builder-panel .step-doors") do
+      assert_text "Working · 2", wait: 5
+      assert_text "Escalate to tier 2 · 4"
+    end
+    picker_meta = evaluate_script(<<~JS)
+      [...document.querySelectorAll("#builder-panel .step-target-list li")]
+        .find(li => li.textContent.includes("Working"))?.querySelector(".step-target-list__meta")?.textContent
+    JS
+    assert_includes picker_meta.to_s, "· 2", "the panel's Use existing… candidates are renumbered too"
+  end
+
   test "a merged step says how many ways lead in, and names them" do
     toy_graph
     visit workflow_path(@workflow, edit: true)

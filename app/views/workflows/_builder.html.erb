@@ -11,7 +11,7 @@
 <%= turbo_stream_from "workflow_#{workflow.id}" %>
 
 <div class="builder"
-     data-controller="builder step-warnings outline-fold"
+     data-controller="builder step-warnings outline-fold ordinal-sync"
      data-builder-mode-value="<%= mode %>"
      data-builder-workflow-id-value="<%= workflow.id %>"
      data-step-warnings-health-url-value="<%= workflow_health_path(workflow, format: :json) %>"

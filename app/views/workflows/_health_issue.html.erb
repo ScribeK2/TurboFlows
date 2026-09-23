@@ -39,7 +39,7 @@
               data-action="click->builder#openStep"
               data-builder-url-param="<%= panel_edit_workflow_step_path(workflow, step) %>"
               data-builder-step-id-param="<%= step.id %>">
-        Step <%= ordinals[step.uuid] || "?" %>: <%= step.title.presence || "Untitled" %>
+        Step <span data-step-ordinal="<%= step.uuid %>"><%= ordinals[step.uuid] || "?" %></span>: <%= step.title.presence || "Untitled" %>
       </button>
     <% end %>
   </div>
