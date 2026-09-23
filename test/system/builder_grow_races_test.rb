@@ -56,6 +56,37 @@ class BuilderGrowRacesTest < ApplicationSystemTestCase
   # NO wait between choosing the type and pressing the door - that gap is the
   # race. The grow now waits for the pending save, and the server refuses a door
   # the step no longer has.
+  # Two grows made while the panel's save is still pending must BOTH land.
+  # Each grow waits for that save (deferSubmitUntilPanelSaved) and then
+  # resubmits the type picker's form - but there is one picker, and opening it
+  # for the second door rewrote the door fields the first grow was waiting to
+  # send; and two submits released in the same tick left Turbo holding one
+  # form submission at a time, so only one POST ever left. The first door
+  # silently stayed a stub (QA A-001, 2026-09-23).
+  #
+  # NO wait between the title keystrokes and the two grows: that gap is the race.
+  #
+  # Mutation check: in services/pending_panel_saves.js resubmit straight from
+  # the flush (no snapshot, no queue) - red, one step instead of two.
+  test "two grows made while the panel's save is pending both land, each on its own door" do
+    question = Steps::Question.create!(workflow: @workflow, title: "Light green?", question: "Light green?",
+                                       position: 1, answer_type: "yes_no", variable_name: "light")
+    @workflow.update!(start_step: question)
+    visit workflow_path(@workflow, edit: true)
+    open_step(question)
+
+    fill_in "step[title]", with: "Light green now?"
+    within(node_for(question)) { click_on "Yes → add step" }
+    pick_type "Action"
+    within(node_for(question)) { click_on "No → add step" }
+    pick_type "Resolve"
+
+    assert_eventually(timeout: 10) { @workflow.steps.reload.count == 3 }
+    doors = question.reload.transitions.includes(:target_step).to_h { |t| [t.condition.to_s, t.target_step.type] }
+    assert_equal({ "light == 'yes'" => "Steps::Action", "light == 'no'" => "Steps::Resolve" }, doors)
+    assert_equal "Light green now?", question.title
+  end
+
   test "a door pressed before the answer-type save lands does not write a catch-all connection" do
     question = Steps::Question.create!(workflow: @workflow, title: "Light green?", question: "Light green?",
                                        position: 1, answer_type: "text", variable_name: "light")
