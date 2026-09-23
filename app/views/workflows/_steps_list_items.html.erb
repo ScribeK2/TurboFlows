@@ -1,6 +1,7 @@
-<% ordinals = step_ordinals(workflow) %>
-<%# Rendered inside the #steps-list container after a grow, a delete, a
-    template apply or a connections change replaces the list %>
-<% steps.each do |step| %>
-  <%= render "workflows/step_row", step: step, workflow: workflow, ordinals: ordinals %>
+<%# The list's children, re-rendered after a grow, a delete, a structural save
+    or a collaborator's change. Same outline as _step_list renders. %>
+<% if steps.any? %>
+  <%= render "workflows/step_outline", workflow: workflow, outline: StepOutline.call(workflow, steps) %>
+<% else %>
+  <%= render "workflows/empty_state", workflow: workflow %>
 <% end %>

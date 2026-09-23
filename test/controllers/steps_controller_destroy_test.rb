@@ -58,7 +58,7 @@ class StepsControllerDestroyTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "turbo-stream[action='replace'][target='step-list']" do
       assert_select "template" do
-        assert_select "##{dom_id(question)}" do
+        assert_select "##{dom_id(question, :node)}" do
           assert_select ".builder__door-stub", text: /No → add step/
         end
       end

@@ -108,22 +108,8 @@ module WorkflowsHelper
     "→ #{titles.join(', ')}"
   end
 
-  # The collapsed line for a row with more doors than fit on one (see
-  # workflows/_step_row): every unwired answer already follows "Anything
-  # else" when the step has a wired blank-condition door - same fact the
-  # per-door line above reads off doors.fallback - or none of them lead
-  # anywhere yet.
-  def step_collapsed_stub_summary(doors)
-    count = doors.stubs.size
-    if doors.fallback
-      "#{pluralize(count, 'answer')} #{count == 1 ? 'follows' : 'follow'} “Anything else”"
-    else
-      "#{pluralize(count, 'answer')} #{count == 1 ? 'needs' : 'need'} a step"
-    end
-  end
-
   # Accessible names for a door's action buttons (steps/_doors) and the row
-  # stub that opens the type picker for it (workflows/_step_row) - every one
+  # stub that opens the type picker for it (workflows/_step_node) - every one
   # of them repeats the same visible text ("New step", "Use existing…",
   # "Change", "Remove", "→ add step") once per door, with only a sibling span
   # telling doors apart. A screen reader hears a list of identical names; this
@@ -141,18 +127,6 @@ module WorkflowsHelper
     when :remove
       door.kind == :next ? "Remove this connection" : "Remove the “#{door.label}” connection"
     end
-  end
-
-  # The wired half of a row: "No → Power cycle · 2". Stubs are not text here -
-  # the row renders them as buttons (workflows/_step_row).
-  def step_door_summary(doors, ordinals)
-    wired = doors.doors.reject(&:stub?).map do |door|
-      arrow = step_connection_summary([door.target_step], ordinals)
-      door.kind == :next ? arrow : "#{door.label} #{arrow}"
-    end
-    extras = doors.extras.filter_map(&:target_step)
-    wired << step_connection_summary(extras, ordinals) if extras.any?
-    wired.join(" · ")
   end
 
   # One number per step, in the builder outline's reading order (StepOutline).

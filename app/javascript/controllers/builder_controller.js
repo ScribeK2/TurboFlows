@@ -106,6 +106,7 @@ export default class extends Controller {
       return
     }
     row.classList.add("builder__step--selected")
+    row.closest("[role='treeitem']")?.setAttribute("aria-selected", "true")
   }
 
   // Before the panel is looked at, so this render's own row can reopen it. The
@@ -135,10 +136,13 @@ export default class extends Controller {
     event.preventDefault()
     event.stopPropagation()
 
-    this.element.querySelectorAll(".builder__step--selected").forEach(el => {
-      el.classList.remove("builder__step--selected")
-    })
-    event.currentTarget.classList.add("builder__step--selected")
+    // A jump chip opens ANOTHER step, whose row is the one selected, not the chip.
+    this.clearSelectedRow()
+    const row = event.currentTarget.matches(".builder__step")
+      ? event.currentTarget
+      : this.rowFor(event.params.stepId)
+    row?.classList.add("builder__step--selected")
+    row?.closest("[role='treeitem']")?.setAttribute("aria-selected", "true")
 
     this.loadPanel(url)
   }
@@ -153,6 +157,7 @@ export default class extends Controller {
     event.stopPropagation()
     this.clearSelectedRow()
     row.classList.add("builder__step--selected")
+    row.closest("[role='treeitem']")?.setAttribute("aria-selected", "true")
 
     this.panelTarget.addEventListener("turbo:frame-load", () => {
       this.panelTarget.querySelector(".step-doors")?.scrollIntoView({ block: "center" })
@@ -288,6 +293,7 @@ export default class extends Controller {
     this.element.querySelectorAll(".builder__step--selected").forEach(el => {
       el.classList.remove("builder__step--selected")
     })
+    this.element.querySelectorAll("[role='treeitem'][aria-selected]").forEach(el => el.removeAttribute("aria-selected"))
   }
 
   handleKeydown(event) {

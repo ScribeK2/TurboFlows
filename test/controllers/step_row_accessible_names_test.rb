@@ -1,9 +1,9 @@
 require "test_helper"
 
-# Finding 2c: workflows/_step_row's door-stub button repeats "→ add step" (or
-# "No → add step") on every row with a door of its own kind unwired, with only
-# a sibling span for context - not enough to tell a screen-reader user which
-# Question a stub belongs to. Split out from WorkflowsControllerTest, which
+# Finding 2c: the outline's door-stub chip (workflows/_step_node) repeats
+# "→ add step" (or "No → add step") on every step with a door of its own kind
+# unwired, with only a sibling span for context - not enough to tell a
+# screen-reader user which Question a stub belongs to. Split out from WorkflowsControllerTest, which
 # was already at Metrics/ClassLength's limit.
 class StepRowAccessibleNamesTest < ActionDispatch::IntegrationTest
   include ActionView::RecordIdentifier
@@ -21,9 +21,9 @@ class StepRowAccessibleNamesTest < ActionDispatch::IntegrationTest
 
     get workflow_path(@workflow, edit: true)
 
-    assert_select "##{dom_id(question)} .builder__door-stub[aria-label='“Light green?” — Yes: add step']",
+    assert_select "##{dom_id(question, :node)} .builder__door-stub[aria-label='“Light green?” — Yes: add step']",
                   text: "Yes → add step"
-    assert_select "##{dom_id(question)} .builder__door-stub[aria-label='“Light green?” — No: add step']",
+    assert_select "##{dom_id(question, :node)} .builder__door-stub[aria-label='“Light green?” — No: add step']",
                   text: "No → add step"
   end
 
@@ -35,7 +35,7 @@ class StepRowAccessibleNamesTest < ActionDispatch::IntegrationTest
 
     get workflow_path(@workflow, edit: true)
 
-    assert_select "##{dom_id(action)} .builder__door-stub[aria-label='Add a step after “Power cycle the modem”']",
+    assert_select "##{dom_id(action, :node)} .builder__door-stub[aria-label='Add a step after “Power cycle the modem”']",
                   text: "→ add step"
   end
 end

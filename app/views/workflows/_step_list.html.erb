@@ -1,5 +1,5 @@
 <%#
-  Step List — the builder's step list.
+  Step List — the builder's step list as an outline of the graph (workflows/_step_outline)
 
   Local variables:
   - workflow: Workflow object
@@ -17,17 +17,10 @@
   <div class="builder__list-scroll">
     <div id="steps-list"
          data-step-list-target="list"
-         role="list">
-      <%# Numbers come from list order, not from `position`. Positions are 0-based
-          for workflows built by a service (import, templates) and 1-based for
-          ones built in the UI, so the same builder told you the first step was
-          "Step 0" in one workflow and "Step 1" in another — and the transition
-          summaries inherited it. One map, shared by the badge and the arrows. %>
-      <% ordinals = step_ordinals(workflow) %>
-      <% steps.each do |step| %>
-        <%= render "workflows/step_row", step: step, workflow: workflow, ordinals: ordinals %>
-      <% end %>
-      <% if steps.empty? %>
+         role="tree" aria-label="Steps">
+      <% if steps.any? %>
+        <%= render "workflows/step_outline", workflow: workflow, outline: StepOutline.call(workflow, steps) %>
+      <% else %>
         <%= render "workflows/empty_state", workflow: workflow %>
       <% end %>
     </div>
@@ -39,7 +32,7 @@
 
       It says "unconnected" because that is what it makes: a step nothing leads
       to, which the author then has to wire. A step that FOLLOWS another is
-      grown from that step's own row (its door stubs) or from its panel, and
+      grown from its door chip in the outline or from its panel, and
       arrives already connected — see AGENTS.md § Growing a workflow. %>
   <div class="builder__list-add-wrapper builder__edit-only">
     <button type="button"

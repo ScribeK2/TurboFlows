@@ -56,7 +56,7 @@ class HandoffStepBuilderTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "##{dom_id(step)}"
-    assert_select "##{dom_id(step)} .builder__door-stub", false,
+    assert_select "##{dom_id(step, :node)} .builder__door-stub", false,
                   "a handoff ends the workflow on purpose; it takes no doors to fill"
   end
 
@@ -65,7 +65,7 @@ class HandoffStepBuilderTest < ActionDispatch::IntegrationTest
 
     get workflow_path(@workflow)
 
-    assert_select "##{dom_id(step)} .builder__door-stub", text: /add step/
+    assert_select "##{dom_id(step, :node)} .builder__door-stub", text: /add step/
   end
 
   # --- the step panel --------------------------------------------------------

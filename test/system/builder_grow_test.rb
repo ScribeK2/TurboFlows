@@ -33,7 +33,7 @@ class BuilderGrowTest < ApplicationSystemTestCase
     assert_panel_settled
 
     question = @workflow.steps.reload.sole
-    within(row(question)) { click_on "No → add step" }
+    within(node_for(question)) { click_on "No → add step" }
     pick_type "Action"
     assert_selector STEP_ROW, count: 2
     assert_panel_settled
@@ -44,9 +44,9 @@ class BuilderGrowTest < ApplicationSystemTestCase
     assert_operator action.position, :>, question.position
 
     # The panel is open on the new Action; the Question's Yes stub is still on its row.
-    within(row(question)) { assert_selector ".builder__door-stub", text: "Yes → add step" }
+    within(node_for(question)) { assert_selector ".builder__door-stub", text: "Yes → add step" }
 
-    within(row(action)) { click_on "→ add step" }
+    within(node_for(action)) { click_on "→ add step" }
     pick_type "Resolve"
     assert_selector STEP_ROW, count: 3
     assert_equal 1, action.transitions.reload.count
@@ -580,20 +580,20 @@ class BuilderGrowTest < ApplicationSystemTestCase
     assert_panel_settled
 
     question = @workflow.steps.reload.sole
-    within(row(question)) { click_on "No → add step" }
+    within(node_for(question)) { click_on "No → add step" }
     pick_type "Action"
     assert_selector STEP_ROW, count: 2
     assert_panel_settled
 
     action = @workflow.steps.reload.find_by!(type: "Steps::Action")
-    within(row(question)) { assert_no_selector ".builder__door-stub", text: "No →" }
+    within(node_for(question)) { assert_no_selector ".builder__door-stub", text: "No →" }
 
     action_row = row(action)
     action_row.hover
     accept_confirm { action_row.find("button[title='Remove step']").click }
 
     assert_no_selector "#{STEP_ROW}[data-step-uuid='#{action.uuid}']", wait: 5
-    within(row(question)) { assert_selector ".builder__door-stub", text: "No → add step", wait: 5 }
+    within(node_for(question)) { assert_selector ".builder__door-stub", text: "No → add step", wait: 5 }
   end
 
   # Finding 4. Deleting the step whose OWN panel is open used to leave that
@@ -614,7 +614,7 @@ class BuilderGrowTest < ApplicationSystemTestCase
     assert_panel_settled
 
     question = @workflow.steps.reload.sole
-    within(row(question)) { click_on "No → add step" }
+    within(node_for(question)) { click_on "No → add step" }
     pick_type "Action"
     assert_selector STEP_ROW, count: 2
     assert_panel_settled
@@ -641,35 +641,6 @@ class BuilderGrowTest < ApplicationSystemTestCase
     assert_no_text "Content missing"
   end
 
-  # Every grow leaves the panel open, which narrows the list to 38% - exactly
-  # where a two-stub row's title used to wrap inside its own shrunk box and
-  # visually run under the stub buttons. The stubs now take their own line
-  # instead, so the title's own line boxes and the stubs' box never intersect,
-  # and a row with nothing to wrap (Resolve, no doors) stays one line tall.
-  test "a stubbed row's title does not overlap its stubs while the panel is open" do
-    visit workflow_path(@workflow, edit: true)
-    click_on "Add unconnected step"
-    pick_type "Question"
-    assert_panel_settled
-
-    question = @workflow.steps.reload.sole
-    within(row(question)) { assert_selector ".builder__door-stub", count: 2 }
-    assert_not overlapping_title_and_doors?(question), "the title overlaps the stubs with two doors open"
-
-    within(row(question)) { click_on "Yes → add step" }
-    pick_type "Resolve"
-    assert_selector STEP_ROW, count: 2
-    assert_panel_settled
-
-    resolve = @workflow.steps.reload.find_by!(type: "Steps::Resolve")
-    within(row(question)) { assert_selector ".builder__door-stub", count: 1 }
-    assert_not overlapping_title_and_doors?(question), "the title overlaps the stub with one door open"
-
-    # The Resolve row has no doors to wrap and must stay the single-line
-    # height a stubbed row no longer is.
-    assert_operator row_height(question), :>, row_height(resolve) + 10
-  end
-
   # A dropdown option containing an apostrophe used to write a condition the
   # runner could never take (AGENTS.md's old "known limit" for Step::Doors).
   # Growing from this door proves the whole path end to end: the stored
@@ -684,7 +655,7 @@ class BuilderGrowTest < ApplicationSystemTestCase
     visit workflow_path(@workflow, edit: true)
     open_step(question)
 
-    within(row(question)) { click_on "Don't know → add step" }
+    within(node_for(question)) { click_on "Don't know → add step" }
     pick_type "Action"
     assert_selector STEP_ROW, count: 2
     assert_panel_settled
@@ -808,49 +779,6 @@ class BuilderGrowTest < ApplicationSystemTestCase
 
   def row(step)
     find("#{STEP_ROW}[data-step-uuid='#{step.uuid}']")
-  end
-
-  def row_rects(step)
-    page.evaluate_script(<<~JS)
-      (() => {
-        const row = document.querySelector("#{STEP_ROW}[data-step-uuid='#{step.uuid}']");
-        const title = row.querySelector('.list-row__title');
-        const doors = row.querySelector('.builder__step-doors');
-        const titleLines = title
-          ? Array.from(title.getClientRects()).map(r => ({ left: r.left, top: r.top, right: r.right, bottom: r.bottom }))
-          : [];
-        const d = doors ? doors.getBoundingClientRect() : null;
-        return {
-          titleLines,
-          doorsRect: d ? { left: d.left, top: d.top, right: d.right, bottom: d.bottom } : null
-        };
-      })()
-    JS
-  end
-
-  # Compares every line box of the title (a wrapped, overflowing title
-  # generates more than one - see the rect docs above) against the stubs'
-  # single box, rather than the title element's own outer rect, which can
-  # report a shrunk layout width even while its text visually overflows it.
-  def overlapping_title_and_doors?(step)
-    rects = row_rects(step)
-    doors_rect = rects["doorsRect"]
-    return false unless doors_rect
-
-    rects["titleLines"].any? do |line|
-      !(line["right"] <= doors_rect["left"] || doors_rect["right"] <= line["left"] ||
-        line["bottom"] <= doors_rect["top"] || doors_rect["bottom"] <= line["top"])
-    end
-  end
-
-  def row_height(step)
-    page.evaluate_script(
-      "document.querySelector(\"#{STEP_ROW}[data-step-uuid='#{step.uuid}']\").getBoundingClientRect().height"
-    )
-  end
-
-  def pick_type(name)
-    within(".builder__type-picker") { find(".builder__type-name", text: name, exact_text: true).click }
   end
 
   # Clicks a door row's button ("Use existing…" or "Change") and waits for

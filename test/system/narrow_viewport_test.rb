@@ -51,7 +51,7 @@ class NarrowViewportTest < ApplicationSystemTestCase
     @workflow.update!(start_step: step)
 
     visit workflow_path(@workflow, edit: true)
-    find("[role='listitem'][data-step-uuid='#{step.uuid}']").click
+    find("#{STEP_ROW}[data-step-uuid='#{step.uuid}']").click
     assert_selector "turbo-frame#builder-panel form", wait: 5
 
     assert_phone_width
@@ -78,10 +78,7 @@ class NarrowViewportTest < ApplicationSystemTestCase
     page.driver.browser.manage.window.resize_to(600, 900)
 
     visit workflow_path(@workflow, edit: true)
-    # Not a plain click on the row: at this width the row's own two door
-    # stubs cover most of it, so a center-point click lands on "Yes → add
-    # step" instead of opening the panel. The title never stops propagation.
-    find("[role='listitem'][data-step-uuid='#{question.uuid}'] .list-row__title").click
+    find("#{STEP_ROW}[data-step-uuid='#{question.uuid}'] .list-row__title").click
     assert_selector "turbo-frame#builder-panel form", wait: 5
 
     within "turbo-frame#builder-panel" do

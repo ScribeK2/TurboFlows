@@ -157,11 +157,11 @@ class BuilderCollaborationTest < ApplicationSystemTestCase
     assert_eventually(timeout: 10) { question.transitions.reload.any? }
   end
 
-  # Scoped to the row's list semantics: the warning icon also carries
+  # Scoped to the row's own class: the warning icon also carries
   # data-step-uuid, so a bare attribute selector matches twice for any step
   # showing an issue.
   def step_row_selector(uuid)
-    "[role='listitem'][data-step-uuid='#{uuid}']"
+    "#{STEP_ROW}[data-step-uuid='#{uuid}']"
   end
 
   def create_editor
