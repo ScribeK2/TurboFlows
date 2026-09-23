@@ -135,9 +135,9 @@ class BuilderCollaborationTest < ApplicationSystemTestCase
   # outline, not just the Connections fragment inside the panel that made it.
   #
   # The setup block already gives @workflow one step (@resolve, "All done"), so
-  # unlike the brief's snippet this reuses it as the Yes target instead of
-  # creating a second Resolve - that keeps the row count at 3, matching the
-  # workflow this test actually runs against.
+  # this reuses it as the Yes target rather than creating a second Resolve -
+  # that keeps the row count at 3, matching the workflow this test actually
+  # runs against.
   test "a door retargeted by one editor moves the jump chip the other is looking at" do
     q = Steps::Question.create!(workflow: @workflow, title: "Q", position: 1, answer_type: "yes_no", variable_name: "q")
     b = Steps::Resolve.create!(workflow: @workflow, title: "B", position: 2)
