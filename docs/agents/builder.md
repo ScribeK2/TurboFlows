@@ -387,9 +387,13 @@ guide line. A linear workflow therefore renders exactly as the flat list did.
     the author closes by hand leaves the set and stays closed. It used to
     reveal on every mutation, so the next keystroke in the panel sprang the
     branch open again (QA C-001). A title save re-renders the whole list, so
-    it reveals the branch again once it lands; that is the rule, not a bug.
-    Collapse all fills or empties the same set, and the button is labelled by
-    what it will do. It is hidden, and `.builder__list-tools` with it, when
+    it reveals the branch again once it lands, even when the author folded
+    it a moment before typing; that is the rule, not a bug (the spec's §4.4
+    hybrid). Besides those two events, `reveal` (the `outline-fold:reveal`
+    event a jump chip sends) adds a branch's folds to the set at once, and
+    nothing else writes a fold's `open`.
+    Collapse all fills or empties the closed set, and the button is labelled by
+    what it will do; a fold held in `revealed` stays open through Collapse all. It is hidden, and `.builder__list-tools` with it, when
     the workflow has no fold. A viewer in view mode folds too.
 - **"An existing step…" from a stub chip.** A stub chip opens the same
   floating type picker a panel door does (`step-list#growFromDoor`). Below a
