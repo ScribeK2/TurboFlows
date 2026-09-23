@@ -121,4 +121,61 @@ class StepsControllerDestroyTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "turbo-stream[target='#{dom_id(action, :connections)}']", count: 0
   end
+
+  # QA B-005. "Del start?" Yes → Side, No → Mid → End; Side has the lowest
+  # position after the start, so "first by position" made the side branch the
+  # start and dropped the trunk into Unconnected.
+  def trunk_under_no
+    start = Steps::Question.create!(workflow: @workflow, title: "Del start?", question: "Del start?",
+                                    position: 0, answer_type: "yes_no", variable_name: "del")
+    side = Steps::Action.create!(workflow: @workflow, title: "Del side", position: 1)
+    mid = Steps::Action.create!(workflow: @workflow, title: "Del mid", position: 2)
+    finish = Steps::Resolve.create!(workflow: @workflow, title: "Del end", position: 3, resolution_type: "success")
+    Transition.create!(step: start, target_step: side, condition: "del == 'yes'", position: 0)
+    Transition.create!(step: start, target_step: mid, condition: "del == 'no'", position: 1)
+    Transition.create!(step: side, target_step: finish)
+    Transition.create!(step: mid, target_step: finish)
+    @workflow.update!(start_step: start)
+    [start, side, mid, finish]
+  end
+
+  test "deleting the start step hands the start to its continuation, not the lowest position" do
+    start, _side, mid, _finish = trunk_under_no
+
+    delete workflow_step_path(@workflow, start), headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    assert_equal mid, @workflow.reload.start_step
+    assert_select "turbo-stream[action='replace'][target='step-list']" do
+      assert_select "template" do
+        assert_select "##{dom_id(mid)} .builder__step-meta", text: /Start/
+      end
+    end
+  end
+
+  test "deleting the start step falls back to the first step when its continuation is a stub" do
+    start, side, _mid, _finish = trunk_under_no
+    Transition.where(step: start, condition: "del == 'no'").delete_all
+
+    delete workflow_step_path(@workflow, start), headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_equal side, @workflow.reload.start_step
+  end
+
+  test "deleting a start step that continues into itself falls back to the first step" do
+    start, side, _mid, _finish = trunk_under_no
+    Transition.where(step: start, condition: "del == 'no'").update_all(target_step_id: start.id)
+
+    delete workflow_step_path(@workflow, start), headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_equal side, @workflow.reload.start_step
+  end
+
+  test "deleting a step that is not the start leaves the start alone" do
+    start, side, _mid, _finish = trunk_under_no
+
+    delete workflow_step_path(@workflow, side), headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_equal start, @workflow.reload.start_step
+  end
 end

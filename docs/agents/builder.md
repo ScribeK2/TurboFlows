@@ -695,6 +695,17 @@ is unchanged. (The TODO this closed proposed "close only after two consecutive
 renders without the row" — that regresses the 404: a collaborator's delete is
 exactly ONE render for everyone else.)
 
+**Deleting the start step hands the start to its continuation.**
+`StepsController#start_successor_id_for` reads the target of the deleted step's
+LAST door (`Step::Doors`, the outline's continuation) BEFORE the destroy takes
+its transitions, and `ensure_start_step_assigned` makes that step the start
+when it still exists. Otherwise (a stub, a Resolve, a self-loop) it falls back
+to the first step by position, as before. First-by-position alone could pick a
+side branch, and the outline then dropped the whole trunk into Unconnected
+(QA B-005, 2026-09-23). The builder has no control that sets the start, and
+drag-reorder, the old indirect one, is gone. Deleting any other step never
+touches the start.
+
 **The grow protocol is five data attributes.** A trigger carries
 `data-grow-from` (the parent step id), `data-grow-label`, `data-grow-condition`,
 `data-grow-context` (what the picker says it is growing from) and, on an outline

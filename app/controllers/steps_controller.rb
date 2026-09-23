@@ -271,12 +271,13 @@ class StepsController < ApplicationController
   # DELETE /workflows/:workflow_id/steps/:id
   def destroy
     parent_steps = incoming_parent_steps(@step)
+    successor_id = start_successor_id_for(@step)
 
     if @workflow.start_step_id == @step.id
       @workflow.update_column(:start_step_id, nil)
     end
     @step.destroy
-    ensure_start_step_assigned
+    ensure_start_step_assigned(successor_id)
     Step.rebalance_positions(@workflow)
 
     respond_to do |format|
@@ -632,11 +633,28 @@ class StepsController < ApplicationController
     }
   end
 
-  def ensure_start_step_assigned
+  # Deleting the start step hands the start to the step it continued into: the
+  # target of its LAST door, which is the outline's continuation (Step::Doors,
+  # StepOutline). Taking the first step by position instead could pick a side
+  # branch and drop the whole trunk into Unconnected. Read before the destroy,
+  # which takes the step's transitions with it. nil for any other step.
+  # Loading the transitions plainly first keeps Doors from preloading every
+  # target step when only one id is read.
+  def start_successor_id_for(step)
+    return unless @workflow.start_step_id == step.id
+
+    step.transitions.load
+    Step::Doors.for(step).doors.last&.transition&.target_step_id
+  end
+
+  # The successor only when it still exists (a self-loop's target was the
+  # deleted step itself); otherwise the first step by position, as before.
+  def ensure_start_step_assigned(successor_id = nil)
     return if @workflow.start_step_id.present?
 
-    first_step = @workflow.steps.first
-    @workflow.update_column(:start_step_id, first_step.id) if first_step
+    start = @workflow.steps.find_by(id: successor_id) if successor_id
+    start ||= @workflow.steps.first
+    @workflow.update_column(:start_step_id, start.id) if start
   end
 
   # Returns nil on success, or the message to refuse the response with. On
