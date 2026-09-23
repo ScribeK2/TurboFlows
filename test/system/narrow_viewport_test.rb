@@ -65,6 +65,73 @@ class NarrowViewportTest < ApplicationSystemTestCase
     assert_selector ".builder__list", visible: true
   end
 
+  # At a phone's width the panel takes the list's place in the page, but the
+  # page kept its scroll: a step tapped low in a long list opened its panel
+  # scrolled to the middle, header and Close above the screen, with nothing
+  # saying which step was open; closing left the author somewhere else in the
+  # list (QA C-007, 2026-09-23).
+  #
+  # Mutation check: drop the scroll handling in builder#onPanelFrameLoad /
+  # #closePanel - red on the header, then on the row.
+  test "a panel opened low in a long list on a phone opens at its top, and closing returns to the row" do
+    steps = Array.new(20) do |i|
+      Steps::Action.create!(workflow: @workflow, title: "wf-system-test-Check #{i + 1}", position: i)
+    end
+    done = Steps::Resolve.create!(workflow: @workflow, title: "wf-system-test-Done", position: 20)
+    (steps + [done]).each_cons(2) { |from, to| Transition.create!(step: from, target_step: to) }
+    @workflow.update!(start_step: steps.first)
+
+    visit workflow_path(@workflow, edit: true)
+    row = find("#{STEP_ROW}[data-step-uuid='#{steps[16].uuid}']")
+    row.scroll_to(row, align: :center)
+    scrolled = page.evaluate_script("window.scrollY")
+    assert_operator scrolled, :>, 300, "the list is long enough to scroll the page"
+    row.click
+    assert_selector "turbo-frame#builder-panel form", wait: 5
+
+    close_top = -> { page.evaluate_script("document.querySelector('.builder__panel-close').getBoundingClientRect().top") }
+    assert_eventually(timeout: 5) { close_top.call >= 0 }
+    assert_operator close_top.call, :<, 200, "the panel's header and Close are on screen"
+
+    find(".builder__panel-close").click
+    assert_selector ".builder__list", visible: true
+    row_top = -> { page.evaluate_script("document.querySelector(\"#{STEP_ROW}[data-step-uuid='#{steps[16].uuid}']\").getBoundingClientRect().top") }
+    viewport = page.evaluate_script("window.innerHeight")
+    assert_eventually(timeout: 5) { row_top.call.between?(0, viewport - 40) }
+  end
+
+  # From 640px the wordmark and the search pill's label come back, and an
+  # admin's five destinations ran under the search box up to ~767px - drawn
+  # through it, with Analytics under the pill and hard to click (QA C-008,
+  # 2026-09-23). The destinations must end before the right-hand zone starts.
+  #
+  # Mutation checks: drop `max-width: 100%` from .nav__zone--start - red at
+  # 390. Move BOTH narrow blocks in navigation.css (the wordmark's, 767px, and
+  # the scrolling one, 1023px) back to 639px - red at 640. Either block alone
+  # keeps 640-767 clear, so moving just one stays green: the scrolling block is
+  # the margin for a page whose vertical scrollbar takes ~15px (768px ran 5px
+  # under the pill in a full suite run).
+  test "the top bar's destinations never run under the search box" do
+    [390, 640, 700, 767, 768, 1024].each do |width|
+      page.driver.browser.manage.window.resize_to(width, 900)
+      visit root_path
+      overlap = page.evaluate_script(<<~JS)
+        (() => {
+          // How far the destinations are DRAWN: to the zone's edge where it
+          // clips (it scrolls), to the last link's edge where it doesn't.
+          const zone = document.querySelector(".nav__zone--start")
+          const links = zone.querySelectorAll(".nav__link")
+          const lastLink = links[links.length - 1].getBoundingClientRect()
+          const clips = getComputedStyle(zone).overflowX !== "visible"
+          const drawnTo = clips ? zone.getBoundingClientRect().right : Math.max(zone.getBoundingClientRect().right, lastLink.right)
+          const end = document.querySelector(".nav__zone--end").getBoundingClientRect()
+          return Math.round(drawnTo - end.left)
+        })()
+      JS
+      assert_operator overlap, :<=, 0, "at #{width}px the destinations run #{overlap}px under the search box"
+    end
+  end
+
   # Below the 640px breakpoint, .builder__list (and the one type picker inside
   # it) is hidden while a panel is open - but the panel's own "New step"
   # buttons (outside the list entirely) must still reach it. It used to be
