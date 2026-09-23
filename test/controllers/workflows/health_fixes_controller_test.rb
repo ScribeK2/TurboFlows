@@ -1,9 +1,12 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "turbo/broadcastable/test_helper"
 
 module Workflows
   class HealthFixesControllerTest < ActionDispatch::IntegrationTest
+    include Turbo::Broadcastable::TestHelper
+
     def setup
       Bullet.enable = false
       @editor = User.create!(
@@ -39,6 +42,37 @@ module Workflows
       assert_equal ["ask == 'yes'", nil], q.transitions.reload.order(:position).map(&:condition)
       assert_equal yes, StepResolver.new(@workflow).resolve_next(q, { "ask" => "yes" })
       assert_select "turbo-stream[action='replace'][target='step-list']"
+    end
+
+    # A Fix writes a connection (or a step) like any grow or connect, so every
+    # other tab on this workflow has to see it. It answered only the editor who
+    # pressed it: another tab kept the stub, the old "ways in" and the old
+    # numbers until something else broadcast (QA C-003, 2026-09-23).
+    #
+    # Mutation check: drop the broadcast_step_list call in
+    # respond_with_updated_steps - red.
+    test "a fix reaches every other tab: the list and the existing-step dialog are broadcast" do
+      q = Steps::Question.create!(workflow: @workflow, position: 0, title: "Ask", question: "What?", answer_type: "text")
+      Steps::Resolve.create!(workflow: @workflow, position: 1, title: "Wrapped up", resolution_type: "success")
+      @workflow.update!(start_step: q)
+
+      broadcasts = capture_turbo_stream_broadcasts("workflow_#{@workflow.id}") do
+        post workflow_health_fix_path(@workflow),
+             params: { fix_type: "connect_next", step_uuid: q.uuid },
+             as: :turbo_stream
+      end
+
+      assert_response :success
+      list = broadcasts.find { |stream| stream["action"] == "update" && stream["target"] == "steps-list" }
+      assert list, "a fix must broadcast the list"
+      # Ask's Next door arrives wired (a step chip leading on to Wrapped up), not
+      # as the "→ add step" stub the other tab is still showing.
+      door = list.at_css(%([data-door-key="#{q.id}:Next"]))
+      assert door, "the broadcast list shows Ask's Next door"
+      assert_includes door["class"], "builder__outline-door--step", "the broadcast list carries the new connection"
+      assert_not_includes list.to_html, "builder__door-stub", "no stub is left in the broadcast list"
+      assert(broadcasts.any? { |stream| stream["target"] == "list-target-picker-options" },
+             "the existing-step dialog's candidates ride along with the list")
     end
 
     test "connect_next creates transition to next step" do

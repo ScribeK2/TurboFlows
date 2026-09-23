@@ -341,7 +341,10 @@ export default class extends Controller {
     if (fixType === "connect_next") {
       message = `Connect "${stepTitle}" to the next step?`
     } else if (fixType === "add_resolve_after") {
-      message = `Add a new Resolve step after "${stepTitle}"?`
+      // The fix reuses a Resolve that already exists (HealthFixesController#
+      // add_resolve_after) and adds one only when there is none; this used to
+      // promise a new step either way (QA C-004).
+      message = `Connect "${stepTitle}" to a Resolve step? An existing Resolve is used if there is one.`
     } else if (fixType === "settle_connections") {
       message = `Move "Anything else" below the other connections on "${stepTitle}"?`
     } else {
