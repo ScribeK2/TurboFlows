@@ -463,10 +463,11 @@
     padding: var(--space-1) var(--space-2) 0;
   }
 
-  /* .btn sets display: inline-flex at the same specificity as the UA's
-     [hidden] { display: none }, loaded later in the cascade, so it wins and
-     the button stays visible. See UIGUIDE § The unstyled-button trap for the
-     same shape of bug; .builder__toolbar-issues[hidden] is the existing fix. */
+  /* An author rule always beats a user-agent one, regardless of specificity
+     or source order, so .btn's display: inline-flex beats the UA's own
+     [hidden] { display: none } and the button stays visible. See UIGUIDE
+     § The unstyled-button trap for the same shape of bug;
+     .builder__toolbar-issues[hidden] is the existing fix. */
   .builder__outline-toggle-all[hidden] {
     display: none;
   }

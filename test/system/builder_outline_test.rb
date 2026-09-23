@@ -167,6 +167,12 @@ class BuilderOutlineTest < ApplicationSystemTestCase
     assert find(fold_selector)[:open], "folds start open"
     find("#{fold_selector} > summary").click
     assert_no_selector "#{fold_selector}[open]"
+    # The label must read the closed fold from a single manual click, not
+    # only from a toggleAll() call - a trusted click's activation behaviour
+    # (the browser flipping `open`) runs AFTER the click event's own
+    # listeners, so a label computed inside the click handler would still be
+    # reading the state being left.
+    assert_button "Expand all"
     within(fold_selector) { assert_selector ".builder__outline-fold-count", text: "→ Working · step 4 · 1 step" }
 
     open_step(@q1)
@@ -183,13 +189,26 @@ class BuilderOutlineTest < ApplicationSystemTestCase
     assert_selector STEP_ROW, count: 6, wait: 5
 
     find("details[data-fold-key='#{@q2.uuid}:Yes'] > summary").click
+    assert_selector "details[data-fold-key='#{@q2.uuid}:Yes']:not([open])"
+    # #destroy also broadcasts an update("steps-list") that lands over the
+    # cable before the HTTP response's replace("step-list"), and that update
+    # only swaps #steps-list's CHILDREN - it would leave a wrongly mounted
+    # controller and its dataset probe alone. Only the real whole-list replace
+    # swaps #step-list itself, taking the probe with it, so waiting for the
+    # probe to vanish is what actually waits for the mutation this test means
+    # to exercise.
+    execute_script("document.getElementById('step-list').dataset.probe = 'old'")
     # .builder__step-delete is opacity: 0 until the row is hovered, so it must
     # be hovered before Capybara/Selenium will treat it as clickable.
     row = find("#{STEP_ROW}[data-step-uuid='#{lone.uuid}']")
     row.hover
     accept_confirm { row.find(".builder__step-delete").click }
-    assert_selector STEP_ROW, count: 5, wait: 5
-    assert_no_selector "details[data-fold-key='#{@q2.uuid}:Yes'][open]"
+    assert_no_selector "#step-list[data-probe]", wait: 5
+    # Working's own row is a legitimate zero: the fold hiding it is exactly
+    # what this test is proving survived, so count what exists, not what's
+    # currently on screen.
+    assert_selector STEP_ROW, count: 5, wait: 5, visible: :all
+    assert_selector "details[data-fold-key='#{@q2.uuid}:Yes']:not([open])"
   end
 
   test "a folded branch reveals the step whose panel is open" do

@@ -11,6 +11,18 @@ import { Controller } from "@hotwired/stimulus"
 // asynchronously, so a restore made here would come back as if the author had
 // done it. The branch holding the step whose panel is open is always shown,
 // without forgetting that the author folded it.
+//
+// The Collapse all/Expand all LABEL is a different matter: it only reads the
+// DOM's current `open` state, never records anything, so deriving it from
+// `toggle` does not run afoul of that rule. It has to be `toggle`, and it has
+// to be capture: a trusted click's activation behaviour (the browser flipping
+// `<details>.open`) runs AFTER `clicked()` below returns, so a microtask
+// queued from inside `clicked()` still sees the state being LEFT, not the one
+// being entered - a scripted `.click()` doesn't show this, because it runs
+// its microtask checkpoint after the flip, which is why this shipped once
+// already. `toggle` does not bubble, so a bubble-phase listener on the root
+// never sees it; capture does. Never compute the label from `this.closed`
+// either: `revealOpenStep` opens a fold without discarding its entry there.
 export default class extends Controller {
   static targets = ["toggleAll"]
 
@@ -18,6 +30,8 @@ export default class extends Controller {
     this.closed = new Set()
     this.boundClick = this.clicked.bind(this)
     this.element.addEventListener("click", this.boundClick)
+    this.boundToggle = () => this.updateToggleAll()
+    this.element.addEventListener("toggle", this.boundToggle, true)
 
     this.observer = new MutationObserver(() => this.queueReapply())
     this.observer.observe(this.element, { childList: true, subtree: true })
@@ -26,6 +40,7 @@ export default class extends Controller {
 
   disconnect() {
     this.element.removeEventListener("click", this.boundClick)
+    this.element.removeEventListener("toggle", this.boundToggle, true)
     this.observer?.disconnect()
   }
 
@@ -36,10 +51,10 @@ export default class extends Controller {
     if (details.firstElementChild !== summary) return
 
     // The click runs before the browser flips `open`: the state now is the
-    // state being left.
+    // state being left. The label itself is refreshed by the capture-phase
+    // `toggle` listener above, once the flip has actually happened.
     if (details.open) this.closed.add(details.dataset.foldKey)
     else this.closed.delete(details.dataset.foldKey)
-    queueMicrotask(() => this.updateToggleAll())
   }
 
   toggleAll() {
