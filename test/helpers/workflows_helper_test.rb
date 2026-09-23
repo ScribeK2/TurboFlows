@@ -118,6 +118,16 @@ class WorkflowsHelperTest < ActionView::TestCase
     assert_equal 'count is at most "7"', format_condition_for_display("count <= '7'")
   end
 
+  # The outline's extra chips read unquoted numeric comparisons through this.
+  # With `>` tried before `>=` in the alternation, "tier >= 5" read
+  # 'tier is greater than "= 5"'.
+  test "format_condition_for_display reads unquoted >= and <= as themselves" do
+    assert_equal 'tier is at least "5"', format_condition_for_display("tier >= 5")
+    assert_equal 'tier is at most "5"', format_condition_for_display("tier <= 5")
+    assert_equal 'tier is greater than "5"', format_condition_for_display("tier > 5")
+    assert_equal 'tier is less than "5"', format_condition_for_display("tier < 5")
+  end
+
   test "format_condition_for_display returns raw for unparseable condition" do
     assert_equal "some complex thing", format_condition_for_display("some complex thing")
     assert_equal "Not set", format_condition_for_display(nil)

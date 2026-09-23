@@ -412,6 +412,7 @@
   .builder__outline-chip.builder__door-stub {
     border-style: dashed;
     border-color: var(--color-border-strong);
+    background: transparent;
     color: var(--color-primary-text);
   }
 

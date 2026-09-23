@@ -208,7 +208,7 @@ module WorkflowsHelper
     return 'Not set' if condition.blank?
 
     # Parse the condition
-    if (match = condition.match(/^(\w+)\s*(==|!=|>|>=|<|<=)\s*['"]?([^'"]*?)['"]?$/))
+    if (match = condition.match(/^(\w+)\s*(==|!=|>=|<=|>|<)\s*['"]?([^'"]*?)['"]?$/))
       variable, operator, value = match.captures
 
       operator_text = case operator

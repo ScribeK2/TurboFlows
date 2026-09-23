@@ -318,9 +318,10 @@ guide line. A linear workflow therefore renders exactly as the flat list did.
   continuation never folds. The fold key is `"#{step.uuid}:#{door.label}"`.
   `outline_fold_controller.js` keeps the closed set in memory for the page,
   and two rulings shape it:
-  - It is mounted on the **builder root**, not the list. The transitions
-    endpoint, a delete and a health fix replace the whole `#step-list`
-    element, which would discard a controller living on it and every fold
+  - It is mounted on the **builder root**, not the list. A grow's own
+    response (`StepsController#grown_streams`), a refused grow
+    (`#respond_to_refused_grow`), the transitions endpoint, a delete and a
+    health fix all replace the whole `#step-list` element, which would discard a controller living on it and every fold
     with it. Every other re-render replaces `#steps-list`'s children and would
     reopen everything, so a `MutationObserver` re-applies the closed set after
     each one (batched to one pass per microtask). Its own writes are guarded:
