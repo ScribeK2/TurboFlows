@@ -73,7 +73,9 @@ class BuilderOutlineTest < ApplicationSystemTestCase
     assert_panel_settled
 
     action = @workflow.steps.reload.find_by(type: "Steps::Action")
-    assert_selector "#steps-list[role='tree']"
+    # The tree is inside #steps-list, which also holds the empty state.
+    assert_selector "#steps-list > [role='tree'][aria-label='Steps']"
+    assert_no_selector "#steps-list[role='tree']"
     assert_selector "#{STEP_NODE}[data-node-uuid='#{question.uuid}'] + #{STEP_NODE}[data-node-uuid='#{action.uuid}']"
     within(node_for(question)) { assert_selector ".builder__door-stub", text: "Yes → add step" }
     assert_equal "1", node_for(question)["aria-level"]
@@ -150,7 +152,14 @@ class BuilderOutlineTest < ApplicationSystemTestCase
     # The section heading is text-transform: uppercase, and Capybara reads
     # the rendered text.
     assert_selector ".builder__outline-section", text: /unconnected/i, wait: 5
-    assert_selector ".builder__outline-section + #{STEP_NODE}[data-node-uuid='#{lone.uuid}']"
+    # A group labelled by its heading holds the unconnected trees, one level
+    # down; the trunk stays outside it.
+    group = "[role='tree'] > [role='group'][aria-labelledby='steps-unconnected-heading']"
+    assert_selector "#{group} > .builder__outline-section#steps-unconnected-heading"
+    assert_selector "#{group} > .builder__outline-section + #{STEP_NODE}[data-node-uuid='#{lone.uuid}']"
+    assert_no_selector "#{group} #{STEP_NODE}[data-node-uuid='#{a.uuid}']"
+    assert_equal "2", node_for(lone)["aria-level"]
+    assert_equal "1", node_for(a)["aria-level"]
   end
 
   test "a folded branch stays folded across a re-render, and says what is inside" do

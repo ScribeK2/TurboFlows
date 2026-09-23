@@ -26,8 +26,9 @@
   </div>
 
   <div class="builder__list-scroll">
-    <div id="steps-list"
-         role="tree" aria-label="Steps">
+    <%# The tree role is on the outline inside (workflows/_step_outline), so the
+        empty state is never a tree's child. %>
+    <div id="steps-list">
       <% if steps.any? %>
         <%= render "workflows/step_outline", workflow: workflow, outline: outline %>
       <% else %>
