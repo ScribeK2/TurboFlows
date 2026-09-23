@@ -38,7 +38,7 @@
                    data-builder-step-id-param="<%= step.id %>"
                    title="<%= step.title %>">
                 <span class="flow-diagram__node-number" data-step-ordinal="<%= step.uuid %>"><%= ordinals[step.uuid] %></span>
-                <span class="flow-diagram__node-title"><%= truncate(step.title.presence || "Untitled", length: 20) %></span>
+                <span class="flow-diagram__node-title"><%= truncate(step_display_title(step), length: 20) %></span>
                 <% if step == workflow.start_step %>
                   <span class="step-pill step-pill--start text-2xs">Start</span>
                 <% end %>
