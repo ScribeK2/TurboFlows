@@ -56,8 +56,10 @@ export default class extends Controller {
     this.syncSelectedRow()
     // A jump's target row, looked at again now the panel is in: opening it
     // narrows the list and re-wraps the rows above (see #openStep).
-    if (this.rowToReveal?.isConnected) revealRowInList(this.rowToReveal, { block: "center" })
-    this.rowToReveal = null
+    // Found by id: a list broadcast may have replaced the row since.
+    const row = this.stepToReveal && this.rowFor(this.stepToReveal)
+    if (row) revealRowInList(row, { block: "center" })
+    this.stepToReveal = null
   }
 
   // Composes with any other turbo:before-stream-render listener (e.g.
@@ -155,14 +157,13 @@ export default class extends Controller {
     // inside a folded branch (QA C-002). outline-fold owns every fold's `open`,
     // so ask it to reveal the row's branch (synchronously), then bring the row
     // into view, centred, since the panel opening will re-wrap the rows.
-    this.rowToReveal = null
+    this.loadPanel(url)
+    // After loadPanel, which clears it for every other caller.
     if (row && row !== event.currentTarget) {
       this.dispatch("reveal", { prefix: "outline-fold", detail: { stepId: row.dataset.stepId } })
       revealRowInList(row, { block: "center" })
-      this.rowToReveal = row
+      this.stepToReveal = row.dataset.stepId
     }
-
-    this.loadPanel(url)
   }
 
   openFlowDiagram() {
@@ -196,6 +197,7 @@ export default class extends Controller {
     // An author's own close is final; #syncSelectedRow sets this again AFTER
     // calling here when the close was its own.
     this.closedOnMissingRowOf = null
+    this.stepToReveal = null
 
     if (this.hasPanelTarget) {
       this.panelTarget.removeAttribute("src")
@@ -279,6 +281,9 @@ export default class extends Controller {
     // Whatever opens a panel - the author or the reopen itself - ends the wait
     // for a row to come back (see #syncSelectedRow).
     this.closedOnMissingRowOf = null
+    // And any jump's pending second look (see #openStep): a health, settings
+    // or flow panel loaded after a jump must not scroll to the jump's row.
+    this.stepToReveal = null
 
     this.panelTarget.src = this.modeValue === "edit" ? url : this.readonlyUrl(url)
   }
