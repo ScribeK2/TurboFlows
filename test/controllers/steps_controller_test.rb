@@ -1,7 +1,9 @@
 require "test_helper"
+require "turbo/broadcastable/test_helper"
 
 class StepsControllerTest < ActionDispatch::IntegrationTest
   include ActionView::RecordIdentifier
+  include Turbo::Broadcastable::TestHelper
 
   setup do
     @editor = User.create!(
@@ -797,5 +799,25 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
     get panel_edit_workflow_step_path(@workflow, handoff)
 
     assert_select "dialog##{dom_id(handoff, :target_picker)}", false
+  end
+
+  # In the outline a step's title is on every jump chip, fold summary and
+  # ways-in tooltip naming it - a lone row replace leaves all of those stale.
+  test "a save that changes the title broadcasts the whole list" do
+    step = Steps::Action.create!(workflow: @workflow, title: "Before", position: 0)
+    assert_turbo_stream_broadcasts("workflow_#{@workflow.id}", count: 2) do
+      patch workflow_step_path(@workflow, step),
+            params: { step: { title: "After", dirty_fields: ["title"], rendered: { title: "Before" } } },
+            headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+  end
+
+  test "a save that changes nothing structural broadcasts only its row" do
+    step = Steps::Action.create!(workflow: @workflow, title: "Same", position: 0)
+    assert_turbo_stream_broadcasts("workflow_#{@workflow.id}", count: 1) do
+      patch workflow_step_path(@workflow, step),
+            params: { step: { help_text: "note", dirty_fields: ["help_text"], rendered: { help_text: "" } } },
+            headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
   end
 end

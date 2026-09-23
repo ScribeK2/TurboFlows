@@ -49,6 +49,12 @@ class StepsController < ApplicationController
   # doors-only replace has to answer for.
   DOOR_DECIDING_PARAMS = %i[answer_type options transitions_json].freeze
 
+  # Fields whose change alters what the OUTLINE shows beyond this step's own
+  # row: its title is on every jump chip, fold summary and ways-in tooltip
+  # naming it; answer type and options are its doors; sub_flow_returns turns
+  # a leaf into a step with a door.
+  OUTLINE_FIELDS = %w[title answer_type options sub_flow_returns].freeze
+
   include ActionView::RecordIdentifier
 
   before_action :set_workflow
@@ -142,6 +148,8 @@ class StepsController < ApplicationController
       # saved-change tracking: nil unless this save renamed a Question's own
       # variable_name, else [old_name, new_name].
       rename_pair = @step.try(:renamed_variable_pair)
+      # Read now, before the reload below clears saved-change tracking.
+      outline_changed = outline_changed?
 
       if step_params[:transitions_json].present?
         refusal = sync_transitions(rename_pair)
@@ -223,6 +231,7 @@ class StepsController < ApplicationController
       end
 
       broadcast_step_row(@step)
+      broadcast_step_list if outline_changed
     else
       # The panel is not re-rendered on save, and the frame this used to stream
       # into does not exist there, so a refused save was silent.
@@ -407,6 +416,14 @@ class StepsController < ApplicationController
       partial: "workflows/steps_list_items",
       locals: { workflow: @workflow.reload, steps: list_steps }
     )
+  end
+
+  # Whether this save changed something the OUTLINE shows beyond this step's
+  # own row (see OUTLINE_FIELDS), or moved a connection via transitions_json -
+  # either means every open tab's jump chips, fold summaries and ways-in
+  # tooltips naming this step are now stale, not just its row.
+  def outline_changed?
+    @step.saved_changes.keys.intersect?(OUTLINE_FIELDS) || step_params[:transitions_json].present?
   end
 
   def set_step

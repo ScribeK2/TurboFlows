@@ -114,11 +114,6 @@ class BuilderOutlineTest < ApplicationSystemTestCase
   end
 
   test "a renamed step's jump chip follows the rename" do
-    # A title save streams only the step's own row; the jump chip naming it
-    # sits in another node. StepsController#update re-renders the whole list
-    # on a title change from Task 6 on ("A structural save re-renders the
-    # whole list"), which removes this skip.
-    skip "needs Task 6: a title save re-renders the whole list"
     toy_graph
     visit workflow_path(@workflow, edit: true)
     assert_selector STEP_ROW, count: 5, wait: 5
