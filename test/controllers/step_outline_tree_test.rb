@@ -38,7 +38,7 @@ class StepOutlineTreeTest < ActionDispatch::IntegrationTest
       assert_select "> ##{dom_id(start, :node)}[aria-level='1']"
       assert_select "> [role='group'][aria-labelledby='steps-unconnected-heading']" do
         assert_select "> #steps-unconnected-heading.builder__outline-section:not([role])",
-                      text: "Unconnected: nothing leads here yet"
+                      text: "Unconnected: not reached from the start"
         assert_select "> ##{dom_id(lone, :node)}[aria-level='2']"
         assert_select "##{dom_id(yes_step, :node)}[aria-level='3']"
       end

@@ -14,7 +14,7 @@ The unified builder lives at `workflows/:id` — one URL for both viewing and ed
 **Key views:**
 - `_builder.html.erb` — main layout, renders step list + empty Turbo Frame panel
 - `_step_list.html.erb` / `_step_row.html.erb` — the list as an outline of the graph (`_step_outline`, `_step_node`); a row is one step's own line (number, title, "N ways in", Start/Terminal, warning icon, Remove). In an outline the order IS the graph, so there is no drag-reorder: `StepReorderer` and its route were deleted 2026-09-22
-- `_step_outline.html.erb` — the tree (`role="tree"`, on a wrapper inside `#steps-list`, which also holds the empty state): the trunk from the start step as level-1 siblings, then the "Unconnected: nothing leads here yet" section, a `role="group"` labelled by its heading whose trees render the same way one level down. Takes a `StepOutline::Result`
+- `_step_outline.html.erb` — the tree (`role="tree"`, on a wrapper inside `#steps-list`, which also holds the empty state): the trunk from the start step as level-1 siblings, then the "Unconnected: not reached from the start" section, a `role="group"` labelled by its heading whose trees render the same way one level down. Takes a `StepOutline::Result`
 - `_step_node.html.erb` — one `role="treeitem"`: its row, its exit doors in a `role="group"` (a foldable `<details>` per exit that holds steps), then its continuation door chip. A door chip is a wired chip (text + the target's type dot), a stub (ONE button, the grow trigger) or a jump (ONE button naming the target, "Yes → Working · step 4"); extras render as dashed chips under the exits
 - `_list_target_picker.html.erb` — the list-level "An existing step…" `<dialog>`, one per page, shared by every stub chip. A second mount of `step-target-picker`, rendered beside the type picker, outside `#steps-list`
 - `steps/_panel_edit.html.erb` — step editor loaded via Turbo Frame into the panel
@@ -242,8 +242,11 @@ guide line. A linear workflow therefore renders exactly as the flat list did.
   holds a 300-step, 600-edge graph under 100ms. A door with no transition is a
   **stub**, a door whose target already has its row elsewhere is a **jump**, and
   an extra (`Doors#extras`) is a dashed chip that never owns a step, so a step
-  reachable only through an extra lands in Unconnected. That is the same fact
-  the health check reports.
+  reachable only through an extra lands in Unconnected. The health check does
+  NOT agree: `GraphValidator` follows every transition, extras included, so it
+  reports no `:unreachable_step` for such a step, and the runner does reach it.
+  The outline walks doors only. Walking extras too is open (QA B-001); only
+  the Unconnected heading's words were corrected, 2026-09-23.
 - **The continuation is the LAST door in `Doors#doors` order.** That is the
   wired "Anything else" when there is one, otherwise the last answer; on a
   Yes/No, No. It is NOT the door with the largest subtree. The throwaway
@@ -262,14 +265,18 @@ guide line. A linear workflow therefore renders exactly as the flat list did.
   On the Opening Scan, step 12's Yes branch rejoins the trunk at step 13, and
   reading order let that side branch capture step 13, nesting forty steps
   under a Yes. Every other door to an owned step gets a jump chip.
-- **Unconnected.** Steps the start does not reach follow an "Unconnected:
-  nothing leads here yet" heading. `Result#orphan_roots` gives them trees of
+- **Unconnected.** Steps the outline's walk does not reach from the start
+  follow an "Unconnected: not reached from the start" heading. It used to say
+  "nothing leads here yet", which was false for every member of an unconnected
+  chain or cycle but its root, and for a step reached only through an extra.
+  `Result#orphan_roots` gives them trees of
   their own, each rooted at a step nothing still unplaced leads to (position
   order), so an unconnected chain keeps its shape and an unconnected Question
   keeps its growable stubs. The section is a `role="group"` labelled by its
   heading (`#steps-unconnected-heading`), so its trees are `aria-level` 2 and
   their exits one deeper; it renders at the trunk's indent all the same. "Add unconnected step" lands a step here, and
-  `:unreachable_step` has its place on the page here.
+  every `:unreachable_step` has its place on the page here (not the converse:
+  see extras above).
 - **Numbers are derived on every read, and nothing is persisted.**
   `Result#ordinals` numbers the steps in render order (exits before the
   continuation), then the Unconnected section. `WorkflowsHelper#step_ordinals`

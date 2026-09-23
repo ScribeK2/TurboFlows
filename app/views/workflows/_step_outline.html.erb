@@ -21,7 +21,7 @@
   <% end %>
   <% if outline.orphan_roots.any? %>
     <div class="builder__outline-unconnected" role="group" aria-labelledby="steps-unconnected-heading">
-      <div class="builder__outline-section" id="steps-unconnected-heading">Unconnected: nothing leads here yet</div>
+      <div class="builder__outline-section" id="steps-unconnected-heading">Unconnected: not reached from the start</div>
       <%# Each unconnected tree renders like the main one: its trunk as
           siblings, its exits nested, its stubs growable. %>
       <% outline.orphan_roots.each do |orphan| %>
