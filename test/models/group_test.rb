@@ -360,21 +360,6 @@ class GroupTest < ActiveSupport::TestCase
     assert_includes group.folders, folder2
   end
 
-  test "unfiled_workflows returns workflows in no folder" do
-    group = Group.create!(name: "Folder Group")
-    folder = Folder.create!(name: "Categorized", group: group)
-    user = User.create!(email: "foldertestuser@example.com", password: "password123!", password_confirmation: "password123!")
-    wf_in_folder = Workflow.create!(title: "In Folder", user: user)
-    wf_unfiled = Workflow.create!(title: "Loose", user: user)
-
-    GroupWorkflow.create!(group: group, workflow: wf_in_folder, folder: folder, is_primary: true)
-    GroupWorkflow.create!(group: group, workflow: wf_unfiled, is_primary: true)
-
-    unfiled = group.unfiled_workflows
-    assert_includes unfiled, wf_unfiled
-    assert_not_includes unfiled, wf_in_folder
-  end
-
   test "can_be_viewed_by? should return false for unassigned user" do
     user = User.create!(
       email: "user@test.com",

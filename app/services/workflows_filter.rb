@@ -138,18 +138,13 @@ class WorkflowsFilter
     return if @selected_group.blank?
 
     @folders = @selected_group.folders.ordered
-    @unfiled_workflows = @selected_group.unfiled_workflows
-                                        .includes(:user)
-                                        .search_by(@params[:search])
-    @unfiled_workflows = @unfiled_workflows.where(user: @user) if owner_filter
-    @unfiled_workflows = case sort_by
-                         when "alphabetical"
-                           @unfiled_workflows.order(Arel.sql("LOWER(title) ASC"))
-                         when "most_steps"
-                           @unfiled_workflows.order(steps_count: :desc)
-                         else
-                           @unfiled_workflows.order(updated_at: :desc)
-                         end
+    # From @workflows, like each folder below, so Unfiled shows only what this
+    # viewer may see on this tab, searched, owner-filtered and sorted the same
+    # way. It was built from the group's raw association and listed every
+    # draft filed loose in the group - other editors' included.
+    @unfiled_workflows = @workflows.where(
+      id: GroupWorkflow.where(group_id: @selected_group.id, folder_id: nil).select(:workflow_id)
+    )
 
     return if @folders.blank?
 
