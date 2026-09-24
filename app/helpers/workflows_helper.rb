@@ -41,7 +41,9 @@ module WorkflowsHelper
     'action' => 'bolt',
     'sub_flow' => 'arrows-right-left',
     'message' => 'chat-bubble-bottom-center-text',
-    'escalate' => 'exclamation-triangle',
+    # Not the warning triangle: in the builder the row's type icon sits beside
+    # its health warning icon.
+    'escalate' => 'arrow-up-circle',
     'resolve' => 'check-circle',
     'form' => 'document-text'
   }.freeze

@@ -12,9 +12,14 @@
   - a stub: opens the type picker beside it, which grows a step or picks an
     existing one (data-grow-* protocol, see docs/agents/builder.md § Growing a
     workflow);
-  - a jump: the target is placed elsewhere; the chip names it and opens it;
-  - a wired step: its step nests under it (an exit) or follows it (the
-    continuation). Its dot is the target's type colour.
+  - a jump: the target is placed elsewhere; the chip names it, with its type
+    icon, and opens it;
+  - a wired step: its step nests under it (an exit, a fold's summary) or
+    follows it (the continuation). A continuation is not a choice, so it is a
+    quiet "↓ label" connector, and a plain Next draws nothing: its step is the
+    very next row.
+
+  No type colour on any of them: in the list, colour means a problem.
 %>
 <% step = node.step %>
 <% ordinals = outline.ordinals %>
@@ -38,13 +43,13 @@
     click those strings. A wired step's chip is text: its step is right there. %>
 <% door_chip = lambda do |edge, continuation: false| %>
   <% door = edge.door %>
+  <% next if edge.kind == :step && door.kind == :next %>
   <% stub_label = door.kind == :next ? "→" : "#{door.label} →" %>
-  <div class="builder__outline-door builder__outline-door--<%= edge.kind %><%= " builder__outline-door--continue" if continuation %>"
+  <div class="builder__outline-door builder__outline-door--<%= edge.kind == :step ? "connector" : edge.kind %><%= " builder__outline-door--continue" if continuation %>"
        data-door-key="<%= step.id %>:<%= door_keys[door.object_id] %>">
     <% case edge.kind %>
     <% when :step %>
-      <span class="builder__type-dot builder__type-dot--<%= edge.target.step_type %>" aria-hidden="true"></span>
-      <span class="builder__outline-chip" title="<%= door.label %>"><%= door.label %></span>
+      <span class="builder__outline-connector" title="<%= door.label %>"><span aria-hidden="true">↓</span> <%= door.label %></span>
     <% when :stub %>
       <button type="button" class="builder__outline-chip builder__door-stub builder__edit-only"
               title="<%= door.label %>"
@@ -67,11 +72,12 @@
               data-builder-step-id-param="<%= edge.target.id %>">
         <%= icon "link", class: "icon icon--xs" %>
         <%= door.label %>
-        <span class="builder__type-dot builder__type-dot--<%= edge.target.step_type %>" aria-hidden="true"></span>
         <%# The chip wraps rather than ellipsizing, and "· step N" never breaks,
             so the number is never what gets cut. All inline: a flex or block
-            child would split the chip's text into lines (see builder.css). %>
-        → <%= target_title.call(edge.target) %> <span class="builder__outline-step-ref">· step <%= ordinals[edge.target.uuid] %></span>
+            child would split the chip's text into lines (see builder.css).
+            The target's type icon says what is behind the door without
+            opening it: the target's row is elsewhere. %>
+        → <%= step_type_svg_icon(edge.target.step_type, css_classes: "icon icon--xs builder__step-type-icon") %><%= target_title.call(edge.target) %> <span class="builder__outline-step-ref">· step <%= ordinals[edge.target.uuid] %></span>
       </button>
     <% end %>
   </div>
@@ -114,7 +120,6 @@
           <details class="builder__outline-fold" role="none" open data-fold-key="<%= step.uuid %>:<%= door_keys[edge.door.object_id] %>">
             <summary class="builder__outline-door builder__outline-door--step builder__outline-door--fold"
                      data-door-key="<%= step.id %>:<%= door_keys[edge.door.object_id] %>">
-              <span class="builder__type-dot builder__type-dot--<%= edge.target.step_type %>" aria-hidden="true"></span>
               <span class="builder__outline-chip" title="<%= edge.door.label %>"><%= edge.door.label %></span>
               <span class="builder__outline-fold-count">→ <%= target_title.call(edge.target) %> <span class="builder__outline-step-ref">· step <%= ordinals[edge.target.uuid] %> · <%= pluralize(edge.child.chain_rows, "step") %></span></span>
             </summary>

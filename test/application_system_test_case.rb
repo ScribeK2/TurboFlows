@@ -76,9 +76,16 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   STEP_NODE = "[role='treeitem'][data-node-uuid]".freeze
 
   # Opens a step's panel and waits until it is safe to click inside.
+  #
+  # Clicks the title, as a person does. It clicked the row's centre, which
+  # since the warning icon moved beside the title (2026-09-24) can land on
+  # that icon, a button with a popover of its own; the panel stayed on the
+  # previous step, and waiting for "a panel" hid that. So it also waits for
+  # THIS step's panel.
   def open_step(step)
-    find("#{STEP_ROW}[data-step-uuid='#{step.uuid}']").click
-    assert_selector "turbo-frame#builder-panel form", wait: 5
+    find("#{STEP_ROW}[data-step-uuid='#{step.uuid}'] .list-row__title").click
+    assert_selector "#builder-panel .builder__panel-body[data-step-id='#{step.id}']", wait: 5
+    assert_selector "turbo-frame#builder-panel form"
     assert_panel_settled
   end
 

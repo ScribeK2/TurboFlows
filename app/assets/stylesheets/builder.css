@@ -285,6 +285,10 @@
     background: var(--color-primary-soft);
   }
 
+  /* The number is neutral: in the list, colour means a problem and nothing
+     else (2026-09-24, chosen from three prototypes). Seven solid step hues
+     down the page read as noise, three pairs of them were hard to tell apart,
+     and Escalate's was the error red. The type is the icon beside it. */
   .builder__step-badge {
     width: 1.5rem;
     height: 1.5rem;
@@ -294,10 +298,28 @@
     justify-content: center;
     font-size: var(--text-xs);
     font-weight: 600;
-    background: var(--step-solid);
-    color: var(--step-on-solid);
+    background: var(--color-canvas-alt);
+    color: var(--color-ink-subtle);
+    border: 1px solid var(--color-border);
     flex-shrink: 0;
   }
+
+  /* A step's type: a small grey icon, on the row, in the type picker and on
+     a jump chip naming its target. Named by the row's title attribute and by
+     the treeitem's description, not by colour. */
+  .builder__step-type-icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    color: var(--color-ink-muted);
+  }
+
+  .builder__outline-jump > .builder__step-type-icon { display: inline-block; }
+
+  /* Title first, then what belongs to it (the warning icon, "ways in",
+     Start/Terminal), then Remove at the end. These sat at the far end of the
+     row, ~1000px from the title they describe at desktop width. */
+  .builder__step .list-row__body { flex: 0 1 auto; }
+  .builder__step .list-row__actions { margin-left: auto; }
 
   .builder__step-title {
     flex: 1;
@@ -420,8 +442,16 @@
     padding-inline: 0;
   }
 
-  /* Chip dots: the target step's type colour, never squeezed by a long label. */
-  .builder__outline-door .builder__type-dot { flex: 0 0 auto; }
+  /* A continuation is where the trunk goes on, not a choice: a quiet "↓ label"
+     in the number column rather than a pill. A plain Next draws nothing (its
+     step is the next row); a stub stays a stub. */
+  .builder__outline-connector {
+    min-width: 0;
+    color: var(--color-ink-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 
   /* A stub keeps the dashed hairline and link colour of .builder__door-stub,
      which .builder__outline-chip (later in source) would otherwise override,
@@ -450,8 +480,9 @@
     color: var(--color-primary-text);
   }
 
-  .builder__outline-jump > .icon,
-  .builder__outline-jump > .builder__type-dot {
+  /* Both are bare SVGs, not wrapped: a wrapper around an SVG in this inline
+     run read as a line break ("Yes →" / "Working"). */
+  .builder__outline-jump > .icon {
     display: inline-block;
     vertical-align: middle;
     margin-inline-end: var(--space-1);
@@ -659,28 +690,22 @@
     font: inherit;
   }
 
-  .builder__type-dot {
-    width: 0.5rem;
-    height: 0.5rem;
-    border-radius: var(--radius-full);
-    flex-shrink: 0;
-    transition: transform var(--duration-snap) var(--ease-spring);
-  }
-
-  .builder__type-option:hover .builder__type-dot {
-    transform: scale(1.15);
-  }
-
+  /* A type's name never breaks ("Sub-/Flow" did once the type icon, wider
+     than the dot it replaced, took its share of the floating picker); the
+     description may wrap instead. */
   .builder__type-name {
     font-weight: 500;
     font-size: var(--text-sm);
     color: var(--color-ink);
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .builder__type-desc {
     font-size: var(--text-xs);
     color: var(--color-ink-muted);
     margin-left: auto;
+    text-align: right;
   }
 
   /* ===== Panel ===== */
@@ -1015,59 +1040,25 @@
     display: none;
   }
 
-  /* ===== Step Type Hue Badges =====
-     Each modifier publishes --step-hue; the fill comes from the composed
-     --step-solid / --step-on-solid pair, which swap per theme. */
-  .builder__step-badge--question { --step-hue: var(--hue-question); }
-  .builder__step-badge--action   { --step-hue: var(--hue-action); }
-  .builder__step-badge--message  { --step-hue: var(--hue-message); }
-  .builder__step-badge--escalate { --step-hue: var(--hue-escalate); }
-  .builder__step-badge--resolve  { --step-hue: var(--hue-resolve); }
-  .builder__step-badge--sub_flow { --step-hue: var(--hue-subflow); }
-  .builder__step-badge--form     { --step-hue: var(--hue-form); }
-
-  /* Step row left border accent by type (--step-hue set for ghost glow) */
-  .builder__step[data-step-type="question"]  { --step-hue: var(--hue-question); }
-  .builder__step[data-step-type="action"]    { --step-hue: var(--hue-action); }
-  .builder__step[data-step-type="message"]   { --step-hue: var(--hue-message); }
-  .builder__step[data-step-type="escalate"]  { --step-hue: var(--hue-escalate); }
-  .builder__step[data-step-type="resolve"]   { --step-hue: var(--hue-resolve); }
-  .builder__step[data-step-type="sub_flow"]  { --step-hue: var(--hue-subflow); }
-  .builder__step[data-step-type="form"]      { --step-hue: var(--hue-form); }
-
-  .builder__type-dot--question { --step-hue: var(--hue-question); background: var(--step-dot); }
-  .builder__type-dot--action { --step-hue: var(--hue-action); background: var(--step-dot); }
-  .builder__type-dot--message { --step-hue: var(--hue-message); background: var(--step-dot); }
-  .builder__type-dot--escalate { --step-hue: var(--hue-escalate); background: var(--step-dot); }
-  .builder__type-dot--resolve { --step-hue: var(--hue-resolve); background: var(--step-dot); }
-  .builder__type-dot--sub_flow { --step-hue: var(--hue-subflow); background: var(--step-dot); }
-  .builder__type-dot--form { --step-hue: var(--hue-form); background: var(--step-dot); }
-
   /* A stray closing brace used to sit here, ending @layer components early
      and leaving every rule below it unlayered - and so outranking even the
      utilities layer. The layer now closes at the end of the file. */
 
   /* ===== Health Warning States =====
-     Severity reads as a left accent plus the row's warning icon; the row
-     surface stays neutral. Tinting whole rows put half a list in pastel on a
-     workflow with real problems, which is the noise the tiering rule exists
-     to prevent - and it made severity shout over step type. */
-  .builder__step.has-error {
-    border-left-color: var(--color-negative);
-    transition: border-color var(--duration-normal) var(--ease-out);
+     Severity rings the step's number, where a scan down the list starts, and
+     the warning icon beside the title explains it; the row surface stays
+     neutral. It was a left accent: a 3px border on a rounded row, which drew
+     a coloured bracket off the list's edge, shared its slot with the
+     selection accent, and sat ~1000px from the icon that explained it. The
+     left accent is the selection's alone now. */
+  .builder__step.has-error .builder__step-badge {
+    outline: 2px solid var(--color-negative);
+    outline-offset: 1px;
   }
 
-  .builder__step.has-warning {
-    border-left-color: var(--color-warning);
-    transition: border-color var(--duration-normal) var(--ease-out);
-  }
-
-  /* Selection is transient user intent, so it outranks severity on the shared
-     left accent. Both are two-class selectors, so this has to be explicit
-     rather than relying on source order. */
-  .builder__step--selected.has-error,
-  .builder__step--selected.has-warning {
-    border-left-color: var(--color-primary);
+  .builder__step.has-warning .builder__step-badge {
+    outline: 2px solid var(--color-warning);
+    outline-offset: 1px;
   }
 
 
