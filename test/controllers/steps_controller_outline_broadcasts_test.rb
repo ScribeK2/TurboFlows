@@ -98,7 +98,7 @@ class StepsControllerOutlineBroadcastsTest < ActionDispatch::IntegrationTest
   # connections" - a numeric range no door describes), and the exact
   # step[transitions_json] the panel's own hidden field renders for it - not a
   # hand-built payload, since what that field actually contains
-  # (rendered/minted/known, all naming this one row) is exactly what the guard
+  # (rendered/minted, both naming this one row) is exactly what the guard
   # under test must be right about. The editor's `rows` hold only #extras
   # (Step::Doors), never a door's own transition, so the retarget test below
   # needs the extra row, not the Yes door, to have anything to change.

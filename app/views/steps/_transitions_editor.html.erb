@@ -57,34 +57,9 @@
         </button>
       </div>
 
-      <%# TRANSITIONAL (2026-09-19): `known` duplicates `rendered` here so a
-          builder tab that is open ACROSS A DEPLOY - still running the
-          pre-2026-09-19 step_transitions_controller.js, since
-          javascript_importmap_tags carries no data-turbo-track and a builder
-          save/panel-open is a stream or frame load, never a Turbo visit that
-          would refetch it - can still remove a connection the SERVER
-          rendered into it, not only one it minted itself this session. That
-          old JS's loadState reads only `known` (never `rendered`/`minted`),
-          and only addTransition ever pushes a new row's uuid into it - so
-          without this key, `known` starts empty and a removal of any
-          pre-existing row (never in `known` to begin with) computes an empty
-          delete set: TransitionSync's legacy branch destroys nothing, and
-          #door_shape_changed? immediately re-streams the "removed" row right
-          back. (A row added and then removed within the SAME old-tab
-          session was never broken: addTransition pushes its uuid into
-          `known` before the removal, so that delete set is never empty.)
-          Every NEW reader (TransitionSync#shape_of,
-          StepsController#shown_and_sent_row_uuids, this same JS's own
-          loadState) already prefers `rendered`/`minted` outright whenever
-          either is present, so this changes nothing for the current
-          JavaScript - it never echoes `known` back in what it saves. Delete
-          this key once no tab can still be running the pre-2026-09-19
-          controller: any release after every open tab has reloaded past
-          this deploy. %>
       <% transitions_data = {
            "rendered" => editor_transitions.map(&:uuid),
            "minted" => [],
-           "known" => editor_transitions.map(&:uuid),
            "rows" => editor_transitions.map { |t| { "uuid" => t.uuid, "target_uuid" => t.target_step&.uuid, "condition" => t.condition, "label" => t.label } }
          } %>
       <input type="hidden"

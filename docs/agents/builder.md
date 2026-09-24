@@ -549,40 +549,24 @@ that is none of those shapes — an Array, say — is **refused**, never read as
 path, which says the truth, that the step's fields saved and its connections
 did not.
 
-And the EDITOR still sends `known` — not only reads it. `_transitions_editor.html.erb`
-renders `known` alongside `rendered`/`minted`, both the same uuid list, for
-one reason: a builder tab open ACROSS A DEPLOY keeps running the pre-2026-09-19
+The EDITOR no longer renders `known`. From 2026-09-19 it rendered `known`
+beside `rendered`/`minted` (the same uuid list) for builder tabs open across
+that deploy, which kept running the pre-2026-09-19
 `step_transitions_controller.js` (`javascript_importmap_tags` carries no
-`data-turbo-track`, and a builder save or panel open is a stream or frame
-load, never a Turbo visit that would refetch it), whose `loadState` reads
-only `known`, and whose `addTransition` still pushes a freshly minted uuid
-into it. Without a real `known` in the field, that old tab starts with an
-empty `known`, so it can still add, edit, and even remove
-a row it minted in THIS session (that uuid did make it into `this.known`, via
-`addTransition`); what it can never remove is a row the SERVER rendered into
-it — any pre-existing connection, which `this.known` never held to begin with
-— because removing one still computes an empty delete set. The transition it
-"removed" was never actually deleted, and the server's `door_shape_changed?`
-backward check (reading the same empty `known` through
-`shown_and_sent_row_uuids`) then re-streams the whole fragment on that very
-save, showing the still-there row right back. `known` is TRANSITIONAL: every
-current reader (`TransitionSync#shape_of`,
-`StepsController#shown_and_sent_row_uuids`, the current JS's own `loadState`)
-already prefers `rendered`/`minted` outright whenever either is present, and
-the current JS's `saveTransitions` never echoes `known` back — so nothing
-about this changes what the current JavaScript sends or how the server reads
-it. Delete the key once no tab can still be running the pre-2026-09-19
-controller: any release after every open tab has reloaded past this deploy.
-Retiring the legacy branch — now the server's `known` fallback AND the view's
-`known` key together — is a decision about how long a stale browser tab keeps
-working across a deploy, not a cleanup; do not delete either half without
-deciding that.
+`data-turbo-track`, and a builder save or panel open is never a Turbo visit
+that would refetch it); that old controller read only `known`. The key was
+retired on 2026-09-24, after every open tab had reloaded past two deploys. A
+tab still running that controller now removes a server-rendered connection
+with an empty delete set, and the row snaps back on the same save: nothing is
+lost, and a reload fixes it. The SERVER's legacy `{known, rows}` reading stays,
+and so does the JS's own fallback for a legacy fragment (below). Retiring
+those is a separate decision about how long a stale cached fragment keeps
+working, not a cleanup.
 
 The editor itself now holds only `Step::Doors#extras`, with one exception: a
 handoff has no doors at all, so it keeps every transition it has, or there
 would be no way to remove one. It renders `rendered` as every uuid it was
-shown and an empty `minted` — plus the transitional `known`, the same list as
-`rendered`, described above. The JS side (`step_transitions_controller.js`)
+shown and an empty `minted`. The JS side (`step_transitions_controller.js`)
 mints a new row's uuid straight into `minted` when `addTransition` creates it,
 and a REMOVED row's uuid deliberately stays in whichever list already held it
 — that is what tells the server "delete this" rather than "someone else
