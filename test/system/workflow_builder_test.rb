@@ -143,6 +143,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
     assert_no_field "step[title]"
 
     step_row(@resolve.uuid).click
+    assert_panel_settled
 
     within "turbo-frame#builder-panel" do
       assert_field "step[title]", with: "All done", wait: 5
@@ -163,6 +164,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
 
     visit_builder_in_edit_mode
     step_row(question.uuid).click
+    assert_panel_settled
 
     within "turbo-frame#builder-panel" do
       assert_selector ".step-doors__row", text: /Yes.*All done/m, wait: 5
@@ -184,6 +186,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
 
     visit_builder_in_edit_mode
     step_row(question.uuid).click
+    assert_panel_settled
 
     within "turbo-frame#builder-panel" do
       assert_selector ".step-doors__row", text: /Hosting.*All done/m, wait: 5
@@ -214,6 +217,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
 
     visit_builder_in_edit_mode
     step_row(question.uuid).click
+    assert_panel_settled
 
     within "turbo-frame#builder-panel" do
       assert_selector ".step-doors__row", text: /Yes.*All done/m, wait: 5
@@ -240,6 +244,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
 
     visit_builder_in_edit_mode
     step_row(question.uuid).click
+    assert_panel_settled
 
     within "turbo-frame#builder-panel" do
       assert_selector "select[data-condition-preset-target='presetDropdown']", wait: 5
@@ -264,6 +269,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
 
     visit_builder_in_edit_mode
     step_row(question.uuid).click
+    assert_panel_settled
     assert_panel_settled
 
     within "turbo-frame#builder-panel" do
@@ -296,6 +302,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
 
     visit_builder_in_edit_mode
     step_row(later.uuid).click
+    assert_panel_settled
     assert_panel_settled
 
     within "turbo-frame#builder-panel" do
@@ -332,6 +339,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
 
     visit_builder_in_edit_mode
     step_row(later.uuid).click
+    assert_panel_settled
 
     within "turbo-frame#builder-panel" do
       assert_eventually { preset_dropdown.value == "__custom__" }
@@ -353,6 +361,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
 
     visit_builder_in_edit_mode
     step_row(question.uuid).click
+    assert_panel_settled
 
     within "turbo-frame#builder-panel" do
       assert_eventually { preset_dropdown.value == "__custom__" }
@@ -370,6 +379,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
 
     visit_builder_in_edit_mode
     step_row(question.uuid).click
+    assert_panel_settled
     assert_panel_settled
 
     within "turbo-frame#builder-panel" do
@@ -449,6 +459,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
   test "closing the panel collapses it again" do
     visit_builder_in_edit_mode
     step_row(@resolve.uuid).click
+    assert_panel_settled
 
     within "turbo-frame#builder-panel" do
       assert_field "step[title]", wait: 5
@@ -464,6 +475,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
   test "editing a step title autosaves and survives a reload" do
     visit_builder_in_edit_mode
     step_row(@resolve.uuid).click
+    assert_panel_settled
 
     within "turbo-frame#builder-panel" do
       assert_field "step[title]", with: "All done", wait: 5
@@ -500,6 +512,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
 
     visit_builder_in_edit_mode
     step_row(form.uuid).click
+    assert_panel_settled
 
     within "turbo-frame#builder-panel" do
       assert_field "step[options][][label]", with: "Channel", wait: 5
@@ -527,6 +540,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
 
     visit_builder_in_edit_mode
     step_row(form.uuid).click
+    assert_panel_settled
 
     within "turbo-frame#builder-panel" do
       assert_field "step[options][][label]", with: "Channel", wait: 5
@@ -549,6 +563,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
 
     visit_builder_in_edit_mode
     step_row(question.uuid).click
+    assert_panel_settled
     # "+ Add Option" moves while the panel animates open; a click that lands
     # mid-animation adds no row, and the test then types into the Phone row.
     assert_panel_settled
@@ -570,6 +585,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
 
     visit_builder_in_edit_mode
     step_row(question.uuid).click
+    assert_panel_settled
     assert_panel_settled
 
     within "turbo-frame#builder-panel" do
@@ -593,6 +609,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
 
     visit_builder_in_edit_mode
     step_row(question.uuid).click
+    assert_panel_settled
     assert_panel_settled
 
     within "turbo-frame#builder-panel" do
@@ -620,6 +637,7 @@ class WorkflowBuilderTest < ApplicationSystemTestCase
 
     visit_builder_in_edit_mode
     step_row(question.uuid).click
+    assert_panel_settled
     assert_panel_settled
 
     within("turbo-frame#builder-panel") { fill_in "step[title]", with: "Is the light green?" }
