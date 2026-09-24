@@ -46,7 +46,11 @@ class TokenContrastTest < ActiveSupport::TestCase
     [WHITE, "--color-avatar-regular", AA_TEXT],
     # The untyped .step-card__number chip: canvas-coloured text on subtle ink.
     ["--color-canvas-raised", "--color-ink-subtle", AA_TEXT],
-    ["--color-primary", "--color-canvas-raised", AA_NON_TEXT]
+    ["--color-primary", "--color-canvas-raised", AA_NON_TEXT],
+    # The runner's guidance callout (.step-guidance): its text in full ink on
+    # the warning tint, and its triangle icon and left edge in warning.
+    ["--color-ink", "--color-warning-soft", AA_TEXT],
+    ["--color-warning", "--color-warning-soft", AA_NON_TEXT]
   ].freeze
 
   %w[light dark].each do |theme|

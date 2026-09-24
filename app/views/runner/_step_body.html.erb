@@ -18,15 +18,33 @@
   }
 %>
 
+<%# Guidance is what the agent must not miss - mostly hard rules ("Do not
+    process the delete"). It was grey text in a grey box, quieter than the
+    step's own instructions; it is a labelled amber callout now, read before
+    the question. The warning triangle is its alone (Escalate took
+    arrow-up-circle). %>
 <% if step.help_text.present? %>
-  <div class="step-help-text" role="note"><%= step.help_text %></div>
+  <div class="step-guidance" role="note" aria-labelledby="<%= dom_id(step, :guidance_label) %>">
+    <%= icon "exclamation-triangle", class: "icon icon--sm step-guidance__icon" %>
+    <div class="step-guidance__body">
+      <p class="step-guidance__label" id="<%= dom_id(step, :guidance_label) %>">Guidance</p>
+      <p class="step-guidance__text"><%= step.help_text %></p>
+    </div>
+  </div>
 <% end %>
 
+<%# A reference link is a tool opened mid-call (a ticket system, a lookup),
+    so it is a button naming the site, not "More info". %>
 <% if step.try(:reference_url).present? %>
-  <a href="<%= step.reference_url %>" target="_blank" rel="noopener" class="step-reference-link mb-3">
-    <%= icon "link", class: "icon icon--xs" %>
-    More info
-  </a>
+  <p class="step-reference">
+    <a href="<%= step.reference_url %>" target="_blank" rel="noopener"
+       class="btn btn--secondary step-reference-link" title="<%= step.reference_url %>">
+      <%= icon "link", class: "icon icon--xs" %>
+      <span class="step-reference-link__label"><%= runner_link_label(step.reference_url) %></span>
+      <%= icon "arrow-top-right-on-square", class: "icon icon--xs" %>
+      <span class="sr-only">(opens in a new tab)</span>
+    </a>
+  </p>
 <% end %>
 
 <% if step.step_type != "message" && step.try(:description).present? %>
