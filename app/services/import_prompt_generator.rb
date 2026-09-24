@@ -166,7 +166,10 @@ class ImportPromptGenerator
       |---|---|---|
       #{rows.join("\n")}
 
-      Every step also accepts `help_text` and `reference_url`.
+      Every step also accepts two optional fields, shown above the step to the person running the workflow:
+
+      - `help_text` is the step's Guidance note: plain text, at most #{Step::HELP_TEXT_MAX_LENGTH} characters, shown as a warning callout. Use it for what they must not miss, such as "Do not process the refund before verifying the account."
+      - `reference_url` is the step's Reference link: a button that opens a tool or article they need at that step, such as a lookup page or knowledge-base entry. It must be an `http`, `https`, `tel` or `mailto` URL, or a path starting with `/`.
     MD
   end
 

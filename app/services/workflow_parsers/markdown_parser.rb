@@ -5,6 +5,15 @@ module WorkflowParsers
     # Valid step types for Markdown import
     VALID_MD_TYPES = %w[question action sub_flow message escalate resolve form].freeze
 
+    # Fields any step type can carry: the step panel's "Guidance note" and
+    # "Reference link". "Reference Link", not "Reference": a bare
+    # "Reference: KB 123" line was description text until now, and read as a
+    # link it would fail the whole import.
+    COMMON_FIELDS = {
+      help_text: 'Guidance(?:\s+Note)?',
+      reference_url: 'Reference\s+Link'
+    }.freeze
+
     def parse
       # Parse markdown content
       lines = @file_content.split("\n")
@@ -157,7 +166,7 @@ module WorkflowParsers
         end
 
         # Parse step content
-        if in_step && current_step
+        if in_step && current_step && !parse_common_field(current_step, stripped)
           parse_step_line(current_step, stripped)
         end
       end
@@ -197,6 +206,18 @@ module WorkflowParsers
         target_workflow_id: '',
         variable_mapping: {}
       }
+    end
+
+    # Returns the field it read, or nil when the line is not one of them.
+    def parse_common_field(current_step, stripped)
+      COMMON_FIELDS.each do |key, label|
+        match = stripped.match(/^\*\*#{label}\*\*:\s*(.+)$/i) || stripped.match(/^#{label}:\s*(.+)$/i)
+        next unless match
+
+        current_step[key] = match[1].strip
+        return key
+      end
+      nil
     end
 
     def parse_step_line(current_step, stripped)
@@ -419,7 +440,9 @@ module WorkflowParsers
       normalized = {
         type: step[:type] || 'action',
         title: step[:title] || "Step #{index + 1}",
-        description: step[:description].to_s.gsub(/\s+/, ' ').strip
+        description: step[:description].to_s.gsub(/\s+/, ' ').strip,
+        help_text: step[:help_text],
+        reference_url: step[:reference_url]
       }
 
       # Add type-specific fields

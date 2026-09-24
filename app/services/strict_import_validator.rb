@@ -573,6 +573,7 @@ class StrictImportValidator
       validate_fields(step, type, path)
       validate_required(step, type, path)
       validate_enums(step, path)
+      validate_guidance(step, path)
       validate_form_fields(step, type, path)
       validate_step_transitions(step, type, path)
     end
@@ -692,6 +693,31 @@ class StrictImportValidator
 
       add_error("#{path}.#{field}", "invalid_enum_value", value,
                 "#{value.inspect} is not a valid #{field}.", expected: values.call)
+    end
+  end
+
+  # The Guidance note and Reference link any step may carry. Neither was
+  # checked here, so a javascript: link previewed as valid and was refused at
+  # commit, and a note past the column's limit previewed and committed on
+  # SQLite where PostgreSQL would have raised. The link reads Step's own rule,
+  # so the dry run refuses exactly what a save does.
+  def validate_guidance(step, path)
+    note = step["help_text"]
+    if !note.nil? && !note.is_a?(String)
+      add_error("#{path}.help_text", "invalid_help_text", note,
+                "help_text must be a string, not #{note.class.name.downcase}.")
+    elsif note.to_s.length > Step::HELP_TEXT_MAX_LENGTH
+      add_error("#{path}.help_text", "invalid_help_text", note.truncate(60),
+                "help_text is at most #{Step::HELP_TEXT_MAX_LENGTH} characters; this one is #{note.length}.")
+    end
+
+    url = step["reference_url"]
+    if !url.nil? && !url.is_a?(String)
+      add_error("#{path}.reference_url", "invalid_reference_url", url,
+                "reference_url must be a string, not #{url.class.name.downcase}.")
+    elsif (problem = Step.reference_url_error(url))
+      add_error("#{path}.reference_url", "invalid_reference_url", url, "reference_url #{problem}.",
+                expected: Step::ALLOWED_URL_PROTOCOLS)
     end
   end
 

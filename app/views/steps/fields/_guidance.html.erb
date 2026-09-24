@@ -14,7 +14,7 @@
   <div class="step-disclosure__body">
     <div class="form-group">
       <%= form.label :help_text, "Guidance note", class: "form-label" %>
-      <%= form.text_field :help_text, class: "form-input", maxlength: 500,
+      <%= form.text_field :help_text, class: "form-input", maxlength: Step::HELP_TEXT_MAX_LENGTH,
           placeholder: "A coaching note the agent sees with this step, e.g. \"Ask this verbatim\"",
           data: { action: "input->inline-autosave#schedule" } %>
     </div>

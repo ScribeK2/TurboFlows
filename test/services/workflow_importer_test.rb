@@ -117,6 +117,81 @@ class WorkflowImporterTest < ActiveSupport::TestCase
     end
   end
 
+  # The step panel's Guidance note (help_text) and Reference link
+  # (reference_url) could only arrive through JSON or YAML; the CSV and
+  # Markdown parsers read neither, and the lenient path drops what it does not
+  # name, so a guidance column vanished without a word.
+  {
+    csv: "workflow_title,type,title,question,variable_name,options,guidance,reference_link,transitions\n" \
+         "Guide,question,Check plan,Which plan?,plan,Basic,Do not quote a price.,https://kb.example.com/plans,Done\n" \
+         "Guide,resolve,Done,,,,Log the call.,tel:+15551234567,\n",
+    markdown: "# Guide\n\n## Step 1: Check plan\nType: question\nQuestion: Which plan?\nVariable: plan\n" \
+              "Options: Basic\nGuidance: Do not quote a price.\n" \
+              "Reference Link: https://kb.example.com/plans\nTransitions: Step 2\n\n" \
+              "## Step 2: Done\nType: resolve\n**Guidance**: Log the call.\n" \
+              "**Reference Link**: tel:+15551234567\n"
+  }.each do |format, content|
+    test "#{format} import carries each step's guidance note and reference link" do
+      result = WorkflowImporter.new(@user, format: format, content: content).call
+
+      assert_predicate result, :success?, "import failed: #{result.errors.inspect}"
+      question = result.workflow.steps.find { |step| step.step_type == "question" }
+      resolve = result.workflow.steps.find { |step| step.step_type == "resolve" }
+      assert_equal "Do not quote a price.", question.help_text
+      assert_equal "https://kb.example.com/plans", question.reference_url
+      assert_equal "Log the call.", resolve.help_text
+      assert_equal "tel:+15551234567", resolve.reference_url
+    end
+  end
+
+  test "csv import accepts the help_text and reference_url column names too" do
+    content = "workflow_title,type,title,help_text,reference_url\n" \
+              "Guide,resolve,Done,Log the call.,https://kb.example.com/close\n"
+    result = WorkflowImporter.new(@user, format: :csv, content:).call
+
+    assert_predicate result, :success?, "import failed: #{result.errors.inspect}"
+    step = result.workflow.steps.first
+    assert_equal "Log the call.", step.help_text
+    assert_equal "https://kb.example.com/close", step.reference_url
+  end
+
+  # A Guidance line is a field now, not description text; the rest of the
+  # step's prose must still land where it did.
+  test "a markdown guidance line does not swallow the description around it" do
+    content = "# Guide\n\n## Step 1: Done\nType: resolve\nClose the ticket politely.\n" \
+              "Guidance: Log the call.\n"
+    result = WorkflowImporter.new(@user, format: :markdown, content:).call
+
+    assert_predicate result, :success?, "import failed: #{result.errors.inspect}"
+    step = result.workflow.steps.first
+    assert_equal "Log the call.", step.help_text
+    assert_includes step.description.to_plain_text, "Close the ticket politely."
+    assert_not_includes step.description.to_plain_text, "Log the call."
+  end
+
+  # Every other Markdown field label is case-insensitive; these match it.
+  test "markdown guidance and reference link labels ignore case" do
+    content = "# Guide\n\n## Step 1: Done\nType: resolve\nguidance note: Log the call.\n" \
+              "**REFERENCE LINK**: https://kb.example.com/close\n"
+    result = WorkflowImporter.new(@user, format: :markdown, content:).call
+
+    assert_predicate result, :success?, "import failed: #{result.errors.inspect}"
+    step = result.workflow.steps.first
+    assert_equal "Log the call.", step.help_text
+    assert_equal "https://kb.example.com/close", step.reference_url
+  end
+
+  test "a reference link the builder would refuse fails the import and writes nothing" do
+    content = "workflow_title,type,title,reference_link\n" \
+              "Bad Link,resolve,Done,javascript:alert(1)\n"
+
+    assert_no_difference -> { Workflow.count } do
+      result = WorkflowImporter.new(@user, format: :csv, content:).call
+      assert_not result.success?
+      assert_match(/reference url/i, result.errors.join(" "))
+    end
+  end
+
   test "returns errors for invalid JSON" do
     result = WorkflowImporter.new(@user, format: :json, content: "not json { at all").call
 
