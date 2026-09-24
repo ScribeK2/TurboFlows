@@ -21,7 +21,7 @@
       <%= hidden_field_tag :condition, nil, id: nil, data: { step_list_target: "doorCondition" } %>
       <button type="submit" class="dropdown__item builder__type-option"
               data-action="click->step-list#closeTypePicker">
-        <span class="builder__type-dot builder__type-dot--<%= st[:type] %>"></span>
+        <span class="builder__step-type-icon" aria-hidden="true"><%= step_type_svg_icon(st[:type], css_classes: "icon icon--xs") %></span>
         <span class="builder__type-name"><%= st[:name] %></span>
         <span class="builder__type-desc"><%= st[:desc] %></span>
       </button>

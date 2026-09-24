@@ -36,10 +36,11 @@
      data-action="click->builder#openStep"
      data-builder-url-param="<%= panel_edit_workflow_step_path(workflow, step) %>">
 
-  <span class="builder__step-badge builder__step-badge--<%= step.step_type %>"
-        aria-label="<%= type_label %>"
-        title="<%= type_label %>">
-    <%= ordinal %>
+  <%# The number is neutral and the type is the icon beside it: colour in the
+      list means a problem and nothing else (the 2026-09-24 look). %>
+  <span class="builder__step-badge"><%= ordinal %></span>
+  <span class="builder__step-type-icon" aria-hidden="true" title="<%= type_label %>">
+    <%= step_type_svg_icon(step.step_type, css_classes: "icon icon--xs") %>
   </span>
 
   <div class="list-row__body">
@@ -47,6 +48,10 @@
       <%= row_title %>
     </div>
   </div>
+
+  <%# Warning Icon (populated by step_warnings_controller.js). Beside the title
+      it explains, not at the far end of the row. %>
+  <span class="step-warning-icon" data-step-warnings-target="icon" data-step-uuid="<%= step.uuid %>" hidden></span>
 
   <%# More than one connection leads here. The outline shows the step once,
       under the door that reached it first; this says the others exist, and
@@ -73,9 +78,6 @@
       shows the number and colours the type, neither of which a screen reader
       heard. %>
   <span class="sr-only" id="<%= dom_id(step, :about) %>"><%= ["Step #{ordinal}", type_label, *parts].join(", ") %></span>
-
-  <%# Warning Icon (populated by step_warnings_controller.js) %>
-  <span class="step-warning-icon" data-step-warnings-target="icon" data-step-uuid="<%= step.uuid %>" hidden></span>
 
   <div class="list-row__actions builder__edit-only">
     <%= button_to workflow_step_path(workflow, step),

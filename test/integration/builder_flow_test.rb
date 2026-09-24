@@ -46,7 +46,9 @@ class BuilderFlowTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".builder__step-meta", text: "Start"
-    assert_select ".builder__outline-door--continue .builder__outline-chip", text: "Next"
+    # A wired Next draws nothing: its step is the very next row.
+    assert_select ".builder__outline-door--continue", count: 0
+    assert_select ".builder__step .list-row__title", text: "Verify Client Account"
   end
 
   test "adding a step via turbo stream appends step row" do

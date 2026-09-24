@@ -49,7 +49,7 @@ module Workflows
     # pressed it: another tab kept the stub, the old "ways in" and the old
     # numbers until something else broadcast (QA C-003, 2026-09-23).
     #
-    # Mutation check: drop the broadcast_step_list call in
+    # Mutation check: drop the broadcast_outline call in
     # respond_with_updated_steps - red.
     test "a fix reaches every other tab: the list and the existing-step dialog are broadcast" do
       q = Steps::Question.create!(workflow: @workflow, position: 0, title: "Ask", question: "What?", answer_type: "text")
@@ -65,12 +65,16 @@ module Workflows
       assert_response :success
       list = broadcasts.find { |stream| stream["action"] == "update" && stream["target"] == "steps-list" }
       assert list, "a fix must broadcast the list"
-      # Ask's Next door arrives wired (a step chip leading on to Wrapped up), not
-      # as the "→ add step" stub the other tab is still showing.
-      door = list.at_css(%([data-door-key="#{q.id}:Next"]))
-      assert door, "the broadcast list shows Ask's Next door"
-      assert_includes door["class"], "builder__outline-door--step", "the broadcast list carries the new connection"
+      # Ask's Next door arrives wired, not as the "→ add step" stub the other
+      # tab is still showing. A wired Next draws nothing (its step is the next
+      # row), so the connection shows as the stub gone and Wrapped up placed
+      # as Ask's next sibling rather than under Unconnected.
+      assert_nil list.at_css(%([data-door-key="#{q.id}:Next"])), "the broadcast list has no stub for Ask's Next"
       assert_not_includes list.to_html, "builder__door-stub", "no stub is left in the broadcast list"
+      following = list.at_css(%([data-node-uuid="#{q.uuid}"])).next_element
+      assert following, "Wrapped up follows Ask as its continuation"
+      assert_equal "Wrapped up", following.at_css(".list-row__title").text.strip,
+                   "the broadcast list carries the new connection"
       assert(broadcasts.any? { |stream| stream["target"] == "list-target-picker-options" },
              "the existing-step dialog's candidates ride along with the list")
     end
