@@ -86,7 +86,13 @@
   <div class="builder__toolbar">
     <span class="builder__toolbar-left" id="step-count">
       <span id="step-count-text"><%= pluralize(steps.size, "step") %></span>
-      <button type="button" class="builder__toolbar-issues" data-step-warnings-target="toolbarIssues" data-action="click->builder#openHealth" hidden aria-live="polite"></button>
+      <button type="button" class="builder__toolbar-issues" data-step-warnings-target="toolbarIssues" data-action="click->builder#openHealth" hidden></button>
+      <%# What a screen reader hears when the count changes: plain text, apart
+          from the button, which Orca read twice when it was the live region -
+          once as its name and once run together round the badge ("2errors").
+          aria-live, not role="status": Orca files a status's text under UI
+          and never announces it (heard 2026-09-23, Orca 50). %>
+      <span class="sr-only" aria-live="polite" aria-atomic="true" data-step-warnings-target="issuesStatus"></span>
     </span>
     <div class="builder__toolbar-right">
       <button class="btn btn--plain btn--sm"

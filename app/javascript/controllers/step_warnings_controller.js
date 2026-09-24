@@ -13,6 +13,7 @@ import { Controller } from "@hotwired/stimulus"
  *
  * Targets:
  *   toolbarIssues  — issue count in the toolbar
+ *   issuesStatus   — the same count as plain text, announced when it changes
  *   icon           — warning icon spans on step rows (one per row)
  */
 export default class extends Controller {
@@ -22,7 +23,7 @@ export default class extends Controller {
     mode: { type: String, default: "view" }
   }
 
-  static targets = ["toolbarIssues", "icon"]
+  static targets = ["toolbarIssues", "issuesStatus", "icon"]
 
   connect() {
     this.debounceTimer = null
@@ -168,27 +169,38 @@ export default class extends Controller {
     if (!this.hasToolbarIssuesTarget) return
 
     if (total > 0) {
-      // The count is the exceptional thing, so the pill goes on the number and
-      // the button itself stays quiet.
-      this.toolbarIssuesTarget.hidden = false
-      this.clearElement(this.toolbarIssuesTarget)
-
-      const pill = document.createElement("span")
-      // Errors lead, because they are what stops a publish, and the pill is
-      // amber when there is nothing blocking. Both counts are named because
-      // errors block a publish and warnings do not — the label says which is
-      // which rather than leaving a bare number to guess at.
-      pill.className = errors > 0 ? "badge badge--alert" : "badge badge--warning"
-      pill.textContent = errors > 0 ? errors : warnings
-      this.toolbarIssuesTarget.appendChild(pill)
-
+      const count = errors > 0 ? errors : warnings
       const label = errors > 0
         ? ` error${errors === 1 ? "" : "s"}${warnings > 0 ? `, ${warnings} warning${warnings === 1 ? "" : "s"}` : ""}`
         : ` warning${warnings === 1 ? "" : "s"}`
-      this.toolbarIssuesTarget.appendChild(document.createTextNode(label))
+      this.toolbarIssuesTarget.hidden = false
+
+      // Every autosave refetches this, so an unchanged count is left alone:
+      // rewritten, a screen reader re-read it after each save.
+      if (this.toolbarIssuesTarget.textContent === `${count}${label}`) return
+
+      // The count is the exceptional thing, so the pill goes on the number and
+      // the button itself stays quiet. Errors lead, because they are what stops
+      // a publish, and the pill is amber when there is nothing blocking. Both
+      // counts are named because errors block a publish and warnings do not —
+      // the label says which is which rather than leaving a bare number to
+      // guess at.
+      const pill = document.createElement("span")
+      pill.className = errors > 0 ? "badge badge--alert" : "badge badge--warning"
+      pill.textContent = count
+      this.toolbarIssuesTarget.replaceChildren(pill, document.createTextNode(label))
+      this.announceIssues(`${count}${label}`)
     } else {
       this.toolbarIssuesTarget.hidden = true
       this.clearElement(this.toolbarIssuesTarget)
+      // Only after a count: a workflow that opens clean says nothing.
+      if (this.hasIssuesStatusTarget && this.issuesStatusTarget.textContent) this.announceIssues("No issues")
+    }
+  }
+
+  announceIssues(text) {
+    if (this.hasIssuesStatusTarget && this.issuesStatusTarget.textContent !== text) {
+      this.issuesStatusTarget.textContent = text
     }
   }
 

@@ -97,6 +97,7 @@
      tabindex="0"
      aria-level="<%= level %>"
      aria-labelledby="<%= [dom_id(step, :title), (dom_id(step, :ways_in) if ways_in.any?)].compact.join(" ") %>"
+     aria-describedby="<%= dom_id(step, :about) %>"
      data-node-uuid="<%= step.uuid %>">
 
   <%= render "workflows/step_row", step: step, workflow: workflow, outline: outline %>
@@ -105,7 +106,12 @@
     <div class="builder__outline-branch" role="group">
       <% node.exits.each do |edge| %>
         <% if edge.kind == :step %>
-          <details class="builder__outline-fold" open data-fold-key="<%= step.uuid %>:<%= door_keys[edge.door.object_id] %>">
+          <%# role="none": a <details> is a container of its own to Chrome,
+              and a treeitem whose parent is not a tree or group loses its
+              role - Orca read the nested step as plain clickable text and
+              left focus mode, so the arrow keys stopped moving between steps.
+              The summary keeps its own disclosure role and state. %>
+          <details class="builder__outline-fold" role="none" open data-fold-key="<%= step.uuid %>:<%= door_keys[edge.door.object_id] %>">
             <summary class="builder__outline-door builder__outline-door--step builder__outline-door--fold"
                      data-door-key="<%= step.id %>:<%= door_keys[edge.door.object_id] %>">
               <span class="builder__type-dot builder__type-dot--<%= edge.target.step_type %>" aria-hidden="true"></span>
