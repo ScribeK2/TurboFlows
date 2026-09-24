@@ -124,10 +124,12 @@ Rails/Delegate:
   Exclude:
     - "app/models/workflow_template.rb"
 
-# Devise controller inherits `new` from parent class
+# Devise controller inherits `new` from parent class; PlayerController's
+# next_step, back, stop and show come from the RunnerShell concern
 Rails/LexicallyScopedActionFilter:
   Exclude:
     - "app/controllers/users/registrations_controller.rb"
+    - "app/controllers/player_controller.rb"
 
 # Needs a DB migration, not a code change (tracked separately)
 Rails/UniqueValidationWithoutIndex:
@@ -158,6 +160,9 @@ Metrics/PerceivedComplexity:
 
 Metrics/ModuleLength:
   Exclude:
+    # One seam for both runner shells by design: splitting it would bring back
+    # the drift it was built to stop.
+    - "app/controllers/concerns/runner_shell.rb"
     - "app/helpers/scenarios_helper.rb"
     - "app/helpers/workflows_helper.rb"
     - "test/support/performance_helper.rb"

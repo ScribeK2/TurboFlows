@@ -901,16 +901,13 @@ the run set only if it *is* a run.
      see §Surfaces Deliberately Excluded for why both were removed. -->
 <%= render "runner/thread",
       scenario: @scenario,
-      step: @parked ? nil : @current_step,
-      next_url: player_scenario_next_path(@scenario),
-      stop_url: player_scenario_stop_path(@scenario),
-      back_button: player_back_button(@scenario),
-      show_cancel: current_user.present?,
+      step: @open_step,
       errors: @step_errors || [],
+      field_errors: @field_errors || {},
       submitted: @submitted || {},
-      auto_advance: @current_step && !@parked ? runner_auto_advances?(@current_step) : false,
+      auto_advance: @open_step ? runner_auto_advances?(@open_step) : false,
       parked: @parked,
-      results_url: player_scenario_show_path(@scenario) %>
+      **runner_locals(@scenario) %>
 ```
 
 **The shell has no branches.** Everything route-shaped is a local, and the

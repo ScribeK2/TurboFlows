@@ -1,0 +1,14 @@
+<%#
+  The answer to next_step, for both shells (RunnerShell#respond_to_settled).
+  The shell supplies its URLs through runner_locals; the shared partial decides
+  what the thread does.
+%>
+<%= render "runner/advance_stream",
+      scenario: @scenario,
+      tail: @thread_tail || [],
+      step: @open_step,
+      parked: @scenario.parked?,
+      errors: @step_errors || [],
+      field_errors: @field_errors || {},
+      submitted: @submitted || {},
+      **runner_locals(@scenario) %>

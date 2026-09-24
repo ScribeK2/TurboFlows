@@ -263,6 +263,32 @@ class PlayerControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href=?]", player_scenario_stop_path(scenario), text: "Cancel", count: 0
   end
 
+  # Both shells render one back-button helper (RunnerHelper#runner_back_button)
+  # and differ only in the route each hands it, so this pins the Player's: the
+  # Scenario route is editors-only, and a Player Back aimed at it fails every
+  # CSR. Driven through a real answer so Back is on offer at all.
+  #
+  # Mutation check: point PlayerController#runner_back_path at
+  # back_scenario_path - red.
+  test "after an answer the player's Back posts to the player's own route" do
+    workflow = file_in_global(Workflow.create!(title: "Back route WF", user: @admin, status: "published"))
+    check = Steps::Action.create!(workflow: workflow, title: "Check the cable", position: 0)
+    done = Steps::Resolve.create!(workflow: workflow, title: "Fixed", position: 1, resolution_type: "success")
+    Transition.create!(step: check, target_step: done, position: 0)
+    workflow.update!(start_step: check)
+    WorkflowPublisher.publish(workflow, @admin)
+    sign_in @regular
+
+    post play_workflow_path(workflow)
+    scenario = Scenario.order(:id).last
+    post player_scenario_next_path(scenario), headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    get player_scenario_step_path(scenario)
+
+    assert_response :success
+    assert_select "a[href=?][data-turbo-method=post]", player_scenario_back_path(scenario), text: /Back/
+    assert_select "a[href=?]", back_scenario_path(scenario), count: 0
+  end
+
   # === Answer Type Rendering ===
 
   test "player step renders dropdown select for dropdown answer type" do

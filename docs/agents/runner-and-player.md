@@ -11,9 +11,21 @@
 run itself, shared by `ScenariosController` and `PlayerController`. It owns where
 a GET belongs (`runner_step_redirect`), which step is open
 (`assign_runner_step_state`), and what an answer does (`advance_runner`,
-`rewind_runner`, `respond_to_settled`). Template method pattern: each controller
-implements `runner_step_path` and `runner_results_path`, and nothing else about
-the run.
+`rewind_runner`, `respond_to_settled`). It also owns the actions that only move
+or report the run — `next_step`, `back`, `stop`, `show` — and the two streams
+they answer with, `runner/advance` and `runner/back`. Template method pattern:
+each controller loads `@scenario` its own way (who may open a run differs) and
+implements its routes — `runner_step_path`, `runner_results_path`,
+`runner_next_path`, `runner_stop_path`, `runner_back_path` — plus
+`runner_shows_cancel?`, and nothing else about the run. `runner_locals` turns
+those into the five route-shaped locals every runner render takes, so a view
+passes `**runner_locals(@scenario)` rather than spelling them out: six renders
+used to, and adding a local meant six edits.
+
+**Every run begins at `Scenario.start!`** (workflow, user, purpose, and
+`shared_access` for a share link), which creates the origin and settles it to
+the first step with a card. The builder's Run Scenario, the Player's start and a
+share link each wrote their own create and had drifted.
 
 It replaced `SubflowOrchestration`, which redirected around sub-flow boundaries
 after each outcome — `ScenarioSettler` crosses those boundaries itself and reports
@@ -43,7 +55,7 @@ and `show_shared` render `layouts/player`. See `PlayerController#resolve_layout`
 - `app/views/player/step.html.erb` — a thin shell: page chrome plus route-shaped locals, delegating everything below to `runner/_thread`
 - `app/views/player/show.html.erb` — completion screen with stats
 - `app/views/player/index.html.erb` — the workflow list. Renders in the **application** layout, and uses the app's `page-header-section` heading rather than a Player-specific one
-- `app/helpers/player_helper.rb` — `player_back_button` helper (uses Player routes, not Scenario routes)
+- Back is `RunnerHelper#runner_back_button(scenario, url)`, shared: each shell passes its own back route (`runner_back_path`). The Scenario route is editors-only, so a Player Back aimed at it fails every CSR; request tests in both controllers pin each shell's route
 - `app/assets/stylesheets/_player.css` — Player-specific layout and component styles
 
 **Key differences from Scenario mode:** only the shell differs. Both runners

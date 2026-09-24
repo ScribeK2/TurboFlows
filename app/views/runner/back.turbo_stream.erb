@@ -1,0 +1,9 @@
+<%# The answer to back, for both shells (RunnerShell#rewind_runner). %>
+<%= render "runner/thread_reset",
+      scenario: @scenario,
+      step: @open_step,
+      parked: @scenario.parked?,
+      errors: [],
+      submitted: {},
+      auto_advance: @open_step ? runner_auto_advances?(@open_step) : false,
+      **runner_locals(@scenario) %>

@@ -1,24 +1,4 @@
 module ScenariosHelper
-  # Back is a POST.
-  #
-  # It used to be a GET carrying ?back=true, which ScenariosController#step
-  # acted on by rewinding and saving. Turbo 8 prefetches links on hover by
-  # default and nothing here opts out, so hovering the control rewound the run —
-  # twice, if the pointer passed over it twice, since go_back is not idempotent.
-  #
-  # Hidden entirely when the run cannot be rewound: see Scenario#can_go_back?.
-  def scenario_back_button(scenario)
-    return nil unless scenario.can_go_back?
-
-    link_to back_scenario_path(scenario),
-            class: "btn btn--plain",
-            data: { turbo_method: :post } do
-      back_icon = '<svg class="icon icon--sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">' \
-                  '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>'
-      raw(back_icon) + "Back" # rubocop:disable Style/StringConcatenation -- SafeBuffer#+ preserves html_safe
-    end
-  end
-
   # Generates a dynamic summary sentence for completed scenarios.
   # E.g. "Completed 8 steps in 2m 14s -- 4 questions answered, 2 routing decisions -- resolved as Success"
   #

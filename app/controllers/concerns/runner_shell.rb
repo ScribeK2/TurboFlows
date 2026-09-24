@@ -4,10 +4,13 @@
 # PlayerController is the part that is genuinely different: their URLs, their
 # layouts, and who is allowed in.
 #
-# Each shell supplies the two URLs its runner lives at; everything else — where
-# a GET belongs, which step is open, how far an answer moves the run, whether it
-# crossed a sub-flow boundary, whether it finished — is decided here and by
-# ScenarioSettler, and is the same for both.
+# Each shell supplies the URLs its runner lives at and whether it offers Cancel;
+# everything else — where a GET belongs, which step is open, how far an answer
+# moves the run, whether it crossed a sub-flow boundary, whether it finished —
+# is decided here and by ScenarioSettler, and is the same for both. So are the
+# actions that only move or report the run (next_step, back, stop, show) and
+# the streams they answer with (runner/advance, runner/back): each shell used
+# to carry its own copy of all of them, differing only in route names.
 #
 # This replaces SubflowOrchestration, whose job was to redirect around sub-flow
 # boundaries after each outcome. The settler crosses those boundaries itself and
@@ -21,9 +24,46 @@
 module RunnerShell
   extend ActiveSupport::Concern
 
+  included do
+    helper_method :runner_locals
+  end
+
+  # Each shell loads @scenario in its own before_action, since who may open a
+  # run is one of the things that genuinely differs between them.
+
+  # Settles the answer and streams the run to wherever it came to rest. A
+  # stopped run gets no guard here: the settler halts it with :not_runnable
+  # and the shell says so in place, keeping the transcript on screen.
+  def next_step
+    advance_runner(@scenario, runner_answer, resolved_here: runner_resolved_here?)
+  end
+
+  def back
+    rewind_runner(@scenario)
+  end
+
+  # Stops the whole scenario tree, so report on the run the user actually
+  # started rather than the frame they happened to be inside. `run_origin`, not
+  # `root_scenario`: after a handoff the frame is its own root.
+  def stop
+    @scenario.stop!(@scenario.current_step_index)
+    redirect_to runner_results_path(@scenario.run_origin), notice: "Workflow stopped."
+  end
+
+  # A run's results live at its origin. Any other frame — a sub-flow, or the
+  # workflow a handoff moved the run to — sends the reader there, so an old link
+  # or a dashboard row cannot show one workflow's slice of the call as the call.
+  def show
+    origin = @scenario.run_origin
+    return redirect_to(runner_results_path(origin)) if origin != @scenario
+
+    @workflow = @scenario.workflow
+    @ending = @scenario.run_ending
+  end
+
   private
 
-  # Template methods — each including controller MUST define both.
+  # Template methods — each including controller MUST define all of them.
   #
   # Named for what they are rather than for sub-flows. The old pair was called
   # subflow_step_path / subflow_completion_path even though every caller used
@@ -36,6 +76,35 @@ module RunnerShell
 
   def runner_results_path(scenario)
     raise NotImplementedError, "#{self.class} must implement #runner_results_path"
+  end
+
+  def runner_next_path(scenario)
+    raise NotImplementedError, "#{self.class} must implement #runner_next_path"
+  end
+
+  def runner_stop_path(scenario)
+    raise NotImplementedError, "#{self.class} must implement #runner_stop_path"
+  end
+
+  def runner_back_path(scenario)
+    raise NotImplementedError, "#{self.class} must implement #runner_back_path"
+  end
+
+  def runner_shows_cancel?
+    raise NotImplementedError, "#{self.class} must implement #runner_shows_cancel?"
+  end
+
+  # The route-shaped locals every runner render takes (runner/_thread,
+  # _advance_stream, _thread_reset), built once. The six renders that need them
+  # each spelled out all five, twice over, so a new local meant six edits.
+  def runner_locals(scenario)
+    {
+      next_url: runner_next_path(scenario),
+      stop_url: runner_stop_path(scenario),
+      back_button: helpers.runner_back_button(scenario, runner_back_path(scenario)),
+      show_cancel: runner_shows_cancel?,
+      results_url: runner_results_path(scenario.run_origin)
+    }
   end
 
   # Where a GET on the runner belongs, or nil if it belongs right here.
@@ -180,7 +249,7 @@ module RunnerShell
       @workflow = scenario.root_workflow
       @open_step = nil
       flash.now[:alert] = "This run continued in another workflow, so it cannot go back from here."
-      return render :back, formats: [:turbo_stream]
+      return render "runner/back", formats: [:turbo_stream]
     end
 
     ScenarioNavigator.new(scenario).go_back
@@ -188,7 +257,7 @@ module RunnerShell
     @scenario = scenario
     @workflow = scenario.root_workflow
     @open_step = scenario.complete? || scenario.parked? ? nil : scenario.current_step
-    render :back, formats: [:turbo_stream]
+    render "runner/back", formats: [:turbo_stream]
   end
 
   # The runner answers the POST rather than redirecting away from it, which is
@@ -207,7 +276,7 @@ module RunnerShell
       @submitted = submitted_form_values
       @thread_tail = []
       @open_step = @scenario.current_step
-      render :advance, formats: [:turbo_stream], status: :unprocessable_content
+      render "runner/advance", formats: [:turbo_stream], status: :unprocessable_content
       return
     end
 
@@ -220,13 +289,13 @@ module RunnerShell
       flash.now[:alert] = halted_message(settled.outcome.reason)
       @thread_tail = []
       @open_step = @scenario.complete? || @scenario.parked? ? nil : @scenario.current_step
-      render :advance, formats: [:turbo_stream]
+      render "runner/advance", formats: [:turbo_stream]
       return
     end
 
     @thread_tail = helpers.runner_thread_entries(@scenario).drop(thread_before)
     @open_step = @scenario.complete? || @scenario.parked? ? nil : @scenario.current_step
-    render :advance, formats: [:turbo_stream]
+    render "runner/advance", formats: [:turbo_stream]
   end
 
   # A run that could not move, as opposed to one that was refused.
