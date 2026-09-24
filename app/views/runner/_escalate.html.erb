@@ -4,7 +4,9 @@
   <div class="step-content-box__body">
     <div class="scenario-content-layout">
       <div class="step-content-box__icon-wrap mr-3 mt-0.5">
-        <%= icon "exclamation-triangle", class: "icon icon--sm" %>
+        <%# Hand the call up a level: the builder's Escalate icon. The warning
+            triangle belongs to a step's guidance note. %>
+        <%= icon "arrow-up-circle", class: "icon icon--sm" %>
       </div>
       <div class="flex-1">
         <h3 class="step-content-box__label">Escalation Required</h3>

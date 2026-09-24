@@ -181,4 +181,16 @@ module RunnerHelper
       raw(back_icon) + "Back" # rubocop:disable Style/StringConcatenation -- SafeBuffer#+ preserves html_safe
     end
   end
+
+  # The label on a step's reference link button: the site it opens
+  # ("lookup.icann.org"), without www. or the path. These links are tools the
+  # agent opens mid-call - a ticket system, a lookup, an admin panel - and a
+  # button reading "More info" never said which. The full address stays in
+  # the button's title.
+  def runner_link_label(url)
+    host = URI.parse(url.to_s.strip).host
+    host.present? ? host.delete_prefix("www.") : "Open link"
+  rescue URI::InvalidURIError
+    "Open link"
+  end
 end

@@ -327,34 +327,57 @@
   gap: var(--space-2);
 }
 
-/* Coaching callout and reference link. Moved here from steps.css: only the
-   runner uses them, and Player's layout does not load steps.css, so help text
-   rendered unstyled there. */
-.step-help-text {
-  padding: var(--space-2) var(--space-3);
+/* Guidance callout and reference link. Here, not in steps.css: only the
+   runner uses them, and Player's layout does not load steps.css.
+
+   Guidance is what the agent must not miss, mostly hard rules ("Do not
+   process the delete"). It was grey text on a grey box, quieter than the
+   step's own instructions. Now the only amber on a runner card: the warning
+   tint, an amber edge, the triangle and a "Guidance" label, with the text in
+   full ink (2026-09-24). */
+.step-guidance {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-3);
+  background: var(--color-warning-soft);
+  border-left: 3px solid var(--color-warning);
+  border-radius: var(--radius);
+  color: var(--color-ink);
+}
+
+.step-guidance__icon {
+  flex: 0 0 auto;
+  margin-top: 0.125rem;
+  color: var(--color-warning);
+}
+
+.step-guidance__body { min-width: 0; }
+
+.step-guidance__label {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.step-guidance__text {
+  margin: 0;
   font-size: var(--text-sm);
   line-height: var(--line-height-normal);
-  color: var(--color-ink-subtle);
-  background: var(--color-canvas-alt);
-  border-radius: var(--radius);
-  margin-bottom: var(--space-3);
+  overflow-wrap: anywhere;
 }
 
-.step-reference-link {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: var(--text-xs);
-  font-weight: 500;
-  color: var(--color-primary-text);
-  text-decoration: none;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  transition: color var(--duration-fast) var(--ease-out);
-}
+/* The reference link is an outlined button naming the site it opens
+   (RunnerHelper#runner_link_label); the ↗ says it leaves the run. */
+.step-reference { margin: 0 0 var(--space-3); }
 
-.step-reference-link:hover {
-  color: var(--color-primary-text-hover);
-  text-decoration: underline;
+.step-reference-link { max-width: 100%; }
+
+.step-reference-link__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 }

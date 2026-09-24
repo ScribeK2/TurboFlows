@@ -113,4 +113,18 @@ class RunnerHelperTest < ActionView::TestCase
     assert_nil runner_back_button(scenario, player_scenario_back_path(scenario)),
                "offering Back on a run it cannot rewind is how the old rebuild lost data"
   end
+
+  # A reference link is a tool the agent opens mid-call, so its button names
+  # where it goes: the address's host, without www. or the path.
+  test "runner_link_label names the site a reference link opens" do
+    assert_equal "lookup.icann.org", runner_link_label("https://lookup.icann.org")
+    assert_equal "lookup.icann.org", runner_link_label("https://www.lookup.icann.org/en/lookup?name=example.com")
+    assert_equal "tickets.unigrouper.com", runner_link_label("http://tickets.unigrouper.com:8443/new")
+  end
+
+  test "runner_link_label falls back when there is no host to name" do
+    assert_equal "Open link", runner_link_label("not a url at all")
+    assert_equal "Open link", runner_link_label("https://")
+    assert_equal "Open link", runner_link_label("")
+  end
 end
