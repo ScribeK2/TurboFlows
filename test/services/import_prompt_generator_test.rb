@@ -71,4 +71,16 @@ class ImportPromptGeneratorTest < ActiveSupport::TestCase
     assert_match(/first one that matches wins/i, @prompt)
     assert_match(/no `condition`.*last/im, @prompt)
   end
+
+  # The prompt named `help_text` and `reference_url` and nothing more, so an
+  # agent had no way to know they are the builder's Guidance note and
+  # Reference link, or when a step wants one.
+  test "the prompt says what help_text and reference_url are for" do
+    line = @prompt.lines.find { |l| l.include?("`help_text`") && l.include?("Guidance") }
+    assert_not_nil line, "help_text is not tied to the Guidance note"
+    assert_includes line, "#{Step.columns_hash['help_text'].limit} characters"
+    assert @prompt.lines.any? { |l| l.include?("`reference_url`") && l.include?("Reference link") },
+           "reference_url is not tied to the Reference link"
+    assert_includes @prompt, "mailto"
+  end
 end

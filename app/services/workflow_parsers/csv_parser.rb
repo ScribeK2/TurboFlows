@@ -88,7 +88,11 @@ module WorkflowParsers
         id: row[:id] || row[:step_id], # Allow explicit ID in CSV
         type: step_type,
         title: row[:title] || row[:step_title] || "Step #{row_number}",
-        description: row[:description] || row[:step_description] || ''
+        description: row[:description] || row[:step_description] || '',
+        # The step panel's "Guidance note" and "Reference link", under either
+        # the panel's names or the model's.
+        help_text: (row[:guidance] || row[:help_text]).presence,
+        reference_url: (row[:reference_link] || row[:reference_url]).presence
       }
 
       # Flag steps that were auto-converted from deprecated types

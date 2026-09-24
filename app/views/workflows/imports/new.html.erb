@@ -189,7 +189,8 @@
               Nested arrays for options and transitions. Transitions name their
               target with <code>target_uuid</code>, which is the step's
               <code>id</code> — not the <code>target_id</code> the strict dialect
-              uses.
+              uses. Any step can carry a guidance note (<code>help_text</code>)
+              and a reference link (<code>reference_url</code>).
             </p>
             <pre class="code-block"><code>title: "Password Reset"
 description: "Send a customer a password reset link."
@@ -216,6 +217,8 @@ steps:
     type: action
     title: "Send the reset link"
     instructions: "Send a password reset link to the address on file."
+    help_text: "Never read the link aloud."
+    reference_url: "https://kb.example.com/password-reset"
     transitions:
       - target_uuid: "sent"
   - id: "sent"
@@ -231,13 +234,14 @@ steps:
               only required columns. Separate multiple transitions with
               semicolons, and write a conditional one as
               <code>target:condition</code>. Options are
-              <code>Label:value,Label2:value2</code> or a JSON array.
+              <code>Label:value,Label2:value2</code> or a JSON array. Any step can
+              carry a <code>guidance</code> note and a <code>reference_link</code>.
             </p>
-            <pre class="code-block"><code>workflow_title,id,type,title,question,answer_type,variable_name,options,instructions,content,resolution_type,transitions
-Password Reset,confirm,question,Confirm the account,Can the customer confirm the email on file?,yes_no,confirmed,,,,,reset:confirmed == 'yes';verify
-,verify,message,Verify identity first,,,,,,Ask two security questions before continuing.,,reset
-,reset,action,Send the reset link,,,,,Send a password reset link to the address on file.,,,sent
-,sent,resolve,Reset link sent,,,,,,,success,</code></pre>
+            <pre class="code-block"><code>workflow_title,id,type,title,question,answer_type,variable_name,options,instructions,content,resolution_type,guidance,reference_link,transitions
+Password Reset,confirm,question,Confirm the account,Can the customer confirm the email on file?,yes_no,confirmed,,,,,,,reset:confirmed == 'yes';verify
+,verify,message,Verify identity first,,,,,,Ask two security questions before continuing.,,,,reset
+,reset,action,Send the reset link,,,,,Send a password reset link to the address on file.,,,Never read the link aloud.,https://kb.example.com/password-reset,sent
+,sent,resolve,Reset link sent,,,,,,,success,,,</code></pre>
           </div>
 
           <div>
@@ -248,6 +252,8 @@ Password Reset,confirm,question,Confirm the account,Can the customer confirm the
               A condition must be written <code>(if …)</code> — parentheses
               without the <code>if</code> are read as a transition
               <em>label</em>, which imports without complaint and never branches.
+              Any step can carry a <code>Guidance:</code> note and a
+              <code>Reference Link:</code>.
             </p>
             <pre class="code-block"><code># Password Reset
 
@@ -268,6 +274,8 @@ Transitions: Send the reset link
 ## Send the reset link
 Type: action
 Instructions: Send a password reset link to the address on file.
+Guidance: Never read the link aloud.
+Reference Link: https://kb.example.com/password-reset
 Transitions: Reset link sent
 
 ## Reset link sent

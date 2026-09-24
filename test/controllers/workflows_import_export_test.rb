@@ -147,6 +147,9 @@ class WorkflowsImportExportTest < ActionDispatch::IntegrationTest
       assert_predicate result, :success?, "#{format} example failed: #{result.errors.inspect}"
       assert_empty result.warnings, "#{format} example imported with warnings"
       assert_not result.incomplete_steps?, "#{format} example has incomplete steps"
+      reset = result.workflow.steps.find { |step| step.title == "Send the reset link" }
+      assert_predicate reset.help_text, :present?, "#{format} example shows no guidance note"
+      assert_predicate reset.reference_url, :present?, "#{format} example shows no reference link"
     end
   end
 
