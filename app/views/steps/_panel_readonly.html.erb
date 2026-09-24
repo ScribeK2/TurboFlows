@@ -154,7 +154,7 @@
       <dl>
         <dt class="form-label">Other connections</dt>
         <% extras.each do |t| %>
-          <dd class="text-sm"><%= [t.label.presence, t.condition.presence].compact.join(" · ") %> → <%= t.target_step&.title.presence || "Untitled" %></dd>
+          <dd class="text-sm"><%= [t.label.presence, t.condition.presence].compact.join(" · ") %> → <%= t.target_step ? step_display_title(t.target_step) : "Untitled" %></dd>
         <% end %>
       </dl>
     <% end %>

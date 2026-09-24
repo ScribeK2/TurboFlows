@@ -14,11 +14,12 @@
     step with the title field is outside that field's own form. %>
 <turbo-frame id="builder-panel"
               data-builder-target="panel"
-              data-controller="panel-title">
+              data-controller="panel-title"
+              data-panel-title-fallback-value="Untitled <%= step.step_type.titleize %>">
   <div class="builder__panel-header">
     <div class="builder__panel-header-left">
       <span class="builder__panel-type-badge builder__panel-type-badge--<%= step.step_type %>"><%= step_type_label(step.step_type) %></span>
-      <strong data-panel-title-target="heading"><%= step.title.presence || "Untitled" %></strong>
+      <strong data-panel-title-target="heading"><%= step_display_title(step) %></strong>
       <%# What the panel's own autosave is doing, beside the step it describes.
           The builder header's #autosave-status is the WORKFLOW title's; step
           saves reported nowhere, which is how a refused one looked fine for

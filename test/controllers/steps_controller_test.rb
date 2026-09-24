@@ -800,4 +800,18 @@ class StepsControllerTest < ActionDispatch::IntegrationTest
 
     assert_select "dialog##{dom_id(handoff, :target_picker)}", false
   end
+
+  # The Target Workflow select was rendered with only its placeholder and
+  # filled by a fetch half a second later, so a Sub-Flow panel read "--
+  # Select a workflow --" first - and for good if the fetch failed (QA D-003).
+  # The saved target is now in the server's own render.
+  test "a Sub-Flow panel renders its saved target selected, before any script runs" do
+    target = Workflow.create!(title: "Check DNS Propagation", user: @editor, status: "published")
+    sub = Steps::SubFlow.create!(workflow: @workflow, position: 1, title: "Hand to DNS", sub_flow_workflow_id: target.id)
+
+    get panel_edit_workflow_step_path(@workflow, sub)
+
+    assert_response :success
+    assert_select "select[name='step[sub_flow_workflow_id]'] option[selected][value='#{target.id}']", text: "Check DNS Propagation"
+  end
 end

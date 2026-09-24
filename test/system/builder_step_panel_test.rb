@@ -251,6 +251,33 @@ class BuilderStepPanelTest < ApplicationSystemTestCase
     assert_selector ".builder__toolbar-issues", text: /error/
   end
 
+  # An option label with no spaces (a ticket id, a URL) never wrapped: the
+  # door row's label was flex: 0 0 auto, so it pushed "→ target", Change and
+  # Remove off the panel and grew a horizontal scrollbar (QA B-003).
+  #
+  # Mutation check: put `.step-doors__label` back to `flex: 0 0 auto` with no
+  # overflow-wrap - red.
+  test "a long unbroken answer label wraps inside its door row" do
+    long = "L" * 200
+    question = Steps::Question.create!(workflow: @workflow, title: "Pick one", question: "Pick one", position: 1,
+                                       answer_type: "multiple_choice", variable_name: "pick",
+                                       options: [{ "label" => long, "value" => "long" }, { "label" => "Short", "value" => "short" }])
+    Transition.create!(step: question, target_step: @resolve, condition: "pick == 'long'", position: 0)
+    visit_builder_in_edit_mode
+    open_step question
+
+    row = find(".step-doors__row", text: "L" * 20)
+    widths = page.evaluate_script(<<~JS)
+      (() => { const row = document.querySelectorAll(".step-doors__row")[0];
+               const panel = document.querySelector(".builder__panel").getBoundingClientRect();
+               const buttons = [...row.querySelectorAll("button")].map(b => Math.round(b.getBoundingClientRect().right));
+               return { scroll: row.scrollWidth, client: row.clientWidth, panelRight: Math.round(panel.right), buttons } })()
+    JS
+    assert row
+    assert_operator widths["scroll"], :<=, widths["client"], "the door row scrolls sideways: #{widths.inspect}"
+    widths["buttons"].each { |right| assert_operator right, :<=, widths["panelRight"], "a button sits past the panel: #{widths.inspect}" }
+  end
+
   private
 
   def visit_builder_in_edit_mode

@@ -27,12 +27,15 @@
       </div>
     </div>
 
+    <%= render "workflows/share_link_draft_hint", workflow: workflow %>
+
     <button type="button" class="btn btn--sm btn--negative"
             data-action="click->share-link#revoke">
       Revoke Share Link
     </button>
   <% else %>
     <p class="form-hint">Generate a share link to let anyone view this workflow without signing in.</p>
+    <%= render "workflows/share_link_draft_hint", workflow: workflow %>
     <button type="button" class="btn btn--sm btn--primary"
             data-action="click->share-link#generate">
       Generate Share Link

@@ -12,6 +12,14 @@
           class="form-select w-full"
           name="step[sub_flow_workflow_id]">
     <option value="">-- Select a workflow --</option>
+    <%# The saved target, selected in the server's own render: the full list
+        arrives by fetch (subflow-selector) half a second later, and until then
+        - or for good, if that fetch fails - the select read only its
+        placeholder (QA D-003). The fetch replaces these options, keeping the
+        selection. %>
+    <% if step.target_workflow %>
+      <option value="<%= step.target_workflow.id %>" selected><%= step.target_workflow.title %></option>
+    <% end %>
   </select>
   <%= form.hidden_field :sub_flow_workflow_id, data: { subflow_selector_target: "hiddenInput" } %>
 

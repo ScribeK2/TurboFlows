@@ -736,6 +736,12 @@ reopens from the row's own URL. A deleted step's row never returns, so a delete
 is unchanged. (The TODO this closed proposed "close only after two consecutive
 renders without the row" — that regresses the 404: a collaborator's delete is
 exactly ONE render for everyone else.)
+When the panel closes this way it also says so (`reportClosedStep`, QA C-005):
+if focus was in the panel it moves to the list's first step, and unless this
+tab deleted the step itself (`noteOwnDelete` records a Remove submitted here)
+a flash reads "The step you had open was removed by someone else…". The flash
+waits a second and shows only if the step is still missing, so a row lost to
+the broadcast race above, whose panel reopens, never claims a deletion.
 
 **Deleting the start step hands the start to its continuation.**
 `StepsController#destroy` calls `Workflow#destroy_step` (`WorkflowStartStep`).

@@ -163,4 +163,18 @@ class WorkflowsHelperTest < ActionView::TestCase
 
     assert_equal({ q.uuid => 1, exit_step.uuid => 2, trunk.uuid => 3 }, step_ordinals(workflow))
   end
+
+  # A blank-titled step read "Untitled Action" in the list, jump chips and the
+  # Use existing… dialog but "Untitled" in the panel's door rows (QA B-007).
+  # One helper names it everywhere.
+  test "a blank-titled step is named Untitled plus its type, the same everywhere" do
+    user = User.create!(email: "untitled-#{SecureRandom.hex(4)}@example.com", password: "password123456")
+    workflow = Workflow.create!(title: "Untitled names", user: user)
+    blank = Steps::Action.create!(workflow: workflow, title: "", position: 0)
+    named = Steps::Resolve.create!(workflow: workflow, title: "Done", position: 1)
+
+    assert_equal "Untitled Action", step_display_title(blank)
+    assert_equal "Done", step_display_title(named)
+    assert_equal "→ Untitled Action · 1", step_connection_summary([blank], { blank.uuid => 1 })
+  end
 end

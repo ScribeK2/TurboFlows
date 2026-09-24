@@ -101,11 +101,18 @@ module WorkflowsHelper
   # each read it separately, so fixing one left the others wrong.
   def step_connection_summary(targets, ordinals)
     titles = targets.map do |target|
-      name = target.title.presence || "Untitled"
+      name = step_display_title(target)
       n = ordinals[target.uuid]
       n ? "#{name} · #{n}" : name
     end
     "→ #{titles.join(', ')}"
+  end
+
+  # What a step is called wherever it is named: its title, or "Untitled"
+  # plus its type when it has none. The panel's door rows said "Untitled"
+  # while the list, jump chips and dialog said "Untitled Action" (QA B-007).
+  def step_display_title(step)
+    step.title.presence || "Untitled #{step.step_type.titleize}"
   end
 
   # Accessible names for a door's action buttons (steps/_doors) and the row
