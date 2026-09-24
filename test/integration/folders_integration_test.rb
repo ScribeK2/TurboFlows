@@ -52,7 +52,52 @@ class FoldersIntegrationTest < ActionDispatch::IntegrationTest
     get workflows_path(group_id: @group.id)
     assert_response :success
     assert_select "details.folder-accordion summary span", text: "Unfiled"
-    assert_match "Loose WF", response.body
+    unfiled = css_select("details.folder-accordion").find { |details| details.at_css("summary span")&.text&.strip == "Unfiled" }
+    assert_includes unfiled.text, "Loose WF"
+    assert_not_includes unfiled.text, "Filed WF", "a workflow in a folder is not also Unfiled"
+  end
+
+  # Unfiled was built from the group's raw workflows association, not the
+  # viewer's scope, so anyone who could open a group with folders saw every
+  # draft filed loose in it - other editors' included - and the status tab
+  # didn't narrow it (found by code reading 2026-09-12, reproduced 2026-09-24).
+  # It now lists what the rest of the page may show this viewer.
+  #
+  # Mutation check: build @unfiled_workflows from @selected_group.unfiled_workflows
+  # again in WorkflowsFilter#load_folder_data - red.
+  test "Unfiled shows only what the viewer may see" do
+    Folder.create!(name: "Filed", group: @group)
+    owner = User.create!(email: "folders_int_owner@example.com", password: "password123!",
+                         password_confirmation: "password123!", role: "editor")
+    their_draft = Workflow.create!(title: "Their loose draft", user: owner, status: "draft")
+    published = Workflow.create!(title: "Loose published", user: owner, status: "published")
+    [their_draft, published].each { |wf| GroupWorkflow.create!(group: @group, workflow: wf, is_primary: true) }
+
+    # An Editor: a Regular user never reaches /workflows (it redirects to /play).
+    viewer = User.create!(email: "folders_int_editor@example.com", password: "password123!",
+                          password_confirmation: "password123!", role: "editor")
+    UserGroup.create!(user: viewer, group: @group)
+    sign_in viewer
+
+    get workflows_path(group_id: @group.id)
+    assert_response :success
+    assert_match "Loose published", response.body
+    assert_no_match "Their loose draft", response.body, "another editor's draft is not listed"
+  end
+
+  test "Unfiled follows the status tab" do
+    Folder.create!(name: "Filed", group: @group)
+    draft = Workflow.create!(title: "Loose draft", user: @admin, status: "draft")
+    published = Workflow.create!(title: "Loose published", user: @admin, status: "published")
+    [draft, published].each { |wf| GroupWorkflow.create!(group: @group, workflow: wf, is_primary: true) }
+
+    get workflows_path(group_id: @group.id, status: "published")
+    assert_match "Loose published", response.body
+    assert_no_match "Loose draft", response.body
+
+    get workflows_path(group_id: @group.id, status: "draft")
+    assert_match "Loose draft", response.body
+    assert_no_match "Loose published", response.body
   end
 
   test "all workflows view shows flat list regardless of folders" do

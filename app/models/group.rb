@@ -507,12 +507,6 @@ class Group < ApplicationRecord
     user.groups.include?(self) || ancestors.any? { |ancestor| user.groups.include?(ancestor) }
   end
 
-  # Workflows in this group that sit in none of its folders.
-  def unfiled_workflows
-    workflows.joins(:group_workflows)
-             .where(group_workflows: { group_id: id, folder_id: nil })
-  end
-
   # { folder_id => workflows filed in it } for this group's folders, one query.
   def folder_workflow_counts
     group_workflows.where.not(folder_id: nil).group(:folder_id).count
