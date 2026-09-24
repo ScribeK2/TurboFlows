@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { revealRowInList } from "services/scroll"
+import { flashAlert } from "services/flash"
 
 // The step panel's inline-autosave waits this long after the last keystroke;
 // the header title matches it, so the two fields behave the same way.
@@ -8,6 +9,10 @@ const TITLE_SAVE_DEBOUNCE = 2000
 // builder.css's one-column breakpoint: below it the open panel takes the
 // list's place in the page instead of sitting beside it.
 const ONE_COLUMN = "(max-width: 640px)"
+
+// How long a panel closed on a missing row waits before saying its step was
+// removed - long enough for a row lost to a broadcast race to come back.
+const REMOVED_STEP_REPORT_DELAY = 1000
 
 // Manages the builder shell: panel open/close, mode toggle, keyboard shortcuts.
 export default class extends Controller {
@@ -20,6 +25,11 @@ export default class extends Controller {
   connect() {
     this.boundKeydown = this.handleKeydown.bind(this)
     document.addEventListener("keydown", this.boundKeydown)
+
+    // Which step THIS tab is deleting, so #syncSelectedRow can tell the
+    // author's own delete of the open step (no message) from someone else's.
+    this.boundNoteOwnDelete = this.noteOwnDelete.bind(this)
+    this.element.addEventListener("turbo:submit-start", this.boundNoteOwnDelete)
 
     // Which row is selected is decided here, once, from the open panel — not
     // by the server. A Turbo Stream response (create, a broadcast, a health
@@ -46,6 +56,7 @@ export default class extends Controller {
   }
 
   disconnect() {
+    this.element.removeEventListener("turbo:submit-start", this.boundNoteOwnDelete)
     document.removeEventListener("keydown", this.boundKeydown)
     document.removeEventListener("turbo:before-stream-render", this.boundWrapStreamRender)
     document.removeEventListener("turbo:frame-load", this.boundOnPanelFrameLoad)
@@ -121,8 +132,11 @@ export default class extends Controller {
 
     const row = this.rowFor(panelBody.dataset.stepId)
     if (!row) {
+      const stepId = panelBody.dataset.stepId
+      const hadFocus = this.panelTarget.contains(document.activeElement)
       this.closePanel()
-      this.closedOnMissingRowOf = panelBody.dataset.stepId
+      this.closedOnMissingRowOf = stepId
+      this.reportClosedStep(stepId, hadFocus)
       return
     }
     row.classList.add("builder__step--selected")
@@ -143,6 +157,36 @@ export default class extends Controller {
 
     const url = this.rowFor(stepId)?.dataset.builderUrlParam
     if (url) this.loadPanel(url)
+  }
+
+  // The panel closed because its step's row is gone. It used to vanish
+  // mid-typing without a word, focus dropping to <body> (QA C-005). Say why -
+  // unless this tab deleted the step itself, which needs no telling - and put
+  // focus back in the list if it was in the panel.
+  //
+  // The message waits a moment: a row can also go missing for an instant in a
+  // broadcast race (see above), and then the panel reopens by itself - it must
+  // not claim a deletion. Only if the step is still the one closed on, and
+  // still has no row, is it reported.
+  reportClosedStep(stepId, hadFocus) {
+    const someoneElse = this.ownDeleteOf !== stepId
+    this.ownDeleteOf = null
+    if (hadFocus) this.element.querySelector('#steps-list [role="treeitem"]')?.focus()
+    if (!someoneElse) return
+
+    setTimeout(() => {
+      if (this.closedOnMissingRowOf === stepId && !this.rowFor(stepId)) {
+        flashAlert("The step you had open was removed by someone else, so its panel closed.")
+      }
+    }, REMOVED_STEP_REPORT_DELAY)
+  }
+
+  noteOwnDelete(event) {
+    const form = event.target
+    if (!form.querySelector?.('input[name="_method"][value="delete"]')) return
+
+    const row = form.closest(".builder__step")
+    if (row) this.ownDeleteOf = row.dataset.stepId
   }
 
   rowFor(stepId) {

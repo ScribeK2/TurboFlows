@@ -165,6 +165,53 @@ class BuilderCollaborationTest < ApplicationSystemTestCase
     end
   end
 
+  # When another editor removes the step whose panel is open here, the panel
+  # has to close (there is nothing left to save to), but it vanished mid-typing
+  # with no word, and focus dropped to <body> (QA C-005, 2026-09-23). It now
+  # says why, and focus lands on the list.
+  #
+  # Mutation check: drop the flashAlert call in builder#syncSelectedRow - red.
+  test "a step removed by another editor closes this editor's panel with a message, and focus lands on the list" do
+    action = Steps::Action.create!(workflow: @workflow, title: "Send tech", position: 1)
+    Transition.create!(step: action, target_step: @resolve)
+    @workflow.update!(start_step: action)
+
+    sign_in_as @editor_one
+    visit_builder
+    open_step(action)
+    find_field("step[title]").click
+
+    using_session(:editor_two) do
+      sign_in_as @editor_two
+      visit_builder
+      row = find("#{STEP_ROW}[data-step-uuid='#{action.uuid}']")
+      row.hover
+      accept_confirm { row.find(".builder__step-delete").click }
+      assert_no_selector "#{STEP_ROW}[data-step-uuid='#{action.uuid}']", wait: 5
+    end
+
+    assert_no_selector "#builder-panel .builder__panel-body", wait: 5
+    assert_selector "#flash", text: "The step you had open was removed by someone else", wait: 5
+    assert page.evaluate_script("document.activeElement.getAttribute('role') === 'treeitem'"),
+           "focus lands on the list, not <body>"
+  end
+
+  test "deleting the step you have open yourself closes its panel without a message" do
+    action = Steps::Action.create!(workflow: @workflow, title: "Send tech", position: 1)
+    Transition.create!(step: action, target_step: @resolve)
+    @workflow.update!(start_step: action)
+
+    sign_in_as @editor_one
+    visit_builder
+    open_step(action)
+    row = find("#{STEP_ROW}[data-step-uuid='#{action.uuid}']")
+    row.hover
+    accept_confirm { row.find(".builder__step-delete").click }
+
+    assert_no_selector "#builder-panel .builder__panel-body", wait: 5
+    assert_no_selector "#flash", text: "removed by someone else"
+  end
+
   private
 
   def question_with_a_door
