@@ -780,11 +780,37 @@ class StrictImportValidator
       return
     end
 
-    return if transitions.is_a?(Array) && transitions.any?
+    if transitions.is_a?(Array) && transitions.any?
+      return validate_transition_order(transitions, path)
+    end
 
     add_error("#{path}.transitions", "missing_transitions", transitions,
               "Every step except resolve needs at least one transition. " \
               "This dialect does not infer them.")
+  end
+
+  # StepResolver tries a step's transitions in file order and takes the first
+  # match, and one with no condition always matches - so everything after it is
+  # a branch the runner never reaches. The builder keeps a default last on every
+  # write (Transition.settle_positions) and only warns about a stored one
+  # (:shadowed_connection), which does not stop a publish; import was the one
+  # writer that could produce it. Refused rather than re-sorted, because this
+  # dialect does not guess at what a file meant. A second default is dead too.
+  def validate_transition_order(transitions, path)
+    default_index = nil
+
+    transitions.each_with_index do |transition, t_index|
+      next unless transition.is_a?(Hash)
+
+      if default_index
+        add_error("#{path}.transitions[#{t_index}]", "shadowed_transition", transition,
+                  "transitions[#{default_index}] has no condition, so it always matches and " \
+                  "the runner never reaches this one. Put conditional transitions first " \
+                  "and the one with no condition last; a step needs at most one.")
+      elsif transition["condition"].blank?
+        default_index = t_index
+      end
+    end
   end
 
   def validate_transition_targets(steps, known_ids, workflow_path)
