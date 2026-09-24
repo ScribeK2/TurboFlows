@@ -69,6 +69,11 @@
     <span class="builder__step-meta"><%= parts.join(" · ") %></span>
   <% end %>
 
+  <%# The treeitem's description (_step_node's aria-describedby): the badge
+      shows the number and colours the type, neither of which a screen reader
+      heard. %>
+  <span class="sr-only" id="<%= dom_id(step, :about) %>"><%= ["Step #{ordinal}", type_label, *parts].join(", ") %></span>
+
   <%# Warning Icon (populated by step_warnings_controller.js) %>
   <span class="step-warning-icon" data-step-warnings-target="icon" data-step-uuid="<%= step.uuid %>" hidden></span>
 

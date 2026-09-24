@@ -251,6 +251,52 @@ class BuilderStepPanelTest < ApplicationSystemTestCase
     assert_selector ".builder__toolbar-issues", text: /error/
   end
 
+  # Every autosave refetches the issue count. The count button was the live
+  # region, emptied and refilled a piece at a time on each fetch, so Orca
+  # re-read an unchanged count after every save - twice, the second time as
+  # "2errors, 4 warnings" (heard 2026-09-23). Now the button changes only when
+  # the count does, in one write, and a plain-text status beside it is what
+  # gets announced.
+  #
+  # Mutation check: drop the unchanged-label early return in
+  # step_warnings#renderToolbarIssues - red on the rename; put back the
+  # clear-then-append writes - red on the count change; drop the
+  # announceIssues call - red on the status.
+  test "the toolbar's issue count is rewritten only when it changes, and in one write" do
+    dangling = Steps::Action.create!(workflow: @workflow, title: "Dangling action", position: 1)
+    visit_builder_in_edit_mode
+    assert_selector ".builder__toolbar-issues", text: /error/
+
+    execute_script(<<~JS)
+      window.issueWrites = 0
+      window.healthFetches = 0
+      const observer = new MutationObserver(records => { window.issueWrites += records.length })
+      document.querySelectorAll(".builder__toolbar-issues, .builder__toolbar [aria-live]").forEach(element =>
+        observer.observe(element, { childList: true, characterData: true, subtree: true }))
+      const fetch = window.fetch
+      window.fetch = (...args) => fetch(...args).then(response => {
+        if (String(args[0]).includes("/health")) window.healthFetches += 1
+        return response
+      })
+    JS
+
+    open_step dangling
+    fill_in "step[title]", with: "Dangling action, renamed"
+    assert_eventually(timeout: 5) { page.evaluate_script("window.healthFetches") >= 1 }
+    assert_equal 0, page.evaluate_script("window.issueWrites"), "an unchanged count is not rewritten"
+
+    before = page.evaluate_script("document.querySelector('.builder__toolbar-issues').textContent")
+    fetches = page.evaluate_script("window.healthFetches")
+    Steps::Action.create!(workflow: @workflow, title: "Another dangling action", position: 2)
+    page.evaluate_script("document.dispatchEvent(new CustomEvent('health:check-needed'))")
+    assert_eventually(timeout: 5) { page.evaluate_script("window.healthFetches") > fetches }
+    assert_not_equal before, find(".builder__toolbar-issues").text
+    assert_equal 2, page.evaluate_script("window.issueWrites"), "a new count lands in one write, and one announcement"
+    assert_match(/\A\d+ errors?, \d+ warnings?\z/,
+                 page.evaluate_script("document.querySelector('.builder__toolbar [aria-live]').textContent"),
+                 "the status reads as one sentence")
+  end
+
   # An option label with no spaces (a ticket id, a URL) never wrapped: the
   # door row's label was flex: 0 0 auto, so it pushed "→ target", Change and
   # Remove off the panel and grew a horizontal scrollbar (QA B-003).

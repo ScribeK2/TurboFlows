@@ -128,7 +128,71 @@ class BuilderOutlineKeyboardTest < ApplicationSystemTestCase
            "Escape returns focus to the stub"
   end
 
+  # Heard through Orca (2026-09-23). A step inside a fold sat in a <details>,
+  # which Chrome exposes as a container of its own between the branch's group
+  # and the step - so the treeitem had no tree around it, Orca read it as
+  # "Working 2 ways in. clickable." and dropped into Browse mode, where the
+  # arrow keys read text instead of moving between steps. The tree is read
+  # from Chrome's accessibility tree, as a screen reader gets it.
+  #
+  # Mutation check: drop role="none" from the fold's <details> - red.
+  test "a step inside a fold is a treeitem in its branch's group, as a screen reader reads it" do
+    toy_graph
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 5, wait: 5
+
+    working = ax_treeitem("Working")
+    assert_equal %w[group treeitem], ax_ancestor_roles(working).first(2),
+                 "Working's parent is its branch's group, whose parent is the step it branches from"
+    assert_equal "2", ax_property(working, "level")
+  end
+
+  # Orca read a step's title and nothing else: not its number, which the rest
+  # of the builder names steps by ("Yes → Working · step 4"), not its type,
+  # and not Start. They are the step's description, so the name stays short.
+  #
+  # Mutation check: drop aria-describedby from the treeitem - red.
+  test "a step's number, type and Start are its description" do
+    toy_graph
+    visit workflow_path(@workflow, edit: true)
+    assert_selector STEP_ROW, count: 5, wait: 5
+
+    assert_equal "Step 1, Question, Start", ax_treeitem("Power light green?").dig("description", "value")
+    assert_equal "Step 4, Resolve, Terminal", ax_treeitem("Working").dig("description", "value")
+  end
+
   private
+
+  # The Chrome accessibility tree's treeitem whose name starts with +title+.
+  def ax_treeitem(title)
+    nodes = ax_nodes
+    nodes.find { |node| node.dig("role", "value") == "treeitem" && node.dig("name", "value").to_s.start_with?(title) } ||
+      flunk("no treeitem named #{title.inspect} in the accessibility tree")
+  end
+
+  # Roles of the nodes a screen reader sees above +node+, nearest first. Chrome
+  # keeps ignored and generic nodes in the full tree; neither is announced.
+  def ax_ancestor_roles(node)
+    by_id = ax_nodes.index_by { |each| each["nodeId"] }
+    roles = []
+    parent = by_id[node["parentId"]]
+    while parent
+      role = parent.dig("role", "value")
+      roles << role unless parent["ignored"] || %w[generic none].include?(role)
+      break if role == "tree"
+
+      parent = by_id[parent["parentId"]]
+    end
+    roles
+  end
+
+  def ax_property(node, name)
+    node["properties"].to_a.find { |property| property["name"] == name }&.dig("value", "value")&.to_s
+  end
+
+  def ax_nodes
+    page.driver.browser.execute_cdp("Accessibility.getFullAXTree")["nodes"]
+  end
 
   def focused_node_uuid
     page.evaluate_script("document.activeElement.dataset.nodeUuid")
