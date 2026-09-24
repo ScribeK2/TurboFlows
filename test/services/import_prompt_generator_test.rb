@@ -64,4 +64,11 @@ class ImportPromptGeneratorTest < ActiveSupport::TestCase
     assert_includes @prompt, "reaches"
     assert_includes @prompt, "#{SubflowValidator::MAX_DEPTH} levels deep"
   end
+
+  # StrictImportValidator refuses a transition listed after one with no
+  # condition (shadowed_transition); an agent has nowhere else to learn why.
+  test "the prompt says transitions are tried in order and the default goes last" do
+    assert_match(/first one that matches wins/i, @prompt)
+    assert_match(/no `condition`.*last/im, @prompt)
+  end
 end

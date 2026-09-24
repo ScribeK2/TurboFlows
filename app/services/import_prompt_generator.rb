@@ -184,6 +184,11 @@ class ImportPromptGenerator
       another step's `id` in the same workflow. A transition never crosses from
       one workflow to another — that is what `sub_flow` is for.
 
+      **Transitions are tried in order, and the first one that matches wins.**
+      One with no `condition` always matches, so it is the fallback and goes
+      last — anything listed after it could never be reached, and the import
+      refuses it. A step has at most one transition with no `condition`.
+
       **Loops are allowed** — "didn't work, try again" is a normal shape. What is
       refused is a loop with no way out: from every step, some path must still be
       able to reach a `resolve` step.
