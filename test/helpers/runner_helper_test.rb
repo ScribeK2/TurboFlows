@@ -82,4 +82,35 @@ class RunnerHelperTest < ActionView::TestCase
     assert_equal ["Resolution notes are required"],
                  runner_unattached_errors(nil, ["Resolution notes are required"], {})
   end
+
+  test "runner_back_button posts to the shell's back route rather than linking to a GET" do
+    scenario = Scenario.create!(
+      workflow: @workflow, user: @user, purpose: "simulation", inputs: {}, results: {},
+      execution_path: [{ "step_title" => "S1", "step_type" => "question", "results_delta" => {} }]
+    )
+
+    [back_scenario_path(scenario), player_scenario_back_path(scenario)].each do |url|
+      result = runner_back_button(scenario, url)
+
+      assert_includes result, "Back"
+      assert_includes result, url
+      assert_includes result, "post", "a GET that rewinds the run is fired by Turbo's hover prefetch"
+    end
+  end
+
+  test "runner_back_button is hidden when there is nothing to go back to" do
+    scenario = Scenario.create!(workflow: @workflow, user: @user, purpose: "live", execution_path: [], inputs: {})
+
+    assert_nil runner_back_button(scenario, player_scenario_back_path(scenario))
+  end
+
+  test "runner_back_button is hidden for a run whose entries predate the undo log" do
+    scenario = Scenario.create!(
+      workflow: @workflow, user: @user, purpose: "live", inputs: {},
+      execution_path: [{ "step_title" => "S1", "step_type" => "question" }]
+    )
+
+    assert_nil runner_back_button(scenario, player_scenario_back_path(scenario)),
+               "offering Back on a run it cannot rewind is how the old rebuild lost data"
+  end
 end

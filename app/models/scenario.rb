@@ -89,9 +89,9 @@ class Scenario < ApplicationRecord
   #
   # The column, its index and its foreign key existed for a long time and nothing
   # ever wrote them — 0 of 120 rows in a dev database — so a schema that claimed
-  # to record provenance did not. A callback rather than four assignments at the
-  # Scenario.create! sites (two in PlayerController, ExecutionsController, and the
-  # sub-flow child in ScenarioStepProcessor), because a child scenario runs a
+  # to record provenance did not. A callback rather than assignments at the two
+  # create sites (Scenario.start! and the sub-flow child in
+  # ScenarioStepProcessor), because a child scenario runs a
   # DIFFERENT workflow and has to record that workflow's version, and a rule
   # spread across four callers is a rule that drifts.
   #
@@ -103,6 +103,26 @@ class Scenario < ApplicationRecord
   # Valid purposes
   PURPOSES = %w[simulation live].freeze
   validates :purpose, inclusion: { in: PURPOSES }, allow_nil: false
+
+  # Begins a run of +workflow+ and returns the frame it opens on.
+  #
+  # Every run starts here: the builder's Run Scenario (a simulation), the
+  # Player, and a share link (live, shared_access, and user nil for an anonymous
+  # visitor - never the owner). The three used to write their own create, and
+  # had drifted: one never named its purpose, one set started_at the callback
+  # already sets.
+  #
+  # Settled before it is returned: nothing POSTs between starting a run and its
+  # first GET, and a workflow whose first step is a sub-flow opens on a node
+  # with no card, so the frame to show may be the sub-flow's.
+  def self.start!(workflow, user:, purpose:, shared_access: false)
+    run = create!(
+      workflow: workflow, user: user, purpose: purpose, shared_access: shared_access,
+      current_node_uuid: workflow.start_node&.uuid,
+      execution_path: [], results: {}, inputs: {}
+    )
+    ScenarioSettler.new(run).settle_from_start
+  end
 
   # Valid outcomes
   # "transferred" is the handoff ending. It lives on `outcome`, not `status`,

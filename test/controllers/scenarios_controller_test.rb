@@ -14,6 +14,27 @@ class ScenariosControllerTest < ActionDispatch::IntegrationTest
     sign_in @user
   end
 
+  # The Scenario half of the back-route pin in PlayerControllerTest.
+  #
+  # Mutation check: point ScenariosController#runner_back_path at
+  # player_scenario_back_path - red.
+  test "after an answer the scenario's Back posts to the scenario's own route" do
+    workflow = Workflow.create!(title: "Back route WF", user: @user)
+    check = Steps::Action.create!(workflow: workflow, title: "Check the cable", position: 0)
+    done = Steps::Resolve.create!(workflow: workflow, title: "Fixed", position: 1, resolution_type: "success")
+    Transition.create!(step: check, target_step: done, position: 0)
+    workflow.update!(start_step: check)
+
+    post workflow_execution_path(workflow)
+    scenario = Scenario.order(:id).last
+    post next_step_scenario_path(scenario), headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    get step_scenario_path(scenario)
+
+    assert_response :success
+    assert_select "a[href=?][data-turbo-method=post]", back_scenario_path(scenario), text: /Back/
+    assert_select "a[href=?]", player_scenario_back_path(scenario), count: 0
+  end
+
   test "user cannot view another user's scenario" do
     other_user = User.create!(
       email: "other-sim-#{SecureRandom.hex(4)}@example.com",
