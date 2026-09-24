@@ -236,6 +236,18 @@ class StepsController < ApplicationController
             )
           end
 
+          # Every other field's baseline moves on the client once a save lands
+          # (inline-autosave#adoptSentValues). Rich text's is server-rendered,
+          # so the server moves it - to what it stored, which is what the next
+          # save is compared against, however Lexxy wrote the HTML it sent.
+          if saved_rich_text?
+            streams << turbo_stream.replace(
+              dom_id(@step, :rich_text_baselines),
+              partial: "steps/rich_text_baselines",
+              locals: { step: @step }
+            )
+          end
+
           streams << stale_panel_flash_stream if healing_stale_panel?
 
           render turbo_stream: streams
@@ -581,6 +593,12 @@ class StepsController < ApplicationController
           empty_string_as_nil(type.cast(@step.read_attribute(field)))
       end
     end
+  end
+
+  # Only a save that declared a rich-text field touched: the baselines are a
+  # full copy of each body, and most saves are some other field.
+  def saved_rich_text?
+    dirty_field_names&.any? { |field| rich_text_field?(field) }
   end
 
   def empty_string_as_nil(value)

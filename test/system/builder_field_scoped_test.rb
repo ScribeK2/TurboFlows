@@ -109,6 +109,50 @@ class BuilderFieldScopedTest < ApplicationSystemTestCase
     assert_includes action.reload.instructions.body.to_html, "Typed instructions"
   end
 
+  # The phantom-conflict case again, for rich text, whose baseline is a
+  # server-rendered hidden input rather than the input's own value. Nothing
+  # moved it after a save, so every second save of Instructions in one panel
+  # opening was refused as "someone else changed instructions" with nobody
+  # else there - reported from prod by a lone author on a draft (2026-09-23).
+  test "a second rich text edit by the same author saves" do
+    action = Steps::Action.create!(workflow: @workflow, position: 1, title: "Do the thing")
+    Transition.create!(step: @step, target_step: action, position: 0)
+
+    visit_builder_in_edit_mode
+    open_step(action)
+
+    find("lexxy-editor").click
+    send_keys("First words")
+    assert_selector "[data-autosave-status]", text: "Saved", wait: 10
+
+    send_keys(" and more")
+    assert_selector "[data-autosave-status]", text: "Saved", wait: 10
+    assert_no_selector "#flash", text: /someone else changed/i
+
+    assert_includes action.reload.instructions.body.to_html, "First words and more"
+  end
+
+  # The other half of the fix above: the baseline follows the SERVER after this
+  # author's save, so a real second writer after it is still caught.
+  test "a rich text edit someone else overwrote after this author's save is refused" do
+    action = Steps::Action.create!(workflow: @workflow, position: 1, title: "Do the thing")
+    Transition.create!(step: @step, target_step: action, position: 0)
+
+    visit_builder_in_edit_mode
+    open_step(action)
+
+    find("lexxy-editor").click
+    send_keys("First words")
+    assert_selector "[data-autosave-status]", text: "Saved", wait: 10
+
+    action.reload.update!(instructions: "<p>Theirs, saved elsewhere</p>")
+
+    send_keys(" and more")
+    assert_selector "[data-autosave-status]", text: "Not saved", wait: 10
+    assert_selector "#flash", text: /someone else changed instructions/i
+    assert_includes action.reload.instructions.body.to_html, "Theirs, saved elsewhere"
+  end
+
   # The baseline for rich text is server-rendered, so an empty body must not
   # conflict with the editor's own "<p><br></p>" reading of it.
   test "a rich text field with an empty body saves on the first edit" do

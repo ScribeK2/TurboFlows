@@ -1,0 +1,12 @@
+<%# The rich-text conflict baselines (see steps/_panel_edit). Its own partial
+    because StepsController#update streams it back after a save that wrote rich
+    text: the panel is not re-rendered on save, so without that the baseline
+    stayed at what the panel opened with, and every second save of the field
+    was refused as someone else's change. %>
+<div id="<%= dom_id(step, :rich_text_baselines) %>" hidden>
+  <% StepFieldMap.rich_text_fields(step.step_type).each do |rich_field| %>
+    <%= hidden_field_tag "step[rendered][#{rich_field}]",
+                         step.public_send(rich_field)&.body&.to_html.to_s,
+                         id: nil, data: { autosave_rendered: "" } %>
+  <% end %>
+</div>

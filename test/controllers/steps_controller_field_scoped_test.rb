@@ -128,6 +128,47 @@ class StepsControllerFieldScopedTest < ActionDispatch::IntegrationTest
     assert_includes action.reload.instructions.body.to_html, "Theirs"
   end
 
+  # The panel is not re-rendered on save and its rich-text baseline is a hidden
+  # input the server rendered, so the server has to move it. Without this every
+  # second save of Instructions in one panel opening was refused against the
+  # body the author's own first save had replaced.
+  test "a rich text save streams back the stored body as the next save's baseline" do
+    action = Steps::Action.create!(workflow: @workflow, position: 1, title: "Do it")
+
+    patch workflow_step_path(@workflow, action),
+          params: { step: { instructions: "<p>First</p>", dirty_fields: ["instructions"],
+                            rendered: { instructions: "" } } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    target = ActionView::RecordIdentifier.dom_id(action, :rich_text_baselines)
+    assert_select "turbo-stream[action='replace'][target='#{target}'] template" do |templates|
+      baseline = Nokogiri::HTML.fragment(templates.first.inner_html)
+                               .at_css("input[name='step[rendered][instructions]']")["value"]
+
+      # The promise: that baseline carries the next save through.
+      patch workflow_step_path(@workflow, action),
+            params: { step: { instructions: "<p>First and more</p>", dirty_fields: ["instructions"],
+                              rendered: { instructions: baseline } } },
+            headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+
+    assert_response :success
+    assert_includes action.reload.instructions.body.to_html, "First and more"
+  end
+
+  test "a save that touched no rich text does not stream the baselines" do
+    action = Steps::Action.create!(workflow: @workflow, position: 1, title: "Do it")
+
+    patch workflow_step_path(@workflow, action),
+          params: { step: { title: "Renamed", dirty_fields: ["title"], rendered: { title: "Do it" } } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    assert_select "turbo-stream[target='#{ActionView::RecordIdentifier.dom_id(action, :rich_text_baselines)}']",
+                  count: 0
+  end
+
   # The refusal tells the author "change it again to save over theirs". Tested in
   # a browser, that promise was false: nothing updated the panel's baseline, so
   # every later attempt was refused against a value the database had left behind
