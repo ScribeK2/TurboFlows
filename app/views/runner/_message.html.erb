@@ -8,7 +8,9 @@
       </div>
       <div class="flex-1">
         <h3 class="step-content-box__label">Message</h3>
-        <% if step_field(step, 'content').present? %>
+        <%# The rich text, not step_field's HTML string: a message cleared to
+            an empty paragraph is no content (see runner/_action). %>
+        <% if step.try(:content).present? %>
           <div class="text-sm"><%= render_step_content(step, 'content', results) %></div>
         <% else %>
           <p class="text-sm italic">No message content provided.</p>

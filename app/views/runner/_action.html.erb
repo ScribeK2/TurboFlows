@@ -1,4 +1,10 @@
 <%# locals: step, results, next_url, stop_url, back_button, show_cancel %>
+<%# Only when there are instructions: an Action without them drew the
+    heading, icon and copy button over nothing. An editor cleared to an empty
+    paragraph counts as none; an embedded image alone counts as some (its
+    plain text is the file name). Ask the rich text, not step_field: that
+    returns the stored HTML, and "<p><br></p>" is not a blank string. %>
+<% if step.try(:instructions).present? %>
 <div class="step-content-box step-content-box--action mb-4" data-controller="clipboard">
   <div class="step-content-box__accent"></div>
   <div class="step-content-box__body">
@@ -22,6 +28,7 @@
     </div>
   </div>
 </div>
+<% end %>
 
 <%= form_with url: next_url, method: :post, data: { scenario_step_target: "form" } do |form| %>
   <%= form.hidden_field :answer, value: "" %>
