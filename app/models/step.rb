@@ -17,8 +17,12 @@ class Step < ApplicationRecord
 
   ALLOWED_URL_PROTOCOLS = %w[http https tel mailto].freeze
 
+  # The column is varchar(500); PostgreSQL raises past it and SQLite does not.
+  HELP_TEXT_MAX_LENGTH = 500
+
   validates :uuid, presence: true, uniqueness: { scope: :workflow_id }
   validates :position, presence: true
+  validates :help_text, length: { maximum: HELP_TEXT_MAX_LENGTH }
   validate :validate_reference_url_protocol
 
   attr_readonly :uuid
@@ -36,6 +40,18 @@ class Step < ApplicationRecord
     "sub_flow" => "Steps::SubFlow",
     "form" => "Steps::Form"
   }.freeze
+
+  # Why a reference link would be refused, or nil when it is fine. Shared with
+  # StrictImportValidator so the import dry run refuses exactly what a save does.
+  def self.reference_url_error(url)
+    return if url.blank?
+    return if url.start_with?("/")
+
+    uri = URI.parse(url)
+    "must use http, https, tel, or mailto protocol" unless ALLOWED_URL_PROTOCOLS.include?(uri.scheme&.downcase)
+  rescue URI::InvalidURIError
+    "is not a valid URL"
+  end
 
   def self.class_for_type(type)
     STEP_TYPE_MAP.fetch(type.to_s) { "Steps::Action" }.constantize
@@ -132,15 +148,8 @@ class Step < ApplicationRecord
   end
 
   def validate_reference_url_protocol
-    return if reference_url.blank?
-    return if reference_url.start_with?("/")
-
-    uri = URI.parse(reference_url)
-    unless ALLOWED_URL_PROTOCOLS.include?(uri.scheme&.downcase)
-      errors.add(:reference_url, "must use http, https, tel, or mailto protocol")
-    end
-  rescue URI::InvalidURIError
-    errors.add(:reference_url, "is not a valid URL")
+    error = self.class.reference_url_error(reference_url)
+    errors.add(:reference_url, error) if error
   end
 
   def validate_media_attachments

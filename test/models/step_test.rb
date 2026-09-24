@@ -135,6 +135,24 @@ class StepTest < ActiveSupport::TestCase
     assert_equal [step1, step2, step3], steps
   end
 
+  # --- help_text length ---
+
+  # The column is varchar(500). Only the builder's maxlength enforced it, so an
+  # import could write a longer note: SQLite kept it and PostgreSQL raised.
+  test "a guidance note may be as long as the column and no longer" do
+    step = Steps::Action.new(workflow: @workflow, title: "A", position: 0,
+                             help_text: "x" * Step::HELP_TEXT_MAX_LENGTH)
+    assert_predicate step, :valid?
+
+    step.help_text += "x"
+    assert_not step.valid?
+    assert_predicate step.errors[:help_text], :any?
+  end
+
+  test "the guidance limit is the column's" do
+    assert_equal Step.columns_hash["help_text"].limit, Step::HELP_TEXT_MAX_LENGTH
+  end
+
   # --- reference_url protocol validation ---
 
   test "allows http reference_url" do

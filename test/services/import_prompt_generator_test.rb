@@ -78,7 +78,7 @@ class ImportPromptGeneratorTest < ActiveSupport::TestCase
   test "the prompt says what help_text and reference_url are for" do
     line = @prompt.lines.find { |l| l.include?("`help_text`") && l.include?("Guidance") }
     assert_not_nil line, "help_text is not tied to the Guidance note"
-    assert_includes line, "#{Step.columns_hash['help_text'].limit} characters"
+    assert_includes line, "#{Step::HELP_TEXT_MAX_LENGTH} characters"
     assert @prompt.lines.any? { |l| l.include?("`reference_url`") && l.include?("Reference link") },
            "reference_url is not tied to the Reference link"
     assert_includes @prompt, "mailto"

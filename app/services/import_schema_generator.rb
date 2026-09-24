@@ -160,7 +160,7 @@ class ImportSchemaGenerator
     {
       "id" => { "type" => "string", "pattern" => STEP_ID_PATTERN },
       "title" => { "type" => "string", "minLength" => 1 },
-      "help_text" => { "type" => "string", "maxLength" => 500 },
+      "help_text" => { "type" => "string", "maxLength" => Step::HELP_TEXT_MAX_LENGTH },
       "reference_url" => { "type" => "string", "format" => "uri" }
     }
   end
