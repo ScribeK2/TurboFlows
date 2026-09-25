@@ -27,7 +27,33 @@ class McpTest < ActionDispatch::IntegrationTest
                      headers: headers(@reader)
     end
     body = parse(response)
-    assert(body["error"] || body.dig("result", "isError"), "must be refused: #{body.inspect}")
+    # The tool is filtered out of this token's tools/list (server_factory_test), so the SDK
+    # itself refuses the call before any tool code runs: JSON-RPC Invalid params (-32602),
+    # "Tool not found". Anything else -- in particular -32603 Internal error -- means
+    # Api::Mcp::ServerFactory.report_exception raised while handling the refusal and replaced
+    # the real error (server_factory_test covers the reporter directly).
+    assert_equal(-32_602, body.dig("error", "code"), "expected Invalid params: #{body.inspect}")
+    assert_match(/Tool not found/, (body.dig("error", "data") || body.dig("error", "message")).to_s)
+  end
+
+  test "an unhandled exception over the real HTTP path is reported once, naming the method and tool, never the request" do
+    original_find = Api::WorkflowCatalog.instance_method(:find)
+    Api::WorkflowCatalog.define_method(:find) { |*| raise "catalog boom" }
+
+    reports = capture_error_reports(RuntimeError) do
+      post mcp_path, params: envelope("tools/call", name: "get_workflow", arguments: { id: 999_999 }),
+                     headers: headers(@reader)
+    end
+
+    assert_equal 1, reports.size, "expected exactly one Rails.error report: #{reports.inspect}"
+    report = reports.first
+    assert_equal "tools/call", report.context.dig(:mcp, :method)
+    assert_equal "get_workflow", report.context.dig(:mcp, :tool)
+    assert_not_includes report.context.inspect, "999999"
+    assert_not_includes report.context.inspect, "arguments"
+    assert_operator response.status, :<, 500
+  ensure
+    Api::WorkflowCatalog.define_method(:find, original_find)
   end
 
   test "the whole loop: refused with a finding, fixed, created" do

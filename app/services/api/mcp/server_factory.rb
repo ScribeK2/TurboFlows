@@ -35,19 +35,40 @@ module Api
 
       # The SDK hides an exception's message from the client (CWE-209) and
       # answers "Internal error"; this sends the real one to Rails' error
-      # reporter (Sentry in production). context[:request] is the whole
-      # JSON-RPC request (MCP::Server#handle_request passes { request: request }
-      # to the exception reporter), and from Task 3 on a tools/call request can
-      # carry a whole draft document as an argument -- so only the JSON-RPC
-      # method and, for a tool call, the tool name are extracted. Arguments are
-      # never forwarded. JSON-RPC allows positional (Array) params, so `params`
-      # is checked before `dig`ging into it for a tool name -- this reporter
-      # must never itself raise and swallow the exception it was meant to log.
+      # reporter (Sentry in production). context[:request] is what
+      # MCP::Server#handle_request was called with as `request` -- a parsed
+      # Hash when the SDK's #handle is called directly (server_wire_test), but
+      # the raw JSON-RPC **String** over the real HTTP path: the transport
+      # calls #handle_json(body_string), and that string, not a parsed Hash,
+      # is what every rescue's { request: request } closes over. From Task 3
+      # on a tools/call request can carry a whole draft document as an
+      # argument -- so only the JSON-RPC method and, for a tool call, the tool
+      # name are extracted. Arguments are never forwarded. JSON-RPC allows
+      # positional (Array) params, so `params` is checked before `dig`ging
+      # into it for a tool name. The whole body is guarded so this reporter
+      # can never itself raise: the SDK's own rescue re-raises after calling
+      # it, so a raise here replaces the real JSON-RPC error (e.g. the -32602
+      # "Tool not found" a scope-filtered tool call should get) with a bare
+      # -32603 Internal error, and reports nothing.
       def self.report_exception(exception, context)
-        request = context[:request] || {}
+        request = parsed_request(context[:request])
         params = request[:params]
         tool = params[:name] if params.is_a?(Hash)
         Rails.error.report(exception, handled: true, context: { mcp: { method: request[:method], tool: } })
+      rescue StandardError
+        Rails.error.report(exception, handled: true)
+      end
+
+      def self.parsed_request(request)
+        return request if request.is_a?(Hash)
+        return {} unless request.is_a?(String)
+
+        parsed = begin
+          JSON.parse(request, symbolize_names: true)
+        rescue JSON::ParserError
+          {}
+        end
+        parsed.is_a?(Hash) ? parsed : {}
       end
     end
   end
