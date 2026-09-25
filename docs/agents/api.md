@@ -263,18 +263,34 @@ ahead of anything that could touch the request body. Its reason for existing:
 (which means JSON-parsing the whole body) for the `start_processing.action_controller`
 event **before any controller callback runs**, so a `before_action` in
 `DraftsController` — what the guard replaced — always fires too late: an
-unfiltered document is already on its way to the log. The guard does two things,
-for a POST to `/api/v1/drafts` or `/api/v1/drafts/validate`, or **any** method on
-`/mcp` (GET/POST/DELETE — the JSON-RPC transport reads a body off all three):
-refuse a body over the path's cap (`WorkflowImporter::MAX_IMPORT_BYTES`, 10 MB,
-for drafts; `Api::DraftBodyGuard::MCP_MAX_BYTES`, 11 MB — the extra megabyte is
-JSON-RPC envelope room, a literal constant rather than a derived one because this
-file `require_relative`s before autoloading exists, so `WorkflowImporter` isn't a
-resolvable constant yet) with a `413`, body never parsed downstream; otherwise
-set `env["action_dispatch.parameter_filter"] = [/./]` so **every** key is masked
-in the log, since a document's title, instructions and tags match no
-known-sensitive field name in `config/initializers/filter_parameter_logging.rb`
-and a fixed list would drift the moment the schema grows a field.
+unfiltered document is already on its way to the log. The guard does **two
+separate jobs with two separate scopes** — widening one does not widen the
+other:
+
+1. **The size cap**, unchanged in scope: for a POST to `/api/v1/drafts` or
+   `/api/v1/drafts/validate`, or **any** method on `/mcp` (GET/POST/DELETE —
+   the JSON-RPC transport reads a body off all three), refuse a body over the
+   path's cap (`WorkflowImporter::MAX_IMPORT_BYTES`, 10 MB, for drafts;
+   `Api::DraftBodyGuard::MCP_MAX_BYTES`, 11 MB — the extra megabyte is
+   JSON-RPC envelope room, a literal constant rather than a derived one
+   because this file `require_relative`s before autoloading exists, so
+   `WorkflowImporter` isn't a resolvable constant yet) with a `413`, body
+   never parsed downstream. Scoped narrowly on purpose: these are the only two
+   paths a real client sends a body worth capping on.
+2. **The log mask**, broader: for **every** request — any method, not just
+   POST — whose normalized path is `/mcp`, or is `/api`, or starts with
+   `/api/`, set `env["action_dispatch.parameter_filter"] = [/./]` so every
+   key is masked in the log, since a document's title, instructions and tags
+   match no known-sensitive field name in
+   `config/initializers/filter_parameter_logging.rb` and a fixed list would
+   drift the moment the schema grows a field. This used to be scoped to the
+   same POST-drafts-or-any-method-`/mcp` set as the size cap, which left a GET
+   with a JSON body on `/api/v1/workflows`, `/api/v1/workflows/:id` or
+   `/api/v1/authoring_guide` reaching Instrumentation unmasked — closed by
+   widening the mask to cover the whole `/api` surface (including the JSON
+   404 catch-all and `/api/v1/openapi.json`, both of which have nothing
+   sensitive to mask but cost nothing to include) regardless of method. See
+   the note where the known gap used to be documented, below.
 
 Path matching goes through `ActionDispatch::Journey::Router::Utils.normalize_path`
 — the **same** function the router itself uses before matching a route — never a
@@ -342,7 +358,7 @@ shapes.
 
 | Status | When |
 |---|---|
-| 400 | `malformed_json` — `Api::V1::BaseController`'s `rescue_from ActionDispatch::Http::Parameters::ParseError`, for any non-drafts route whose body Rails' own params parsing actually touches (in practice, a GET with a `Content-Type: application/json` body that fails to parse — see the known gap below) |
+| 400 | `malformed_json` — `Api::V1::BaseController`'s `rescue_from ActionDispatch::Http::Parameters::ParseError`, for any non-drafts route whose body Rails' own params parsing actually touches (in practice, a GET with a `Content-Type: application/json` body that fails to parse — see Logs and Sentry, above, for how a well-formed body on the same route is masked, not refused) |
 | 401 | missing, unknown, revoked or expired token, or a deactivated/locked user |
 | 403 | `insufficient_scope` — a scope the token lacks, or the user's role no longer grants it |
 | 404 | a workflow that doesn't exist, or that this user can't see — never 403, so existence never leaks; also the JSON catch-all (`Api::V1::NotFoundController`) for any unrecognized `/api/*` path |
@@ -353,32 +369,38 @@ shapes.
 **The JSON 404** is `Api::V1::NotFoundController < ActionController::Metal`, not
 `::API` — deliberately, so a mistyped path's body is **never parsed or logged**.
 `ActionController::API`'s Instrumentation builds `request.filtered_parameters`
-before any action runs, which is exactly the leak `Api::DraftBodyGuard` exists to
-close for the two real endpoints it knows about; `Metal` skips Instrumentation
-entirely, so a POST to (say) `/api/v1/draft` (missing the `s`) never touches
-`params` at all. `NotFoundController` answers no-token the same as a valid one —
-401 would confirm the path exists.
+before any action runs, which is exactly the leak `Api::DraftBodyGuard`'s log
+mask exists to close for every real `/api*`/`/mcp` path; `Metal` skips
+Instrumentation entirely regardless, so a POST to (say) `/api/v1/draft`
+(missing the `s`) never touches `params` at all — belt-and-braces with the
+guard, not a path the guard misses. `NotFoundController` answers no-token the
+same as a valid one — 401 would confirm the path exists.
 
-**Known gap, not yet closed**: a JSON body sent on a **GET** to
-`/api/v1/workflows`, `/api/v1/workflows/:id` or `/api/v1/authoring_guide` still
-reaches `ActionController::API`'s Instrumentation and would get parsed and
-logged unmasked — `Api::DraftBodyGuard` only guards `/api/v1/drafts*` and
-`/mcp`, because those are the only paths a real client sends a body worth
-capping or masking on. What's actually proven on this branch is narrower than
-the full claim: `test/integration/api/v1/loose_ends_test.rb`'s "a GET whose
-body the parser actually touches gets the rescue's 400, not an unhandled
-error" dispatches a raw `Rack::MockRequest` GET with a malformed body straight
-at Rails (bypassing the integration-test harness, which folds a String
-`params:` into the query string on a GET and can't reach this path at all) and
-confirms the body really is parsed — `BaseController`'s `rescue_from
-ActionDispatch::Http::Parameters::ParseError` fires — and that the failure is
-safe, a 400 `malformed_json`, not a crash. **No test on this branch proves the
-other half: that a well-formed GET body actually reaches the log
-unmasked.** That would take a `start_processing.action_controller` notification
-subscriber (the pattern `test/integration/api/v1/drafts_test.rb` uses for the
-drafts POST routes) driven against a GET with a valid JSON body and no such
-test exists for `/api/v1/workflows` et al. Predates this task; filed here as an
-open follow-up, not fixed by it, and not fully test-covered as a leak either.
+**Closed**: a JSON body sent on a **GET** to `/api/v1/workflows`,
+`/api/v1/workflows/:id`, `/api/v1/authoring_guide`, `/api/v1/openapi.json`, or
+any future GET under `/api`, used to reach `ActionController::API`'s
+Instrumentation and get parsed and logged unmasked — `Api::DraftBodyGuard`
+used to guard (both the size cap AND the log mask, as one job) only
+`/api/v1/drafts*` POSTs and any method on `/mcp`. Fixed by splitting the guard
+into its two jobs (see Logs and Sentry, above): the size cap kept its narrow
+scope, but the log mask now covers **every** request — any method — whose
+normalized path is `/mcp`, or is `/api`, or starts with `/api/`, so a GET's
+body is masked exactly like a POST's. Proven two ways:
+`test/integration/api/v1/loose_ends_test.rb`'s "a GET with a JSON body on
+/api/v1/workflows is masked in the log, never logged unmasked" is the
+`start_processing.action_controller` notification subscriber this gap used to
+lack, driven against a raw `Rack::MockRequest` GET (the integration-test
+harness folds a String `params:` into the query string on a GET and can't
+reach this path at all) with a well-formed JSON body carrying a distinctive
+title and a bearer token, asserting the title never appears in the logged
+params; `test/middleware/api/draft_body_guard_test.rb` covers the same claim
+at the middleware level for `/api/v1/workflows`, `/api/v1/workflows/:id`,
+`/api/v1/authoring_guide`, `/api/v1/openapi.json` and bare `/api`/`/api/`, and
+separately confirms none of them are size-capped — only `/api/v1/drafts*`
+POSTs and `/mcp` are. The neighboring "a GET whose body the parser actually
+touches gets the rescue's 400, not an unhandled error" test (same file) is
+unchanged: it still proves the 400 `malformed_json` rescue fires for a
+malformed GET body, a separate claim from the masking one above.
 
 **MCP**: refusals are **tool results** (`isError: true`), in the same
 `{ errors:, warnings: }` shape (`Api::Mcp::ToolResult.refused` /

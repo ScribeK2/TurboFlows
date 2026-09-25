@@ -10,17 +10,67 @@ class Api::DraftBodyGuardTest < ActiveSupport::TestCase
     @guard = Api::DraftBodyGuard.new(@app)
   end
 
-  test "a POST outside /api/v1/drafts is untouched" do
+  test "a POST outside /api/v1/drafts is not size-capped, but still gets the log mask (it's under /api)" do
     env = Rack::MockRequest.env_for("/api/v1/workflows", method: "POST", input: "hello")
     status, _headers, body = @guard.call(env)
 
     assert_equal 200, status
     assert_equal ["ok"], body
-    assert_not @downstream_env.key?("action_dispatch.parameter_filter")
+    assert_equal [/./], @downstream_env["action_dispatch.parameter_filter"]
   end
 
-  test "a GET to /api/v1/drafts is untouched — the guard is POST-only" do
+  test "a GET to /api/v1/drafts is not size-capped — the cap is POST-only — but still gets the log mask" do
     env = Rack::MockRequest.env_for("/api/v1/drafts", method: "GET")
+    @guard.call(env)
+
+    assert_equal [/./], @downstream_env["action_dispatch.parameter_filter"]
+  end
+
+  # The finding this fixes: a GET with a JSON body on any /api/v1/* route
+  # (workflows, workflows/:id, authoring_guide, openapi.json, and any future
+  # GET) was parsed and logged unmasked. The size cap stays POST/mcp-only —
+  # this is the log mask alone.
+  test "a GET to /api/v1/workflows gets the log mask but is not size-capped" do
+    body = "x" * (WorkflowImporter::MAX_IMPORT_BYTES + 1)
+    env = Rack::MockRequest.env_for("/api/v1/workflows", method: "GET", input: body)
+    status, = @guard.call(env)
+
+    assert_equal 200, status
+    assert_equal [/./], @downstream_env["action_dispatch.parameter_filter"]
+  end
+
+  test "a GET to /api/v1/workflows/:id gets the log mask" do
+    env = Rack::MockRequest.env_for("/api/v1/workflows/42", method: "GET", input: '{"x":1}')
+    @guard.call(env)
+
+    assert_equal [/./], @downstream_env["action_dispatch.parameter_filter"]
+  end
+
+  test "a GET to /api/v1/authoring_guide gets the log mask" do
+    env = Rack::MockRequest.env_for("/api/v1/authoring_guide", method: "GET", input: '{"x":1}')
+    @guard.call(env)
+
+    assert_equal [/./], @downstream_env["action_dispatch.parameter_filter"]
+  end
+
+  test "a GET to /api/v1/openapi.json gets the log mask" do
+    env = Rack::MockRequest.env_for("/api/v1/openapi.json", method: "GET", input: '{"x":1}')
+    @guard.call(env)
+
+    assert_equal [/./], @downstream_env["action_dispatch.parameter_filter"]
+  end
+
+  test "a GET to bare /api or /api/ gets the log mask" do
+    ["/api", "/api/"].each do |path|
+      env = Rack::MockRequest.env_for(path, method: "GET")
+      @guard.call(env)
+
+      assert_equal [/./], @downstream_env["action_dispatch.parameter_filter"], "expected #{path} to be masked"
+    end
+  end
+
+  test "a GET outside /api and /mcp is untouched by either job" do
+    env = Rack::MockRequest.env_for("/workflows", method: "GET")
     @guard.call(env)
 
     assert_not @downstream_env.key?("action_dispatch.parameter_filter")

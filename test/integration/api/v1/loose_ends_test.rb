@@ -51,6 +51,35 @@ class Api::V1::LooseEndsTest < ActionDispatch::IntegrationTest
     assert_equal "malformed_json", JSON.parse(resp.body).dig("errors", 0, "code")
   end
 
+  # Item 1 of the Phase 3 review: a GET with a JSON body on /api/v1/* used to
+  # reach ActionController::API's Instrumentation (which builds
+  # request.filtered_parameters, i.e. JSON-parses the whole body, before any
+  # controller callback runs) with no parameter_filter set, so the body's
+  # contents were logged unmasked. Api::DraftBodyGuard now masks every /api*
+  # and /mcp path on any method, not just the drafts POST + /mcp it used to
+  # guard. Drive this the same way the rescue test above does — a raw
+  # Rack::MockRequest, since the integration harness folds a String `params:`
+  # on a GET into the query string and can't reach this path at all.
+  test "a GET with a JSON body on /api/v1/workflows is masked in the log, never logged unmasked" do
+    distinctive = "Logging Canary #{SecureRandom.hex(4)}"
+    doc = { title: distinctive }.to_json
+
+    logged_params = nil
+    subscriber = ->(event) { logged_params = event.payload[:params] }
+
+    mock = Rack::MockRequest.new(Rails.application)
+    resp = nil
+    ActiveSupport::Notifications.subscribed(subscriber, "start_processing.action_controller") do
+      resp = mock.get("/api/v1/workflows", input: doc,
+                                           "CONTENT_TYPE" => "application/json",
+                                           "HTTP_AUTHORIZATION" => "Bearer #{@reader.plaintext}")
+    end
+
+    assert_equal 200, resp.status
+    assert_not_nil logged_params
+    assert_not_includes logged_params.inspect, distinctive
+  end
+
   test "a GET on the POST-only drafts routes is still the API's plain 404" do
     get api_v1_drafts_path, headers: auth(@reader)
     assert_response :not_found

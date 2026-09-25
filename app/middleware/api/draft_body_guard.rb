@@ -12,21 +12,32 @@ module Api
   # tools/call's arguments carry the same documents /api/v1/drafts does, read
   # by the same instrumentation before McpController#handle runs.
   #
-  # Two jobs, in this order, for any POST whose path — normalized the same
-  # way the router itself normalizes it before matching a route, so a path
-  # variant (a trailing slash, a doubled slash) can never route without also
-  # being guarded — starts with /api/v1/drafts (both /api/v1/drafts and
-  # /api/v1/drafts/validate) or is exactly /mcp:
+  # Two SEPARATE jobs, each with its own scope — do not widen one by widening
+  # the other:
   #
-  #   1. Refuse a body over the path's limit (WorkflowImporter::MAX_IMPORT_BYTES
-  #      for drafts, MCP_MAX_BYTES for /mcp) with a 413. Nothing downstream
-  #      ever parses it.
-  #   2. Otherwise, set action_dispatch.parameter_filter so every parameter key
-  #      is masked in the log. A document's title, instructions and tags have
-  #      no business at :info in production (config/environments/production.rb),
-  #      and config/initializers/filter_parameter_logging.rb only lists
-  #      known-sensitive field NAMES — none of which this dialect's keys match,
-  #      and a fixed list would drift the moment a field is added.
+  #   1. The size cap. A POST whose path — normalized the same way the router
+  #      itself normalizes it before matching a route, so a path variant (a
+  #      trailing slash, a doubled slash) can never route without also being
+  #      guarded — starts with /api/v1/drafts (both /api/v1/drafts and
+  #      /api/v1/drafts/validate), or ANY method on exactly /mcp, gets its
+  #      body checked against the path's limit
+  #      (WorkflowImporter::MAX_IMPORT_BYTES for drafts, MCP_MAX_BYTES for
+  #      /mcp) and refused with a 413 if it's over. Nothing downstream ever
+  #      parses an oversized body. Scoped narrowly on purpose: these are the
+  #      only two paths a real client sends a body worth capping on.
+  #   2. The log mask. EVERY request — any method, not just POST — whose
+  #      normalized path is /mcp, or is /api, or starts with /api/, gets
+  #      action_dispatch.parameter_filter set so every parameter key is
+  #      masked in the log. This is deliberately broader than the size cap:
+  #      any request under /api can carry a JSON body (a GET included —
+  #      ActionController::API's Instrumentation parses one off a GET the
+  #      same way it does off a POST, before any controller callback runs),
+  #      and a document's title, instructions and tags have no business at
+  #      :info in production (config/environments/production.rb).
+  #      config/initializers/filter_parameter_logging.rb only lists
+  #      known-sensitive field NAMES — none of which this dialect's keys
+  #      match, and a fixed list would drift the moment a field is added, so
+  #      masking is by PATH, not by key name.
   class DraftBodyGuard
     # WorkflowImporter::MAX_IMPORT_BYTES plus 1 MB for the JSON-RPC wrapping
     # (envelope, tool name, arguments key). Written as a literal, not derived
@@ -43,24 +54,35 @@ module Api
 
     def call(env)
       request = Rack::Request.new(env)
-      return @app.call(env) unless guarded?(request)
 
-      limit = mcp_path?(request) ? MCP_MAX_BYTES : WorkflowImporter::MAX_IMPORT_BYTES
-      return too_large(limit) if content_length(env, limit) > limit
+      if guarded?(request)
+        limit = mcp_path?(request) ? MCP_MAX_BYTES : WorkflowImporter::MAX_IMPORT_BYTES
+        return too_large(limit) if content_length(env, limit) > limit
+      end
 
-      env["action_dispatch.parameter_filter"] = [/./]
+      env["action_dispatch.parameter_filter"] = [/./] if masked?(request)
       @app.call(env)
     end
 
     private
 
-    # /mcp is guarded on every method the route answers (GET, POST, DELETE:
+    # The size cap's scope, unchanged from before this job split: /mcp is
+    # guarded on every method the route answers (GET, POST, DELETE:
     # config/routes.rb) — the JSON-RPC transport reads a body off any of them,
     # so a DELETE with a document in its body would otherwise reach the log
     # and Rails' parser unfiltered and uncapped. /api/v1/drafts stays
     # POST-only: both its routes only ever accept POST.
     def guarded?(request)
       mcp_path?(request) || (request.post? && drafts_path?(request))
+    end
+
+    # The log-masking job's scope: every /api* path (namespace, catch-all and
+    # all) and /mcp, on ANY method — not just the guarded? paths above. A GET
+    # to /api/v1/workflows with a JSON body reaches the same Instrumentation
+    # and deserves the same mask, even though its body is never size-capped.
+    def masked?(request)
+      path = normalized_path(request)
+      path == "/mcp" || path == "/api" || path.start_with?("/api/")
     end
 
     def drafts_path?(request)

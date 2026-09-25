@@ -8,11 +8,10 @@ module Api
     # draft document a real request would, and ActionController::API's
     # Instrumentation builds request.filtered_parameters — which parses the
     # body — before any action runs (config/routes.rb's catch-all comment;
-    # Api::DraftBodyGuard's header explains the same mechanism for /mcp and
-    # /api/v1/drafts). DraftBodyGuard only masks those two paths, so a typo'd
-    # path landing here would otherwise log a document's contents unfiltered
-    # at :info in production. Metal skips Instrumentation entirely: this
-    # action never touches params, so nothing is ever parsed or logged.
+    # Api::DraftBodyGuard's header explains the same mechanism). DraftBodyGuard
+    # masks every /api* and /mcp path (any method), so a typo'd path landing
+    # here is covered too — but Metal skips Instrumentation entirely regardless:
+    # this action never touches params, so nothing is ever parsed or logged.
     class NotFoundController < ActionController::Metal
       def show
         self.status = :not_found
