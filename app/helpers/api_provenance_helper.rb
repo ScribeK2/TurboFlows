@@ -6,7 +6,7 @@ module ApiProvenanceHelper
     token = workflow.api_token
     return unless token
 
-    tag.span("Created via API · #{token.name}", class: "badge badge--info",
+    tag.span("Created via API · #{token.name}", class: "badge badge--info api-provenance",
                                                 title: "Made through the API token “#{token.name}”")
   end
 end

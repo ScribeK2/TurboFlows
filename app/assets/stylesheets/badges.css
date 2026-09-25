@@ -81,6 +81,19 @@
   font-weight: 600;
 }
 
+/* Provenance badge (ApiProvenanceHelper#api_provenance_badge) — a token name
+   can run to 60 unbroken characters with no spaces (ApiToken validates a
+   max length of 60, not a max word length), so the default .badge
+   white-space: nowrap forces the whole row, and every ancestor up to
+   .page-content, wider than a narrow viewport. Same long-unbroken-run
+   treatment as .api-token-reveal__code and .builder__step .list-row__title:
+   let it wrap instead. */
+.badge.api-provenance {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
 /* ─── Group chips — a token with a remove affordance, not a status ─── */
 .badge--group {
   background: var(--color-canvas-alt);

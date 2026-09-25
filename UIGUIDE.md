@@ -452,6 +452,7 @@ password reset) and the bulk dialogs in `admin/users/index`. The old pattern —
 | `.badge--draft` `.badge--published` | Workflow status | **Plain text**, no pill |
 | `.badge--admin` `.badge--editor` `.badge--regular` | User role | **Plain text**, no pill |
 | `.badge--info` | Informational | **Plain text**, no pill |
+| `.badge.api-provenance` | "Created via API · &lt;token name&gt;" (`ApiProvenanceHelper`) | Paired with `.badge--info`; overrides `.badge`'s `white-space: nowrap` with `white-space: normal; overflow-wrap: anywhere; min-width: 0` — a token name can be a 60-character unbroken run (`ApiToken` validates length, not word length), so it must wrap inside its row/header instead of forcing horizontal scroll at narrow widths |
 | `.badge--alert` | Error/urgent — exceptional | Pill, negative-soft fill |
 | `.badge--warning` | Warning/caution — exceptional | Pill, warning-soft fill |
 | `.badge--group` | Tag/token with a remove affordance | Pill, neutral fill + hairline |
