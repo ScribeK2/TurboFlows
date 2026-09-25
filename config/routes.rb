@@ -11,6 +11,10 @@ Rails.application.routes.draw do
     end
   end
 
+  # The MCP endpoint (spec 2026-09-25-api-and-mcp-design §3). One action: the
+  # SDK's transport dispatches POST/GET/DELETE itself.
+  match "mcp", to: "mcp#handle", via: %i[get post delete], as: :mcp
+
   devise_for :users, controllers: {
     registrations: 'users/registrations',
     sessions: 'users/sessions'
