@@ -63,4 +63,22 @@ class WorkflowsCreatedViaApiTest < ActionDispatch::IntegrationTest
     get workflows_path(source: "api", status: "draft")
     assert_select "a.pagination__item[href*='source=api']", minimum: 1
   end
+
+  test "the badge is the neutral informational modifier, not full-strength ink" do
+    get workflows_path(status: "draft")
+    assert_select ".badge.badge--info", text: /Created via API · Claude Code laptop/, minimum: 1
+
+    get workflow_path(@via_api)
+    assert_select ".badge.badge--info", text: /Created via API · Claude Code laptop/
+  end
+
+  test "the toggle link uses aria-current, never aria-pressed" do
+    get workflows_path(source: "api", status: "draft")
+    assert_select "a.wf-toolbar__link.is-active[aria-current='true']", text: "Created via API"
+    assert_select "a.wf-toolbar__link[aria-pressed]", count: 0
+
+    get workflows_path(status: "draft")
+    assert_select "a.wf-toolbar__link[aria-current]", count: 0
+    assert_select "a.wf-toolbar__link[aria-pressed]", count: 0
+  end
 end

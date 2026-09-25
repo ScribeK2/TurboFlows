@@ -46,7 +46,7 @@
                          search: params[:search], group_id: params[:group_id], sort: params[:sort],
                          per_page: params[:per_page], audience: params[:audience], owner: params[:owner]),
           class: "wf-toolbar__link #{'is-active' if @source_filter}",
-          aria: { pressed: @source_filter.present? },
+          aria: { current: ("true" if @source_filter) },
           data: { turbo_action: "replace" } %>
   <% end %>
 
