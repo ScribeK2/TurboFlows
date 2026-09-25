@@ -139,6 +139,15 @@ class Api::WorkflowCatalogTest < ActiveSupport::TestCase
     assert_empty catalog(@admin).search(page: "99999999999999999999").workflows
   end
 
+  test "the last allowed page never offers a next page, even with more rows" do
+    stub_const_max_page(1) do
+      (Api::WorkflowCatalog::PER_PAGE + 1).times { make_workflow("Last #{it}", user: @editor, status: "draft") }
+      page = catalog(@editor).search(status: "draft", page: 1)
+      assert_equal Api::WorkflowCatalog::PER_PAGE, page.workflows.size
+      assert_nil page.next_page, "page MAX_PAGE must not point at a page that re-clamps to itself"
+    end
+  end
+
   test "summary carries what an AI needs to choose, and a builder url" do
     summary = catalog(@editor).summary(@team_published)
     assert_equal %i[id title description status tags groups updated_at url].sort, summary.keys.sort
@@ -147,6 +156,16 @@ class Api::WorkflowCatalogTest < ActiveSupport::TestCase
   end
 
   private
+
+  def stub_const_max_page(value)
+    original = Api::WorkflowCatalog::MAX_PAGE
+    Api::WorkflowCatalog.send(:remove_const, :MAX_PAGE)
+    Api::WorkflowCatalog.const_set(:MAX_PAGE, value)
+    yield
+  ensure
+    Api::WorkflowCatalog.send(:remove_const, :MAX_PAGE)
+    Api::WorkflowCatalog.const_set(:MAX_PAGE, original)
+  end
 
   def catalog(user) = Api::WorkflowCatalog.new(user, base_url: "http://example.test")
 

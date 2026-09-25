@@ -33,7 +33,8 @@ module Api
       rows = scope.includes(:tags, :rich_text_description, group_workflows: :group)
                   .order(updated_at: :desc, id: :desc)
                   .offset((page - 1) * PER_PAGE).limit(PER_PAGE + 1).to_a
-      Page.new(workflows: rows.first(PER_PAGE), next_page: rows.size > PER_PAGE ? page + 1 : nil)
+      more = rows.size > PER_PAGE && page < MAX_PAGE
+      Page.new(workflows: rows.first(PER_PAGE), next_page: more ? page + 1 : nil)
     end
 
     delegate :find, to: :visible
