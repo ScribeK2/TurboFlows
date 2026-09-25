@@ -113,4 +113,46 @@ class Api::DraftBodyGuardTest < ActiveSupport::TestCase
     assert_equal "payload_too_large", JSON.parse(response_body.first).dig("errors", 0, "code")
     assert_nil @downstream_env
   end
+
+  # The router squeezes any run of repeated slashes down to one before it
+  # matches a route (ActionDispatch::Journey::Router::Utils.normalize_path),
+  # so "/mcp//" and "/mcp///" still resolve to mcp#handle. A guard comparing
+  # the raw path with a single #chomp("/") misses these.
+  test "a /mcp// POST (doubled trailing slash) reaches the app with the parameter filter set" do
+    env = Rack::MockRequest.env_for("/mcp//", method: "POST", input: '{"jsonrpc":"2.0"}')
+    status, = @guard.call(env)
+
+    assert_equal 200, status
+    assert_equal [/./], @downstream_env["action_dispatch.parameter_filter"]
+  end
+
+  test "a /mcp/// POST (tripled trailing slash) reaches the app with the parameter filter set" do
+    env = Rack::MockRequest.env_for("/mcp///", method: "POST", input: '{"jsonrpc":"2.0"}')
+    status, = @guard.call(env)
+
+    assert_equal 200, status
+    assert_equal [/./], @downstream_env["action_dispatch.parameter_filter"]
+  end
+
+  test "a /mcp// POST over MCP_MAX_BYTES is refused, not buffered whole" do
+    body = "x" * (Api::DraftBodyGuard::MCP_MAX_BYTES + 1)
+    env = Rack::MockRequest.env_for("/mcp//", method: "POST", input: body)
+
+    status, headers, response_body = @guard.call(env)
+
+    assert_equal 413, status
+    assert_equal "application/json", headers["content-type"]
+    assert_equal "payload_too_large", JSON.parse(response_body.first).dig("errors", 0, "code")
+    assert_nil @downstream_env
+  end
+
+  # Same normalization closes the drafts side too: /api//v1/drafts still
+  # routes to drafts#create (the router collapses the doubled slash).
+  test "a /api//v1/drafts POST (doubled slash) reaches the app with the parameter filter set" do
+    env = Rack::MockRequest.env_for("/api//v1/drafts", method: "POST", input: '{"a":1}')
+    status, = @guard.call(env)
+
+    assert_equal 200, status
+    assert_equal [/./], @downstream_env["action_dispatch.parameter_filter"]
+  end
 end

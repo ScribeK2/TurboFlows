@@ -12,9 +12,11 @@ module Api
   # tools/call's arguments carry the same documents /api/v1/drafts does, read
   # by the same instrumentation before McpController#handle runs.
   #
-  # Two jobs, in this order, for any POST whose path starts with
-  # /api/v1/drafts (both /api/v1/drafts and /api/v1/drafts/validate) or is
-  # exactly /mcp:
+  # Two jobs, in this order, for any POST whose path — normalized the same
+  # way the router itself normalizes it before matching a route, so a path
+  # variant (a trailing slash, a doubled slash) can never route without also
+  # being guarded — starts with /api/v1/drafts (both /api/v1/drafts and
+  # /api/v1/drafts/validate) or is exactly /mcp:
   #
   #   1. Refuse a body over the path's limit (WorkflowImporter::MAX_IMPORT_BYTES
   #      for drafts, MCP_MAX_BYTES for /mcp) with a 413. Nothing downstream
@@ -32,6 +34,8 @@ module Api
     # require_relative in config/application.rb before autoloading is set up —
     # WorkflowImporter isn't a resolvable constant yet.
     MCP_MAX_BYTES = 11.megabytes
+
+    DRAFTS_PATH = "/api/v1/drafts".freeze
 
     def initialize(app)
       @app = app
@@ -51,15 +55,30 @@ module Api
     private
 
     def guarded?(request)
-      request.post? && (request.path.start_with?("/api/v1/drafts") || mcp_path?(request))
+      request.post? && (drafts_path?(request) || mcp_path?(request))
     end
 
-    # The route (config/routes.rb) answers /mcp, /mcp/ (the router ignores a
-    # trailing slash) and, absent format: false, /mcp.json — any path the
-    # router treats as this endpoint must be treated as it here too, or a body
-    # of any size reaches JSON parsing (and the log) unguarded.
+    def drafts_path?(request)
+      path = normalized_path(request)
+      path == DRAFTS_PATH || path.start_with?("#{DRAFTS_PATH}/")
+    end
+
     def mcp_path?(request)
-      request.path.chomp("/") == "/mcp"
+      normalized_path(request) == "/mcp"
+    end
+
+    # The router itself squeezes repeated slashes and strips a trailing one
+    # before it ever compares a path to a route (Journey::Router::Utils —
+    # already loaded: config/application.rb requires "rails/all", which pulls
+    # in action_dispatch, before it require_relatives this file). So
+    # "/mcp//", "/mcp///" and "/api//v1/drafts" all still resolve to
+    # mcp#handle / drafts#create — a guard that compares the raw, unnormalized
+    # path (a plain #chomp("/"), or a #start_with? that a doubled slash
+    # breaks) can disagree with the router and let a path variant through
+    # unguarded. Normalizing with the router's own function is the only way
+    # the two can never drift apart.
+    def normalized_path(request)
+      ActionDispatch::Journey::Router::Utils.normalize_path(request.path)
     end
 
     # CONTENT_LENGTH is trusted when present and nonzero. Otherwise (absent, or

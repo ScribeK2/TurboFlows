@@ -111,6 +111,22 @@ class McpTest < ActionDispatch::IntegrationTest
     end
   end
 
+  # The router squeezes a doubled slash down to one before matching a route,
+  # so /mcp// still resolves to mcp#handle — the guard has to agree.
+  test "the log never carries a document sent over MCP, at /mcp// either" do
+    title = "Secret policy #{SecureRandom.hex(4)}"
+    document = valid_document.tap { it[:workflows][0][:title] = title }
+    logged = nil
+    subscriber = ->(*, payload) { logged = payload[:params] }
+    ActiveSupport::Notifications.subscribed(subscriber, "start_processing.action_controller") do
+      post "/mcp//", params: envelope("tools/call", name: "create_workflow_draft", arguments: { document: }),
+                     headers: headers(@drafter)
+      assert_response :success
+    end
+    assert_not_includes logged.to_s, title
+    assert_includes logged.to_s, "[FILTERED]"
+  end
+
   private
 
   def rpc(token, method, **params)

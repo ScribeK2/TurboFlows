@@ -85,6 +85,34 @@ class Api::V1::DraftsTest < ActionDispatch::IntegrationTest
     assert_not_includes logged_params.inspect, distinctive
   end
 
+  # The router squeezes a doubled slash down to one before matching a route
+  # (confirmed below), so /api//v1/drafts still resolves to drafts#create —
+  # the body guard has to recognize it as the same endpoint too, or the
+  # document reaches the log unfiltered.
+  test "a doubled slash still routes to drafts#create" do
+    assert_equal({ format: :json, controller: "api/v1/drafts", action: "create" },
+                 Rails.application.routes.recognize_path("/api//v1/drafts", method: :post))
+  end
+
+  test "the production log never carries the document's content, over /api//v1/drafts either" do
+    distinctive = "Logging Canary #{SecureRandom.hex(4)}"
+    doc = { schema_version: "1", workflows: [{ title: distinctive,
+                                               steps: [{ id: "done", type: "resolve", title: "Done",
+                                                         resolution_type: "success" }] }] }.to_json
+
+    logged_params = nil
+    subscriber = ->(event) { logged_params = event.payload[:params] }
+
+    ActiveSupport::Notifications.subscribed(subscriber, "start_processing.action_controller") do
+      post "/api//v1/drafts", params: doc, headers: headers(@drafter)
+    end
+
+    assert_response :created
+    assert_not_nil logged_params
+    assert_equal "[FILTERED]", logged_params["workflows"]
+    assert_not_includes logged_params.inspect, distinctive
+  end
+
   test "GET a workflow, POST it back as a draft: the same workflow" do
     post api_v1_drafts_path, params: round_trip_source, headers: headers(@drafter)
     assert_response :created
