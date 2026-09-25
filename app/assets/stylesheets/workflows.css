@@ -422,6 +422,13 @@
   white-space: nowrap;
 }
 
+/* "Created via API" pressed: this link's resting colour is already
+   --color-primary-text, so a colour-only active state would be indistinguishable
+   from the link's own default — bolder weight is the channel left. */
+.wf-toolbar__link.is-active {
+  font-weight: 700;
+}
+
 .wf-toolbar__sort {
   width: auto;
   flex-shrink: 0;

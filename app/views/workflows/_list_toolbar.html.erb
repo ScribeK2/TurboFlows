@@ -12,6 +12,7 @@
     <%= hidden_field_tag :status, params[:status], id: nil if params[:status].present? %>
     <%= hidden_field_tag :audience, params[:audience], id: nil if params[:audience].present? %>
     <%= hidden_field_tag :owner, params[:owner], id: nil if params[:owner].present? %>
+    <%= hidden_field_tag :source, params[:source], id: nil if params[:source].present? %>
     <%= hidden_field_tag :per_page, params[:per_page], id: nil if params[:per_page].present? %>
     <span class="wf-toolbar__search-icon" aria-hidden="true">
       <%= icon "magnifying-glass", class: "icon icon--sm" %>
@@ -32,12 +33,22 @@
     <% filter_tabs.each do |tab| %>
       <% active = @status_filter == tab[:key] %>
       <%= link_to tab[:label],
-            workflows_path(status: tab[:key], search: params[:search], group_id: params[:group_id], sort: params[:sort], per_page: params[:per_page], audience: params[:audience], owner: params[:owner]),
+            workflows_path(status: tab[:key], search: params[:search], group_id: params[:group_id], sort: params[:sort], per_page: params[:per_page], audience: params[:audience], owner: params[:owner], source: params[:source]),
             class: "wf-status-tabs__tab #{'is-active' if active}",
             aria: { current: ("true" if active) },
             data: { turbo_action: "replace" } %>
     <% end %>
   </div>
+
+  <% if current_user&.can_create_workflows? %>
+    <%= link_to "Created via API",
+          workflows_path(source: (@source_filter ? nil : WorkflowsFilter::SOURCE_API), status: params[:status],
+                         search: params[:search], group_id: params[:group_id], sort: params[:sort],
+                         per_page: params[:per_page], audience: params[:audience], owner: params[:owner]),
+          class: "wf-toolbar__link #{'is-active' if @source_filter}",
+          aria: { pressed: @source_filter.present? },
+          data: { turbo_action: "replace" } %>
+  <% end %>
 
   <% if filters.any? %>
     <span class="wf-toolbar__filters">Filters (<%= filters.size %>)</span>
@@ -56,7 +67,7 @@
           class="form-select wf-toolbar__sort"
           aria-label="Sort workflows">
     <% sort_options.each do |opt| %>
-      <option value="<%= workflows_path(sort: opt[:key], status: params[:status], search: params[:search], group_id: params[:group_id], per_page: params[:per_page], audience: params[:audience], owner: params[:owner]) %>"
+      <option value="<%= workflows_path(sort: opt[:key], status: params[:status], search: params[:search], group_id: params[:group_id], per_page: params[:per_page], audience: params[:audience], owner: params[:owner], source: params[:source]) %>"
               <%= "selected" if @sort_by == opt[:key] %>>
         <%= opt[:label] %>
       </option>

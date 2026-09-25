@@ -47,6 +47,8 @@
         <%= workflow.status.titleize %>
       </span>
 
+      <%= api_provenance_badge(workflow) %>
+
       <% if mode == "edit" %>
         <%= render "workflows/autosave_status", status: :saved %>
       <% end %>

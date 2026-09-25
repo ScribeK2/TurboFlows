@@ -1,7 +1,12 @@
 <%# Workflow list item partial with caching
-    Cache key includes: workflow, current_user, selected_group, and folders
-    Busts when: workflow updated, user permissions change, group context changes, or folders change %>
-<% cache ["wf-row-v4", workflow, current_user, @selected_group, current_user&.role, @folders&.map(&:id)] do %>
+    Cache key includes: workflow, current_user, selected_group, folders, and the
+    workflow's api_token. v5 added the token: ApiToken#destroy nullifies
+    api_token_id via `dependent: :nullify` without touching the workflow's
+    updated_at, so the badge's "was this stamped" fact isn't covered by
+    workflow's own cache_key and needs its own key component.
+    Busts when: workflow updated, user permissions change, group context changes,
+    folders change, or the workflow's api_token association changes %>
+<% cache ["wf-row-v5", workflow, current_user, @selected_group, current_user&.role, @folders&.map(&:id), workflow.api_token] do %>
   <li class="wf-list-item wf-list-item--<%= workflow.dominant_step_type || 'default' %>" style="animation-delay: <%= local_assigns[:index].to_i * 0.05 %>s;">
     <div class="wf-list-item__body">
       <div class="wf-list-item__row">
@@ -19,6 +24,7 @@
             <div class="form-hint mt-1 mb-0 flex items-center gap-2 flex-wrap">
               <span><%= pluralize(workflow.steps.size, "step") %> - Updated <%= time_ago_in_words(workflow.updated_at) %> ago</span>
               <%= workflow_status_badge(workflow) %>
+              <%= api_provenance_badge(workflow) %>
               <% if workflow.in_global? %>
                 <span class="badge" title="Everyone signed in can see this">Global</span>
               <% elsif workflow.published? && workflow.group_workflows.empty? %>

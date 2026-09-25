@@ -15,6 +15,10 @@ class WorkflowsFilter
   # Anyone's own workflows. The home page's "View all" and "+N more" link here.
   OWNER_ME = "me".freeze
 
+  # Drafts and workflows an AI or another tool made through an API token
+  # (spec 2026-09-25-api-and-mcp-design, Provenance).
+  SOURCE_API = "api".freeze
+
   def initialize(user:, params:)
     @user = user
     @params = params
@@ -25,6 +29,7 @@ class WorkflowsFilter
     build_base_scope
     apply_audience_filter
     apply_owner_filter
+    apply_source_filter
     apply_search
     apply_sort
     apply_group_filter
@@ -52,6 +57,10 @@ class WorkflowsFilter
 
   def owner_filter
     @params[:owner] == OWNER_ME ? OWNER_ME : nil
+  end
+
+  def source_filter
+    @params[:source] == SOURCE_API ? SOURCE_API : nil
   end
 
   def per_page_size = per_page
@@ -84,7 +93,7 @@ class WorkflowsFilter
                    Workflow.where(id: published_ids).or(Workflow.where(id: draft_ids))
                  end
 
-    @workflows = @workflows.includes(:user, group_workflows: :group)
+    @workflows = @workflows.includes(:user, :api_token, group_workflows: :group)
   end
 
   def apply_audience_filter
@@ -97,6 +106,12 @@ class WorkflowsFilter
     return unless owner_filter
 
     @workflows = @workflows.where(user: @user)
+  end
+
+  def apply_source_filter
+    return unless source_filter
+
+    @workflows = @workflows.created_via_api
   end
 
   def apply_search

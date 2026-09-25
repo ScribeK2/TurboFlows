@@ -318,6 +318,7 @@ module WorkflowsHelper
     filters << :status if params[:status].present? && params[:status] != "all"
     filters << :search if params[:search].present?
     filters << :owner if params[:owner] == WorkflowsFilter::OWNER_ME
+    filters << :source if params[:source] == WorkflowsFilter::SOURCE_API
     filters << :sort if params[:sort].present? && params[:sort] != DEFAULT_SORT
     filters
   end
