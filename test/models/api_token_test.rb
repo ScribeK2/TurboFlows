@@ -85,6 +85,8 @@ class ApiTokenTest < ActiveSupport::TestCase
   test "raw_from_authorization reads a Bearer header in any case and nothing else" do
     assert_equal "tf_live_abc", ApiToken.raw_from_authorization("Bearer tf_live_abc")
     assert_equal "tf_live_abc", ApiToken.raw_from_authorization("bearer   tf_live_abc")
+    assert_equal "tf_live_abc", ApiToken.raw_from_authorization("Bearer tf_live_abc ")
+    assert_equal "tf_live_abc", ApiToken.raw_from_authorization("Bearer tf_live_abc \t")
     assert_nil ApiToken.raw_from_authorization("Basic dXNlcjpwYXNz")
     assert_nil ApiToken.raw_from_authorization("Bearer")
     assert_nil ApiToken.raw_from_authorization(nil)

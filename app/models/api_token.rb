@@ -15,7 +15,7 @@ class ApiToken < ApplicationRecord
   DEFAULT_EXPIRY_DAYS = 30
   MAX_LIFETIME = 90.days
   LAST_USED_WRITE_INTERVAL = 1.minute
-  BEARER = /\ABearer\s+(\S+)\z/i
+  BEARER = /\ABearer\s+(\S+)\s*\z/i
 
   belongs_to :user
   has_many :workflows, dependent: :nullify
