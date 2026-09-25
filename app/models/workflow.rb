@@ -468,7 +468,35 @@ class Workflow < ApplicationRecord
     GraphHashBuilder.call(steps.includes(transitions: :target_step))
   end
 
+  # This workflow as a strict-dialect document: what Export downloads, what
+  # GET /api/v1/workflows/:id answers, and what the import path accepts back
+  # (docs/agents/workflow-engine-and-import.md lists the four exceptions).
+  # One method so the three can't drift apart.
+  def to_strict_document
+    placements = group_workflows.includes(:group, :folder).to_a
+    {
+      schema_version: ImportSchemaGenerator::SCHEMA_VERSION,
+      exported_at: Time.current.iso8601,
+      workflows: [{
+        title: title,
+        description: description_text || "",
+        groups: strict_document_groups(placements).map(&:name_path),
+        folder: placements.find(&:is_primary?)&.folder&.name,
+        tags: tags.order(:name).map(&:name),
+        start_step_id: start_step&.uuid || steps.first&.uuid,
+        steps: StepSerializer.call(self, dialect: :strict)
+      }]
+    }
+  end
+
   private
+
+  # Primary group first (Workflow#primary_group explains why is_primary, not
+  # array position, is the truth), then by id: group_workflows is unordered, and
+  # re-import marks the first group primary.
+  def strict_document_groups(placements)
+    placements.sort_by { |gw| [gw.is_primary? ? 0 : 1, gw.group_id] }.map(&:group)
+  end
 
   def reassign_primary_group!(ids)
     rows = group_workflows.includes(:group).to_a.index_by(&:group_id)
