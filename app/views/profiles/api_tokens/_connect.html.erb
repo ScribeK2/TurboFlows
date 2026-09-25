@@ -1,0 +1,36 @@
+<%# locals: (token:, base_url:) %>
+<%# Ready-to-paste setup for the token this page just revealed. Navigating
+    between four views of the SAME token (not filtering a list), so this is
+    .tab-bar (UIGUIDE § Tabs), not the segmented .wf-status-tabs filter. %>
+<% mcp = "#{base_url}/mcp" %>
+<% snippets = [
+     ["Claude Code", %(claude mcp add --transport http turboflows #{mcp} --header "Authorization: Bearer #{token.plaintext}")],
+     ["Codex", %(export TURBOFLOWS_TOKEN=#{token.plaintext}\ncodex mcp add turboflows --url #{mcp} --bearer-token-env-var TURBOFLOWS_TOKEN)],
+     ["Other MCP clients", JSON.pretty_generate(mcpServers: { turboflows: { type: "http", url: mcp,
+                                                                           headers: { Authorization: "Bearer #{token.plaintext}" } } })],
+     ["curl", %(curl -H "Authorization: Bearer #{token.plaintext}" #{base_url}/api/v1/workflows)]
+   ] %>
+<%# This section also carries the raw token (in every snippet below), so it
+    needs the same Back-navigation protection as the reveal card above:
+    data-turbo-temporary strips it before Turbo snapshots the page for its
+    cache (see _reveal.html.erb's comment and the test that guards it). %>
+<section aria-labelledby="connect-heading" data-controller="tabs" data-turbo-temporary
+         style="margin-block: var(--space-4);">
+  <h3 id="connect-heading" class="font-semibold mb-1" style="font-size: var(--text-lg);">Connect your AI</h3>
+  <div class="tab-bar mb-4" role="tablist" aria-label="AI clients">
+    <% snippets.each_with_index do |(label, _), index| %>
+      <button type="button" role="tab" data-tabs-target="tab" data-action="click->tabs#switch"
+              class="tab-bar__tab <%= "is-active" if index.zero? %>"
+              aria-selected="<%= index.zero? %>"><%= label %></button>
+    <% end %>
+  </div>
+  <% snippets.each do |label, text| %>
+    <div role="tabpanel" data-tabs-target="panel" data-controller="clipboard" aria-label="<%= label %>">
+      <pre style="overflow-x: auto;"><code data-clipboard-target="source"><%= text %></code></pre>
+      <button type="button" class="btn btn--secondary" data-action="click->clipboard#copy"
+              data-clipboard-target="button">Copy</button>
+    </div>
+  <% end %>
+  <p class="text-sm" style="color: var(--color-ink-muted);">These include your token. Paste them only into your own tools.
+    <%= link_to "API reference", "/api/docs" %></p>
+</section>

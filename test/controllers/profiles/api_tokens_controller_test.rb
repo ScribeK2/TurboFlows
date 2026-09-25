@@ -109,6 +109,33 @@ class Profiles::ApiTokensControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Revoked"
   end
 
+  test "the reveal hands over ready-to-paste setup for each AI client, on this host" do
+    sign_in @editor
+    host! "turboflows.example.com"
+    post profile_api_tokens_path, params: { api_token: { name: "Claude", scopes: %w[read draft], expires_in_days: 30 } },
+                                  as: :turbo_stream
+    raw = response.body[/tf_live_[A-Za-z0-9_-]+/]
+    base = "http://turboflows.example.com"
+
+    assert_includes response.body,
+                    "claude mcp add --transport http turboflows #{base}/mcp --header &quot;Authorization: Bearer #{raw}&quot;"
+    assert_includes response.body, "codex mcp add turboflows --url #{base}/mcp --bearer-token-env-var TURBOFLOWS_TOKEN"
+    assert_includes response.body, "export TURBOFLOWS_TOKEN=#{raw}"
+    assert_includes response.body, "#{base}/mcp"
+    assert_includes response.body, "curl -H &quot;Authorization: Bearer #{raw}&quot; #{base}/api/v1/workflows"
+    assert_not_includes response.body, "localhost"
+  end
+
+  test "the connect panel never renders again after the reveal" do
+    sign_in @editor
+    post profile_api_tokens_path, params: { api_token: { name: "x", scopes: %w[read], expires_in_days: 7 } },
+                                  as: :turbo_stream
+    raw = response.body[/tf_live_[A-Za-z0-9_-]+/]
+    get edit_profile_path
+    assert_not_includes response.body, raw
+    assert_not_includes response.body, "claude mcp add"
+  end
+
   test "you cannot revoke someone else's token" do
     other = ApiToken.issue(user: @csr, name: "theirs", scopes: %w[read], expires_in_days: 7)
     sign_in @editor

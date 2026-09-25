@@ -24,6 +24,9 @@
             id: "api_token_scope_draft" %>
         Create drafts (never publish)</label>
     <% end %>
+    <% if current_user.can_create_workflows? %>
+      <p class="form-hint">To let an AI write drafts, tick both. It reads the authoring guide and your workflows first.</p>
+    <% end %>
   </fieldset>
 
   <div class="form-group">
