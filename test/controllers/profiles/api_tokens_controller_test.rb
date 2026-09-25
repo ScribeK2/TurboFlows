@@ -155,6 +155,17 @@ class Profiles::ApiTokensControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "localhost"
   end
 
+  test "the reveal hints at removing an old token before replacing it" do
+    sign_in @editor
+    post profile_api_tokens_path, params: { api_token: { name: "Claude", scopes: %w[read draft], expires_in_days: 30 } },
+                                  as: :turbo_stream
+
+    assert_response :success
+    assert_includes response.body, "claude mcp remove turboflows"
+    assert_includes response.body, "codex mcp remove turboflows"
+    assert_includes response.body, "shell profile"
+  end
+
   test "the connect panel never renders again after the reveal" do
     sign_in @editor
     post profile_api_tokens_path, params: { api_token: { name: "x", scopes: %w[read], expires_in_days: 7 } },
