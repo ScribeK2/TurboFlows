@@ -37,4 +37,18 @@ class ApiDocsTest < ActionDispatch::IntegrationTest
   test "the /api catch-all doesn't swallow the docs page" do
     assert_equal "api_docs", Rails.application.routes.recognize_path("/api/docs")[:controller]
   end
+
+  # Item 5 of the Phase 3 review: without format: false, /api/docs.json
+  # matched api_docs#show — Devise's HTML redirect signed out, or a missing
+  # template signed in — a third, undocumented error shape. format: false
+  # makes the route match only the exact path, so a .json suffix falls
+  # through to the /api namespace's own JSON 404 catch-all.
+  test "GET /api/docs.json falls to the API's JSON 404, never api_docs#show" do
+    sign_in User.create!(email: "api-#{SecureRandom.hex(4)}@example.com", password: "password123!",
+                         password_confirmation: "password123!", role: "user")
+    get "/api/docs.json"
+    assert_response :not_found
+    assert_equal "application/json", response.media_type
+    assert_equal "not_found", response.parsed_body.dig("errors", 0, "code")
+  end
 end

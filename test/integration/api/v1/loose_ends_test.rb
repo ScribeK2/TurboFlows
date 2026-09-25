@@ -19,6 +19,30 @@ class Api::V1::LooseEndsTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  # Item 4 of the Phase 3 review: a bare splat ("*path") never matches when
+  # there's nothing after /api for it to swallow, so /api and /api/ used to
+  # fall all the way through to Rails' own HTML 404 — contradicting v1.yaml's
+  # own claim that an unknown /api path is never HTML. "(*path)" (optional
+  # splat) closes both.
+  test "bare /api and /api/ are the API's own JSON 404, never Rails' HTML page" do
+    ["/api", "/api/"].each do |path|
+      get path
+      assert_response :not_found
+      assert_equal "application/json", response.media_type
+      assert_equal "not_found", response.parsed_body.dig("errors", 0, "code")
+    end
+  end
+
+  # The optional splat must not swallow real, non-catch-all routes above it.
+  test "/api/docs and /api/v1/openapi.json still route to their own controllers" do
+    assert_equal "api_docs", Rails.application.routes.recognize_path("/api/docs")[:controller]
+    assert_equal "api/v1/openapi", Rails.application.routes.recognize_path("/api/v1/openapi.json")[:controller]
+
+    get api_v1_openapi_path
+    assert_response :success
+    assert_equal "3.1.0", response.parsed_body["openapi"]
+  end
+
   test "array-valued filters are refused, not silently dropped" do
     get api_v1_workflows_path, params: { q: ["x"] }, headers: auth(@reader)
     assert_response :unprocessable_content

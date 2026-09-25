@@ -307,10 +307,17 @@ for the same reason.
 what keeps `/api/v1/**.<format>` from ever reaching a real endpoint:
 `format: false` on the namespace means no `/api/v1/drafts.json`-shaped URL
 matches `DraftsController` (or any other real action) — it still **routes**,
-but only to the namespace's own `match "*path", to: "v1/not_found#show"`
+but only to the namespace's own `match "(*path)", to: "v1/not_found#show"`
 catch-all (`test/integration/api/v1/drafts_test.rb` "a .json-suffixed drafts
 URL routes only to the JSON 404, never to drafts#create"), so
 `Api::DraftBodyGuard`'s exact/prefix path match still has nothing real to miss.
+The splat is wrapped in parens — `(*path)`, not `*path` — because a bare splat
+segment requires something to swallow: `*path` alone never matched bare
+`/api` or `/api/` (no trailing segment to capture), so those two fell through
+past the namespace entirely to Rails' own HTML 404, contradicting this
+document's own claim that an unknown `/api` path is never HTML. `(*path)`
+makes the segment optional, so the catch-all matches those two as well
+(`test/integration/api/v1/loose_ends_test.rb` covers both).
 A route added outside that block (or above the namespace's own catch-all,
 which must stay last inside it) needs to be re-checked against this guard by
 hand, since the guard only reads paths, not the router's knowledge of what's

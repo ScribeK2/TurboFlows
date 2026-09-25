@@ -4,8 +4,12 @@ Rails.application.routes.draw do
   # The interactive API reference: signed-in HTML, deliberately outside the
   # /api namespace (whose defaults, format rule and catch-all are for JSON).
   # Must sit ABOVE that namespace: routes match in order, and the namespace's
-  # own `match "*path"` catch-all would otherwise swallow /api/docs first.
-  get "api/docs", to: "api_docs#show", as: :api_docs
+  # own `match "(*path)"` catch-all would otherwise swallow /api/docs first.
+  # format: false here too: without it, /api/docs.json matched this route
+  # (Devise's HTML redirect for a signed-out request, or api_docs#show with
+  # no matching template for a signed-in one — a third, undocumented error
+  # shape) instead of falling through to the namespace's JSON 404 below.
+  get "api/docs", to: "api_docs#show", as: :api_docs, format: false
 
   # The token-authenticated API (spec 2026-09-25-api-and-mcp-design §2).
   # format: false: a JSON-only, unreleased API, same as /mcp below — no
@@ -28,8 +32,11 @@ Rails.application.routes.draw do
     end
 
     # Anything else under /api answers the API's own 404, never Rails' HTML
-    # page. Keep this LAST in the namespace; routes added later go above it.
-    match "*path", to: "v1/not_found#show", via: :all
+    # page — including bare /api and /api/, which a plain "*path" splat
+    # doesn't match (a splat segment requires something to swallow), so those
+    # two fell through to Rails' own HTML 404 until the segment was made
+    # optional. Keep this LAST in the namespace; routes added later go above it.
+    match "(*path)", to: "v1/not_found#show", via: :all
   end
 
   # The MCP endpoint (spec 2026-09-25-api-and-mcp-design §3). One action: the
