@@ -11,11 +11,6 @@ module StrictDocumentNormalizer
   # map each uuid to the index of the step it names (steps are exported in a
   # stable position order) and compare indices, so topology survives the
   # comparison while the literal id values — stable or not — do not.
-  # Step uuids are legitimately regenerated on import, so they cannot be compared
-  # literally — but deleting them would leave only condition and label on each
-  # transition, and an importer that wired every transition to the wrong step
-  # would still pass. Map each uuid to the INDEX of the step it names instead, so
-  # a rewired transition changes the compared document.
   def normalize(document)
     # deep_dup, not except: the rewrites below reach into workflows[0], which a
     # shallow copy shares with the caller's document. Without this, calling

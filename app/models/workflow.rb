@@ -479,7 +479,9 @@ class Workflow < ApplicationRecord
 
   # This workflow as a strict-dialect document: what Export downloads, what
   # GET /api/v1/workflows/:id answers, and what the import path accepts back
-  # (docs/agents/workflow-engine-and-import.md lists the four exceptions).
+  # (docs/agents/workflow-engine-and-import.md lists the documented exceptions
+  # where an export doesn't import back cleanly -- the count there has moved
+  # before, so it isn't repeated here).
   # One method so the three can't drift apart.
   def to_strict_document
     placements = group_workflows.includes(:group, :folder).to_a
