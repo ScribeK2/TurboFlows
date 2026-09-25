@@ -8,6 +8,7 @@ module Api
   # is all). Existing rules, not new ones.
   class WorkflowCatalog
     PER_PAGE = 25
+    MAX_PAGE = 10_000
 
     class InvalidFilter < StandardError; end
 
@@ -20,10 +21,12 @@ module Api
     end
 
     def search(q: nil, tag: nil, group: nil, status: nil, page: nil)
-      page = [page.to_i, 1].max
+      page = page.to_i.clamp(1, MAX_PAGE)
       scope = visible
       scope = scope.search_by(q) if q.present?
-      scope = scope.where(id: Tagging.joins(:tag).where(tags: { name: tag }).select(:workflow_id)) if tag.present?
+      if tag.present?
+        scope = scope.where(id: Tagging.joins(:tag).where("LOWER(tags.name) = ?", tag.downcase).select(:workflow_id))
+      end
       scope = scope.in_group(find_group(group)) if group.present?
       scope = scope.where(status: checked_status(status)) if status.present?
 

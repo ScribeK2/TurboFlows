@@ -33,6 +33,12 @@ class Api::V1::WorkflowsTest < ActionDispatch::IntegrationTest
     assert_equal "not_found", response.parsed_body.dig("errors", 0, "code")
   end
 
+  test "an enormous page number answers 200 with an empty page, not a 500" do
+    get api_v1_workflows_path(page: "99999999999999999999"), headers: auth
+    assert_response :success
+    assert_equal [], response.parsed_body["workflows"]
+  end
+
   test "an unknown filter is a 422 invalid_filter" do
     get api_v1_workflows_path(status: "archived"), headers: auth
     assert_response :unprocessable_content

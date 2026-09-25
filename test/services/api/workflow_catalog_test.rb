@@ -47,6 +47,78 @@ class Api::WorkflowCatalogTest < ActiveSupport::TestCase
     assert_equal [@team_published.id], catalog(@editor).search(group: @team.id.to_s).workflows.map(&:id)
   end
 
+  test "q matching a hidden workflow's title returns nothing hidden" do
+    marker = "Wombat#{SecureRandom.hex(3)}"
+    hidden = make_workflow("#{marker} Hidden", user: @other_editor, status: "published", group: @other_team)
+
+    [@editor, @csr].each do |user|
+      ids = catalog(user).search(q: marker).workflows.map(&:id)
+      assert_not_includes ids, hidden.id
+    end
+  end
+
+  test "q matching only a hidden workflow's description returns nothing hidden, and still matches a visible one" do
+    marker = "Wombat#{SecureRandom.hex(3)}"
+    hidden = Workflow.create!(title: "Plain hidden #{SecureRandom.hex(2)}", user: @other_editor, status: "published",
+                              description: "text with #{marker} inside")
+    GroupWorkflow.create!(workflow: hidden, group: @other_team, is_primary: true)
+    # Positive control, so a search_by change that stops reading descriptions
+    # cannot make this test pass vacuously.
+    visible = Workflow.create!(title: "Plain visible #{SecureRandom.hex(2)}", user: @other_editor, status: "published",
+                               description: "text with #{marker} inside too")
+    GroupWorkflow.create!(workflow: visible, group: @team, is_primary: true)
+
+    [@editor, @csr].each do |user|
+      ids = catalog(user).search(q: marker).workflows.map(&:id)
+      assert_not_includes ids, hidden.id
+      assert_includes ids, visible.id
+    end
+  end
+
+  test "tag naming a tag on a hidden workflow returns nothing hidden, and a visible tagged workflow is returned" do
+    tag = Tag.create!(name: "Billing#{SecureRandom.hex(3)}")
+    hidden = make_workflow("Zebra #{SecureRandom.hex(2)}", user: @other_editor, status: "published", group: @other_team)
+    visible = make_workflow("Zebra #{SecureRandom.hex(2)}", user: @other_editor, status: "published", group: @team)
+    Tagging.create!(tag:, workflow: hidden)
+    Tagging.create!(tag:, workflow: visible)
+
+    [@editor, @csr].each do |user|
+      ids = catalog(user).search(tag: tag.name).workflows.map(&:id)
+      assert_not_includes ids, hidden.id
+      assert_includes ids, visible.id
+    end
+  end
+
+  test "group of a group the user can't reach returns nothing hidden" do
+    hidden = make_workflow("Zebra #{SecureRandom.hex(2)}", user: @other_editor, status: "published", group: @other_team)
+
+    [@editor, @csr].each do |user|
+      ids = catalog(user).search(group: @other_team.id.to_s).workflows.map(&:id)
+      assert_not_includes ids, hidden.id
+    end
+  end
+
+  test "q, tag and group combined never widen past what status alone would show" do
+    marker = "Wombat#{SecureRandom.hex(3)}"
+    tag = Tag.create!(name: "Combo#{SecureRandom.hex(3)}")
+    hidden = Workflow.create!(title: "#{marker} Hidden", user: @other_editor, status: "published")
+    GroupWorkflow.create!(workflow: hidden, group: @other_team, is_primary: true)
+    Tagging.create!(tag:, workflow: hidden)
+
+    [@editor, @csr].each do |user|
+      ids = catalog(user).search(q: marker, tag: tag.name, group: @other_team.id.to_s, status: "published")
+                         .workflows.map(&:id)
+      assert_empty ids
+    end
+  end
+
+  test "the tag filter matches case-insensitively, like tag uniqueness does" do
+    tag = Tag.create!(name: "Billing#{SecureRandom.hex(3)}")
+    Tagging.create!(tag:, workflow: @team_published)
+
+    assert_equal [@team_published.id], catalog(@editor).search(tag: tag.name.downcase).workflows.map(&:id)
+  end
+
   test "an unknown status or group is refused, not ignored" do
     assert_raises(Api::WorkflowCatalog::InvalidFilter) { catalog(@editor).search(status: "archived") }
     assert_raises(Api::WorkflowCatalog::InvalidFilter) { catalog(@editor).search(group: "999999") }
@@ -61,6 +133,10 @@ class Api::WorkflowCatalogTest < ActiveSupport::TestCase
     assert_equal Api::WorkflowCatalog::PER_PAGE, first.workflows.size
     assert_equal 2, first.next_page
     assert_nil catalog(@editor).search(status: "draft", page: 2).next_page
+  end
+
+  test "an enormous page number is clamped, not sent to the database as an OFFSET" do
+    assert_empty catalog(@admin).search(page: "99999999999999999999").workflows
   end
 
   test "summary carries what an AI needs to choose, and a builder url" do
