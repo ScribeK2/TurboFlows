@@ -49,6 +49,13 @@ class Api::V1::AuthenticationTest < ActionDispatch::IntegrationTest
     assert_response :unauthorized
   end
 
+  test "a locked user's token answers 401" do
+    @editor.lock_access!(send_instructions: false)
+    get api_v1_authoring_guide_path, headers: auth(@token.plaintext)
+    assert_response :unauthorized
+    assert_equal "unauthorized", response.parsed_body.dig("errors", 0, "code")
+  end
+
   test "a signed-in browser session alone does not authenticate the API" do
     sign_in @editor
     get api_v1_authoring_guide_path
