@@ -11,7 +11,8 @@ module Api
           group: { type: "integer", description: "Only workflows filed in this group id or its subgroups." },
           status: { type: "string", enum: %w[published draft] },
           page: { type: "integer", minimum: 1, description: "Page number; see next_page in the result." }
-        }
+        },
+        additionalProperties: false
       )
       annotations(read_only_hint: true, destructive_hint: false, idempotent_hint: true, open_world_hint: false)
 

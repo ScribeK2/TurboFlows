@@ -6,7 +6,8 @@ module Api
                   "create_workflow_draft accepts, so it can be used as a worked example."
       input_schema(
         properties: { id: { type: %w[integer string], description: "The workflow id from search_workflows." } },
-        required: ["id"]
+        required: ["id"],
+        additionalProperties: false
       )
       annotations(read_only_hint: true, destructive_hint: false, idempotent_hint: true, open_world_hint: false)
 

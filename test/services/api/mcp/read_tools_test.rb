@@ -19,8 +19,8 @@ class Api::Mcp::ReadToolsTest < ActiveSupport::TestCase
     assert_equal JSON.parse(response.content.first[:text], symbolize_names: true), data
   end
 
-  test "search_workflows refuses an unknown status as a tool result" do
-    response = call(Api::Mcp::SearchWorkflows, status: "archived")
+  test "search_workflows refuses an unknown group id as a catalog InvalidFilter tool result" do
+    response = call(Api::Mcp::SearchWorkflows, group: 999_999)
     assert_predicate response, :error?
     assert_equal "invalid_filter", response.structured_content[:errors].first[:code]
   end

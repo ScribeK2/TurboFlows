@@ -4,6 +4,7 @@ module Api
     class CreateWorkflowDraft < MCP::Tool
       tool_name "create_workflow_draft"
       description "Not built yet."
+      input_schema(properties: {}, additionalProperties: false)
 
       def self.call(server_context:, **)
         ToolResult.refusal("not_implemented", "Not built yet.")
