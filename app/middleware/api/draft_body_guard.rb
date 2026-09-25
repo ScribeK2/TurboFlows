@@ -41,7 +41,7 @@ module Api
       request = Rack::Request.new(env)
       return @app.call(env) unless guarded?(request)
 
-      limit = request.path == "/mcp" ? MCP_MAX_BYTES : WorkflowImporter::MAX_IMPORT_BYTES
+      limit = mcp_path?(request) ? MCP_MAX_BYTES : WorkflowImporter::MAX_IMPORT_BYTES
       return too_large(limit) if content_length(env, limit) > limit
 
       env["action_dispatch.parameter_filter"] = [/./]
@@ -51,7 +51,15 @@ module Api
     private
 
     def guarded?(request)
-      request.post? && (request.path.start_with?("/api/v1/drafts") || request.path == "/mcp")
+      request.post? && (request.path.start_with?("/api/v1/drafts") || mcp_path?(request))
+    end
+
+    # The route (config/routes.rb) answers /mcp, /mcp/ (the router ignores a
+    # trailing slash) and, absent format: false, /mcp.json — any path the
+    # router treats as this endpoint must be treated as it here too, or a body
+    # of any size reaches JSON parsing (and the log) unguarded.
+    def mcp_path?(request)
+      request.path.chomp("/") == "/mcp"
     end
 
     # CONTENT_LENGTH is trusted when present and nonzero. Otherwise (absent, or

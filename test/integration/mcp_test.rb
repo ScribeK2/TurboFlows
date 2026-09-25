@@ -88,6 +88,29 @@ class McpTest < ActionDispatch::IntegrationTest
     assert_includes logged.to_s, "[FILTERED]"
   end
 
+  # The route answers /mcp/ too (the router ignores a trailing slash), so the
+  # body guard has to recognize it as the same endpoint — otherwise the whole
+  # document reaches this log line unfiltered.
+  test "the log never carries a document sent over MCP, at /mcp/ either" do
+    title = "Secret policy #{SecureRandom.hex(4)}"
+    document = valid_document.tap { it[:workflows][0][:title] = title }
+    logged = nil
+    subscriber = ->(*, payload) { logged = payload[:params] }
+    ActiveSupport::Notifications.subscribed(subscriber, "start_processing.action_controller") do
+      post "/mcp/", params: envelope("tools/call", name: "create_workflow_draft", arguments: { document: }),
+                    headers: headers(@drafter)
+      assert_response :success
+    end
+    assert_not_includes logged.to_s, title
+    assert_includes logged.to_s, "[FILTERED]"
+  end
+
+  test "POST /mcp.json does not reach the controller" do
+    assert_raises(ActionController::RoutingError) do
+      Rails.application.routes.recognize_path("/mcp.json", method: :post)
+    end
+  end
+
   private
 
   def rpc(token, method, **params)

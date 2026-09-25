@@ -90,4 +90,27 @@ class Api::DraftBodyGuardTest < ActiveSupport::TestCase
     assert_equal 200, status
     assert_not_nil @downstream_env
   end
+
+  # The route (config/routes.rb) answers /mcp/ too — the router ignores a
+  # trailing slash — so the guard must recognize it as the same endpoint, not
+  # let the whole body reach JSON parsing (and the log) unguarded.
+  test "a /mcp/ POST (trailing slash) reaches the app with the parameter filter set" do
+    env = Rack::MockRequest.env_for("/mcp/", method: "POST", input: '{"jsonrpc":"2.0"}')
+    status, = @guard.call(env)
+
+    assert_equal 200, status
+    assert_equal [/./], @downstream_env["action_dispatch.parameter_filter"]
+  end
+
+  test "a /mcp/ POST over MCP_MAX_BYTES is refused, not buffered whole" do
+    body = "x" * (Api::DraftBodyGuard::MCP_MAX_BYTES + 1)
+    env = Rack::MockRequest.env_for("/mcp/", method: "POST", input: body)
+
+    status, headers, response_body = @guard.call(env)
+
+    assert_equal 413, status
+    assert_equal "application/json", headers["content-type"]
+    assert_equal "payload_too_large", JSON.parse(response_body.first).dig("errors", 0, "code")
+    assert_nil @downstream_env
+  end
 end
