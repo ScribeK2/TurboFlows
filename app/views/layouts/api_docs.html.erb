@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html data-controller="dark-mode">
+  <head>
+    <title>API reference — TurboFlows</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <!-- Initialize theme before page renders to prevent flash (copied from
+         layouts/application.html.erb, so this page never opens light while
+         the rest of the app is in dark mode). -->
+    <script nonce="<%= content_security_policy_nonce %>">
+      (function() {
+        const savedTheme = localStorage.getItem("theme");
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.dataset.theme =
+          (savedTheme === "dark" || (!savedTheme && prefersDark)) ? "dark" : "light";
+      })();
+    </script>
+
+    <!-- Favicon -->
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+
+    <%= stylesheet_link_tag "application", "_global", "reset", "base", "buttons", "layout", "navigation",
+          "data-turbo-track": "reload", preload_links_header: false %>
+  </head>
+
+  <body class="page-body">
+    <!-- A thin top bar: no destinations, no search, no avatar — this page is
+         outside every other section of the app. -->
+    <nav class="page-header">
+      <div class="page-header__inner">
+        <div class="page-header__row">
+          <div class="nav__zone nav__zone--start">
+            <%= link_to root_path, class: "page-back" do %>
+              <%= icon "chevron-left", class: "icon icon--xs" %>
+              Back to TurboFlows
+            <% end %>
+          </div>
+          <div class="nav__zone nav__zone--end">
+            <span class="nav__brand-text">API reference</span>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <%# An empty mount point, deliberately NOT named "api-reference": the
+        vendored bundle auto-inits against any element with that exact id at
+        script-load time (the legacy `<script id="api-reference" data-url>`
+        convention), which would mount a second, unconfigured instance beside
+        the one this page creates explicitly below — see the vendored file's
+        header comment. It also holds no children: Scalar's Vue app treats
+        any existing children as content to hydrate against and mismatch-warns
+        in the console over a bare <script> tag, so the view's script tags
+        render below, outside the mount point, and the DOM it mounts into is
+        genuinely empty. %>
+    <main id="api-docs-viewer"></main>
+    <%= yield %>
+  </body>
+</html>

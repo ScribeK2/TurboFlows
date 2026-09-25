@@ -231,4 +231,25 @@ class RackAttackTest < ActionDispatch::IntegrationTest
     assert Rack::Attack.rest?(unnormalized_request("/api//v1/workflows"))
     assert_not Rack::Attack.rest?(unnormalized_request("/mcp"))
   end
+
+  # /api/docs is a signed-in browser page (config/initializers/rack_attack.rb
+  # § rest?), not a token-authenticated REST call: it must count toward
+  # neither api/token/read nor api/all, and a throttled hit on it must never
+  # come back as the API's JSON 429.
+  test "rest? is false for /api/docs and true for /api/v1/workflows" do
+    assert_not Rack::Attack.rest?(unnormalized_request("/api/docs", method: "GET"))
+    assert Rack::Attack.rest?(unnormalized_request("/api/v1/workflows", method: "GET"))
+  end
+
+  test "a throttled /api/docs request answers with the readable page, never the API's JSON body" do
+    req = unnormalized_request("/api/docs", method: "GET")
+
+    assert_not Rack::Attack.api?(req)
+
+    status, headers, body = Rack::Attack.throttled_responder.call(req)
+
+    assert_equal 429, status
+    assert_match "text/html", headers["content-type"]
+    assert_includes body.join, "Too many attempts"
+  end
 end

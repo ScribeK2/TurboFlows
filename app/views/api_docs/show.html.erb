@@ -1,0 +1,20 @@
+<%# The vendored Scalar API Reference viewer (unmodified upstream file; see
+    vendor/javascript/scalar-api-reference.js for the exact version, source
+    and SHA-256), mounted into the layout's <main id="api-docs-viewer">. No
+    importmap, no Stimulus: this page is a single self-contained script tag
+    pair. %>
+<%= javascript_include_tag "scalar-api-reference", nonce: true %>
+<%= javascript_tag nonce: true do %>
+  Scalar.createApiReference("#api-docs-viewer", {
+    url: "<%= api_v1_openapi_path %>",
+    // Config keys read from the vendored 1.72.1 bundle's own schema
+    // (grepped out of the minified source; see task-6-report.md):
+    withDefaultFonts: false,
+    hideClientButton: false, // keep "Test Request" — this is the one Scalar buys us over Redoc
+    telemetry: false,
+    proxyUrl: "",
+    // Follow the theme the layout's bootstrap script already resolved onto
+    // <html data-theme>, so the viewer never fights the app's own toggle.
+    darkMode: document.documentElement.dataset.theme === "dark"
+  });
+<% end %>

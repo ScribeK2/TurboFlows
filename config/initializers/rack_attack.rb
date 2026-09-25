@@ -71,7 +71,13 @@ class Rack::Attack
 
   def self.mcp?(req) = normalized_path(req) == "/mcp"
 
-  def self.rest?(req) = normalized_path(req).start_with?("/api/")
+  # Narrowed to /api/v1/ (not /api/): /api/docs is a signed-in browser page,
+  # not a token-authenticated REST call, and must neither count toward
+  # api/all nor ever get answered with a JSON 429. An unknown /api/* path
+  # outside /api/v1/ now 404s from the namespace's own catch-all and isn't
+  # throttled by the API rules at all — it was never a real endpoint to
+  # protect.
+  def self.rest?(req) = normalized_path(req).start_with?("/api/v1/")
 
   def self.drafts?(req)
     path = normalized_path(req)

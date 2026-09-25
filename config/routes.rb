@@ -1,6 +1,12 @@
 Rails.application.routes.draw do
   get "healthz", to: proc { [200, {}, ["OK"]] }
 
+  # The interactive API reference: signed-in HTML, deliberately outside the
+  # /api namespace (whose defaults, format rule and catch-all are for JSON).
+  # Must sit ABOVE that namespace: routes match in order, and the namespace's
+  # own `match "*path"` catch-all would otherwise swallow /api/docs first.
+  get "api/docs", to: "api_docs#show", as: :api_docs
+
   # The token-authenticated API (spec 2026-09-25-api-and-mcp-design §2).
   # format: false: a JSON-only, unreleased API, same as /mcp below — no
   # /api/**.<format> URL should route at all. defaults: { format: :json }
