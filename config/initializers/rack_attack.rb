@@ -20,6 +20,8 @@ class Rack::Attack
   # The page a throttled person sees. Read once; it is a static file.
   THROTTLED_PAGE = Rails.public_path.join("429.html").read.freeze
 
+  DRAFTS_PATH = "/api/v1/drafts".freeze
+
   # Use the real client IP resolved by ActionDispatch::RemoteIp (honours
   # TRUSTED_PROXY_IPS / X-Forwarded-For).  Falls back to Rack's req.ip so
   # tests and environments without the middleware still work. Only the last
@@ -55,7 +57,29 @@ class Rack::Attack
     req.path.match?(%r{\A/player/scenarios/\d+}) && req.get?
   end
 
-  def self.api?(req) = req.path.start_with?("/api/")
+  # Rack::Attack's own #call already rewrites env['PATH_INFO'] with this same
+  # function (PathNormalizer, gems/rack-attack/lib/rack/attack.rb) before any
+  # throttle block or the responder ever sees a request, so req.path below is
+  # already normalized. This helper is a second line, not the only one: it
+  # keeps every API-shaped check correct even if rack-attack's own
+  # normalization is ever removed, downgraded (its PathNormalizer falls back
+  # to an identity function when ActionDispatch isn't loaded) or reordered,
+  # and it keeps this file reading the same way Api::DraftBodyGuard does,
+  # which normalizes for the same reason one middleware layer earlier, before
+  # rack-attack has run at all.
+  def self.normalized_path(req) = ActionDispatch::Journey::Router::Utils.normalize_path(req.path)
+
+  def self.mcp?(req) = normalized_path(req) == "/mcp"
+
+  def self.rest?(req) = normalized_path(req).start_with?("/api/")
+
+  def self.drafts?(req)
+    path = normalized_path(req)
+    path == DRAFTS_PATH || path.start_with?("#{DRAFTS_PATH}/")
+  end
+
+  # REST and MCP: which throttles count, and which 429 body a caller gets.
+  def self.api?(req) = rest?(req) || mcp?(req)
 
   def self.api_token_key(req)
     raw = ApiToken.raw_from_authorization(req.get_header("HTTP_AUTHORIZATION"))
@@ -106,11 +130,20 @@ class Rack::Attack
   end
 
   throttle("api/token/read", limit: 120, period: 60.seconds) do |req|
-    api_token_key(req) if api?(req) && req.get?
+    api_token_key(req) if rest?(req) && req.get?
   end
 
   throttle("api/token/draft", limit: 20, period: 60.seconds) do |req|
-    api_token_key(req) if req.post? && req.path.start_with?("/api/v1/drafts")
+    api_token_key(req) if req.post? && drafts?(req)
+  end
+
+  # Every MCP call, whatever the tool: the throttle can't see which tool
+  # without parsing the body, which Rack::Attack shouldn't do. 60 fits an
+  # agent's guide -> search -> validate -> fix -> validate -> create loop with
+  # room to spare (spec section 4; the live check in the Phase 2 plan records
+  # a real session's count).
+  throttle("api/token/mcp", limit: 60, period: 60.seconds) do |req|
+    api_token_key(req) if mcp?(req)
   end
 
   throttle("api/all", limit: 1200, period: 60.seconds) do |req|

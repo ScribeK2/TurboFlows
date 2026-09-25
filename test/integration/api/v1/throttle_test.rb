@@ -50,9 +50,68 @@ class Api::V1::ThrottleTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "/mcp is limited per token at 60 a minute, with a JSON 429" do
+    freeze_time do
+      60.times do
+        post mcp_path, params: list_tools, headers: mcp_headers(@one)
+        assert_operator response.status, :<, 429
+      end
+      post mcp_path, params: list_tools, headers: mcp_headers(@one)
+      assert_response :too_many_requests
+      assert_equal "throttled", response.parsed_body.dig("errors", 0, "code")
+
+      post mcp_path, params: list_tools, headers: mcp_headers(@two)
+      assert_operator response.status, :<, 429
+    end
+  end
+
+  # Rack::Attack's own middleware already normalizes env['PATH_INFO'] with
+  # ActionDispatch::Journey::Router::Utils before any throttle block runs (see
+  # the comment on Rack::Attack.normalized_path), so by the time these three
+  # shapes reach our code they already share one path. That makes this an
+  # end-to-end proof the bucket is shared, not a test of the normalization
+  # itself — test/integration/rack_attack_test.rb drives Rack::Attack.mcp?
+  # and .drafts? directly against an unnormalized path, which is the only
+  # place a regression in our own normalized_path helper could show up.
+  test "/mcp/ and /mcp// count toward the same per-token bucket as /mcp" do
+    freeze_time do
+      20.times { post "/mcp", params: list_tools, headers: mcp_headers(@one) }
+      20.times { post "/mcp/", params: list_tools, headers: mcp_headers(@one) }
+      20.times { post "/mcp//", params: list_tools, headers: mcp_headers(@one) }
+      assert_operator response.status, :<, 429
+
+      post "/mcp", params: list_tools, headers: mcp_headers(@one)
+      assert_response :too_many_requests
+      assert_equal "throttled", response.parsed_body.dig("errors", 0, "code")
+    end
+  end
+
+  # Same caveat as the /mcp variant test above: Rack::Attack normalizes the
+  # path before our drafts? check ever runs, so this proves the bucket is
+  # shared end-to-end rather than exercising Rack::Attack.drafts? directly.
+  test "/api//v1/drafts/validate counts toward the drafts bucket" do
+    freeze_time do
+      20.times do
+        post "/api//v1/drafts/validate", params: "{}", headers: headers(@one)
+        assert_response :success
+      end
+
+      post "/api//v1/drafts/validate", params: "{}", headers: headers(@one)
+      assert_response :too_many_requests
+      assert_equal "throttled", response.parsed_body.dig("errors", 0, "code")
+    end
+  end
+
   private
 
   def headers(token)
     { "Authorization" => "Bearer #{token.plaintext}", "Content-Type" => "application/json" }
+  end
+
+  def list_tools = { jsonrpc: "2.0", id: "1", method: "tools/list", params: {} }.to_json
+
+  def mcp_headers(token)
+    { "Authorization" => "Bearer #{token.plaintext}", "Content-Type" => "application/json",
+      "Accept" => "application/json, text/event-stream", "MCP-Protocol-Version" => "2025-06-18" }
   end
 end
