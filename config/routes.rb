@@ -10,6 +10,11 @@ Rails.application.routes.draw do
   # doesn't recognize.
   namespace :api, defaults: { format: :json }, format: false do
     namespace :v1 do
+      # The public OpenAPI document (no token: it describes endpoints, not
+      # data). Above everything else in this namespace so it's matched
+      # before the catch-all below.
+      get "openapi.json", to: "openapi#show", as: :openapi
+
       resources :workflows, only: %i[index show]
       resource :authoring_guide, only: :show
       resources :drafts, only: :create
