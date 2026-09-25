@@ -5,9 +5,11 @@ info:
   description: |
     Every request under `/api/v1` needs a bearer token, created from your
     profile page: `Authorization: Bearer tf_live_...`. A token carries one or
-    two scopes, `read` and `draft`, and follows its owner's current role — a
-    demoted or deactivated user's tokens stop working even though the row
-    still exists.
+    two scopes, `read` and `draft`. Only `draft` follows its owner's current
+    role — demoting an Editor to a role that can't create workflows quietly
+    leaves their token's `read` scope working and its `draft` scope refused.
+    Deactivating the owner stops the token completely, on either scope. Either
+    way the row still exists.
 
     This API only ever creates drafts. It never publishes a workflow, and it
     never edits or deletes one that already exists. A `read` token lists and
@@ -32,9 +34,10 @@ paths:
     get:
       summary: List the workflows this token can see
       description: |
-        Published workflows everyone can see, plus drafts: the token owner's
-        own, or every draft if the owner is an administrator. Requires the
-        `read` scope.
+        Published workflows filed in a group the token owner reaches (an
+        Editor also sees their own, filed or not; an administrator sees
+        every published workflow), plus drafts: the owner's own, or every
+        draft if the owner is an administrator. Requires the `read` scope.
       parameters:
         - name: q
           in: query
@@ -48,7 +51,7 @@ paths:
             type: string
         - name: group
           in: query
-          description: A group id; only workflows in that group.
+          description: A group id; workflows filed in it or one of its subgroups.
           schema:
             type: integer
         - name: status
@@ -238,11 +241,17 @@ paths:
                 $ref: "#/components/schemas/Errors"
         "422":
           description: >-
-            The document wasn't created: a malformed body (`malformed_json`),
-            a validator finding (the same codes StrictImportValidator reports
-            on import), the token owner's outstanding-draft limit
-            (`api_draft_limit`, 50 drafts created via the API per user), or a
-            failure at commit time (`refused_at_commit`).
+            The document wasn't created. Each error and warning names what's
+            wrong: `path` (which part of the document, if any), `code`,
+            `message`, and optionally `value` (what was found) and `expected`
+            (the values that would have been accepted). Most findings come
+            from checking the document against the dialect `GET
+            /api/v1/authoring_guide` describes — a malformed body reads as
+            one such finding, code `malformed_json`. Two codes aren't about
+            the document itself: `api_draft_limit` (the token owner's 50
+            outstanding-draft cap, made via the API, is full, or this
+            document would push it over) and `refused_at_commit` (the
+            document was valid but couldn't be written).
           content:
             application/json:
               schema:
@@ -331,6 +340,14 @@ components:
         message:
           type: string
         value: {}
+        expected:
+          type: array
+          description: >-
+            The values that would have been accepted, for a handful of
+            document-validation codes (`unsupported_schema_version`,
+            `invalid_condition_syntax`, `unknown_field`, `unknown_step_type`,
+            `invalid_enum_value`, `invalid_reference_url`). Absent for every
+            other code.
     Errors:
       type: object
       required: [errors]
