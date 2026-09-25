@@ -42,6 +42,9 @@ gem "prawn"
 gem "sentry-rails"
 gem "sentry-ruby"
 
+# MCP (Model Context Protocol) server for the /mcp endpoint
+gem "mcp", "~> 1.6"
+
 group :development, :test do
   gem "capybara"
   gem "debug", platforms: %i[mri windows]
@@ -71,5 +74,3 @@ group :development do
   # the command errors instead of auditing and the check silently stops running.
   gem "bundler-audit", require: false
 end
-
-gem "mcp", "~> 1.6"
