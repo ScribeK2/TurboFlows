@@ -25,6 +25,16 @@ class Api::V1::OpenapiTest < ActionDispatch::IntegrationTest
     assert_equal routes, documented
   end
 
+  # Item 3 of the Phase 3 review: the description used to say MCP is
+  # "described at /api/docs" — circular, since that page renders only this
+  # document and has nothing more to say about MCP than this file does.
+  test "the MCP mention points to the profile page's setup, not the circular /api/docs" do
+    text = Rails.root.join("config/openapi/v1.yaml").read
+    assert_includes text, "/mcp"
+    assert_includes text, "profile page"
+    assert_not_includes text, "/api/docs"
+  end
+
   test "every documented error code is one the API can produce" do
     text = Rails.root.join("config/openapi/v1.yaml").read
     %w[unauthorized insufficient_scope not_found invalid_filter payload_too_large throttled api_draft_limit

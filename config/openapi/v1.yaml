@@ -24,7 +24,9 @@ info:
 
     TurboFlows also exposes an MCP endpoint at `/mcp`, sharing these same
     tokens and scopes, for AI agents that speak MCP rather than REST. It is
-    not described in this document; see `/api/docs` for both.
+    not described in this document; set it up from your profile page's
+    "Connect your AI" section, which has ready-to-paste commands for each
+    client.
 servers:
   - url: /
 security:
@@ -322,6 +324,16 @@ paths:
             application/json:
               schema:
                 type: object
+        "429":
+          description: >-
+            Too many requests (`throttled`). No per-token limit applies here
+            (this endpoint takes no token), but it still counts toward the
+            company-wide `api/all` backstop (1200/min), like every other
+            request under `/api/v1/`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
 components:
   securitySchemes:
     bearer:
