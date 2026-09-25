@@ -1,0 +1,13 @@
+<%# API tokens (spec 2026-09-25-api-and-mcp-design §1). Shown to every signed-in
+    person, admins included: an admin's token still only sees what admin sees. %>
+<section id="api-tokens" class="card mt-4" aria-labelledby="api-tokens-heading">
+  <div class="card__body">
+    <h2 id="api-tokens-heading" class="font-semibold mb-1" style="font-size: var(--text-lg);">API tokens</h2>
+    <p class="text-sm mb-4" style="color: var(--color-ink-muted);">
+      Let an AI assistant or another tool use TurboFlows as you. A token sees exactly what you can see.
+    </p>
+    <div id="api-token-reveal"></div>
+    <%= render "profiles/api_tokens/form", token: nil %>
+    <%= render "profiles/api_tokens/list", tokens: current_user.api_tokens.order(created_at: :desc) %>
+  </div>
+</section>

@@ -1,0 +1,9 @@
+<%# locals: (token:) %>
+<div class="card" data-controller="clipboard" style="margin-block: var(--space-4);">
+  <div class="card__body">
+    <p><strong>Copy your new token now.</strong> This is the only time TurboFlows will show it.</p>
+    <code data-clipboard-target="source"><%= token.plaintext %></code>
+    <button type="button" class="btn btn--secondary" data-action="click->clipboard#copy"
+            data-clipboard-target="button">Copy</button>
+  </div>
+</div>

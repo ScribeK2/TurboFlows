@@ -14,6 +14,8 @@ Rails.application.routes.draw do
   resource :profile, only: %i[edit update] do
     # My groups (spec 2026-09-11 Q8).
     resources :memberships, only: %i[create destroy], module: :profiles
+    # Personal API tokens (spec 2026-09-25-api-and-mcp-design §1).
+    resources :api_tokens, only: %i[create destroy], module: :profiles
   end
   root to: 'dashboard#index'
 

@@ -1,0 +1,22 @@
+<%# locals: (tokens:) %>
+<div id="api-tokens-list">
+  <% if tokens.any? %>
+    <ul class="space-y-4" style="list-style: none; padding: 0;">
+      <% tokens.each do |token| %>
+        <li>
+          <strong><%= token.name %></strong>
+          · <%= token.effective_scopes.join(", ").presence || "no usable scopes" %>
+          · <%= { active: "Expires #{l(token.expires_at.to_date, format: :long)}",
+                  expired: "Expired", revoked: "Revoked" }.fetch(token.state) %>
+          · <%= token.last_used_at ? "Last used #{time_ago_in_words(token.last_used_at)} ago" : "Never used" %>
+          <% if token.state == :active %>
+            <%= button_to "Revoke", profile_api_token_path(token), method: :delete, class: "btn btn--plain",
+                  form: { data: { turbo_confirm: "Revoke #{token.name}? Anything using it stops working." } } %>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p class="form-hint">No tokens yet.</p>
+  <% end %>
+</div>
