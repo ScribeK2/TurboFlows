@@ -74,6 +74,19 @@ class WorkflowTest < ActiveSupport::TestCase
     assert_equal first.id, recent.last.id
   end
 
+  # The nightly rollup writes rows that hold a RESTRICT foreign key to the
+  # workflow, so a workflow that had ever been rolled up could not be deleted.
+  test "destroying a workflow removes its rollups" do
+    workflow = Workflow.create!(title: "Rolled Up", user: @user)
+    ScenarioRollup.create!(workflow: workflow, day: Date.current, purpose: "live", outcome: "completed",
+                           runs_count: 1, duration_sum_seconds: 60, duration_count: 1)
+    ScenarioDropoffRollup.create!(workflow: workflow, day: Date.current, step_title: "Ask", runs_count: 1)
+
+    assert_difference -> { ScenarioRollup.count } => -1, -> { ScenarioDropoffRollup.count } => -1 do
+      workflow.destroy!
+    end
+  end
+
   # Permission Tests
   test "can_be_viewed_by? should allow admin to view any workflow" do
     admin = User.create!(

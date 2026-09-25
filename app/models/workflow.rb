@@ -26,6 +26,12 @@ class Workflow < ApplicationRecord
   has_many :user_workflow_pins, dependent: :destroy
   has_many :group_featured_workflows, dependent: :destroy
 
+  # Rollups hold a RESTRICT foreign key, so without these a workflow that had
+  # ever been rolled up could not be deleted. They carry no callbacks, and a
+  # busy workflow has a row per day, so they go in one statement each.
+  has_many :scenario_rollups, dependent: :delete_all
+  has_many :scenario_dropoff_rollups, dependent: :delete_all
+
   # Set draft expiration before save (7 days from creation or update).
   # A nil draft_expires_at means "never expires" and must stay nil: an import
   # nulls the column once (WorkflowImporter#call) precisely so this callback
