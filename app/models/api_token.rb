@@ -18,6 +18,7 @@ class ApiToken < ApplicationRecord
   BEARER = /\ABearer\s+(\S+)\z/i
 
   belongs_to :user
+  has_many :workflows, dependent: :nullify
 
   attr_accessor :plaintext
 

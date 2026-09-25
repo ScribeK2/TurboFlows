@@ -12,6 +12,8 @@ class Workflow < ApplicationRecord
   include WorkflowStartStep
 
   belongs_to :user
+  # Set when a draft came in through the API (spec 2026-09-25-api-and-mcp-design).
+  belongs_to :api_token, optional: true
 
   # Group associations
   has_many :group_workflows, dependent: :destroy
@@ -81,6 +83,7 @@ class Workflow < ApplicationRecord
   enum :status, { draft: "draft", published: "published" }, default: "published"
 
   scope :recent, -> { order(created_at: :desc) }
+  scope :created_via_api, -> { where.not(api_token_id: nil) }
 
   # Draft workflow scopes
   scope :drafts, -> { draft }

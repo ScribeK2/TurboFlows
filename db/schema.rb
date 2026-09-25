@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_25_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_25_120100) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -352,6 +352,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_120000) do
   end
 
   create_table "workflows", force: :cascade do |t|
+    t.integer "api_token_id"
     t.datetime "created_at", null: false
     t.datetime "draft_expires_at"
     t.boolean "embed_enabled", default: false, null: false
@@ -366,6 +367,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_120000) do
     t.string "title", null: false
     t.datetime "updated_at", null: false
     t.integer "user_id", null: false
+    t.index ["api_token_id"], name: "index_workflows_on_api_token_id"
     t.index ["created_at"], name: "index_workflows_on_created_at"
     t.index ["draft_expires_at"], name: "index_workflows_on_draft_expires_at"
     t.index ["graph_mode"], name: "index_workflows_on_graph_mode"
@@ -412,6 +414,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_120000) do
   add_foreign_key "user_workflow_pins", "workflows"
   add_foreign_key "workflow_versions", "users", column: "published_by_id"
   add_foreign_key "workflow_versions", "workflows"
+  add_foreign_key "workflows", "api_tokens", on_delete: :nullify
   add_foreign_key "workflows", "steps", column: "start_step_id"
   add_foreign_key "workflows", "users"
   add_foreign_key "workflows", "workflow_versions", column: "published_version_id"

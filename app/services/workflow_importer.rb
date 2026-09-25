@@ -20,6 +20,9 @@ class WorkflowImporter
   REFUSING_SUBFLOW_CODES = %i[circular_subflow max_depth_exceeded subflow_target_missing
                               no_resolve_across_workflows].freeze
 
+  # The largest file any import path accepts: the upload page and the API.
+  MAX_IMPORT_BYTES = 10.megabytes
+
   # `workflows` is every workflow this import created, in file order. The strict
   # dialect accepts a set in one file; the lenient formats are single-workflow by
   # nature, so they build a one-element array.
@@ -34,11 +37,12 @@ class WorkflowImporter
     def multiple? = workflows.to_a.size > 1
   end
 
-  def initialize(user, format:, content:, strict_report: nil)
+  def initialize(user, format:, content:, strict_report: nil, api_token: nil)
     @user = user
     @format = format.to_sym
     @content = content
     @strict_report = strict_report
+    @api_token = api_token
   end
 
   def call
@@ -219,7 +223,8 @@ class WorkflowImporter
       title: data["title"],
       description: data["description"] || "",
       graph_mode: true,
-      status: "draft"
+      status: "draft",
+      api_token: @api_token
     )
   end
 
