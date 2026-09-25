@@ -22,7 +22,7 @@
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 
-    <%= stylesheet_link_tag "application", "_global", "reset", "base", "buttons", "layout", "navigation",
+    <%= stylesheet_link_tag "application", "_global", "reset", "base", "buttons", "icons", "layout", "navigation",
           "data-turbo-track": "reload", preload_links_header: false %>
   </head>
 
@@ -54,8 +54,18 @@
         any existing children as content to hydrate against and mismatch-warns
         in the console over a bare <script> tag, so the view's script tags
         render below, outside the mount point, and the DOM it mounts into is
-        genuinely empty. %>
-    <main id="api-docs-viewer"></main>
+        genuinely empty.
+
+        `.page-content` is the app's own fixed-nav offset (`.page-body >
+        .page-content { padding-top: 4rem }`, layout.css) — this `<main>` is a
+        direct child of `.page-body`, so it applies here exactly as it does on
+        every other top-level page, clearing `.page-header`'s 4rem height.
+        `--scalar-custom-header-height` is Scalar's own equivalent: without
+        it, the viewer's sticky sidebar and its search control compute their
+        offset against the viewport top, not against where our fixed bar
+        actually ends, and sit UNDER it — unclickable, per
+        `document.elementFromPoint`. Same 4rem both places, on purpose. %>
+    <main id="api-docs-viewer" class="page-content" style="--scalar-custom-header-height: 4rem;"></main>
     <%= yield %>
   </body>
 </html>
