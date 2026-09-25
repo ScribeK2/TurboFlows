@@ -39,16 +39,21 @@ class Profiles::ApiTokensControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "the reveal card is marked data-turbo-temporary so Back navigation can't resurrect it from cache" do
+  test "every top-level part of the reveal is marked data-turbo-temporary so Back navigation can't resurrect it from cache" do
     sign_in @editor
-    post profile_api_tokens_path, params: { api_token: { name: "Claude Code", scopes: %w[read], expires_in_days: 30 } },
+    post profile_api_tokens_path, params: { api_token: { name: "Claude Code", scopes: %w[read draft], expires_in_days: 30 } },
                                   as: :turbo_stream
 
     assert_response :success
     assert_select "turbo-stream[action='update'][target='api-token-reveal'] template" do |templates|
       reveal = Nokogiri::HTML.fragment(templates.first.inner_html)
-      assert reveal.element_children.first.has_attribute?("data-turbo-temporary"),
-             "the reveal card's outermost element must carry data-turbo-temporary"
+      assert_equal 2, reveal.element_children.size,
+                   "expected the reveal card plus the connect section — a third sibling here would need its own check"
+      reveal.element_children.each do |child|
+        assert child.has_attribute?("data-turbo-temporary"),
+               "the reveal's <#{child.name}> carries the raw token but not data-turbo-temporary, " \
+               "so it survives Turbo's bfcache snapshot and resurfaces on Back"
+      end
     end
   end
 

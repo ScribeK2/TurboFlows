@@ -9,7 +9,7 @@
 <div class="card" data-controller="clipboard" data-turbo-temporary style="margin-block: var(--space-4);">
   <div class="card__body">
     <p id="api-token-reveal-warning"><strong>Copy your new token now.</strong> This is the only time TurboFlows will show it.</p>
-    <code data-clipboard-target="source"><%= token.plaintext %></code>
+    <code class="api-token-reveal__code" data-clipboard-target="source"><%= token.plaintext %></code>
     <button type="button" class="btn btn--secondary" data-action="click->clipboard#copy"
             data-clipboard-target="button" autofocus aria-describedby="api-token-reveal-warning">Copy</button>
   </div>

@@ -11,6 +11,16 @@
     box-shadow var(--duration-fast) var(--ease-out);
 }
 
+/* The API token reveal card's raw token: one long unbroken run with no
+   spaces, so at a narrow viewport it doesn't wrap on its own and instead
+   forces the card — and every ancestor up to .page-content — wider than the
+   screen, opening horizontal scroll on the whole page (same failure mode as
+   the long-unbroken-run rules in builder.css, forms.css and runner.css).
+   overflow-wrap: anywhere lets it break to stay inside the card. */
+.api-token-reveal__code {
+  overflow-wrap: anywhere;
+}
+
 /* ─── Top-Bordered Cards ─── */
 /* Step type no longer colors card surfaces (Q9b) — identity lives in the badge.
    These modifiers now only publish --step-hue for nested tokens to consume. */
