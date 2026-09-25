@@ -52,6 +52,39 @@ class Api::V1::DraftsTest < ActionDispatch::IntegrationTest
     assert_equal "payload_too_large", response.parsed_body.dig("errors", 0, "code")
   end
 
+  test "a valid document over 10 MB is still a 413, not parsed and imported" do
+    oversized = { schema_version: "1", workflows: [{
+      title: "Oversized #{SecureRandom.hex(2)}",
+      description: "x" * (WorkflowImporter::MAX_IMPORT_BYTES + 1),
+      steps: [{ id: "done", type: "resolve", title: "Done", resolution_type: "success" }]
+    }] }.to_json
+
+    assert_no_difference("Workflow.count") do
+      post api_v1_drafts_path, params: oversized, headers: headers(@drafter)
+      assert_response :content_too_large
+      assert_equal "payload_too_large", response.parsed_body.dig("errors", 0, "code")
+    end
+  end
+
+  test "the production log never carries the document's content" do
+    distinctive = "Logging Canary #{SecureRandom.hex(4)}"
+    doc = { schema_version: "1", workflows: [{ title: distinctive,
+                                               steps: [{ id: "done", type: "resolve", title: "Done",
+                                                         resolution_type: "success" }] }] }.to_json
+
+    logged_params = nil
+    subscriber = ->(event) { logged_params = event.payload[:params] }
+
+    ActiveSupport::Notifications.subscribed(subscriber, "start_processing.action_controller") do
+      post api_v1_drafts_path, params: doc, headers: headers(@drafter)
+    end
+
+    assert_response :created
+    assert_not_nil logged_params
+    assert_equal "[FILTERED]", logged_params["workflows"]
+    assert_not_includes logged_params.inspect, distinctive
+  end
+
   test "GET a workflow, POST it back as a draft: the same workflow" do
     post api_v1_drafts_path, params: round_trip_source, headers: headers(@drafter)
     assert_response :created

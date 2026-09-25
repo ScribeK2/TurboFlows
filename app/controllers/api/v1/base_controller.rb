@@ -51,17 +51,6 @@ module Api
         render json: body, status:
       end
 
-      # The same ceiling as the upload page (WorkflowImporter::MAX_IMPORT_BYTES),
-      # checked before the body is handed to anything that parses it.
-      def refuse_oversized_body!
-        size = request.content_length.to_i
-        size = request.raw_post.bytesize if size.zero?
-        return if size <= WorkflowImporter::MAX_IMPORT_BYTES
-
-        render_error(:content_too_large, code: "payload_too_large",
-                                         message: "The document is over #{WorkflowImporter::MAX_IMPORT_BYTES / 1.megabyte} MB.")
-      end
-
       def draft_submission
         Api::DraftSubmission.new(user: current_user, api_token: current_api_token, content: request.raw_post)
       end

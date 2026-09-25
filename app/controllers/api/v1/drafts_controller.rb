@@ -3,7 +3,6 @@ module Api
     # POST /api/v1/drafts: a strict-dialect document in, drafts out. Never publishes.
     class DraftsController < BaseController
       before_action { require_scope!(:draft) }
-      before_action :refuse_oversized_body!
 
       def create
         result = draft_submission.create

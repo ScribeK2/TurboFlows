@@ -5,7 +5,6 @@ module Api
       # 200 either way; the report is the answer.
       class ValidationsController < BaseController
         before_action { require_scope!(:draft) }
-        before_action :refuse_oversized_body!
 
         def create
           render json: draft_submission.validate

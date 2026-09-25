@@ -10,6 +10,12 @@ require "devise"
 # you've limited to :test, :development, or :production.
 Bundler.require(*Rails.groups)
 
+# Required explicitly, not autoloaded: config.middleware below runs while this
+# file's class body is evaluating, before Zeitwerk's app-wide autoloader is
+# set up (that happens in an initializer, later than this). Referencing
+# Api::DraftBodyGuard by bare constant here raises uninitialized constant.
+require_relative "../app/middleware/api/draft_body_guard"
+
 module TurboFlows
   class Application < Rails::Application
     config.load_defaults 8.1
@@ -38,5 +44,10 @@ module TurboFlows
       custom_proxies = ENV["TRUSTED_PROXY_IPS"].split(",").map { |ip| IPAddr.new(ip.strip) }
       config.action_dispatch.trusted_proxies = ActionDispatch::RemoteIp::TRUSTED_PROXIES + custom_proxies
     end
+
+    # Ahead of everything, so a drafts POST is size-checked and its params
+    # filter is set before ActionController::API's Instrumentation ever builds
+    # request.filtered_parameters (see Api::DraftBodyGuard).
+    config.middleware.insert_before 0, Api::DraftBodyGuard
   end
 end
