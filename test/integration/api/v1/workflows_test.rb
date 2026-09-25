@@ -39,6 +39,17 @@ class Api::V1::WorkflowsTest < ActionDispatch::IntegrationTest
     assert_equal [], response.parsed_body["workflows"]
   end
 
+  # namespace :api gets format: false (config/routes.rb): no /api/**.<format>
+  # URL should route at all, mirroring /mcp. Before this, /api/v1/workflows.json
+  # routed the same as the suffix-less URL, an inconsistency the body guard
+  # (which only ever matches drafts paths) doesn't need to close, but the
+  # route itself should not offer.
+  test "a .json-suffixed workflows URL does not route" do
+    assert_raises(ActionController::RoutingError) do
+      Rails.application.routes.recognize_path("/api/v1/workflows.json", method: :get)
+    end
+  end
+
   test "an unknown filter is a 422 invalid_filter" do
     get api_v1_workflows_path(status: "archived"), headers: auth
     assert_response :unprocessable_content

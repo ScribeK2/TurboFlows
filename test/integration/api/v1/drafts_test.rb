@@ -113,6 +113,23 @@ class Api::V1::DraftsTest < ActionDispatch::IntegrationTest
     assert_not_includes logged_params.inspect, distinctive
   end
 
+  # namespace :api gets format: false (config/routes.rb): no /api/**.<format>
+  # URL should route at all, so a body guarded by exact path never has a
+  # format-suffixed twin to miss. Before this, /api/v1/drafts.json and
+  # /api/v1/drafts/validate.json both routed and skipped
+  # Api::DraftBodyGuard's exact/prefix path match.
+  test "a .json-suffixed drafts URL does not route" do
+    assert_raises(ActionController::RoutingError) do
+      Rails.application.routes.recognize_path("/api/v1/drafts.json", method: :post)
+    end
+  end
+
+  test "a .json-suffixed drafts/validate URL does not route" do
+    assert_raises(ActionController::RoutingError) do
+      Rails.application.routes.recognize_path("/api/v1/drafts/validate.json", method: :post)
+    end
+  end
+
   test "GET a workflow, POST it back as a draft: the same workflow" do
     post api_v1_drafts_path, params: round_trip_source, headers: headers(@drafter)
     assert_response :created

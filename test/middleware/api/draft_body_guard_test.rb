@@ -155,4 +155,14 @@ class Api::DraftBodyGuardTest < ActiveSupport::TestCase
     assert_equal 200, status
     assert_equal [/./], @downstream_env["action_dispatch.parameter_filter"]
   end
+
+  # Regression: drafts_path?'s "/api/v1/drafts" or "/api/v1/drafts/" prefix
+  # boundary must keep matching this real second route.
+  test "a /api/v1/drafts/validate POST reaches the app with the parameter filter set" do
+    env = Rack::MockRequest.env_for("/api/v1/drafts/validate", method: "POST", input: '{"a":1}')
+    status, = @guard.call(env)
+
+    assert_equal 200, status
+    assert_equal [/./], @downstream_env["action_dispatch.parameter_filter"]
+  end
 end

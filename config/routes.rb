@@ -2,7 +2,13 @@ Rails.application.routes.draw do
   get "healthz", to: proc { [200, {}, ["OK"]] }
 
   # The token-authenticated API (spec 2026-09-25-api-and-mcp-design §2).
-  namespace :api, defaults: { format: :json } do
+  # format: false: a JSON-only, unreleased API, same as /mcp below — no
+  # /api/**.<format> URL should route at all. defaults: { format: :json }
+  # still makes format default to JSON for the suffix-less URLs that DO
+  # route; it no longer also opens a matching .json/.xml/... suffix segment
+  # that Api::DraftBodyGuard's path match (config/routes.rb §"the guard")
+  # doesn't recognize.
+  namespace :api, defaults: { format: :json }, format: false do
     namespace :v1 do
       resources :workflows, only: %i[index show]
       resource :authoring_guide, only: :show
