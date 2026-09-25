@@ -10,6 +10,11 @@
 # session, and a company-wide backstop remains only where guessing is the
 # threat. Run pages have no backstop: it would be the same failure with a
 # bigger bucket.
+#
+# API requests count per token (the SHA-256 of the bearer value, never the raw
+# token). The key is computed before authentication, so a flood of made-up
+# tokens gets a fresh bucket each and only api/all catches it: per-token limits
+# keep one real client well-behaved, they are not the abuse defense.
 
 class Rack::Attack
   # The page a throttled person sees. Read once; it is a static file.
@@ -48,6 +53,13 @@ class Rack::Attack
 
   def self.run_page?(req)
     req.path.match?(%r{\A/player/scenarios/\d+}) && req.get?
+  end
+
+  def self.api?(req) = req.path.start_with?("/api/")
+
+  def self.api_token_key(req)
+    raw = ApiToken.raw_from_authorization(req.get_header("HTTP_AUTHORIZATION"))
+    "token:#{ApiToken.digest(raw)}" if raw
   end
 
   # Throttle login attempts per email, with a company-wide backstop
@@ -93,6 +105,18 @@ class Rack::Attack
     end
   end
 
+  throttle("api/token/read", limit: 120, period: 60.seconds) do |req|
+    api_token_key(req) if api?(req) && req.get?
+  end
+
+  throttle("api/token/draft", limit: 20, period: 60.seconds) do |req|
+    api_token_key(req) if req.post? && req.path.start_with?("/api/v1/drafts")
+  end
+
+  throttle("api/all", limit: 1200, period: 60.seconds) do |req|
+    "all" if api?(req)
+  end
+
   # A readable page, and when to try again. The default is a bare "Retry later"
   # in plain text, which is what someone on a live call would have been shown.
   self.throttled_responder = lambda do |req|
@@ -100,6 +124,13 @@ class Rack::Attack
     period = match[:period].to_i
     retry_after = period.positive? ? period - (match[:epoch_time].to_i % period) : 60
 
-    [429, { "content-type" => "text/html; charset=utf-8", "retry-after" => retry_after.to_s }, [THROTTLED_PAGE]]
+    headers = { "retry-after" => retry_after.to_s }
+    if api?(req)
+      body = { errors: [{ path: nil, code: "throttled",
+                          message: "Too many requests. Try again in #{retry_after} seconds." }] }.to_json
+      [429, headers.merge("content-type" => "application/json"), [body]]
+    else
+      [429, headers.merge("content-type" => "text/html; charset=utf-8"), [THROTTLED_PAGE]]
+    end
   end
 end
