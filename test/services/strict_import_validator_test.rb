@@ -613,7 +613,11 @@ class StrictImportValidatorTest < ActiveSupport::TestCase
       email: "strict-test-stranger-#{SecureRandom.hex(4)}@example.com",
       password: "password123!", password_confirmation: "password123!", role: "editor"
     )
-    hidden = stranger.workflows.create!(title: "SF Target #{SecureRandom.hex(3)}",
+    # A digit-free suffix: this test asserts the id's digits never leak into
+    # the error message, so the title itself must never accidentally contain
+    # them. SecureRandom.hex(3) can (rarely) produce digits that coincide with
+    # hidden.id's digits, making the assertion below flaky.
+    hidden = stranger.workflows.create!(title: "SF Target #{SecureRandom.hex(3).tr('0-9', 'a-j')}",
                                         status: "published")
     Group.create!(name: "Strict Group #{SecureRandom.hex(3)}").tap do |g|
       hidden.replace_groups!([g.id])

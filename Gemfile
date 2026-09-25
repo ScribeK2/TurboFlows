@@ -42,6 +42,9 @@ gem "prawn"
 gem "sentry-rails"
 gem "sentry-ruby"
 
+# MCP (Model Context Protocol) server for the /mcp endpoint
+gem "mcp", "~> 1.6"
+
 group :development, :test do
   gem "capybara"
   gem "debug", platforms: %i[mri windows]

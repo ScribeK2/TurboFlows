@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_18_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_25_120100) do
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -47,6 +47,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_18_120000) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "api_tokens", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "last_used_at"
+    t.string "name", null: false
+    t.datetime "revoked_at"
+    t.json "scopes", default: [], null: false
+    t.string "token_digest", null: false
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.index ["token_digest"], name: "index_api_tokens_on_token_digest", unique: true
+    t.index ["user_id"], name: "index_api_tokens_on_user_id"
   end
 
   create_table "folders", force: :cascade do |t|
@@ -338,6 +352,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_18_120000) do
   end
 
   create_table "workflows", force: :cascade do |t|
+    t.integer "api_token_id"
     t.datetime "created_at", null: false
     t.datetime "draft_expires_at"
     t.boolean "embed_enabled", default: false, null: false
@@ -352,6 +367,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_18_120000) do
     t.string "title", null: false
     t.datetime "updated_at", null: false
     t.integer "user_id", null: false
+    t.index ["api_token_id"], name: "index_workflows_on_api_token_id"
     t.index ["created_at"], name: "index_workflows_on_created_at"
     t.index ["draft_expires_at"], name: "index_workflows_on_draft_expires_at"
     t.index ["graph_mode"], name: "index_workflows_on_graph_mode"
@@ -367,6 +383,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_18_120000) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "api_tokens", "users", on_delete: :cascade
   add_foreign_key "folders", "groups"
   add_foreign_key "group_featured_workflows", "groups", on_delete: :cascade
   add_foreign_key "group_featured_workflows", "users", column: "added_by_id", on_delete: :nullify
@@ -397,6 +414,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_18_120000) do
   add_foreign_key "user_workflow_pins", "workflows"
   add_foreign_key "workflow_versions", "users", column: "published_by_id"
   add_foreign_key "workflow_versions", "workflows"
+  add_foreign_key "workflows", "api_tokens", on_delete: :nullify
   add_foreign_key "workflows", "steps", column: "start_step_id"
   add_foreign_key "workflows", "users"
   add_foreign_key "workflows", "workflow_versions", column: "published_version_id"

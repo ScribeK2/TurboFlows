@@ -6,6 +6,7 @@ module AdminHelper
   ADMIN_SECTIONS = {
     "admin/dashboard" => :overview,
     "admin/users" => :users,
+    "admin/api_tokens" => :api_tokens,
     "admin/groups" => :groups,
     "admin/memberships" => :groups,
     "admin/group_managers" => :groups,

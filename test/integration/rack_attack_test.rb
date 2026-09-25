@@ -196,4 +196,60 @@ class RackAttackTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Too many attempts"
     assert_includes 1..60, Integer(response.headers["Retry-After"])
   end
+
+  # === Path normalization ===
+  #
+  # Rack::Attack's own #call rewrites env['PATH_INFO'] with
+  # ActionDispatch::Journey::Router::Utils before any throttle block runs
+  # (rack-attack's PathNormalizer), so a request driven through the full
+  # stack — as every other test in this file and in throttle_test.rb is —
+  # can never observe Rack::Attack.mcp?/.rest?/.drafts? disagreeing with that
+  # normalization: both sides always see the same, already-normalized path.
+  # These tests call the predicates directly against a raw, un-normalized env
+  # (built the same way test/middleware/api/draft_body_guard_test.rb builds
+  # one), which is the only place a regression in our own normalized_path
+  # helper — or its removal — could ever show up.
+  def unnormalized_request(path, method: "POST")
+    Rack::Attack::Request.new(Rack::MockRequest.env_for(path, method: method))
+  end
+
+  test "mcp? recognizes /mcp, /mcp/ and /mcp// before any normalization by Rack::Attack itself" do
+    assert Rack::Attack.mcp?(unnormalized_request("/mcp"))
+    assert Rack::Attack.mcp?(unnormalized_request("/mcp/"))
+    assert Rack::Attack.mcp?(unnormalized_request("/mcp//"))
+    assert_not Rack::Attack.mcp?(unnormalized_request("/mcpx"))
+  end
+
+  test "drafts? recognizes /api//v1/drafts and /api//v1/drafts/validate before normalization by Rack::Attack itself" do
+    assert Rack::Attack.drafts?(unnormalized_request("/api/v1/drafts"))
+    assert Rack::Attack.drafts?(unnormalized_request("/api//v1/drafts"))
+    assert Rack::Attack.drafts?(unnormalized_request("/api//v1/drafts/validate"))
+    assert_not Rack::Attack.drafts?(unnormalized_request("/api/v1/drafts-other"))
+  end
+
+  test "rest? recognizes /api//v1/workflows before normalization by Rack::Attack itself" do
+    assert Rack::Attack.rest?(unnormalized_request("/api//v1/workflows"))
+    assert_not Rack::Attack.rest?(unnormalized_request("/mcp"))
+  end
+
+  # /api/docs is a signed-in browser page (config/initializers/rack_attack.rb
+  # § rest?), not a token-authenticated REST call: it must count toward
+  # neither api/token/read nor api/all, and a throttled hit on it must never
+  # come back as the API's JSON 429.
+  test "rest? is false for /api/docs and true for /api/v1/workflows" do
+    assert_not Rack::Attack.rest?(unnormalized_request("/api/docs", method: "GET"))
+    assert Rack::Attack.rest?(unnormalized_request("/api/v1/workflows", method: "GET"))
+  end
+
+  test "a throttled /api/docs request answers with the readable page, never the API's JSON body" do
+    req = unnormalized_request("/api/docs", method: "GET")
+
+    assert_not Rack::Attack.api?(req)
+
+    status, headers, body = Rack::Attack.throttled_responder.call(req)
+
+    assert_equal 429, status
+    assert_match "text/html", headers["content-type"]
+    assert_includes body.join, "Too many attempts"
+  end
 end

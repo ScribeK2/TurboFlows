@@ -4,21 +4,7 @@ module Workflows
 
     # GET /workflows/:workflow_id/export
     def show
-      export_data = {
-        schema_version: ImportSchemaGenerator::SCHEMA_VERSION,
-        exported_at: Time.current.iso8601,
-        workflows: [{
-          title: @workflow.title,
-          description: @workflow.description_text || "",
-          groups: ordered_groups.map(&:name_path),
-          folder: primary_folder&.name,
-          tags: @workflow.tags.order(:name).map(&:name),
-          start_step_id: @workflow.start_step&.uuid || @workflow.steps.first&.uuid,
-          steps: StepSerializer.call(@workflow, dialect: :strict)
-        }]
-      }
-
-      send_data export_data.to_json,
+      send_data @workflow.to_strict_document.to_json,
                 filename: "#{@workflow.title.parameterize}.json",
                 type: "application/json"
     end
@@ -45,27 +31,6 @@ module Workflows
 
     def serialize_ar_steps_for_export(workflow)
       StepSerializer.call(workflow)
-    end
-
-    # Placement rows for this workflow, loaded once so `ordered_groups` and
-    # `primary_folder` below don't each hit the database.
-    def group_workflows_for_export
-      @group_workflows_for_export ||= @workflow.group_workflows.includes(:group, :folder).to_a
-    end
-
-    # Deterministic order: the primary group first (see Workflow#primary_group
-    # for why is_primary, not array position, is the source of truth), then by
-    # id. group_workflows is unordered, so without this the export's group
-    # array — and therefore which group re-import marks primary — could vary
-    # between runs.
-    def ordered_groups
-      group_workflows_for_export
-        .sort_by { |gw| [gw.is_primary? ? 0 : 1, gw.group_id] }
-        .map(&:group)
-    end
-
-    def primary_folder
-      group_workflows_for_export.find(&:is_primary?)&.folder
     end
 
     def export_pdf_ar_steps(pdf)

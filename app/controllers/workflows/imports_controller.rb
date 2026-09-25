@@ -3,7 +3,7 @@ module Workflows
     before_action :authenticate_user!
     before_action :ensure_editor_or_admin!
 
-    MAX_IMPORT_BYTES = 10.megabytes
+    MAX_IMPORT_BYTES = WorkflowImporter::MAX_IMPORT_BYTES
 
     # GET /workflows/import
     def new

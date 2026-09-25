@@ -1,0 +1,475 @@
+openapi: 3.1.0
+info:
+  title: TurboFlows API
+  version: "1"
+  description: |
+    Every request under `/api/v1` needs a bearer token, created from your
+    profile page: `Authorization: Bearer tf_live_...`. A token carries one or
+    two scopes, `read` and `draft`. Only `draft` follows its owner's current
+    role — demoting an Editor to a role that can't create workflows quietly
+    leaves their token's `read` scope working and its `draft` scope refused.
+    Deactivating the owner stops the token completely, on either scope. Either
+    way the row still exists.
+
+    This API only ever creates drafts. It never publishes a workflow, and it
+    never edits or deletes one that already exists. A `read` token lists and
+    fetches workflows; a `draft` token also submits and validates new ones.
+
+    Rate limits, per token per minute: 120 reads, 20 draft writes. An MCP
+    connection (see below) is limited separately, to 60 calls per minute.
+
+    An unknown path under `/api` — a typo, an old version, anything this
+    document doesn't list — answers a plain JSON 404 (`not_found`), never an
+    HTML page and never a 401.
+
+    TurboFlows also exposes an MCP endpoint at `/mcp`, sharing these same
+    tokens and scopes, for AI agents that speak MCP rather than REST. It is
+    not described in this document; set it up from your profile page's
+    "Connect your AI" section, which has ready-to-paste commands for each
+    client.
+servers:
+  - url: /
+security:
+  - bearer: []
+paths:
+  /api/v1/workflows:
+    get:
+      summary: List the workflows this token can see
+      description: |
+        Published workflows filed in a group the token owner reaches (an
+        Editor also sees their own, filed or not; an administrator sees
+        every published workflow), plus drafts: the owner's own, or every
+        draft if the owner is an administrator. Requires the `read` scope.
+      parameters:
+        - name: q
+          in: query
+          description: Full-text search over title and description.
+          schema:
+            type: string
+        - name: tag
+          in: query
+          description: A tag name, matched case-insensitively.
+          schema:
+            type: string
+        - name: group
+          in: query
+          description: A group id; workflows filed in it or one of its subgroups.
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [published, draft]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: A page of workflows.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchPage"
+        "400":
+          description: >-
+            A request body sent with `Content-Type: application/json` that
+            doesn't parse (`malformed_json`). A GET normally carries no body,
+            but the app parses one if a client sends it.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+        "401":
+          description: No valid token was sent (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+        "403":
+          description: The token lacks the `read` scope (`insufficient_scope`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+        "422":
+          description: >-
+            A filter value wasn't a single string (an array or object), or
+            named a group or status that doesn't exist (`invalid_filter`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+        "429":
+          description: Too many requests for this token (`throttled`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+  /api/v1/workflows/{id}:
+    get:
+      summary: Fetch one workflow as a strict-dialect document
+      description: Requires the `read` scope.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: The workflow, with its document in the strict import dialect.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowDocument"
+        "400":
+          description: >-
+            A request body sent with `Content-Type: application/json` that
+            doesn't parse (`malformed_json`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+        "401":
+          description: No valid token was sent (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+        "403":
+          description: The token lacks the `read` scope (`insufficient_scope`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+        "404":
+          description: >-
+            No workflow with that id is visible to this token (`not_found`) —
+            also the answer for someone else's draft, so a token can't use
+            the difference between 403 and 404 to probe for ids.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+        "429":
+          description: Too many requests for this token (`throttled`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+  /api/v1/authoring_guide:
+    get:
+      summary: The strict dialect's JSON Schema, and a guide for writing one
+      description: >-
+        Accepts either the `read` or the `draft` scope — the same rule MCP
+        already applies to its matching tool, since reading the guide isn't
+        itself a write.
+      responses:
+        "200":
+          description: The schema and guide.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthoringGuide"
+        "401":
+          description: No valid token was sent (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+        "403":
+          description: >-
+            The token has neither the `read` nor the `draft` scope
+            (`insufficient_scope`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+        "429":
+          description: Too many requests for this token (`throttled`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+  /api/v1/drafts:
+    post:
+      summary: Submit a strict-dialect document and create it as a draft
+      description: |
+        Requires the `draft` scope. Never publishes: every workflow this
+        creates lands as a draft, exactly like an import. The request body is
+        the strict dialect described by `GET /api/v1/authoring_guide`; it is
+        read as a raw JSON body, not as wrapped params.
+
+        A malformed JSON body is reported by the validator as a 422 finding
+        with code `malformed_json`, not a 400 — the same shape as any other
+        validation finding, so a caller doesn't need to branch on status code
+        to find out its document didn't parse.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: >-
+                The strict-dialect document. See GET /api/v1/authoring_guide
+                for its schema.
+      responses:
+        "201":
+          description: The document was valid and every workflow in it was created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DraftCreated"
+        "401":
+          description: No valid token was sent (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+        "403":
+          description: The token lacks the `draft` scope (`insufficient_scope`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+        "413":
+          description: The body is over the import size limit (`payload_too_large`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+        "422":
+          description: >-
+            The document wasn't created. Each error and warning names what's
+            wrong: `path` (which part of the document, if any), `code`,
+            `message`, and optionally `value` (what was found) and `expected`
+            (the values that would have been accepted). Most findings come
+            from checking the document against the dialect `GET
+            /api/v1/authoring_guide` describes — a malformed body reads as
+            one such finding, code `malformed_json`. Two codes aren't about
+            the document itself: `api_draft_limit` (the token owner's 50
+            outstanding-draft cap, made via the API, is full, or this
+            document would push it over) and `refused_at_commit` (the
+            document was valid but couldn't be written).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+        "429":
+          description: Too many draft writes for this token (`throttled`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+  /api/v1/drafts/validate:
+    post:
+      summary: Check a strict-dialect document without creating anything
+      description: |
+        Requires the `draft` scope. Answers 200 whether or not the document
+        is valid — the report itself is the answer, including a malformed
+        body, which is reported as an error with code `malformed_json`
+        inside a 200 `ValidationReport`, not as a distinct status code.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: >-
+                The strict-dialect document. See GET /api/v1/authoring_guide
+                for its schema.
+      responses:
+        "200":
+          description: The validation report, valid or not.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationReport"
+        "401":
+          description: No valid token was sent (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+        "403":
+          description: The token lacks the `draft` scope (`insufficient_scope`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+        "413":
+          description: The body is over the import size limit (`payload_too_large`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+        "429":
+          description: Too many draft writes for this token (`throttled`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+  /api/v1/openapi.json:
+    get:
+      summary: This document
+      description: "Public: no token is required, and none is checked."
+      security: []
+      responses:
+        "200":
+          description: This OpenAPI 3.1 document.
+          content:
+            application/json:
+              schema:
+                type: object
+        "429":
+          description: >-
+            Too many requests (`throttled`). No per-token limit applies here
+            (this endpoint takes no token), but it still counts toward the
+            company-wide `api/all` backstop (1200/min), like every other
+            request under `/api/v1/`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        path:
+          type: [string, "null"]
+          description: What the finding is about, when it's about one field.
+        code:
+          type: string
+        message:
+          type: string
+        value: {}
+        expected:
+          type: array
+          description: >-
+            The values that would have been accepted, for a handful of
+            document-validation codes (`unsupported_schema_version`,
+            `invalid_condition_syntax`, `unknown_field`, `unknown_step_type`,
+            `invalid_enum_value`, `invalid_reference_url`). Absent for every
+            other code.
+    Errors:
+      type: object
+      required: [errors]
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/Error"
+        warnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Error"
+    WorkflowSummary:
+      type: object
+      required: [id, title, description, status, tags, groups, updated_at, url]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [draft, published]
+        tags:
+          type: array
+          items:
+            type: string
+        groups:
+          type: array
+          items:
+            type: string
+          description: Each group's full path, e.g. "Support / Billing".
+        updated_at:
+          type: string
+          format: date-time
+        url:
+          type: string
+          format: uri
+    WorkflowDocument:
+      type: object
+      required: [id, status, url, document]
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+          enum: [draft, published]
+        url:
+          type: string
+          format: uri
+        document:
+          type: object
+          description: >-
+            The workflow in the strict import dialect. See
+            GET /api/v1/authoring_guide for its schema.
+    SearchPage:
+      type: object
+      required: [workflows, next_page]
+      properties:
+        workflows:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowSummary"
+        next_page:
+          type: [integer, "null"]
+    ValidationReport:
+      type: object
+      required: [valid, errors, warnings]
+      properties:
+        valid:
+          type: boolean
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/Error"
+        warnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Error"
+    DraftCreated:
+      type: object
+      required: [workflows, warnings]
+      properties:
+        workflows:
+          type: array
+          items:
+            type: object
+            required: [id, title, url]
+            properties:
+              id:
+                type: integer
+              title:
+                type: string
+              url:
+                type: string
+                format: uri
+        warnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Error"
+    AuthoringGuide:
+      type: object
+      required: [schema_version, schema, guide]
+      properties:
+        schema_version:
+          type: string
+        schema:
+          type: object
+          description: The strict dialect's JSON Schema.
+        guide:
+          type: string

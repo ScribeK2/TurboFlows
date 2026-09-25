@@ -1,6 +1,48 @@
 Rails.application.routes.draw do
   get "healthz", to: proc { [200, {}, ["OK"]] }
 
+  # The interactive API reference: signed-in HTML, deliberately outside the
+  # /api namespace (whose defaults, format rule and catch-all are for JSON).
+  # Must sit ABOVE that namespace: routes match in order, and the namespace's
+  # own `match "(*path)"` catch-all would otherwise swallow /api/docs first.
+  # format: false here too: without it, /api/docs.json matched this route
+  # (Devise's HTML redirect for a signed-out request, or api_docs#show with
+  # no matching template for a signed-in one — a third, undocumented error
+  # shape) instead of falling through to the namespace's JSON 404 below.
+  get "api/docs", to: "api_docs#show", as: :api_docs, format: false
+
+  # The token-authenticated API (spec 2026-09-25-api-and-mcp-design §2).
+  # format: false: a JSON-only, unreleased API, same as /mcp below — no
+  # /api/**.<format> URL should route at all. defaults: { format: :json }
+  # still makes format default to JSON for the suffix-less URLs that DO
+  # route; it no longer also opens a matching .json/.xml/... suffix segment
+  # that Api::DraftBodyGuard's path match (config/routes.rb §"the guard")
+  # doesn't recognize.
+  namespace :api, defaults: { format: :json }, format: false do
+    namespace :v1 do
+      # The public OpenAPI document (no token: it describes endpoints, not
+      # data). Above everything else in this namespace so it's matched
+      # before the catch-all below.
+      get "openapi.json", to: "openapi#show", as: :openapi
+
+      resources :workflows, only: %i[index show]
+      resource :authoring_guide, only: :show
+      resources :drafts, only: :create
+      post "drafts/validate", to: "drafts/validations#create", as: :draft_validation
+    end
+
+    # Anything else under /api answers the API's own 404, never Rails' HTML
+    # page — including bare /api and /api/, which a plain "*path" splat
+    # doesn't match (a splat segment requires something to swallow), so those
+    # two fell through to Rails' own HTML 404 until the segment was made
+    # optional. Keep this LAST in the namespace; routes added later go above it.
+    match "(*path)", to: "v1/not_found#show", via: :all
+  end
+
+  # The MCP endpoint (spec 2026-09-25-api-and-mcp-design §3). One action: the
+  # SDK's transport dispatches POST/GET/DELETE itself.
+  match "mcp", to: "mcp#handle", via: %i[get post delete], as: :mcp, format: false
+
   devise_for :users, controllers: {
     registrations: 'users/registrations',
     sessions: 'users/sessions'
@@ -14,6 +56,8 @@ Rails.application.routes.draw do
   resource :profile, only: %i[edit update] do
     # My groups (spec 2026-09-11 Q8).
     resources :memberships, only: %i[create destroy], module: :profiles
+    # Personal API tokens (spec 2026-09-25-api-and-mcp-design §1).
+    resources :api_tokens, only: %i[create destroy], module: :profiles
   end
   root to: 'dashboard#index'
 
@@ -150,6 +194,7 @@ Rails.application.routes.draw do
         patch :reactivate
       end
     end
+    resources :api_tokens, only: %i[index destroy]
     resource :smtp_setting, only: %i[show update], path: "email" do
       post :test_delivery
     end
