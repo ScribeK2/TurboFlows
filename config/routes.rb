@@ -15,6 +15,10 @@ Rails.application.routes.draw do
       resources :drafts, only: :create
       post "drafts/validate", to: "drafts/validations#create", as: :draft_validation
     end
+
+    # Anything else under /api answers the API's own 404, never Rails' HTML
+    # page. Keep this LAST in the namespace; routes added later go above it.
+    match "*path", to: "v1/not_found#show", via: :all
   end
 
   # The MCP endpoint (spec 2026-09-25-api-and-mcp-design §3). One action: the

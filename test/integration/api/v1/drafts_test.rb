@@ -114,20 +114,22 @@ class Api::V1::DraftsTest < ActionDispatch::IntegrationTest
   end
 
   # namespace :api gets format: false (config/routes.rb): no /api/**.<format>
-  # URL should route at all, so a body guarded by exact path never has a
+  # URL reaches DraftsController, so a body guarded by exact path never has a
   # format-suffixed twin to miss. Before this, /api/v1/drafts.json and
   # /api/v1/drafts/validate.json both routed and skipped
-  # Api::DraftBodyGuard's exact/prefix path match.
-  test "a .json-suffixed drafts URL does not route" do
-    assert_raises(ActionController::RoutingError) do
-      Rails.application.routes.recognize_path("/api/v1/drafts.json", method: :post)
-    end
+  # Api::DraftBodyGuard's exact/prefix path match. Since the catch-all
+  # (config/routes.rb) was added, the suffixed URL now routes too — but only
+  # to the API's own JSON 404 (Api::V1::NotFoundController, a bare
+  # ActionController::Metal that never touches params), never to
+  # DraftsController, so the guard still has nothing to miss.
+  test "a .json-suffixed drafts URL routes only to the JSON 404, never to drafts#create" do
+    route = Rails.application.routes.recognize_path("/api/v1/drafts.json", method: :post)
+    assert_equal "api/v1/not_found", route[:controller]
   end
 
-  test "a .json-suffixed drafts/validate URL does not route" do
-    assert_raises(ActionController::RoutingError) do
-      Rails.application.routes.recognize_path("/api/v1/drafts/validate.json", method: :post)
-    end
+  test "a .json-suffixed drafts/validate URL routes only to the JSON 404, never to drafts/validations#create" do
+    route = Rails.application.routes.recognize_path("/api/v1/drafts/validate.json", method: :post)
+    assert_equal "api/v1/not_found", route[:controller]
   end
 
   test "GET a workflow, POST it back as a draft: the same workflow" do

@@ -16,6 +16,10 @@ module Api
         render_error(:not_found, code: "not_found", message: "No workflow with that id is visible to this token.")
       end
 
+      rescue_from ActionDispatch::Http::Parameters::ParseError do
+        render_error(:bad_request, code: "malformed_json", message: "The request body is not valid JSON.")
+      end
+
       private
 
       def draft_submission
