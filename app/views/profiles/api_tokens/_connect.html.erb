@@ -13,11 +13,14 @@
 <%# This section also carries the raw token (in every snippet below), so it
     needs the same Back-navigation protection as the reveal card above:
     data-turbo-temporary strips it before Turbo snapshots the page for its
-    cache (see _reveal.html.erb's comment). Guarded by
-    "every top-level part of the reveal is marked data-turbo-temporary..." in
-    api_tokens_controller_test.rb, which checks EVERY direct child of the
-    reveal stream, not just the card above — a test that only checked the
-    card would stay green if this attribute were removed. %>
+    cache (see _reveal.html.erb's comment). The wrapper _reveal.html.erb puts
+    around both this section and the card already carries data-turbo-temporary
+    too, and is now what "every top-level part of the reveal is marked
+    data-turbo-temporary..." in api_tokens_controller_test.rb actually checks
+    (it inspects the stream's one direct child, the wrapper). This section's
+    own attribute is kept anyway as a second, independent guarantee: if the
+    wrapper's attribute were ever dropped, Turbo would still strip this
+    section on its own rather than silently caching the token inside it. %>
 <section aria-labelledby="connect-heading" data-controller="tabs" data-turbo-temporary
          style="margin-block: var(--space-4);">
   <h3 id="connect-heading" class="font-semibold mb-1" style="font-size: var(--text-lg);">Connect your AI</h3>

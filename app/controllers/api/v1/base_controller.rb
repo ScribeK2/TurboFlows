@@ -7,12 +7,13 @@ module Api
     class BaseController < ActionController::API
       include Api::TokenAuthentication
 
-      # Params are never wrapped. Rails' ParamsWrapper already rescues a
-      # malformed body itself (see the ActionDispatch::Http::Parameters::ParseError
-      # rescue_from below), so wrapping wouldn't leak an uncaught 400 past the
-      # validator either way. This line stays as a guarantee that the drafts
-      # path reads only request.raw_post, never params, so a change nearby
-      # can't quietly start reading the wrapped (and therefore pre-parsed) hash.
+      # Params are never wrapped. Wrapping wouldn't turn malformed JSON into an
+      # uncaught 400 either way: ParamsWrapper itself skips wrapping when the
+      # body doesn't parse, and the rescue_from below turns that parse error
+      # into this API's malformed_json shape regardless. This line stays as a
+      # guarantee that the drafts path reads only request.raw_post, never
+      # params, so a change nearby can't quietly start reading the wrapped
+      # (and therefore pre-parsed) hash.
       wrap_parameters false
 
       rescue_from ActiveRecord::RecordNotFound do

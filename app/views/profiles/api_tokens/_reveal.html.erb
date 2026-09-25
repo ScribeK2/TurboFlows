@@ -15,7 +15,7 @@
     container: a remove for an id that isn't currently on the page is a
     silent no-op, exactly what's wanted when B's reveal isn't showing. %>
 <div id="<%= dom_id(token, :reveal) %>" data-turbo-temporary>
-  <div class="card" data-controller="clipboard" style="margin-block: var(--space-4);">
+  <div class="card" data-controller="clipboard" data-turbo-temporary style="margin-block: var(--space-4);">
     <div class="card__body">
       <p id="api-token-reveal-warning"><strong>Copy your new token now.</strong> This is the only time TurboFlows will show it.</p>
       <code class="api-token-reveal__code" data-clipboard-target="source"><%= token.plaintext %></code>
