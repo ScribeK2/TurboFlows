@@ -290,7 +290,7 @@ other:
    widening the mask to cover the whole `/api` surface (including the JSON
    404 catch-all and `/api/v1/openapi.json`, both of which have nothing
    sensitive to mask but cost nothing to include) regardless of method. See
-   the note where the known gap used to be documented, below.
+   **Closed** under Refusal shapes, below, for the tests that prove it.
 
 Path matching goes through `ActionDispatch::Journey::Router::Utils.normalize_path`
 — the **same** function the router itself uses before matching a route — never a
