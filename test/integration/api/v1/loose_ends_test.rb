@@ -27,20 +27,16 @@ class Api::V1::LooseEndsTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_content
   end
 
-  test "a malformed JSON body on a GET is a 400 in the error shape, not an HTML page" do
-    get api_v1_workflows_path, params: "{nope", headers: auth(@reader).merge("Content-Type" => "application/json")
-    assert_includes [200, 400], response.status
-    assert_equal "application/json", response.media_type
-  end
-
   # ActionDispatch::Integration::Session#process folds a String `params:` on a
-  # GET into the query string, never the body — so the test above can only
-  # ever observe 200 (confirmed: it does). A real client is free to send a
-  # GET with a body and Content-Type: application/json (Rack parses a request
-  # body by content type, not by method), and WorkflowsController#index does
-  # touch `params`, so BaseController's rescue is reachable in production.
-  # Dispatch a raw Rack request, bypassing the harness's shortcut, to prove
-  # the rescue itself actually fires rather than trusting the 200 above.
+  # GET into the query string, never the body — so driving this through the
+  # integration harness (get api_v1_workflows_path, params: "{nope", headers:
+  # …) can only ever observe 200 and proves nothing about the rescue below. A
+  # real client is free to send a GET with a body and Content-Type:
+  # application/json (Rack parses a request body by content type, not by
+  # method), and WorkflowsController#index does touch `params`, so
+  # BaseController's rescue is reachable in production. Dispatch a raw Rack
+  # request, bypassing the harness's shortcut, to prove the rescue itself
+  # actually fires.
   test "a GET whose body the parser actually touches gets the rescue's 400, not an unhandled error" do
     mock = Rack::MockRequest.new(Rails.application)
     resp = mock.get("/api/v1/workflows", input: "{nope",
