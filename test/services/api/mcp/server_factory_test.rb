@@ -27,6 +27,31 @@ class Api::Mcp::ServerFactoryTest < ActiveSupport::TestCase
     assert_equal %w[create_workflow_draft validate_workflow_draft], tool_names(token)
   end
 
+  test "report_exception sends Rails.error only the JSON-RPC method and tool name, never arguments" do
+    secret = "TOP SECRET DRAFT DOCUMENT CONTENTS #{SecureRandom.hex(4)}"
+    request = { jsonrpc: "2.0", id: 1, method: "tools/call",
+                params: { name: "create_workflow_draft", arguments: { document: secret } } }
+
+    report = assert_error_reported(RuntimeError) do
+      Api::Mcp::ServerFactory.report_exception(RuntimeError.new("boom"), { request: request })
+    end
+
+    assert_not_includes report.context.inspect, secret
+    assert_equal "tools/call", report.context.dig(:mcp, :method)
+    assert_equal "create_workflow_draft", report.context.dig(:mcp, :tool)
+  end
+
+  test "report_exception tolerates JSON-RPC positional (array) params without raising" do
+    request = { jsonrpc: "2.0", id: 1, method: "tools/call", params: %w[not a hash] }
+
+    report = assert_error_reported(RuntimeError) do
+      Api::Mcp::ServerFactory.report_exception(RuntimeError.new("boom"), { request: request })
+    end
+
+    assert_equal "tools/call", report.context.dig(:mcp, :method)
+    assert_nil report.context.dig(:mcp, :tool)
+  end
+
   private
 
   def tool_names(token)
