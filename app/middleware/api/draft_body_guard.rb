@@ -54,8 +54,13 @@ module Api
 
     private
 
+    # /mcp is guarded on every method the route answers (GET, POST, DELETE:
+    # config/routes.rb) — the JSON-RPC transport reads a body off any of them,
+    # so a DELETE with a document in its body would otherwise reach the log
+    # and Rails' parser unfiltered and uncapped. /api/v1/drafts stays
+    # POST-only: both its routes only ever accept POST.
     def guarded?(request)
-      request.post? && (drafts_path?(request) || mcp_path?(request))
+      mcp_path?(request) || (request.post? && drafts_path?(request))
     end
 
     def drafts_path?(request)
@@ -86,12 +91,15 @@ module Api
     # body — up to one byte past the limit, enough to answer "over or not"
     # without buffering an arbitrarily large upload. Reading that far consumes
     # rack.input, so it is replaced with exactly what was read, so the app
-    # still sees the same, whole body afterwards.
+    # still sees the same, whole body afterwards. Guarding every method on
+    # /mcp (not just POST) means a bodyless GET or DELETE reaches here too;
+    # Rack requires rack.input to be IO-like, but is not guaranteed present,
+    # so a missing one reads as no body rather than raising.
     def content_length(env, limit)
       declared = env["CONTENT_LENGTH"].to_i
       return declared if declared.positive?
 
-      chunk = env["rack.input"].read(limit + 1).to_s
+      chunk = env["rack.input"]&.read(limit + 1).to_s
       env["rack.input"] = StringIO.new(chunk)
       env["CONTENT_LENGTH"] = chunk.bytesize.to_s
       chunk.bytesize

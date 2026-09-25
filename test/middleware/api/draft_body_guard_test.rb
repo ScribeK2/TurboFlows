@@ -165,4 +165,48 @@ class Api::DraftBodyGuardTest < ActiveSupport::TestCase
     assert_equal 200, status
     assert_equal [/./], @downstream_env["action_dispatch.parameter_filter"]
   end
+
+  # The /mcp route answers GET, POST and DELETE (config/routes.rb): the
+  # JSON-RPC transport reads a body off any of them, so the guard has to
+  # cover every method on this path, not just POST -- unlike /api/v1/drafts,
+  # whose routes only ever accept POST.
+  test "a GET /mcp with a body reaches the app with the parameter filter set" do
+    env = Rack::MockRequest.env_for("/mcp", method: "GET", input: '{"jsonrpc":"2.0"}')
+    status, = @guard.call(env)
+
+    assert_equal 200, status
+    assert_equal [/./], @downstream_env["action_dispatch.parameter_filter"]
+  end
+
+  test "a DELETE /mcp with a body reaches the app with the parameter filter set" do
+    env = Rack::MockRequest.env_for("/mcp", method: "DELETE", input: '{"jsonrpc":"2.0"}')
+    status, = @guard.call(env)
+
+    assert_equal 200, status
+    assert_equal [/./], @downstream_env["action_dispatch.parameter_filter"]
+  end
+
+  test "a GET /mcp over MCP_MAX_BYTES is refused, not buffered whole" do
+    body = "x" * (Api::DraftBodyGuard::MCP_MAX_BYTES + 1)
+    env = Rack::MockRequest.env_for("/mcp", method: "GET", input: body)
+
+    status, headers, response_body = @guard.call(env)
+
+    assert_equal 413, status
+    assert_equal "application/json", headers["content-type"]
+    assert_equal "payload_too_large", JSON.parse(response_body.first).dig("errors", 0, "code")
+    assert_nil @downstream_env
+  end
+
+  test "a DELETE /mcp over MCP_MAX_BYTES is refused, not buffered whole" do
+    body = "x" * (Api::DraftBodyGuard::MCP_MAX_BYTES + 1)
+    env = Rack::MockRequest.env_for("/mcp", method: "DELETE", input: body)
+
+    status, headers, response_body = @guard.call(env)
+
+    assert_equal 413, status
+    assert_equal "application/json", headers["content-type"]
+    assert_equal "payload_too_large", JSON.parse(response_body.first).dig("errors", 0, "code")
+    assert_nil @downstream_env
+  end
 end
