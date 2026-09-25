@@ -22,9 +22,9 @@ class Api::Mcp::ServerFactoryTest < ActiveSupport::TestCase
     assert_equal %w[get_authoring_guide get_workflow search_workflows], tool_names(token.reload)
   end
 
-  test "a draft-only token lists only the draft tools" do
+  test "a draft-only token lists the draft tools plus the authoring guide" do
     token = ApiToken.issue(user: @editor, name: "d", scopes: %w[draft], expires_in_days: 7)
-    assert_equal %w[create_workflow_draft validate_workflow_draft], tool_names(token)
+    assert_equal %w[create_workflow_draft get_authoring_guide validate_workflow_draft], tool_names(token)
   end
 
   test "report_exception sends Rails.error only the JSON-RPC method and tool name, never arguments" do

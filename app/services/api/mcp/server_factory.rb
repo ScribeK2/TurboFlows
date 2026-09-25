@@ -6,7 +6,13 @@ module Api
     # call only Api::WorkflowCatalog and Api::DraftSubmission, the REST API's
     # seams, so the two faces cannot disagree.
     class ServerFactory
-      READ_TOOLS = [SearchWorkflows, GetWorkflow, GetAuthoringGuide].freeze
+      # search_workflows and get_workflow read workflow data, so they stay
+      # read-only. get_authoring_guide is static documentation (the strict
+      # dialect's schema and prompt, not anyone's workflow), so it is offered
+      # to a draft-only token too -- otherwise a draft-only token is told by
+      # INSTRUCTIONS and every draft tool's description to call a tool it
+      # cannot see.
+      READ_ONLY_TOOLS = [SearchWorkflows, GetWorkflow].freeze
       DRAFT_TOOLS = [ValidateWorkflowDraft, CreateWorkflowDraft].freeze
 
       INSTRUCTIONS = <<~TEXT.squish.freeze
@@ -30,7 +36,9 @@ module Api
       end
 
       def self.tools_for(api_token)
-        (api_token.allows?(:read) ? READ_TOOLS : []) + (api_token.allows?(:draft) ? DRAFT_TOOLS : [])
+        tools = api_token.allows?(:read) ? READ_ONLY_TOOLS.dup : []
+        tools << GetAuthoringGuide if api_token.allows?(:read) || api_token.allows?(:draft)
+        tools + (api_token.allows?(:draft) ? DRAFT_TOOLS : [])
       end
 
       # The SDK hides an exception's message from the client (CWE-209) and
