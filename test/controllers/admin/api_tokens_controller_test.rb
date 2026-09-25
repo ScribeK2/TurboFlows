@@ -29,9 +29,23 @@ class Admin::ApiTokensControllerTest < ActionDispatch::IntegrationTest
     [@editor, make_user("user")].each do |user|
       sign_in user
       get admin_api_tokens_path
-      assert_not_equal 200, response.status, "#{user.role} must not see the list"
+      assert_redirected_to root_path
+      assert_equal "You don't have permission to access this page.", flash[:alert]
+
       delete admin_api_token_path(@token)
+      assert_redirected_to root_path
+      assert_equal "You don't have permission to access this page.", flash[:alert]
       assert_equal :active, @token.reload.state
+    end
+  end
+
+  test "an expired token's badge is plain, like Active, not an exceptional pill" do
+    travel_to @token.expires_at + 1.day do
+      sign_in @admin
+      get admin_api_tokens_path
+      assert_response :success
+      assert_select "td span.badge.badge--info", text: "Expired"
+      assert_select "td span.badge.badge--warning", count: 0
     end
   end
 

@@ -3,7 +3,7 @@
   <td><%= link_to token.user.email, admin_user_path(token.user) %></td>
   <td><%= token.effective_scopes.join(", ").presence || "none usable" %></td>
   <td>
-    <% state_badge = { active: ["Active", "badge--info"], expired: ["Expired", "badge--warning"],
+    <% state_badge = { active: ["Active", "badge--info"], expired: ["Expired", "badge--info"],
                         revoked: ["Revoked", "badge--alert"] }.fetch(token.state) %>
     <span class="badge <%= state_badge.last %>"><%= state_badge.first %></span>
   </td>
