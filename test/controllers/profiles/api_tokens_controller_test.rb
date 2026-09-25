@@ -47,14 +47,38 @@ class Profiles::ApiTokensControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "turbo-stream[action='update'][target='api-token-reveal'] template" do |templates|
       reveal = Nokogiri::HTML.fragment(templates.first.inner_html)
-      assert_equal 2, reveal.element_children.size,
-                   "expected the reveal card plus the connect section — a third sibling here would need its own check"
-      reveal.element_children.each do |child|
-        assert child.has_attribute?("data-turbo-temporary"),
-               "the reveal's <#{child.name}> carries the raw token but not data-turbo-temporary, " \
-               "so it survives Turbo's bfcache snapshot and resurfaces on Back"
-      end
+      assert_equal 1, reveal.element_children.size,
+                   "expected a single wrapper holding the reveal card and the connect section — " \
+                   "a sibling here would need its own check"
+      wrapper = reveal.element_children.first
+      assert wrapper.has_attribute?("data-turbo-temporary"),
+             "the reveal's wrapper carries the raw token (in both the card and the connect section) " \
+             "but not data-turbo-temporary, so it survives Turbo's bfcache snapshot and resurfaces on Back"
+      assert_equal 2, wrapper.element_children.size,
+                   "expected the wrapper to hold the reveal card plus the connect section"
     end
+  end
+
+  test "revoking an older token doesn't remove a different token's fresh reveal" do
+    sign_in @editor
+    older = ApiToken.issue(user: @editor, name: "older", scopes: %w[read], expires_in_days: 7)
+
+    post profile_api_tokens_path, params: { api_token: { name: "newer", scopes: %w[read], expires_in_days: 30 } },
+                                  as: :turbo_stream
+    assert_response :success
+    newer = @editor.api_tokens.order(created_at: :desc).first
+    newer_reveal_id = ActionView::RecordIdentifier.dom_id(newer, :reveal)
+    assert_includes response.body, "id=\"#{newer_reveal_id}\"", "expected the newer token's reveal to render with its own id"
+
+    delete profile_api_token_path(older), as: :turbo_stream
+    assert_response :success
+    assert_select "turbo-stream[action='update'][target='api-token-reveal']", { count: 0 },
+                  "revoking a different token must not empty the fixed reveal container"
+    assert_select "turbo-stream[action='remove'][target='#{newer_reveal_id}']", { count: 0 },
+                  "revoking token B must not target token A's reveal id"
+    older_reveal_id = ActionView::RecordIdentifier.dom_id(older, :reveal)
+    assert_select "turbo-stream[action='remove'][target='#{older_reveal_id}']", 1,
+                  "expected the destroy stream to target the revoked token's own reveal id"
   end
 
   test "a refused create keeps the submitted scopes and expiry, not the defaults" do

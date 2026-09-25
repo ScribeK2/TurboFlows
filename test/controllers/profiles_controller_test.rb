@@ -32,6 +32,13 @@ class ProfilesControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[disabled]", value: @user.email
   end
 
+  test "an admin sees the API tokens section on their profile" do
+    @user.update!(role: "admin")
+    get edit_profile_path
+    assert_response :success
+    assert_select "#api-tokens-heading", text: "API tokens"
+  end
+
   test "edit shows current local time hint" do
     @user.update!(time_zone: "Asia/Tokyo")
     travel_to Time.utc(2026, 4, 28, 0, 30) do # 09:30 JST

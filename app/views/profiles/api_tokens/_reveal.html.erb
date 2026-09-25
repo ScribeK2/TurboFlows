@@ -6,12 +6,22 @@
     the controller orders this stream action AFTER the form/list replace so
     there's nothing already focused for it to lose to — and aria-describedby
     ties the one-time warning to the element that receives it. %>
-<div class="card" data-controller="clipboard" data-turbo-temporary style="margin-block: var(--space-4);">
-  <div class="card__body">
-    <p id="api-token-reveal-warning"><strong>Copy your new token now.</strong> This is the only time TurboFlows will show it.</p>
-    <code class="api-token-reveal__code" data-clipboard-target="source"><%= token.plaintext %></code>
-    <button type="button" class="btn btn--secondary" data-action="click->clipboard#copy"
-            data-clipboard-target="button" autofocus aria-describedby="api-token-reveal-warning">Copy</button>
+<%# The wrapper carries THIS token's id (dom_id(token, :reveal)), not a fixed
+    "api-token-reveal" — the div of that fixed id lives in _section.html.erb
+    and only ever holds one token's reveal at a time, replaced wholesale on
+    create. Revoking an older token B must not touch a newer token A's
+    freshly-shown reveal, so the controller's destroy targets this id
+    specifically (turbo_stream.remove) rather than emptying the fixed
+    container: a remove for an id that isn't currently on the page is a
+    silent no-op, exactly what's wanted when B's reveal isn't showing. %>
+<div id="<%= dom_id(token, :reveal) %>" data-turbo-temporary>
+  <div class="card" data-controller="clipboard" style="margin-block: var(--space-4);">
+    <div class="card__body">
+      <p id="api-token-reveal-warning"><strong>Copy your new token now.</strong> This is the only time TurboFlows will show it.</p>
+      <code class="api-token-reveal__code" data-clipboard-target="source"><%= token.plaintext %></code>
+      <button type="button" class="btn btn--secondary" data-action="click->clipboard#copy"
+              data-clipboard-target="button" autofocus aria-describedby="api-token-reveal-warning">Copy</button>
+    </div>
   </div>
+  <%= render "profiles/api_tokens/connect", token:, base_url: request.base_url %>
 </div>
-<%= render "profiles/api_tokens/connect", token:, base_url: request.base_url %>

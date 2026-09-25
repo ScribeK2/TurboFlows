@@ -2,6 +2,8 @@ module Profiles
   # Create and revoke the signed-in person's own API tokens. The raw token is
   # answered in a stream, never the flash: the flash rides in the session cookie.
   class ApiTokensController < ApplicationController
+    include ActionView::RecordIdentifier
+
     before_action :authenticate_user!
 
     def create
@@ -27,8 +29,13 @@ module Profiles
     end
 
     def destroy
-      current_user.api_tokens.find(params[:id]).revoke!
-      render turbo_stream: [turbo_stream.update("api-token-reveal", ""), list_stream]
+      token = current_user.api_tokens.find(params[:id])
+      token.revoke!
+      # Removing this token's OWN reveal id, not emptying the fixed
+      # "api-token-reveal" container: revoking an older token must not wipe
+      # out a different, just-created token's still-showing reveal. If this
+      # token's reveal isn't on the page, the remove is a silent no-op.
+      render turbo_stream: [turbo_stream.remove(dom_id(token, :reveal)), list_stream]
     end
 
     private
