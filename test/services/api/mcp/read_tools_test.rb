@@ -46,6 +46,16 @@ class Api::Mcp::ReadToolsTest < ActiveSupport::TestCase
     assert_equal "not_found", refused.structured_content[:errors].first[:code]
   end
 
+  test "get_workflow reads an id in base 10 only, never as octal or hex" do
+    padded = call(Api::Mcp::GetWorkflow, id: "0#{@mine.id}")
+    assert_not padded.error?, "expected the padded id to resolve: #{padded.structured_content.inspect}"
+    assert_equal @mine.id, padded.structured_content[:id]
+
+    hex = call(Api::Mcp::GetWorkflow, id: "0x1A")
+    assert_predicate hex, :error?
+    assert_equal "not_found", hex.structured_content[:errors].first[:code]
+  end
+
   test "get_authoring_guide returns the schema version, schema and guide" do
     response = call(Api::Mcp::GetAuthoringGuide)
     data = response.structured_content

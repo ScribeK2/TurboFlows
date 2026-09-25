@@ -14,7 +14,7 @@ module Api
       NOT_FOUND = "No workflow with that id is visible to this token.".freeze
 
       def self.call(id:, server_context:)
-        workflow_id = Integer(id.to_s, exception: false)
+        workflow_id = Integer(id.to_s, 10, exception: false)
         return ToolResult.refusal("not_found", NOT_FOUND) unless workflow_id
 
         catalog = server_context[:catalog]
