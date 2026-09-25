@@ -1,6 +1,16 @@
 Rails.application.routes.draw do
   get "healthz", to: proc { [200, {}, ["OK"]] }
 
+  # The token-authenticated API (spec 2026-09-25-api-and-mcp-design §2).
+  namespace :api, defaults: { format: :json } do
+    namespace :v1 do
+      resources :workflows, only: %i[index show]
+      resource :authoring_guide, only: :show
+      resources :drafts, only: :create
+      post "drafts/validate", to: "drafts/validations#create", as: :draft_validation
+    end
+  end
+
   devise_for :users, controllers: {
     registrations: 'users/registrations',
     sessions: 'users/sessions'
