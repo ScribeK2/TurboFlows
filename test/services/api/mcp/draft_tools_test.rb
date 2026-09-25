@@ -46,6 +46,17 @@ class Api::Mcp::DraftToolsTest < ActiveSupport::TestCase
     assert_equal "malformed_json", response.structured_content[:errors].first[:code]
   end
 
+  test "a document over the import cap is refused before validation runs" do
+    huge = { schema_version: "1", workflows: [{ title: "Huge",
+                                                description: "x" * (WorkflowImporter::MAX_IMPORT_BYTES + 1),
+                                                steps: [] }] }
+    assert_no_difference("Workflow.count") do
+      response = call(Api::Mcp::CreateWorkflowDraft, document: huge)
+      assert_predicate response, :error?
+      assert_equal "payload_too_large", response.structured_content[:errors].first[:code]
+    end
+  end
+
   test "a token that has lost the draft scope is refused and nothing is written" do
     @editor.update!(role: "user")
     assert_no_difference("Workflow.count") do

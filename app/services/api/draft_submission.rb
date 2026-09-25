@@ -24,11 +24,14 @@ module Api
     end
 
     def validate
+      return { valid: false, errors: [oversized_finding], warnings: [] } if oversized?
+
       report = validator_report
       { valid: report.valid?, errors: report.errors, warnings: report.warnings }
     end
 
     def create
+      return refused([oversized_finding]) if oversized?
       return refused([limit_finding(0)]) if outstanding >= DRAFT_LIMIT
 
       report = validator_report
@@ -49,6 +52,21 @@ module Api
 
     def validator_report
       @validator_report ||= StrictImportValidator.new(user: @user, content: @content).validate
+    end
+
+    # The MCP cap (Api::DraftBodyGuard::MCP_MAX_BYTES) has 1 MB of headroom
+    # over WorkflowImporter::MAX_IMPORT_BYTES for the JSON-RPC envelope
+    # (method, tool name, arguments key) -- a document between the two sizes
+    # passes the middleware but must still be refused here, the one seam both
+    # REST and MCP call, so a document too big to import over REST cannot be
+    # created over MCP.
+    def oversized?
+      @content.bytesize > WorkflowImporter::MAX_IMPORT_BYTES
+    end
+
+    def oversized_finding
+      { path: nil, code: "payload_too_large", value: @content.bytesize,
+        message: "The document is over #{WorkflowImporter::MAX_IMPORT_BYTES / 1.megabyte} MB." }
     end
 
     def outstanding
