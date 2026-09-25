@@ -16,6 +16,13 @@ class Admin::ApiTokensControllerTest < ActionDispatch::IntegrationTest
     assert_select "[aria-current='page']", text: /API tokens/
   end
 
+  test "the empty Revoke column header still has accessible text, not a bare th" do
+    sign_in @admin
+    get admin_api_tokens_path
+    assert_response :success
+    assert_select "th span.sr-only", text: "Actions"
+  end
+
   test "an admin's revoke stops the token at once" do
     raw = @token.plaintext
     sign_in @admin
