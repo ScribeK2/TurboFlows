@@ -2,8 +2,6 @@
 
 > Part of the agent guidance for TurboFlows, and as binding as `AGENTS.md`, which indexes it.
 > Written directly here on 2026-09-25 (branch `api-v1`), not moved from `AGENTS.md`.
-> Cross-references written as "Workflow Engine" or "key-services entry" mean
-> `docs/agents/workflow-engine-and-import.md`; "Builder UI §…" means `docs/agents/builder.md`.
 
 ## What exists
 
@@ -27,8 +25,11 @@ Tokens are managed in two places, both thin views over the model:
   create and revoke your own tokens. `edit_profile_path` never re-renders a raw
   token once its creation stream has passed.
 - **Admin** (`Admin::ApiTokensController`, `resources :api_tokens, only: %i[index destroy]`
-  under `namespace :admin`): every token in the install, with a Revoke button on
-  any of them. The sidebar item is **"API tokens"** (`AdminHelper::ADMIN_SECTIONS`
+  under `namespace :admin`): every token in the install, with a Revoke button
+  rendered only for a token whose `#state` is `:active`
+  (`app/views/admin/api_tokens/_row.html.erb`'s `<% if token.state == :active %>`)
+  — there's nothing to revoke on one already expired or revoked. The sidebar
+  item is **"API tokens"** (`AdminHelper::ADMIN_SECTIONS`
   maps `"admin/api_tokens" => :api_tokens`); it needed no new `NavHelper::NAV_SECTIONS`
   entry because `nav_section` already lights Admin for the whole `admin/` prefix.
   `app/views/admin/api_tokens/_row.html.erb` renders a token's `#state` as
@@ -40,14 +41,23 @@ Tokens are managed in two places, both thin views over the model:
 
 **`/api/v1`** (`config/routes.rb`, `namespace :api, defaults: { format: :json }, format: false`
 → `namespace :v1`): `GET workflows`, `GET workflows/:id`, `GET authoring_guide`,
-`POST drafts`, `POST drafts/validate`, `GET openapi.json`. Every controller in
-`app/controllers/api/v1/` inherits `Api::V1::BaseController < ActionController::API`.
+`POST drafts`, `POST drafts/validate`, `GET openapi.json`. **Not every
+controller here inherits `Api::V1::BaseController`, and both exceptions are
+deliberate.** `WorkflowsController`, `AuthoringGuidesController` and
+`DraftsController`/`Drafts::ValidationsController` do — they need
+`Api::TokenAuthentication`, `wrap_parameters false` and the shared
+`rescue_from`s. `Api::V1::OpenapiController < ActionController::API` skips it:
+the document is public (no token — it describes endpoints, not data), so it has
+no authentication to inherit. `Api::V1::NotFoundController <
+ActionController::Metal` skips even `::API`: it's the namespace's catch-all for
+an unrecognized path, and `::Metal` is what keeps a mistyped path's body from
+ever being parsed or logged (see Refusal shapes, below, for why that matters).
 The document at `config/openapi/v1.yaml` is the source of truth, served as JSON by
-`Api::V1::OpenapiController` at **`GET /api/v1/openapi.json`** (no token — it
-describes endpoints, not data) and checked against the live routes by
-`test/integration/api/v1/openapi_test.rb`, which fails if a route is undocumented
-or the document names a route that doesn't exist, and separately validates the
-document (and every `$ref` it contains) as well-formed OpenAPI 3.1 with `json_schemer`.
+`Api::V1::OpenapiController` at **`GET /api/v1/openapi.json`** and checked
+against the live routes by `test/integration/api/v1/openapi_test.rb`, which
+fails if a route is undocumented or the document names a route that doesn't
+exist, and separately validates the document (and every `$ref` it contains) as
+well-formed OpenAPI 3.1 with `json_schemer`.
 
 **`/mcp`** (`McpController`, one route answering GET/POST/DELETE) exposes five
 tools through `Api::Mcp::ServerFactory`: `search_workflows`, `get_workflow`,
@@ -88,9 +98,14 @@ install is reachable at more than `localhost`): `hideClientButton: true` (hides
 `client.scalar.com` — it does **not** hide "Test Request", left at its default),
 `agent: { disabled: true }`, `mcp: { disabled: true }`, `showDeveloperTools: "never"`,
 `withDefaultFonts: false`, `telemetry: false`, `proxyUrl: ""`. The CSP was not
-loosened for any of this. `test/integration/api_docs_test.rb`'s "the init config
-hides the client-to-client.scalar.com link and disables Scalar's hosted
-features" asserts every one of these keys in the rendered page.
+loosened for any of this. **What the test actually asserts is narrower than the
+full config.** `test/integration/api_docs_test.rb`'s "the init config hides the
+client-to-client.scalar.com link and disables Scalar's hosted features" checks
+only four of those keys in the rendered page — `hideClientButton: true`,
+`agent: { disabled: true }`, `mcp: { disabled: true }`, `showDeveloperTools: "never"`
+— plus that `hideTestRequestButton` is never assigned a value. `withDefaultFonts: false`,
+`telemetry: false` and `proxyUrl: ""` are set in the view but **unguarded by any
+test**: a future edit could drop one of those three silently.
 
 ## Authentication
 
@@ -102,22 +117,41 @@ subclasses (no session, no cookies, no CSRF) rather than `ApplicationController`
 ones. `test/integration/api/v1/authentication_test.rb`'s "a signed-in browser
 session alone does not authenticate the API" confirms the outward behavior: it
 signs a user in, then hits `/api/v1/authoring_guide` with no bearer header and
-still gets 401 — but that test passes on the missing bearer header alone
-(`authenticate_token!`'s own check) and would still pass with the concern's
-`attr_reader :current_user, :current_api_token` deleted, so it does not by
-itself prove the ordering claim below. The concern's `included do` block runs
-that `attr_reader` directly on the including class (confirmed by
-`Api::V1::BaseController.instance_method(:current_user).owner ==
-Api::V1::BaseController`), the strongest place a method can be defined — ahead
-of anything a module elsewhere in the ancestor chain could supply. On this
-branch `ActionController::API` itself defines no `current_user`
-(`ActionController::API.method_defined?(:current_user)` is `false`), so there is
-currently no Devise helper in this ancestry for the `attr_reader` to actually
-beat; the ordering matters as a **structural** guarantee — including
-`Api::TokenAuthentication` in a controller with Devise in its ancestry (which
-the concern's own header comment says never to do) would still resolve
-`current_user` to the token's user, not Devise's — rather than one any test on
-this branch currently exercises.
+still gets 401 — that's `authenticate_token!`'s own check, not the
+`attr_reader` below, and would pass identically either way.
+
+**`Devise::Controllers::Helpers` really is mixed into `ActionController::API`,
+and the `attr_reader` really does have to beat it.** It's easy to check this the
+wrong way: `bin/rails runner 'p ActionController::API.method_defined?(:current_user)'`
+answers `false`, because routes haven't loaded yet in that context and Devise
+only *defines* `current_#{mapping}` methods when `devise_for` is drawn
+(`Devise.add_mapping` → `Devise::Controllers::Helpers.define_helpers`, gem
+`devise-5.0.4`'s `lib/devise.rb:368` and `lib/devise/controllers/helpers.rb:113-128`).
+`ActionController::API`'s own class body already runs
+`ActiveSupport.run_load_hooks(:action_controller, self)` at boot
+(`actionpack-8.1.2`'s `lib/action_controller/api.rb:153-154`), which is the hook
+`Devise::Engine`'s `"devise.url_helpers"` initializer registers against
+(`Devise.include_helpers(Devise::Controllers)`, `lib/devise/rails.rb:23-25`) —
+so `Devise::Controllers::Helpers` (which defines `current_user` once
+`devise_for :users` runs) is included into `ActionController::API` itself,
+ancestry Ruby resolves whether or not this app ever calls it directly. Force
+routes to load first and the probe flips:
+`Rails.application.reload_routes!; ActionController::API.method_defined?(:current_user)`
+is `true`, and `Api::V1::BaseController.instance_method(:current_user).super_method.owner`
+is `Devise::Controllers::Helpers` — confirmed directly on this branch. The
+concern's `included do` block puts `attr_reader :current_user, :current_api_token`
+directly on the including class (`Api::V1::BaseController.instance_method(:current_user).owner`
+is `Api::V1::BaseController` itself), the strongest place a method can be
+defined, ahead of anything a module in the ancestor chain — Devise's own
+`current_user`, sitting right below it — could supply. Both readings memoize
+into the same `@current_user` ivar (Devise's is `@current_user ||=
+warden.authenticate(scope: :user)`; the `attr_reader` just returns it), and
+`authenticate_token!` sets `@current_user` before either could ever be called,
+so **no test on this branch can currently tell the two apart** — removing the
+`attr_reader` would silently fall through to Devise's memoized read of the same
+ivar and still pass every test here. The override is what keeps it that way if
+Devise's own method ever stops memoizing, or a future refactor makes
+`@current_user` reach a controller action unset.
 
 `authenticate_token!` reads `Authorization: Bearer …` (`ApiToken.raw_from_authorization`,
 case-insensitive on "Bearer"), looks it up by SHA-256 digest
@@ -144,9 +178,13 @@ never includes it again. The reveal also hands over ready-to-paste setup on
 claude mcp add --transport http turboflows <URL>/mcp --header "Authorization: Bearer <TOKEN>"
 export TURBOFLOWS_TOKEN=<TOKEN>
 codex mcp add turboflows --url <URL>/mcp --bearer-token-env-var TURBOFLOWS_TOKEN
-{"mcpServers":{"turboflows":{"type":"http","url":"<URL>/mcp","headers":{"Authorization":"Bearer <TOKEN>"}}}}
 curl -H "Authorization: Bearer <TOKEN>" <URL>/api/v1/workflows
 ```
+
+("Other MCP clients" is the fourth tab, `JSON.pretty_generate` over
+`{ mcpServers: { turboflows: { type: "http", url:, headers: { Authorization: } } } }`
+— multi-line in the actual UI, not the single-line form the JSON shape above
+suggests; `app/views/profiles/api_tokens/_connect.html.erb` is the source.)
 
 ## The two seams: `Api::WorkflowCatalog` and `Api::DraftSubmission`
 
@@ -160,8 +198,15 @@ and both widen together, refuse in one and both refuse.
   `Workflow.visible_to(user)` (published) with `Workflow.drafts_visible_to(user)`
   (the user's own, or every draft for an admin) — existing visibility rules, not
   new ones — then applies `q` (`Workflow.search_by`), `tag`, `group` and `status`
-  filters, each raising `Api::WorkflowCatalog::InvalidFilter` on a bad value
-  (an unknown group id, an unknown status) rather than silently dropping it.
+  filters. Only `group` and `status` raise `Api::WorkflowCatalog::InvalidFilter`
+  from inside the catalog (`find_group` on an unknown group id, `checked_status`
+  on an unknown status) — `q` and `tag` accept anything and just narrow the
+  scope. An **array-valued** filter (`q[]=x`) never reaches the catalog at all:
+  `Api::V1::WorkflowsController#index` checks `filters.keys.find { |key|
+  !filters[key].is_a?(String) }` first and answers `422 invalid_filter` itself
+  — `path` is the offending key, message is `"<key> must be a single value."`
+  — so a non-string value is refused rather than silently dropped by either
+  layer.
   `#find(id)` (`delegate :find, to: :visible`) raises `ActiveRecord::RecordNotFound`
   for a workflow outside the token's visibility — the controller's
   `rescue_from ActiveRecord::RecordNotFound` turns that into **404, never 403**,
@@ -171,9 +216,14 @@ and both widen together, refuse in one and both refuse.
   path" from the spec, so a round trip through the API is exactly as faithful as
   Export always was, no better, no worse (`test/integration/api/v1/drafts_test.rb`
   "GET a workflow, POST it back as a draft: the same workflow").
-- **`Api::DraftSubmission.new(user:, api_token:, content:)`**. `#validate` runs
-  `StrictImportValidator` and returns its report untouched — `200` either way,
-  valid or not; the report is the answer. `#create` runs, in this fixed order:
+- **`Api::DraftSubmission.new(user:, api_token:, content:)`**. `#validate`
+  checks `oversized?` (`@content.bytesize` over `WorkflowImporter::MAX_IMPORT_BYTES`)
+  **first** and, if so, returns `{ valid: false, errors: [oversized_finding],
+  warnings: [] }` without ever running the validator; otherwise it runs
+  `StrictImportValidator` and reshapes the report into
+  `{ valid: report.valid?, errors: report.errors, warnings: report.warnings }`
+  — `200` either way, valid or not; the report (reshaped, not the object
+  itself) is the answer. `#create` runs, in this fixed order:
   refuse if already oversized → refuse if the draft cap is already full → validate
   → refuse if the incoming bundle would push the cap over → `WorkflowImporter`
   (strict path, stamping `workflows.api_token_id` inside its own transaction).
@@ -238,16 +288,29 @@ for the same reason.
 
 **Every API route lives inside the one `namespace :api` block** in
 `config/routes.rb` (`format: false`, `defaults: { format: :json }`), which is
-what keeps `/api/**.<format>` from ever reaching a real endpoint: `format: false`
-means no `/api/v1/drafts.json`-shaped URL matches `DraftsController` (or any
-other real action) at all — it still **routes**, but only to the namespace's own
-`match "*path", to: "v1/not_found#show"` catch-all
-(`test/integration/api/v1/drafts_test.rb` "a .json-suffixed drafts URL routes
-only to the JSON 404, never to drafts#create"), so `Api::DraftBodyGuard`'s
-exact/prefix path match still has nothing real to miss. A route added outside
-that block (or above the namespace's own catch-all, which must stay last inside
-it) needs to be re-checked against this guard by hand, since the guard only
-reads paths, not the router's knowledge of what's mounted.
+what keeps `/api/v1/**.<format>` from ever reaching a real endpoint:
+`format: false` on the namespace means no `/api/v1/drafts.json`-shaped URL
+matches `DraftsController` (or any other real action) — it still **routes**,
+but only to the namespace's own `match "*path", to: "v1/not_found#show"`
+catch-all (`test/integration/api/v1/drafts_test.rb` "a .json-suffixed drafts
+URL routes only to the JSON 404, never to drafts#create"), so
+`Api::DraftBodyGuard`'s exact/prefix path match still has nothing real to miss.
+A route added outside that block (or above the namespace's own catch-all,
+which must stay last inside it) needs to be re-checked against this guard by
+hand, since the guard only reads paths, not the router's knowledge of what's
+mounted.
+
+**`/mcp` carries its own, separate `format: false`** — it isn't inside
+`namespace :api` at all (`match "mcp", to: "mcp#handle", via: %i[get post
+delete], as: :mcp, format: false`, `config/routes.rb`), and that matters
+because `/mcp` has no catch-all of its own to fall back to: `/mcp.json` doesn't
+route to *anything*, a genuine `ActionController::RoutingError`
+(`test/integration/mcp_test.rb` "POST /mcp.json does not reach the
+controller", which asserts exactly that against
+`Rails.application.routes.recognize_path`) — unlike `/api/v1/drafts.json`,
+which still lands on the JSON 404 above. Don't conflate the two: a suffixed
+`/api/v1/*` URL is caught, a suffixed `/mcp` URL was never routable in the
+first place.
 
 **MCP exceptions**: `Api::Mcp::ServerFactory.report_exception` is passed as
 `configuration: MCP::Configuration.new(exception_reporter: method(:report_exception))`
@@ -279,11 +342,12 @@ shapes.
 
 | Status | When |
 |---|---|
+| 400 | `malformed_json` — `Api::V1::BaseController`'s `rescue_from ActionDispatch::Http::Parameters::ParseError`, for any non-drafts route whose body Rails' own params parsing actually touches (in practice, a GET with a `Content-Type: application/json` body that fails to parse — see the known gap below) |
 | 401 | missing, unknown, revoked or expired token, or a deactivated/locked user |
 | 403 | `insufficient_scope` — a scope the token lacks, or the user's role no longer grants it |
 | 404 | a workflow that doesn't exist, or that this user can't see — never 403, so existence never leaks; also the JSON catch-all (`Api::V1::NotFoundController`) for any unrecognized `/api/*` path |
 | 413 | `payload_too_large` — body over the path's cap, caught by `Api::DraftBodyGuard` before Rails parses it |
-| 422 | `invalid_filter` (a bad `q`/`tag`/`group`/`status`, including an array-valued one — `q[]=` is refused, not silently dropped), `malformed_json`, `unsupported_schema_version`, a `StrictImportValidator` finding, `refused_at_commit`, or `api_draft_limit` |
+| 422 | `invalid_filter` (a bad `q`/`tag`/`group`/`status`, including an array-valued one — `q[]=` is refused, not silently dropped), `unsupported_schema_version`, a `StrictImportValidator` finding, `refused_at_commit`, `api_draft_limit`, and — on the two drafts endpoints only — `malformed_json` (`DraftsController`/`Drafts::ValidationsController` never touch `params`; `Api::DraftSubmission` reads `request.raw_post` directly and lets `StrictImportValidator` report a bad-JSON body as an ordinary finding, so the same failure that's a 400 elsewhere is a 422 here) |
 | 429 | `throttled`, with `Retry-After`; body is JSON, never `public/429.html` |
 
 **The JSON 404** is `Api::V1::NotFoundController < ActionController::Metal`, not
@@ -297,18 +361,24 @@ entirely, so a POST to (say) `/api/v1/draft` (missing the `s`) never touches
 
 **Known gap, not yet closed**: a JSON body sent on a **GET** to
 `/api/v1/workflows`, `/api/v1/workflows/:id` or `/api/v1/authoring_guide` still
-reaches `ActionController::API`'s Instrumentation and gets parsed and logged —
-`Api::DraftBodyGuard` only guards `/api/v1/drafts*` and `/mcp`, because those are
-the only paths a real client sends a body worth capping or masking on.
-`test/middleware/api/draft_body_guard_test.rb`'s "a GET to /api/v1/drafts is
-untouched — the guard is POST-only" and
-`test/integration/api/v1/loose_ends_test.rb`'s "a GET whose body the parser
-actually touches gets the rescue's 400, not an unhandled error" both confirm
-this is real (a raw `Rack::MockRequest` GET with a body reaches
-`BaseController`'s `rescue_from ActionDispatch::Http::Parameters::ParseError`)
-and that it fails safely — 400 `malformed_json`, not a crash — but nothing masks
-what such a body would log if it parsed cleanly. Predates this task; filed here
-as an open follow-up, not fixed by it.
+reaches `ActionController::API`'s Instrumentation and would get parsed and
+logged unmasked — `Api::DraftBodyGuard` only guards `/api/v1/drafts*` and
+`/mcp`, because those are the only paths a real client sends a body worth
+capping or masking on. What's actually proven on this branch is narrower than
+the full claim: `test/integration/api/v1/loose_ends_test.rb`'s "a GET whose
+body the parser actually touches gets the rescue's 400, not an unhandled
+error" dispatches a raw `Rack::MockRequest` GET with a malformed body straight
+at Rails (bypassing the integration-test harness, which folds a String
+`params:` into the query string on a GET and can't reach this path at all) and
+confirms the body really is parsed — `BaseController`'s `rescue_from
+ActionDispatch::Http::Parameters::ParseError` fires — and that the failure is
+safe, a 400 `malformed_json`, not a crash. **No test on this branch proves the
+other half: that a well-formed GET body actually reaches the log
+unmasked.** That would take a `start_processing.action_controller` notification
+subscriber (the pattern `test/integration/api/v1/drafts_test.rb` uses for the
+drafts POST routes) driven against a GET with a valid JSON body and no such
+test exists for `/api/v1/workflows` et al. Predates this task; filed here as an
+open follow-up, not fixed by it, and not fully test-covered as a leak either.
 
 **MCP**: refusals are **tool results** (`isError: true`), in the same
 `{ errors:, warnings: }` shape (`Api::Mcp::ToolResult.refused` /
@@ -376,13 +446,15 @@ also normalizes** the path before any throttle block runs — noted so nobody
 
 ## Decisions to know
 
-- **The draft cap is 50 outstanding API-made drafts per user, and not atomic.**
-  `Api::DraftSubmission#outstanding` counts `Workflow.drafts.created_via_api.where(user:)`
-  with a plain `.count`, checked twice (before and after validating) but with no
-  row lock between the two reads — under concurrency two near-simultaneous
-  creates can both pass the check and land at 51, bounded in practice by the
-  20/min draft throttle. `422 api_draft_limit` tells the caller to have a person
-  review, publish or delete some.
+- **The draft cap is 50 outstanding API-made drafts per user, and still not
+  atomic across requests.** `Api::DraftSubmission#outstanding` memoizes
+  (`@outstanding ||= Workflow.drafts.created_via_api.where(user: @user).count`),
+  so within one `#create` call the two cap checks (before and after validating)
+  read the count exactly once, not twice — but nothing locks the row *between
+  separate requests*, so two near-simultaneous creates from different requests
+  can each see the same pre-write count, both pass, and land at 51. Bounded in
+  practice by the 20/min draft throttle. `422 api_draft_limit` tells the caller
+  to have a person review, publish or delete some.
 - **The 10 MB document cap is enforced in two places, deliberately.**
   `Api::DraftBodyGuard` refuses an oversized *transport* body before it's ever
   parsed (413, for both `/api/v1/drafts*` and `/mcp`). `Api::DraftSubmission#oversized?`
@@ -417,14 +489,20 @@ also normalizes** the path before any throttle block runs — noted so nobody
 
 ## Traps that cost an afternoon on this branch
 
-- **`/mcp/`, `/mcp//`, a `.json` suffix, and `/api//v1/drafts`** all still route
-  somewhere (the router squeezes repeated slashes and ignores a trailing one
-  before matching), so a body guard or a rate limiter written against the raw,
-  un-normalized path missed every one of them until fixed by normalizing with
+- **`/mcp/`, `.json` suffixes, `/mcp//`, and `/api//v1/drafts` were each their
+  own separate bypass, fixed by three different commits — don't cite the wrong
+  one.** `968ca3fa` gave `/mcp` its own `format: false` (closing `/mcp.json`)
+  and taught the guard to strip one trailing slash (`chomp("/")`, closing
+  `/mcp/`) — but `chomp("/")` only strips *one* slash, so `/mcp//` and
+  `/mcp///` still routed (the router squeezes repeated slashes before
+  matching) and slipped past unguarded. `e26a5505` separately put
+  `format: false` on the whole `/api` namespace, closing every
+  `/api/v1/*.json` suffix the same way. Neither of those touched the deeper
+  bug: `723c18a4` is the commit that replaced the `chomp("/")` approach with
   the router's own `ActionDispatch::Journey::Router::Utils.normalize_path` (see
-  Logs and Sentry, and Rate limits, above) and by putting `format: false` on the
-  whole `/api` namespace so a `.json`-suffixed URL routes only to the JSON 404,
-  never to a real action — commits `e26a5505` and `968ca3fa`.
+  Logs and Sentry, above), which is what actually closes `/mcp//`, `/mcp///`
+  and `/api//v1/drafts` — a guard written against `chomp("/")` alone still has
+  a gap today if you're reasoning from `968ca3fa` and stop there.
 - **The MCP exception reporter crashing on the real HTTP request shape.**
   `context[:request]` is a parsed `Hash` only when a test calls
   `MCP::Server#handle` directly; over the real HTTP path the transport calls
@@ -448,12 +526,11 @@ also normalizes** the path before any throttle block runs — noted so nobody
   reporter bug above.
 - **The harness blocking security-weakening mutation checks.** The spec's own
   Testing section calls for a mutation check on visibility — widen
-  `WorkflowCatalog`'s scope (or drop `Api::TokenAuthentication`'s
-  `before_action :authenticate_token!`) and confirm the relevant test goes red.
-  That edit is itself security-weakening, and the harness that guards this repo
-  can refuse to make it even temporarily for a test run. No fix is recorded on
-  this branch; if you hit the same refusal, that's expected, and the mutation
-  check for that test is still owed.
+  `WorkflowCatalog`'s scope and confirm the relevant test goes red. That edit is
+  itself security-weakening, and the harness that guards this repo can refuse
+  to make it even temporarily for a test run. No fix is recorded on this
+  branch; if you hit the same refusal, that's expected, and the mutation check
+  for that test is still owed.
 
 ## Migrations and what ships
 
@@ -463,6 +540,9 @@ Two migrations, both additive: `db/migrate/20260925120000_create_api_tokens.rb`
 nothing existing was ever made through the API). Neither locks anything large.
 New runtime gem: `gem "mcp", "~> 1.6"` (one dependency, `json_schemer`).
 `/mcp` relies on `config.hosts`; curl it once from inside the network right
-after deploying. Nothing under `/api` or `/mcp` is reachable until someone
+after deploying. **"Nothing is reachable until a token exists" overstates
+it** — `GET /api/v1/openapi.json` and `/api/docs` (signed-in) are both
+token-free by design, and the catch-all answers anyone. What's actually true:
+no workflow data is reachable, and nothing can be written, until someone
 creates a token — tell IT and the AI team what a `tf_live_` token is before
 announcing this.
