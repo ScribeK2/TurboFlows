@@ -136,6 +136,13 @@ Rails/UniqueValidationWithoutIndex:
   Exclude:
     - "app/models/group.rb"
 
+# WorkflowCatalog#search takes `q:` because the controller splats
+# params.permit(:q, ...).to_h.symbolize_keys straight through — the keyword
+# name has to match the HTTP query param name, not a longer synonym.
+Naming/MethodParameterName:
+  Exclude:
+    - "app/services/api/workflow_catalog.rb"
+
 # =============================================================================
 # Metrics: Raised thresholds for existing code (lower over time)
 # =============================================================================
