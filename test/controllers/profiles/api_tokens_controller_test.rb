@@ -39,6 +39,19 @@ class Profiles::ApiTokensControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "the reveal card is marked data-turbo-temporary so Back navigation can't resurrect it from cache" do
+    sign_in @editor
+    post profile_api_tokens_path, params: { api_token: { name: "Claude Code", scopes: %w[read], expires_in_days: 30 } },
+                                  as: :turbo_stream
+
+    assert_response :success
+    assert_select "turbo-stream[action='update'][target='api-token-reveal'] template" do |templates|
+      reveal = Nokogiri::HTML.fragment(templates.first.inner_html)
+      assert reveal.element_children.first.has_attribute?("data-turbo-temporary"),
+             "the reveal card's outermost element must carry data-turbo-temporary"
+    end
+  end
+
   test "a refused create keeps the submitted scopes and expiry, not the defaults" do
     sign_in @editor
     post profile_api_tokens_path,
@@ -53,6 +66,25 @@ class Profiles::ApiTokensControllerTest < ActionDispatch::IntegrationTest
       selected = form.at_css("select#api_token_expires_in_days option[selected]")
       assert_equal "90", selected["value"]
     end
+  end
+
+  test "posting with no scopes ticked is refused with the model's error, not a 500" do
+    sign_in @editor
+    post profile_api_tokens_path, params: { api_token: { name: "x", expires_in_days: "30" } },
+                                  as: :turbo_stream
+
+    assert_response :unprocessable_content
+    assert_includes response.body, "must include at least one of"
+    assert_equal 0, @editor.api_tokens.count
+  end
+
+  test "posting with no expires_in_days is refused, not a 500" do
+    sign_in @editor
+    post profile_api_tokens_path, params: { api_token: { name: "x", scopes: %w[read] } },
+                                  as: :turbo_stream
+
+    assert_response :unprocessable_content
+    assert_equal 0, @editor.api_tokens.count
   end
 
   test "a CSR is not offered the draft scope, and posting it is refused" do

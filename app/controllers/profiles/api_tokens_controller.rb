@@ -5,7 +5,9 @@ module Profiles
     before_action :authenticate_user!
 
     def create
-      token = ApiToken.issue(user: current_user, **token_params)
+      attrs = token_params
+      token = ApiToken.issue(user: current_user, name: attrs[:name], scopes: attrs[:scopes],
+                             expires_in_days: attrs[:expires_in_days])
 
       if token.persisted?
         # The old form's submit button is what's focused when this arrives, so it
@@ -18,7 +20,7 @@ module Profiles
           turbo_stream.update("api-token-reveal", partial: "profiles/api_tokens/reveal", locals: { token: })
         ]
       else
-        locals = { token:, submitted_expires_in_days: token_params[:expires_in_days] }
+        locals = { token:, submitted_expires_in_days: attrs[:expires_in_days] }
         stream = turbo_stream.replace("api-token-form", partial: "profiles/api_tokens/form", locals:)
         render turbo_stream: stream, status: :unprocessable_content
       end
