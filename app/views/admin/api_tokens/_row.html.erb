@@ -1,0 +1,18 @@
+<tr id="<%= dom_id(token) %>">
+  <td><%= token.name %></td>
+  <td><%= link_to token.user.email, admin_user_path(token.user) %></td>
+  <td><%= token.effective_scopes.join(", ").presence || "none usable" %></td>
+  <td>
+    <% state_badge = { active: ["Active", "badge--info"], expired: ["Expired", "badge--warning"],
+                        revoked: ["Revoked", "badge--alert"] }.fetch(token.state) %>
+    <span class="badge <%= state_badge.last %>"><%= state_badge.first %></span>
+  </td>
+  <td><%= token.last_used_at ? "#{time_ago_in_words(token.last_used_at)} ago" : "Never" %></td>
+  <td><%= l(token.expires_at.to_date, format: :long) %></td>
+  <td>
+    <% if token.state == :active %>
+      <%= button_to "Revoke", admin_api_token_path(token), method: :delete, class: "btn btn--plain",
+            form: { data: { turbo_confirm: "Revoke “#{token.name}” (#{token.user.email})? Anything using it stops working." } } %>
+    <% end %>
+  </td>
+</tr>

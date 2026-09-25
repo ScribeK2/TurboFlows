@@ -1,0 +1,41 @@
+<div class="page-content">
+  <div class="page-header-section">
+    <div>
+      <h1 class="page-header-section__title">API Tokens</h1>
+      <p class="page-header-section__subtitle">
+        Every personal access token in the install. Revoking stops a token at once; its owner keeps their account.
+      </p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <h2>All Tokens</h2>
+    </div>
+
+    <% if @tokens.any? %>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Owner</th>
+              <th>Scopes</th>
+              <th>State</th>
+              <th>Last used</th>
+              <th>Expires</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <%= render partial: "admin/api_tokens/row", collection: @tokens, as: :token %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="empty-state p-4">
+        <p class="empty-state__text">No API tokens yet. People create them on their profile page.</p>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -172,6 +172,7 @@ Rails.application.routes.draw do
         patch :reactivate
       end
     end
+    resources :api_tokens, only: %i[index destroy]
     resource :smtp_setting, only: %i[show update], path: "email" do
       post :test_delivery
     end
