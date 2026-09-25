@@ -71,3 +71,5 @@ group :development do
   # the command errors instead of auditing and the check silently stops running.
   gem "bundler-audit", require: false
 end
+
+gem "mcp", "~> 1.6"
