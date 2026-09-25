@@ -66,6 +66,15 @@ class Api::Mcp::DraftToolsTest < ActiveSupport::TestCase
     end
   end
 
+  test "validate_workflow_draft's own scope guard refuses a token that lost the draft scope" do
+    @editor.update!(role: "user")
+    assert_no_difference("Workflow.count") do
+      response = call(Api::Mcp::ValidateWorkflowDraft, document: valid)
+      assert_predicate response, :error?
+      assert_equal "insufficient_scope", response.structured_content[:errors].first[:code]
+    end
+  end
+
   private
 
   def call(tool, **arguments)

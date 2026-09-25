@@ -14,6 +14,12 @@ class McpController < ActionController::API
 
     self.status = status
     response.headers.merge!(headers)
+    # An empty body (the 202 ack for a JSON-RPC notification, which gets no
+    # response payload) must not fall back to Rails' default text/html
+    # content type -- head status renders truly bodyless instead of an empty
+    # response_body that still carries a content type.
+    return head status if body.empty? || body.join.empty?
+
     self.response_body = body
   end
 

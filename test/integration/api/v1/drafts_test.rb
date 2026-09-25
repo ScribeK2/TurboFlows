@@ -40,6 +40,15 @@ class Api::V1::DraftsTest < ActionDispatch::IntegrationTest
     assert_equal "malformed_json", response.parsed_body.dig("errors", 0, "code")
   end
 
+  test "a document with no schema_version is a 422 unsupported_schema_version, not a 201" do
+    no_version = { workflows: [{ title: "API #{SecureRandom.hex(2)}",
+                                 steps: [{ id: "done", type: "resolve", title: "Done",
+                                           resolution_type: "success" }] }] }.to_json
+    post api_v1_drafts_path, params: no_version, headers: headers(@drafter)
+    assert_response :unprocessable_content
+    assert_equal "unsupported_schema_version", response.parsed_body.dig("errors", 0, "code")
+  end
+
   test "a malformed body on create is a 422 finding, not a 400 page" do
     post api_v1_drafts_path, params: "{nope", headers: headers(@drafter)
     assert_response :unprocessable_content

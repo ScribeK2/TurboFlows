@@ -69,6 +69,13 @@ class McpTest < ActionDispatch::IntegrationTest
     assert_equal @drafter, workflow.api_token
   end
 
+  test "a notification's 202 ack has no text/html content type" do
+    notification = { jsonrpc: "2.0", method: "notifications/initialized" }.to_json
+    post mcp_path, params: notification, headers: headers(@drafter)
+    assert_response :accepted
+    assert_not_equal "text/html", response.media_type
+  end
+
   test "a wrong argument type is a tool error the model can read, not a 500" do
     result = rpc(@reader, "tools/call", name: "search_workflows", arguments: { page: "two" })
     assert result["isError"], "expected isError true: #{result.inspect}"
@@ -87,9 +94,9 @@ class McpTest < ActionDispatch::IntegrationTest
     assert_response :unauthorized
   end
 
-  test "GET /mcp is answered by the transport, never a 500" do
+  test "GET /mcp in stateless mode is exactly 405" do
     get mcp_path, headers: headers(@reader).merge("Accept" => "text/event-stream")
-    assert_operator response.status, :<, 500
+    assert_response :method_not_allowed
   end
 
   test "a tools/call body over the cap is a 413 before anything parses it" do
@@ -100,6 +107,7 @@ class McpTest < ActionDispatch::IntegrationTest
                      headers: headers(@drafter)
     end
     assert_response :content_too_large
+    assert_equal "payload_too_large", response.parsed_body.dig("errors", 0, "code")
   end
 
   test "the log never carries a document sent over MCP" do

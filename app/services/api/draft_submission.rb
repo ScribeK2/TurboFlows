@@ -70,7 +70,7 @@ module Api
     end
 
     def outstanding
-      Workflow.drafts.created_via_api.where(user: @user).count
+      @outstanding ||= Workflow.drafts.created_via_api.where(user: @user).count
     end
 
     def refused(errors, warnings = []) = Result.new(workflows: [], errors:, warnings:)

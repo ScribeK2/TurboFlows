@@ -20,7 +20,7 @@ module Api
       @group_paths = {}
     end
 
-    def search(q: nil, tag: nil, group: nil, status: nil, page: nil)
+    def search(q: nil, tag: nil, group: nil, status: nil, page: nil) # rubocop:disable Naming/MethodParameterName -- q matches the HTTP param
       page = page.to_i.clamp(1, MAX_PAGE)
       scope = visible
       scope = scope.search_by(q) if q.present?

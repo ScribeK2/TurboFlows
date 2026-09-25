@@ -75,10 +75,18 @@ class Api::V1::ThrottleTest < ActionDispatch::IntegrationTest
   # place a regression in our own normalized_path helper could show up.
   test "/mcp/ and /mcp// count toward the same per-token bucket as /mcp" do
     freeze_time do
-      20.times { post "/mcp", params: list_tools, headers: mcp_headers(@one) }
-      20.times { post "/mcp/", params: list_tools, headers: mcp_headers(@one) }
-      20.times { post "/mcp//", params: list_tools, headers: mcp_headers(@one) }
-      assert_operator response.status, :<, 429
+      20.times do
+        post "/mcp", params: list_tools, headers: mcp_headers(@one)
+        assert_operator response.status, :<, 429
+      end
+      20.times do
+        post "/mcp/", params: list_tools, headers: mcp_headers(@one)
+        assert_operator response.status, :<, 429
+      end
+      20.times do
+        post "/mcp//", params: list_tools, headers: mcp_headers(@one)
+        assert_operator response.status, :<, 429
+      end
 
       post "/mcp", params: list_tools, headers: mcp_headers(@one)
       assert_response :too_many_requests

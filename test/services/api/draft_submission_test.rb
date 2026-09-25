@@ -37,6 +37,12 @@ class Api::DraftSubmissionTest < ActiveSupport::TestCase
     assert_predicate submission(fixed.to_json).create, :created?
   end
 
+  test "a refusal at the cap runs one COUNT query for outstanding drafts, not several" do
+    fill_to(Api::DraftSubmission::DRAFT_LIMIT)
+    count = count_queries { submission(valid_document).create }
+    assert_equal 1, count, "expected #outstanding to be memoized within the call"
+  end
+
   test "at the cap, create is refused; delete one and it succeeds" do
     fill_to(Api::DraftSubmission::DRAFT_LIMIT)
     refused = submission(valid_document).create
@@ -52,6 +58,23 @@ class Api::DraftSubmissionTest < ActiveSupport::TestCase
       refused = submission(valid_document(count: 2)).create
       assert_equal "api_draft_limit", refused.errors.sole[:code]
     end
+  end
+
+  test "a commit that fails inside WorkflowImporter is a refused_at_commit finding, and nothing is written" do
+    original_call = WorkflowImporter.instance_method(:call)
+    failed = WorkflowImporter::Result.new(success: false, workflows: [], errors: ["the write failed"],
+                                          warnings: [], incomplete_steps_count: 0)
+    WorkflowImporter.define_method(:call) { failed }
+
+    assert_no_difference("Workflow.count") do
+      refused = submission(valid_document).create
+      assert_not refused.created?
+      finding = refused.errors.sole
+      assert_equal "refused_at_commit", finding[:code]
+      assert_equal "the write failed", finding[:message]
+    end
+  ensure
+    WorkflowImporter.define_method(:call, original_call)
   end
 
   test "malformed JSON is a malformed_json finding, not an exception" do
