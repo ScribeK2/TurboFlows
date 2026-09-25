@@ -23,6 +23,38 @@ class Profiles::ApiTokensControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Claude Code"
   end
 
+  test "the reveal stream focuses the copy button and describes it with the one-time warning" do
+    sign_in @editor
+    post profile_api_tokens_path, params: { api_token: { name: "Claude Code", scopes: %w[read], expires_in_days: 30 } },
+                                  as: :turbo_stream
+
+    assert_response :success
+    assert_select "turbo-stream[action='update'][target='api-token-reveal'] template" do |templates|
+      reveal = Nokogiri::HTML.fragment(templates.first.inner_html)
+      button = reveal.at_css("button[data-clipboard-target='button']")
+      assert button, "expected the reveal card's Copy button"
+      assert button.has_attribute?("autofocus"), "the Copy button must carry autofocus"
+      assert_equal "api-token-reveal-warning", button["aria-describedby"]
+      assert_equal "api-token-reveal-warning", reveal.at_css("#api-token-reveal-warning")&.[]("id")
+    end
+  end
+
+  test "a refused create keeps the submitted scopes and expiry, not the defaults" do
+    sign_in @editor
+    post profile_api_tokens_path,
+         params: { api_token: { name: "", scopes: %w[read draft], expires_in_days: 90 } },
+         as: :turbo_stream
+
+    assert_response :unprocessable_content
+    assert_select "turbo-stream[action='replace'][target='api-token-form'] template" do |templates|
+      form = Nokogiri::HTML.fragment(templates.first.inner_html)
+      assert form.at_css("#api_token_scope_draft[checked]"), "draft must stay checked on retry"
+      assert form.at_css("#api_token_scope_read[checked]"), "read must stay checked on retry"
+      selected = form.at_css("select#api_token_expires_in_days option[selected]")
+      assert_equal "90", selected["value"]
+    end
+  end
+
   test "a CSR is not offered the draft scope, and posting it is refused" do
     sign_in @csr
     get edit_profile_path

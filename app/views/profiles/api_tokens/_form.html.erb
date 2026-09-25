@@ -1,5 +1,7 @@
-<%# locals: (token:) %>
-<%# token is nil, or an unsaved ApiToken carrying validation errors. %>
+<%# locals: (token:, submitted_expires_in_days: nil) %>
+<%# token is nil, or an unsaved ApiToken carrying validation errors and the
+    scopes/expiry the author actually submitted — both are read back below so a
+    refused submission never silently narrows what gets created on retry. %>
 <%= form_with scope: :api_token, url: profile_api_tokens_path, id: "api-token-form", class: "space-y-4" do |f| %>
   <% if token&.errors&.any? %>
     <div class="flash flash--alert" role="alert" style="position: static;">
@@ -15,9 +17,11 @@
 
   <fieldset class="form-group">
     <legend class="form-label">What it can do</legend>
-    <label><%= check_box_tag "api_token[scopes][]", "read", true, id: "api_token_scope_read" %> Read workflows</label>
+    <label><%= check_box_tag "api_token[scopes][]", "read", token ? token.scopes.include?("read") : true,
+          id: "api_token_scope_read" %> Read workflows</label>
     <% if current_user.can_create_workflows? %>
-      <label><%= check_box_tag "api_token[scopes][]", "draft", false, id: "api_token_scope_draft" %>
+      <label><%= check_box_tag "api_token[scopes][]", "draft", token ? token.scopes.include?("draft") : false,
+            id: "api_token_scope_draft" %>
         Create drafts (never publish)</label>
     <% end %>
   </fieldset>
@@ -25,7 +29,8 @@
   <div class="form-group">
     <%= f.label :expires_in_days, "Expires after", class: "form-label" %>
     <%= f.select :expires_in_days, ApiToken::EXPIRY_CHOICES.map { ["#{it} days", it] },
-          { selected: ApiToken::DEFAULT_EXPIRY_DAYS }, class: "form-select" %>
+          { selected: (submitted_expires_in_days.presence || ApiToken::DEFAULT_EXPIRY_DAYS).to_i },
+          class: "form-select" %>
   </div>
 
   <%= f.submit "Create token", class: "btn btn--secondary" %>

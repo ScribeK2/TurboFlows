@@ -1,9 +1,16 @@
 <%# locals: (token:) %>
+<%# A keyboard or screen-reader user gets no other signal this appeared: the
+    stream that inserts it destroys the focused Create-token submit button, and
+    role="status"/"alert" alone isn't announced reliably (project lesson,
+    2026-09-25 profile-tokens review). autofocus moves focus here instead —
+    the controller orders this stream action AFTER the form/list replace so
+    there's nothing already focused for it to lose to — and aria-describedby
+    ties the one-time warning to the element that receives it. %>
 <div class="card" data-controller="clipboard" style="margin-block: var(--space-4);">
   <div class="card__body">
-    <p><strong>Copy your new token now.</strong> This is the only time TurboFlows will show it.</p>
+    <p id="api-token-reveal-warning"><strong>Copy your new token now.</strong> This is the only time TurboFlows will show it.</p>
     <code data-clipboard-target="source"><%= token.plaintext %></code>
     <button type="button" class="btn btn--secondary" data-action="click->clipboard#copy"
-            data-clipboard-target="button">Copy</button>
+            data-clipboard-target="button" autofocus aria-describedby="api-token-reveal-warning">Copy</button>
   </div>
 </div>

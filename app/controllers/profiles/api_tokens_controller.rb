@@ -8,15 +8,19 @@ module Profiles
       token = ApiToken.issue(user: current_user, **token_params)
 
       if token.persisted?
+        # The old form's submit button is what's focused when this arrives, so it
+        # has to be destroyed BEFORE the reveal is inserted: autofocus only takes
+        # over from nothing, not from something already focused (spec 2026-09-25
+        # ruling on the profile-page tokens review).
         render turbo_stream: [
-          turbo_stream.update("api-token-reveal", partial: "profiles/api_tokens/reveal", locals: { token: }),
           turbo_stream.replace("api-token-form", partial: "profiles/api_tokens/form", locals: { token: nil }),
-          list_stream
+          list_stream,
+          turbo_stream.update("api-token-reveal", partial: "profiles/api_tokens/reveal", locals: { token: })
         ]
       else
-        render turbo_stream: turbo_stream.replace("api-token-form", partial: "profiles/api_tokens/form",
-                                                                    locals: { token: }),
-               status: :unprocessable_content
+        locals = { token:, submitted_expires_in_days: token_params[:expires_in_days] }
+        stream = turbo_stream.replace("api-token-form", partial: "profiles/api_tokens/form", locals:)
+        render turbo_stream: stream, status: :unprocessable_content
       end
     end
 
